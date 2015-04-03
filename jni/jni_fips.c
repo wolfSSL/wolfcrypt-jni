@@ -3,6 +3,7 @@
 
 #include <wolfssl/options.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/fips_test.h>
 #include <wolfssl/wolfcrypt/aes.h>
 #include <wolfssl/wolfcrypt/des3.h>
 #include <wolfssl/wolfcrypt/sha.h>
@@ -1080,3 +1081,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Final_1fips(
 
     return ret;
 }
+
+/*
+ * wolfCrypt FIPS API - Show status Service
+ */
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetStatus_1fips(
+    JNIEnv* env, jclass class)
+{
+    return (jint) wolfCrypt_GetStatus_fips();
+}
+
