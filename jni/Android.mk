@@ -21,6 +21,7 @@ LOCAL_SRC_FILES  := jni_fips.c \
 					jni_native_struct.c \
 					jni_aes.c \
 					jni_des3.c \
+					jni_md5.c \
 					jni_sha.c \
 					jni_hmac.c \
 					jni_rng.c \

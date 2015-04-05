@@ -169,22 +169,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_FreeRsaKey_1fips
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
- * Method:    RsaPublicEncrypt_fips
- * Signature: (Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;JLcom/wolfssl/wolfcrypt/Rsa;Lcom/wolfssl/wolfcrypt/Rng;)I
- */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicEncrypt_1fips
-  (JNIEnv *, jclass, jobject, jlong, jobject, jlong, jobject, jobject);
-
-/*
- * Class:     com_wolfssl_wolfcrypt_Fips
- * Method:    RsaPrivateDecrypt_fips
- * Signature: (Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;JLcom/wolfssl/wolfcrypt/Rsa;)I
- */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateDecrypt_1fips
-  (JNIEnv *, jclass, jobject, jlong, jobject, jlong, jobject);
-
-/*
- * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    RsaSSL_Sign_fips
  * Signature: (Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;JLcom/wolfssl/wolfcrypt/Rsa;Lcom/wolfssl/wolfcrypt/Rng;)I
  */
@@ -326,6 +310,46 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Final_1fips
  */
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetStatus_1fips
   (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    RsaPublicEncrypt_fips
+ * Signature: (Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;JLcom/wolfssl/wolfcrypt/Rsa;Lcom/wolfssl/wolfcrypt/Rng;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicEncrypt_1fips
+  (JNIEnv *, jclass, jobject, jlong, jobject, jlong, jobject, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    RsaPrivateDecrypt_fips
+ * Signature: (Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;JLcom/wolfssl/wolfcrypt/Rsa;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateDecrypt_1fips
+  (JNIEnv *, jclass, jobject, jlong, jobject, jlong, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    InitMd5_fips
+ * Signature: (Lcom/wolfssl/wolfcrypt/Md5;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitMd5_1fips
+  (JNIEnv *, jclass, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    Md5Update_fips
+ * Signature: (Lcom/wolfssl/wolfcrypt/Md5;Ljava/nio/ByteBuffer;J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Update_1fips
+  (JNIEnv *, jclass, jobject, jobject, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    Md5Final_fips
+ * Signature: (Lcom/wolfssl/wolfcrypt/Md5;Ljava/nio/ByteBuffer;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Final_1fips
+  (JNIEnv *, jclass, jobject, jobject);
 
 #ifdef __cplusplus
 }

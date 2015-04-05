@@ -79,6 +79,7 @@
 			<class name="com.wolfssl.wolfcrypt.NativeStruct" />
 			<class name="com.wolfssl.wolfcrypt.Aes" />
 			<class name="com.wolfssl.wolfcrypt.Des3" />
+			<class name="com.wolfssl.wolfcrypt.Md5" />
 			<class name="com.wolfssl.wolfcrypt.Sha" />
 			<class name="com.wolfssl.wolfcrypt.Sha256" />
 			<class name="com.wolfssl.wolfcrypt.Sha384" />

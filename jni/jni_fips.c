@@ -1,3 +1,4 @@
+#include <com_wolfssl_wolfcrypt_WolfCrypt.h>
 #include <com_wolfssl_wolfcrypt_Fips.h>
 #include <wolfcrypt_jni_NativeStruct.h>
 
@@ -15,6 +16,10 @@
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
+
+/*
+ * ### FIPS Aprooved Security Methods ##########################################
+ */
 
 /*
  * wolfCrypt FIPS API - Symmetric encrypt/decrypt Service
@@ -588,70 +593,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_FreeRsaKey_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicEncrypt_1fips(
-    JNIEnv* env, jclass class, jobject in_object, jlong inLen,
-    jobject out_object, jlong outLen, jobject rsa_object, jobject rng_object)
-{
-    jint ret = NOT_COMPILED_IN;
-
-#if defined(HAVE_FIPS) && !defined(NO_RSA)
-
-    byte* in = getDirectBufferAddress(env, in_object);
-    byte* out = getDirectBufferAddress(env, out_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
-    RNG* rng = (RNG*) getNativeStruct(env, rsa_object);
-
-    /**
-     * Providing an rng is optional. RNG_GenerateBlock will return BAD_FUNC_ARG
-     * on a NULL rng if an RNG is needed by RsaPad.
-     */
-    if (!in || !out || !key)
-        return BAD_FUNC_ARG;
-
-    ret = RsaPublicEncrypt_fips(in, inLen, out, outLen, key, rng);
-
-    LogStr(
-        "RsaPublicEncrypt_fips(in, inLen, out, outLen, key=%p, rng=%p) = %d\n",
-        key, rng, ret);
-    LogStr("in:\n");
-    LogHex((byte*) in, inLen);
-    LogStr("out:\n");
-    LogHex((byte*) out, outLen);
-
-#endif
-
-    return ret;
-}
-
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateDecrypt_1fips(
-    JNIEnv* env, jclass class, jobject in_object, jlong inLen,
-    jobject out_object, jlong outLen, jobject rsa_object)
-{
-    jint ret = NOT_COMPILED_IN;
-
-#if defined(HAVE_FIPS) && !defined(NO_RSA)
-
-    byte* in = getDirectBufferAddress(env, in_object);
-    byte* out = getDirectBufferAddress(env, out_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
-
-    if (!in || !out || !key)
-        return BAD_FUNC_ARG;
-
-    ret = RsaPrivateDecrypt_fips(in, inLen, out, outLen, key);
-
-    LogStr("RsaPrivateDecrypt_fips(in, inLen, out, outLen, key=%p) = %d\n", key,
-        ret);
-    LogStr("in:\n");
-    LogHex((byte*) in, inLen);
-    LogStr("out:\n");
-    LogHex((byte*) out, outLen);
-
-#endif
-
-    return ret;
-}
-
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaSSL_1Sign_1fips(
     JNIEnv* env, jclass class, jobject in_object, jlong inLen,
     jobject out_object, jlong outLen, jobject rsa_object, jobject rng_object)
@@ -1092,3 +1033,149 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetStatus_1fip
     return (jint) wolfCrypt_GetStatus_fips();
 }
 
+/*
+ * ### FIPS Allowed Security Methods ###########################################
+ */
+
+/*
+ * wolfCrypt FIPS API - Key transport Service
+ */
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicEncrypt_1fips(
+    JNIEnv* env, jclass class, jobject in_object, jlong inLen,
+    jobject out_object, jlong outLen, jobject rsa_object, jobject rng_object)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_RSA)
+
+    byte* in = getDirectBufferAddress(env, in_object);
+    byte* out = getDirectBufferAddress(env, out_object);
+    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
+    RNG* rng = (RNG*) getNativeStruct(env, rsa_object);
+
+    /**
+     * Providing an rng is optional. RNG_GenerateBlock will return BAD_FUNC_ARG
+     * on a NULL rng if an RNG is needed by RsaPad.
+     */
+    if (!in || !out || !key)
+        return BAD_FUNC_ARG;
+
+    ret = RsaPublicEncrypt_fips(in, inLen, out, outLen, key, rng);
+
+    LogStr(
+        "RsaPublicEncrypt_fips(in, inLen, out, outLen, key=%p, rng=%p) = %d\n",
+        key, rng, ret);
+    LogStr("in:\n");
+    LogHex((byte*) in, inLen);
+    LogStr("out:\n");
+    LogHex((byte*) out, outLen);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateDecrypt_1fips(
+    JNIEnv* env, jclass class, jobject in_object, jlong inLen,
+    jobject out_object, jlong outLen, jobject rsa_object)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_RSA)
+
+    byte* in = getDirectBufferAddress(env, in_object);
+    byte* out = getDirectBufferAddress(env, out_object);
+    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
+
+    if (!in || !out || !key)
+        return BAD_FUNC_ARG;
+
+    ret = RsaPrivateDecrypt_fips(in, inLen, out, outLen, key);
+
+    LogStr("RsaPrivateDecrypt_fips(in, inLen, out, outLen, key=%p) = %d\n", key,
+        ret);
+    LogStr("in:\n");
+    LogHex((byte*) in, inLen);
+    LogStr("out:\n");
+    LogHex((byte*) out, outLen);
+
+#endif
+
+    return ret;
+}
+
+/*
+ * wolfCrypt FIPS API - Message digest MD5 Service
+ */
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitMd5_1fips(
+    JNIEnv* env, jclass class, jobject md5_object)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_MD5)
+
+    Md5* md5 = (Md5*) getNativeStruct(env, md5_object);
+
+    if (!md5)
+        return BAD_FUNC_ARG;
+
+    InitMd5(md5);
+    ret = com_wolfssl_wolfcrypt_WolfCrypt_SUCCESS;
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Update_1fips(
+    JNIEnv* env, jclass class, jobject md5_object, jobject data_buffer,
+    jlong len)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_MD5)
+
+    Md5* md5 = (Md5*) getNativeStruct(env, md5_object);
+    byte* data = getDirectBufferAddress(env, data_buffer);
+
+    if (!md5 || !data)
+        return BAD_FUNC_ARG;
+
+    Md5Update(md5, data, len);
+    ret = com_wolfssl_wolfcrypt_WolfCrypt_SUCCESS;
+
+    LogStr("Md5Update_fips(md5=%p, data, len) = %d\n", md5, ret);
+    LogStr("data:\n");
+    LogHex(data, len);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Final_1fips(
+    JNIEnv* env, jclass class, jobject md5_object, jobject hash_buffer)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_MD5)
+
+    Md5* md5 = (Md5*) getNativeStruct(env, md5_object);
+    byte* hash = getDirectBufferAddress(env, hash_buffer);
+
+    if (!md5 || !hash)
+        return BAD_FUNC_ARG;
+
+    Md5Final(md5, hash);
+    ret = com_wolfssl_wolfcrypt_WolfCrypt_SUCCESS;
+
+    LogStr("Md5Final_fips(md5=%p, hash) = %d\n", md5, ret);
+    LogStr("hash:\n");
+    LogHex(hash, SHA_DIGEST_SIZE);
+
+#endif
+
+    return ret;
+}

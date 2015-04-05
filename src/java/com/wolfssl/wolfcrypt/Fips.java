@@ -16,6 +16,10 @@ public class Fips extends WolfObject {
 	}
 
 	/*
+	 * ### FIPS Aprooved Security Methods ######################################
+	 */
+
+	/*
 	 * wolfCrypt FIPS API - Symmetric encrypt/decrypt Service
 	 */
 
@@ -299,7 +303,8 @@ public class Fips extends WolfObject {
 	 * @param rng
 	 *            the RNG object.
 	 * 
-	 * @return 0 on success, {@literal <} 0 on error. Also part of Zeroize Service.
+	 * @return 0 on success, {@literal <} 0 on error. Also part of Zeroize
+	 *         Service.
 	 */
 	public static native int FreeRng_fips(Rng rng);
 
@@ -378,46 +383,6 @@ public class Fips extends WolfObject {
 	public static native int FreeRsaKey_fips(Rsa key);
 
 	/**
-	 * Performs Rsa Public Encryption.
-	 * 
-	 * @param in
-	 *            the input buffer.
-	 * @param inLen
-	 *            the input length.
-	 * @param out
-	 *            the output buffer.
-	 * @param outLen
-	 *            the output length.
-	 * @param key
-	 *            the Rsa object.
-	 * @param rng
-	 *            the random source for padding.
-	 * 
-	 * @return 0 on success, {@literal <} 0 on error.
-	 */
-	public static native int RsaPublicEncrypt_fips(ByteBuffer in, long inLen,
-			ByteBuffer out, long outLen, Rsa key, Rng rng);
-
-	/**
-	 * Performs Rsa Private Decryption.
-	 * 
-	 * @param in
-	 *            the input buffer.
-	 * @param inLen
-	 *            the input length.
-	 * @param out
-	 *            the output buffer.
-	 * @param outLen
-	 *            the output length.
-	 * @param key
-	 *            the Rsa object.
-	 * 
-	 * @return 0 on success, {@literal <} 0 on error.
-	 */
-	public static native int RsaPrivateDecrypt_fips(ByteBuffer in, long inLen,
-			ByteBuffer out, long outLen, Rsa key);
-
-	/**
 	 * Performs Rsa Signing Operation.
 	 * 
 	 * @param in
@@ -463,7 +428,8 @@ public class Fips extends WolfObject {
 	 * @param key
 	 *            the Rsa object.
 	 * 
-	 * @return key output size {@literal >} 0 on success, {@literal <} 0 on error.
+	 * @return key output size {@literal >} 0 on success, {@literal <} 0 on
+	 *         error.
 	 */
 	public static native int RsaEncryptSize_fips(Rsa key);
 
@@ -670,4 +636,97 @@ public class Fips extends WolfObject {
 	 *         specific error state of the module.
 	 */
 	public static native int wolfCrypt_GetStatus_fips();
+
+	/*
+	 * ### FIPS Allowed Security Methods #######################################
+	 */
+
+	/*
+	 * wolfCrypt FIPS API - Key transport Service
+	 */
+
+	/**
+	 * Performs Rsa Public Encryption.
+	 * 
+	 * @param in
+	 *            the input buffer.
+	 * @param inLen
+	 *            the input length.
+	 * @param out
+	 *            the output buffer.
+	 * @param outLen
+	 *            the output length.
+	 * @param key
+	 *            the Rsa object.
+	 * @param rng
+	 *            the random source for padding.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int RsaPublicEncrypt_fips(ByteBuffer in, long inLen,
+			ByteBuffer out, long outLen, Rsa key, Rng rng);
+
+	/**
+	 * Performs Rsa Private Decryption.
+	 * 
+	 * @param in
+	 *            the input buffer.
+	 * @param inLen
+	 *            the input length.
+	 * @param out
+	 *            the output buffer.
+	 * @param outLen
+	 *            the output length.
+	 * @param key
+	 *            the Rsa object.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int RsaPrivateDecrypt_fips(ByteBuffer in, long inLen,
+			ByteBuffer out, long outLen, Rsa key);
+
+	/*
+	 * wolfCrypt FIPS API - Message digest MD5 Service
+	 */
+
+	/**
+	 * Initializes Md5 object for use.
+	 * 
+	 * @param md5
+	 *            the Md5 object.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int InitMd5(Md5 md5);
+
+	/**
+	 * Updates Md5 object with data.
+	 * 
+	 * @param md5
+	 *            the Md5 object.
+	 * @param data
+	 *            the input buffer.
+	 * @param len
+	 *            the input length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int Md5Update(Md5 md5, ByteBuffer data, long len);
+
+	/**
+	 * Outputs Md5 digest to hash.
+	 * 
+	 * @param md5
+	 *            the Md5 object.
+	 * @param hash
+	 *            the output buffer.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int Md5Final(Md5 md5, ByteBuffer hash);
+
+	/*
+	 * wolfCrypt FIPS API - Key agreement Service
+	 */
+
 }
