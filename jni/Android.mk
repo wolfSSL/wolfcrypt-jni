@@ -26,6 +26,7 @@ LOCAL_SRC_FILES  := jni_fips.c \
 					jni_hmac.c \
 					jni_rng.c \
 					jni_rsa.c \
+					jni_dh.c \
 					jni_asn.c
 
 LOCAL_CFLAGS     := -DHAVE_CONFIG_H -Wall -Wno-unused

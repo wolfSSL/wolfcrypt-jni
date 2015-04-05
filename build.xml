@@ -87,6 +87,7 @@
 			<class name="com.wolfssl.wolfcrypt.Hmac" />
 			<class name="com.wolfssl.wolfcrypt.Rng" />
 			<class name="com.wolfssl.wolfcrypt.Rsa" />
+			<class name="com.wolfssl.wolfcrypt.Dh" />
 			<class name="com.wolfssl.wolfcrypt.Asn" />
 		</javah>
 	</target>

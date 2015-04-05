@@ -729,4 +729,127 @@ public class Fips extends WolfObject {
 	 * wolfCrypt FIPS API - Key agreement Service
 	 */
 
+	/**
+	 * Initializes Dh object for use. FreeDhKey_fips must be called for
+	 * resources deallocation.
+	 * 
+	 * @param key
+	 *            the Dh object.
+	 */
+	public static native void InitDhKey(Dh key);
+
+	/**
+	 * Releases Dh object's resources.
+	 * 
+	 * @param key
+	 *            the Dh object.
+	 */
+	public static native void FreeDhKey(Dh key);
+
+	/**
+	 * Generates the public part pub of size pubSz, private part priv of size
+	 * privSz using rng for Dh key.
+	 * 
+	 * @param key
+	 *            the key.
+	 * @param rng
+	 *            the random source.
+	 * @param priv
+	 *            the private part buffer.
+	 * @param privSz
+	 *            the private part length.
+	 * @param pub
+	 *            the public part buffer.
+	 * @param pubSz
+	 *            the the public part length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int DhGenerateKeyPair(Dh key, Rng rng,
+			ByteBuffer priv, long[] privSz, ByteBuffer pub, long[] pubSz);
+
+	/**
+	 * Creates the agreement agree of size agreeSz using Dh key private priv of
+	 * size privSz and peer’s public key otherPub of size pubSz.
+	 * 
+	 * @param key
+	 *            the key.
+	 * @param agree
+	 *            the agree buffer.
+	 * @param agreeSz
+	 *            the agree length.
+	 * @param priv
+	 *            the private part buffer.
+	 * @param privSz
+	 *            the private part length.
+	 * @param otherPub
+	 *            the peer's public part buffer.
+	 * @param pubSz
+	 *            the the public part length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int DhAgree(Dh key, ByteBuffer agree,
+			long[] agreeSz, ByteBuffer priv, long privSz, ByteBuffer otherPub,
+			long pubSz);
+
+	/**
+	 * Decodes the DER group parameters from buffer input starting at index
+	 * inOutIdx of size inSz into Dh key.
+	 * 
+	 * @param input
+	 *            the parameters buffer.
+	 * @param inOutIdx
+	 *            the parameters' starting index.
+	 * @param key
+	 *            the Dh key.
+	 * @param inSz
+	 *            the parameters buffer length. (not from inOutIdx)
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int DhKeyDecode(ByteBuffer input, long[] inOutIdx,
+			Dh key, long inSz);
+
+	/**
+	 * Sets the group parameters for the Dh key from the unsigned binary inputs
+	 * p of size pSz and g of size gSz.
+	 * 
+	 * @param key
+	 *            the Dh key.
+	 * @param p
+	 *            the prime buffer.
+	 * @param pSz
+	 *            the prime length.
+	 * @param g
+	 *            the primitive root molulo p buffer.
+	 * @param gSz
+	 *            the primitive root modulo p length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int DhSetKey(Dh key, ByteBuffer p, long pSz,
+			ByteBuffer g, long gSz);
+
+	/**
+	 * Loads the Dh group parameters.
+	 * 
+	 * @param input
+	 *            the parameters buffer.
+	 * @param inSz
+	 *            the parameters size.
+	 * @param p
+	 *            the prime buffer.
+	 * @param pInOutSz
+	 *            the prime length.
+	 * @param g
+	 *            the primitive root molulo p buffer.
+	 * @param gInOutSz
+	 *            the primitive root modulo p length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int DhParamsLoad(ByteBuffer input, long inSz,
+			ByteBuffer p, long[] pInOutSz, ByteBuffer g, long[] gInOutSz);
+
 }

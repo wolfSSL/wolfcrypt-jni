@@ -13,6 +13,7 @@
 #include <wolfssl/wolfcrypt/hmac.h>
 #include <wolfssl/wolfcrypt/random.h>
 #include <wolfssl/wolfcrypt/rsa.h>
+#include <cyassl/ctaocrypt/dh.h>
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
@@ -1174,6 +1175,208 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Final_1fips(
     LogStr("Md5Final_fips(md5=%p, hash) = %d\n", md5, ret);
     LogStr("hash:\n");
     LogHex(hash, SHA_DIGEST_SIZE);
+
+#endif
+
+    return ret;
+}
+
+/*
+ * wolfCrypt FIPS API - Key agreement Service
+ */
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitDhKey(
+    JNIEnv* env, jclass class, jobject key_object)
+{
+#if defined(HAVE_FIPS) && !defined(NO_DH)
+
+    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
+
+    if (key)
+        InitDhKey(key);
+
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_FreeDhKey(
+    JNIEnv* env, jclass class, jobject key_object)
+{
+#if defined(HAVE_FIPS) && !defined(NO_DH)
+
+    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
+
+    if (key)
+        FreeDhKey(key);
+
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhGenerateKeyPair(
+    JNIEnv* env, jclass class, jobject key_object, jobject rng_object,
+    jobject priv_buffer, jlongArray privSz, jobject pub_buffer,
+    jlongArray pubSz)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_DH)
+
+    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
+    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+    byte* priv = getDirectBufferAddress(env, priv_buffer);
+    byte* pub = getDirectBufferAddress(env, pub_buffer);
+    word32 tmpPrivSz, tmpPubSz;
+
+    if (!key || !rng || !priv || !pub)
+        return BAD_FUNC_ARG;
+
+    (*env)->GetLongArrayRegion(env, privSz, 0, 1, (jlong*) &tmpPrivSz);
+    (*env)->GetLongArrayRegion(env, pubSz, 0, 1, (jlong*) &tmpPubSz);
+
+    ret = DhGenerateKeyPair(key, rng, priv, &tmpPrivSz, pub, &tmpPubSz);
+
+    (*env)->SetLongArrayRegion(env, privSz, 0, 1, (jlong*) &tmpPrivSz);
+    (*env)->SetLongArrayRegion(env, pubSz, 0, 1, (jlong*) &tmpPubSz);
+
+    LogStr("DhGenerateKeyPair(key=%p, rng=%p, priv, privSz, pub, pubSz) = %d\n",
+        key, rng, ret);
+    LogStr("priv:\n");
+    LogHex(priv, tmpPrivSz);
+    LogStr("pub:\n");
+    LogHex(pub, tmpPubSz);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_1DhAgree(
+    JNIEnv* env, jclass class, jobject key_object, jobject agree_buffer,
+    jlongArray agreeSz, jobject priv_buffer, jlong privSz, jobject pub_buffer,
+    jlong pubSz)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_DH)
+
+    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
+    byte* agree = getDirectBufferAddress(env, agree_buffer);
+    byte* priv = getDirectBufferAddress(env, priv_buffer);
+    byte* pub = getDirectBufferAddress(env, pub_buffer);
+    word32 tmpAgreeSz;
+
+    if (!key || !agree || !priv || !pub)
+        return BAD_FUNC_ARG;
+
+    (*env)->GetLongArrayRegion(env, agreeSz, 0, 1, (jlong*) &tmpAgreeSz);
+
+    ret = DhAgree(key, agree, &tmpAgreeSz, priv, privSz, pub, pubSz);
+
+    (*env)->SetLongArrayRegion(env, agreeSz, 0, 1, (jlong*) &tmpAgreeSz);
+
+    LogStr("DhAgree(key=%p, agree, agreeSz, priv, privSz, pub, pubSz) = %d\n",
+        key, ret);
+    LogStr("agree:\n");
+    LogHex(agree, tmpAgreeSz);
+    LogStr("priv:\n");
+    LogHex(priv, privSz);
+    LogStr("pub:\n");
+    LogHex(pub, pubSz);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhKeyDecode(
+    JNIEnv* env, jclass class, jobject input_buffer, jlongArray inOutIdx,
+    jobject key_object, jlong inSz)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_DH)
+
+    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
+    byte* input = getDirectBufferAddress(env, input_buffer);
+    word32 tmpInOutIdx;
+
+    if (!key || !input)
+        return BAD_FUNC_ARG;
+
+    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpInOutIdx);
+
+    ret = DhKeyDecode(input, &tmpInOutIdx, key, inSz);
+
+    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpInOutIdx);
+
+    LogStr("DhKeyDecode(input, &inOutIdx, key=%p, inSz) = %d\n", key, ret);
+    LogStr("input:\n");
+    LogHex(input, inSz);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhSetKey(
+    JNIEnv* env, jclass class, jobject key_object, jobject p_buffer, jlong pSz,
+    jobject g_buffer, jlong gSz)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_DH)
+
+    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
+    byte* p = getDirectBufferAddress(env, p_buffer);
+    byte* g = getDirectBufferAddress(env, g_buffer);
+
+    if (!key || !p || !g)
+        return BAD_FUNC_ARG;
+
+    ret = DhSetKey(key, p, pSz, g, gSz);
+
+    LogStr("DhSetKey(key=%p, p, pSz, g, gSz) = %d\n", key, ret);
+    LogStr("p:\n");
+    LogHex(p, pSz);
+    LogStr("g:\n");
+    LogHex(g, gSz);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhParamsLoad(
+    JNIEnv* env, jclass class, jobject input_buffer, jlong inSz,
+    jobject p_buffer, jlongArray pInOutSz, jobject g_buffer,
+    jlongArray gInOutSz)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_DH)
+
+    byte* input = getDirectBufferAddress(env, p_buffer);
+    byte* p = getDirectBufferAddress(env, p_buffer);
+    byte* g = getDirectBufferAddress(env, g_buffer);
+    word32 tmpPInOutSz, tmpGInOutSz;
+
+    if (!input || !p || !g)
+        return BAD_FUNC_ARG;
+
+    (*env)->GetLongArrayRegion(env, pInOutSz, 0, 1, (jlong*) &tmpPInOutSz);
+    (*env)->GetLongArrayRegion(env, gInOutSz, 0, 1, (jlong*) &tmpGInOutSz);
+
+    ret = DhParamsLoad(input, inSz, p, &tmpPInOutSz, g, &tmpGInOutSz);
+
+    (*env)->SetLongArrayRegion(env, pInOutSz, 0, 1, (jlong*) &tmpPInOutSz);
+    (*env)->SetLongArrayRegion(env, gInOutSz, 0, 1, (jlong*) &tmpGInOutSz);
+
+    LogStr("DhParamsLoad(input, inSz, p, &pInOutSz, g, &gInOutSz) = %d\n", ret);
+    LogStr("input:\n");
+    LogHex(input, inSz);
+    LogStr("p:\n");
+    LogHex(p, tmpPInOutSz);
+    LogStr("g:\n");
+    LogHex(g, tmpGInOutSz);
 
 #endif
 

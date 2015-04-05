@@ -329,27 +329,83 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateDecrypt_1fips
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
- * Method:    InitMd5_fips
+ * Method:    InitMd5
  * Signature: (Lcom/wolfssl/wolfcrypt/Md5;)I
  */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitMd5_1fips
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitMd5
   (JNIEnv *, jclass, jobject);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
- * Method:    Md5Update_fips
+ * Method:    Md5Update
  * Signature: (Lcom/wolfssl/wolfcrypt/Md5;Ljava/nio/ByteBuffer;J)I
  */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Update_1fips
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Update
   (JNIEnv *, jclass, jobject, jobject, jlong);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
- * Method:    Md5Final_fips
+ * Method:    Md5Final
  * Signature: (Lcom/wolfssl/wolfcrypt/Md5;Ljava/nio/ByteBuffer;)I
  */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Final_1fips
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Final
   (JNIEnv *, jclass, jobject, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    InitDhKey
+ * Signature: (Lcom/wolfssl/wolfcrypt/Dh;)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitDhKey
+  (JNIEnv *, jclass, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    FreeDhKey
+ * Signature: (Lcom/wolfssl/wolfcrypt/Dh;)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_FreeDhKey
+  (JNIEnv *, jclass, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    DhGenerateKeyPair
+ * Signature: (Lcom/wolfssl/wolfcrypt/Dh;Lcom/wolfssl/wolfcrypt/Rng;Ljava/nio/ByteBuffer;[JLjava/nio/ByteBuffer;[J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhGenerateKeyPair
+  (JNIEnv *, jclass, jobject, jobject, jobject, jlongArray, jobject, jlongArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    DhAgree
+ * Signature: (Lcom/wolfssl/wolfcrypt/Dh;Ljava/nio/ByteBuffer;[JLjava/nio/ByteBuffer;JLjava/nio/ByteBuffer;J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhAgree
+  (JNIEnv *, jclass, jobject, jobject, jlongArray, jobject, jlong, jobject, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    DhKeyDecode
+ * Signature: (Ljava/nio/ByteBuffer;[JLcom/wolfssl/wolfcrypt/Dh;J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhKeyDecode
+  (JNIEnv *, jclass, jobject, jlongArray, jobject, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    DhSetKey
+ * Signature: (Lcom/wolfssl/wolfcrypt/Dh;Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhSetKey
+  (JNIEnv *, jclass, jobject, jobject, jlong, jobject, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    DhParamsLoad
+ * Signature: (Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;[JLjava/nio/ByteBuffer;[J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhParamsLoad
+  (JNIEnv *, jclass, jobject, jlong, jobject, jlongArray, jobject, jlongArray);
 
 #ifdef __cplusplus
 }
