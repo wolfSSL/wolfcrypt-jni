@@ -1,7 +1,7 @@
 package com.wolfssl.wolfcrypt;
 
 /**
- * Wrapper for the native WolfCrypt Sha implementation.
+ * Wrapper for the native WolfCrypt Md5 implementation.
  *
  * @author Moisés Guimarães
  * @version 1.0, April 2015

@@ -1,4 +1,4 @@
-#include <com_wolfssl_wolfcrypt_Sha.h>
+#include <com_wolfssl_wolfcrypt_Md5.h>
 #include <wolfcrypt_jni_error.h>
 
 #include <wolfssl/options.h>

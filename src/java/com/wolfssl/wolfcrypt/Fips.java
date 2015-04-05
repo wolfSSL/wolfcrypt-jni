@@ -730,8 +730,8 @@ public class Fips extends WolfObject {
 	 */
 
 	/**
-	 * Initializes Dh object for use. FreeDhKey_fips must be called for
-	 * resources deallocation.
+	 * Initializes Dh object for use. FreeDhKey must be called for resources
+	 * deallocation.
 	 * 
 	 * @param key
 	 *            the Dh object.
@@ -751,7 +751,7 @@ public class Fips extends WolfObject {
 	 * privSz using rng for Dh key.
 	 * 
 	 * @param key
-	 *            the key.
+	 *            the Dh object.
 	 * @param rng
 	 *            the random source.
 	 * @param priv
@@ -773,7 +773,7 @@ public class Fips extends WolfObject {
 	 * size privSz and peer’s public key otherPub of size pubSz.
 	 * 
 	 * @param key
-	 *            the key.
+	 *            the Dh object.
 	 * @param agree
 	 *            the agree buffer.
 	 * @param agreeSz
@@ -789,9 +789,8 @@ public class Fips extends WolfObject {
 	 * 
 	 * @return 0 on success, {@literal <} 0 on error.
 	 */
-	public static native int DhAgree(Dh key, ByteBuffer agree,
-			long[] agreeSz, ByteBuffer priv, long privSz, ByteBuffer otherPub,
-			long pubSz);
+	public static native int DhAgree(Dh key, ByteBuffer agree, long[] agreeSz,
+			ByteBuffer priv, long privSz, ByteBuffer otherPub, long pubSz);
 
 	/**
 	 * Decodes the DER group parameters from buffer input starting at index
@@ -802,7 +801,7 @@ public class Fips extends WolfObject {
 	 * @param inOutIdx
 	 *            the parameters' starting index.
 	 * @param key
-	 *            the Dh key.
+	 *            the Dh object.
 	 * @param inSz
 	 *            the parameters buffer length. (not from inOutIdx)
 	 * 
@@ -816,7 +815,7 @@ public class Fips extends WolfObject {
 	 * p of size pSz and g of size gSz.
 	 * 
 	 * @param key
-	 *            the Dh key.
+	 *            the Dh object.
 	 * @param p
 	 *            the prime buffer.
 	 * @param pSz
@@ -852,4 +851,67 @@ public class Fips extends WolfObject {
 	public static native int DhParamsLoad(ByteBuffer input, long inSz,
 			ByteBuffer p, long[] pInOutSz, ByteBuffer g, long[] gInOutSz);
 
+	/**
+	 * Initializes Ecc object for use. ecc_free must be called for resources
+	 * deallocation.
+	 * 
+	 * @param key
+	 *            the Ecc object.
+	 */
+	public static native void ecc_init(Ecc key);
+
+	/**
+	 * Releases Ecc object's resources.
+	 * 
+	 * @param key
+	 *            the Ecc object.
+	 */
+	public static native void ecc_free(Ecc key);
+
+	/**
+	 * Generates a new ecc key of size keysize using rng.
+	 * 
+	 * @param rng
+	 *            the random source.
+	 * @param keysize
+	 *            the key length.
+	 * @param key
+	 *            the Ecc object.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int ecc_make_key(Rng rng, int keysize, Ecc key);
+
+	/**
+	 * Creates the shared secret out of size outlen using ecc private_key and
+	 * the peer’s ecc public_key.
+	 * 
+	 * @param private_key
+	 *            the Ecc object for the private key.
+	 * @param public_key
+	 *            the Ecc object for the peer's public key.
+	 * @param out
+	 *            the output buffer.
+	 * @param outlen
+	 *            the output length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int ecc_shared_secret(Ecc private_key, Ecc public_key,
+			ByteBuffer out, long[] outlen);
+
+	/**
+	 * Exports the public ecc key into out of length outLen in x963 format.
+	 * 
+	 * @param key
+	 *            the Ecc object.
+	 * @param out
+	 *            the output buffer.
+	 * @param outLen
+	 *            the output length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int ecc_export_x963(Ecc key, ByteBuffer out,
+			long[] outLen);
 }

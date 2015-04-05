@@ -407,6 +407,46 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhSetKey
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhParamsLoad
   (JNIEnv *, jclass, jobject, jlong, jobject, jlongArray, jobject, jlongArray);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    ecc_init
+ * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1init
+  (JNIEnv *, jclass, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    ecc_free
+ * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1free
+  (JNIEnv *, jclass, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    ecc_make_key
+ * Signature: (Lcom/wolfssl/wolfcrypt/Rng;ILcom/wolfssl/wolfcrypt/Ecc;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1make_1key
+  (JNIEnv *, jclass, jobject, jint, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    ecc_shared_secret
+ * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;Lcom/wolfssl/wolfcrypt/Ecc;Ljava/nio/ByteBuffer;[J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret
+  (JNIEnv *, jclass, jobject, jobject, jobject, jlongArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    ecc_export_x963
+ * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;Ljava/nio/ByteBuffer;[J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963
+  (JNIEnv *, jclass, jobject, jobject, jlongArray);
+
 #ifdef __cplusplus
 }
 #endif

@@ -14,6 +14,7 @@
 #include <wolfssl/wolfcrypt/random.h>
 #include <wolfssl/wolfcrypt/rsa.h>
 #include <cyassl/ctaocrypt/dh.h>
+#include <cyassl/ctaocrypt/ecc.h>
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
@@ -1377,6 +1378,92 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhParamsLoad(
     LogHex(p, tmpPInOutSz);
     LogStr("g:\n");
     LogHex(g, tmpGInOutSz);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1make_1key(
+    JNIEnv* env, jclass class, jobject rng_object, jint keysize,
+    jobject key_object)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(HAVE_ECC)
+
+    ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
+    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+
+    if (!key || !rng)
+        return BAD_FUNC_ARG;
+
+    ret = ecc_make_key(rng, keysize, key);
+
+    LogStr("ecc_make_key(rng=%p, keysize=%d, key=%p) = %d\n", rng, keysize, key,
+        ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret(
+    JNIEnv* env, jclass class, jobject priv_object, jobject pub_object,
+    jobject out_buffer, jlongArray outlen)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(HAVE_ECC)
+
+    ecc_key* priv = (ecc_key*) getNativeStruct(env, priv_object);
+    ecc_key* pub = (ecc_key*) getNativeStruct(env, pub_object);
+    byte* out = getDirectBufferAddress(env, out_buffer);
+    word32 tmpOutLen;
+
+    if (!priv || !pub || !out)
+        return BAD_FUNC_ARG;
+
+    (*env)->GetLongArrayRegion(env, outlen, 0, 1, (jlong*) &tmpOutLen);
+
+    ret = ecc_shared_secret(priv, pub, out, &tmpOutLen);
+
+    (*env)->SetLongArrayRegion(env, outlen, 0, 1, (jlong*) &tmpOutLen);
+
+    LogStr("ecc_shared_secret(priv=%p, pub=%p, out, outLen) = %d\n", priv, pub,
+        ret);
+    LogStr("out:\n");
+    LogHex(out, outlen);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963(
+    JNIEnv* env, jclass class, jobject key_object, jobject out_buffer,
+    jlongArray outLen)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(HAVE_ECC)
+
+    ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
+    byte* out = getDirectBufferAddress(env, out_buffer);
+    word32 tmpOutLen;
+
+    if (!key || !out)
+        return BAD_FUNC_ARG;
+
+    (*env)->GetLongArrayRegion(env, outLen, 0, 1, (jlong*) &tmpOutLen);
+
+    ret = ecc_export_x963(key, out, &tmpOutLen);
+
+    (*env)->SetLongArrayRegion(env, outLen, 0, 1, (jlong*) &tmpOutLen);
+
+    LogStr("ecc_export_x963(key=%p, out, outLen) = %d\n", key, ret);
+    LogStr("out:\n");
+    LogHex(out, outLen);
 
 #endif
 
