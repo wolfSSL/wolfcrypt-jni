@@ -3,10 +3,10 @@
 
 	<description>
 	    wolfCrypt JNI is a Java wrapper for the wolfCrypt lightweight crypto library.
-	
+
 	    This build file requires JUnit for running provided JUnit tests. JUnit can
 	    be downloaded from: http:/www.junit.org/
-	
+
 	    When running JUnit tests, this package will look for JUnit at:
 	    $JUNIT_HOME/junit.jar
     </description>
@@ -39,7 +39,7 @@
 		<delete dir="${build.dir}" />
 		<delete dir="${examples.build.dir}" />
 		<delete dir="${reports.dir}" />
-		<delete>
+		<delete failonerror="false">
 			<fileset dir="${lib.dir}" includes="wolfcrypt-jni.jar" />
 		</delete>
 	</target>
