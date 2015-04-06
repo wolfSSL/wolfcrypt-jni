@@ -1,7 +1,10 @@
 #include <com_wolfssl_wolfcrypt_Aes.h>
 #include <wolfcrypt_jni_error.h>
 
-#include <wolfssl/options.h>
+#ifndef __ANDROID__
+    #include <wolfssl/options.h>
+#endif
+
 #include <wolfssl/wolfcrypt/aes.h>
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */

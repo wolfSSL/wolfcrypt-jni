@@ -1,7 +1,10 @@
 #include <com_wolfssl_wolfcrypt_Md5.h>
 #include <wolfcrypt_jni_error.h>
 
-#include <wolfssl/options.h>
+#ifndef __ANDROID__
+    #include <wolfssl/options.h>
+#endif
+
 #include <wolfssl/wolfcrypt/md5.h>
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */

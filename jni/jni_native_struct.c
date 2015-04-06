@@ -1,7 +1,10 @@
 #include <com_wolfssl_wolfcrypt_NativeStruct.h>
 #include <wolfcrypt_jni_NativeStruct.h>
 
-#include <wolfssl/options.h>
+#ifndef __ANDROID__
+    #include <wolfssl/options.h>
+#endif
+
 #include <wolfssl/wolfcrypt/types.h>
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
