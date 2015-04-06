@@ -10,7 +10,7 @@ package com.wolfssl.wolfcrypt;
 public class WolfObject {
 
 	static {
-		System.loadLibrary("wolfcrypt-jni");
+		System.loadLibrary("wolfcryptjni");
 	}
 
 	protected WolfObject() {

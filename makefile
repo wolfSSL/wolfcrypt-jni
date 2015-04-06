@@ -6,7 +6,7 @@ OBJ_LIST  = jni_fips.o jni_native_struct.o jni_aes.o jni_des3.o jni_md5.o \
 			jni_sha.o jni_hmac.o jni_rng.o jni_rsa.o jni_dh.o jni_ecc.o \
 			jni_asn.o
 OBJS      = $(patsubst %,$(OUT_PATH)/%,$(OBJ_LIST))
-TARGET    = $(OUT_PATH)/libwolfcrypt-jni.jnilib
+TARGET    = $(OUT_PATH)/libwolfcryptjni.jnilib
 
 JAVA_HOME = $(shell /usr/libexec/java_home)
 CC        = gcc
