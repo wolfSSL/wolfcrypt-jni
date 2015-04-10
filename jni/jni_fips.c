@@ -63,13 +63,19 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
             (*env)->NewStringUTF(env, hash));
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_setErrorCallback(
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1SetCb_1fips(
     JNIEnv* env, jclass class, jobject callback)
 {
     if ((g_errCb = (*env)->NewGlobalRef(env, callback)))
         wolfCrypt_SetCb_fips(NativeErrorCallback);
     else
         throwWolfCryptException(env, "Failed to store global error callback");
+}
+
+JNIEXPORT jstring JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetCoreHash_1fips(
+    JNIEnv* env, jclass class)
+{
+    return (*env)->NewStringUTF(env, wolfCrypt_GetCoreHash_fips());
 }
 
 /*

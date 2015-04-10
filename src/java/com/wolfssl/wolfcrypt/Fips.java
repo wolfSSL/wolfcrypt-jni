@@ -19,7 +19,20 @@ public class Fips extends WolfObject {
 		public void errorCallback(int ok, int err, String hash);
 	}
 
-	public static native void setErrorCallback(ErrorCallback callback);
+	/**
+	 * Sets an callback class for handling fips errors.
+	 * 
+	 * @param callback
+	 *            the callback class.
+	 */
+	public static native void wolfCrypt_SetCb_fips(ErrorCallback callback);
+
+	/**
+	 * The current inCore hash of the wolfCrypt fips code.
+	 * 
+	 * @return current inCore hash.
+	 */
+	public static native String wolfCrypt_GetCoreHash_fips();
 
 	/*
 	 * ### FIPS Aprooved Security Methods ######################################
