@@ -1,11 +1,13 @@
 #include <com_wolfssl_wolfcrypt_WolfCrypt.h>
 #include <com_wolfssl_wolfcrypt_Fips.h>
 #include <wolfcrypt_jni_NativeStruct.h>
+#include <wolfcrypt_jni_error.h>
 
 #ifndef __ANDROID__
     #include <wolfssl/options.h>
 #endif
 
+#include <stdio.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/fips_test.h>
 #include <wolfssl/wolfcrypt/aes.h>
@@ -21,6 +23,54 @@
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
+
+extern JavaVM* g_vm;
+static jobject g_errCb;
+
+void NativeErrorCallback(const int ok, const int err, const char * const hash)
+{
+    JNIEnv* env;
+    jclass class;
+    jmethodID method;
+    jint ret;
+
+    ret = (int) ((*g_vm)->GetEnv(g_vm, (void**) &env, JNI_VERSION_1_6));
+    if (ret == JNI_EDETACHED) {
+#ifdef __ANDROID__
+        ret = (*g_vm)->AttachCurrentThread(g_vm, &env, NULL);
+#else
+        ret = (*g_vm)->AttachCurrentThread(g_vm, (void**) &env, NULL);
+#endif
+        if (ret) {
+            printf("Failed to attach JNIEnv to thread\n");
+            return;
+        }
+    }
+    else if (ret != JNI_OK) {
+        printf("Unable to get JNIEnv from JavaVM\n");
+        return;
+    }
+
+    if (JNIGlobalRefType != (*env)->GetObjectRefType(env, g_errCb))
+        throwWolfCryptException(env, "Invalid errorCallback reference");
+    else if (!(class = (*env)->GetObjectClass(env, g_errCb)))
+        throwWolfCryptException(env, "Failed to get callback class");
+    else if (!(method = (*env)->GetMethodID(env, class, "errorCallback",
+        "(IILjava/lang/String;)V")))
+        throwWolfCryptException(env, "Failed to get method ID");
+    else
+        (*env)->CallVoidMethod(env, g_errCb, method, ok, err,
+            (*env)->NewStringUTF(env, hash));
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_setErrorCallback(
+    JNIEnv* env, jclass class, jobject callback)
+{
+    if ((g_errCb = (*env)->NewGlobalRef(env, callback)))
+        wolfCrypt_SetCb_fips(NativeErrorCallback);
+    else
+        throwWolfCryptException(env, "Failed to store global error callback");
+}
 
 /*
  * ### FIPS Aprooved Security Methods ##########################################

@@ -20,9 +20,9 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature(
 
     if (!encoded || !hash)
         throwWolfCryptException(env, "Bad method argument provided");
-
-    setDirectBufferLimit(env, encoded_object,
-        wc_EncodeSignature(encoded, hash, hashSize, hashOID));
+    else
+        setDirectBufferLimit(env, encoded_object,
+            wc_EncodeSignature(encoded, hash, hashSize, hashOID));
 }
 
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getCTC_1HashOID(

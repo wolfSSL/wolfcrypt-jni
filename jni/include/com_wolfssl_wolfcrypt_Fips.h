@@ -9,6 +9,14 @@ extern "C" {
 #endif
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    setErrorCallback
+ * Signature: (Lcom/wolfssl/wolfcrypt/Fips/ErrorCallback;)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_setErrorCallback
+  (JNIEnv *, jclass, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    AesSetKey_fips
  * Signature: (Lcom/wolfssl/wolfcrypt/Aes;Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;I)I
  */

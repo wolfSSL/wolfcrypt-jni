@@ -46,8 +46,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_decodeRawPublicKey(
 
     if (!key || !n || !e)
         throwWolfCryptException(env, "Bad method argument provided");
-
-    if (wc_RsaPublicKeyDecodeRaw(n, nSize, e, eSize, key) != 0)
+    else if (wc_RsaPublicKeyDecodeRaw(n, nSize, e, eSize, key) != 0)
         throwWolfCryptException(env, "Failed to decode raw public key");
 
 #endif

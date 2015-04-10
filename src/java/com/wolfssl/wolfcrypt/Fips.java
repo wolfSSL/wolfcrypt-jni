@@ -15,6 +15,12 @@ public class Fips extends WolfObject {
 	private Fips() {
 	}
 
+	public interface ErrorCallback {
+		public void errorCallback(int ok, int err, String hash);
+	}
+
+	public static native void setErrorCallback(ErrorCallback callback);
+
 	/*
 	 * ### FIPS Aprooved Security Methods ######################################
 	 */

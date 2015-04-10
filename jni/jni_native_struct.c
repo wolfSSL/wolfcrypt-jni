@@ -12,6 +12,16 @@
 
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 
+JavaVM* g_vm = NULL;
+
+/* called when native library is loaded */
+jint JNI_OnLoad(JavaVM* vm, void* reserved)
+{
+    /* store JavaVM */
+    g_vm = vm;
+    return JNI_VERSION_1_6;
+}
+
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_NativeStruct_xfree(
     JNIEnv* env, jobject this, jlong ptr)
 {
