@@ -21,6 +21,8 @@
 
 package com.wolfssl.wolfcrypt;
 
+import com.wolfssl.wolfcrypt.WolfCryptError;
+
 /**
  * WolfCrypt exceptions.
  *
@@ -30,9 +32,15 @@ package com.wolfssl.wolfcrypt;
 public class WolfCryptException extends Exception {
 
 	private static final long serialVersionUID = 142053665132156225L;
+    private WolfCryptError error;
 
 	public WolfCryptException(String reason) {
         super(reason);
+    }
+
+    public WolfCryptException(String reason, WolfCryptError error) {
+        super(reason);
+        this.error = error;
     }
 
     public WolfCryptException(String reason, Throwable cause) {
@@ -41,6 +49,10 @@ public class WolfCryptException extends Exception {
 
     public WolfCryptException(Throwable cause) {
         super(cause);
+    }
+
+    public WolfCryptError getError() {
+        return this.error;
     }
 }
 

@@ -89,6 +89,7 @@
 			<class name="com.wolfssl.wolfcrypt.Rsa" />
 			<class name="com.wolfssl.wolfcrypt.Dh" />
 			<class name="com.wolfssl.wolfcrypt.Ecc" />
+			<class name="com.wolfssl.wolfcrypt.WolfCryptError" />
 			<class name="com.wolfssl.wolfcrypt.Asn" />
 		</javah>
 	</target>
