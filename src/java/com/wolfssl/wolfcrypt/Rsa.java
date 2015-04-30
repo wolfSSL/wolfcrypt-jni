@@ -14,4 +14,6 @@ public class Rsa extends NativeStruct {
 	
 	public native void decodeRawPublicKey(ByteBuffer n, long nSize,
 			ByteBuffer e, long eSize);
+	
+	public native void makeKey(int size, long e, Rng rng);
 }

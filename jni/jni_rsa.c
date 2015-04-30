@@ -51,3 +51,24 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_decodeRawPublicKey(
 
 #endif
 }
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_makeKey(
+    JNIEnv *env, jobject this, jint size, jlong e, jobject rng_object)
+{
+#if defined(NO_RSA) || !defined(WOLFSSL_KEY_GEN)
+    throwNotCompiledInException(env);
+#else
+    int ret = 0;
+    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
+    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+
+    if (!key || !rng)
+        throwWolfCryptException(env, "Bad method argument provided");
+    else if ((ret = MakeRsaKey(key, size, e, rng)) != 0) {
+        throwWolfCryptException(env, "Failed to make rsa key");
+
+        printf("ret = %d\n", ret);
+    }
+
+#endif
+}

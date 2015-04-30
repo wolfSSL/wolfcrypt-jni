@@ -25,6 +25,14 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rsa_mallocNativeStruct
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_decodeRawPublicKey
   (JNIEnv *, jobject, jobject, jlong, jobject, jlong);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    makeKey
+ * Signature: (IJLcom/wolfssl/wolfcrypt/Rng;)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_makeKey
+  (JNIEnv *, jobject, jint, jlong, jobject);
+
 #ifdef __cplusplus
 }
 #endif
