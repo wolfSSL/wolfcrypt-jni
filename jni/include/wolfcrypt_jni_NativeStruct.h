@@ -26,9 +26,10 @@
 extern "C" {
 #endif
 
-void* getNativeStruct(JNIEnv* env, jobject this);
-byte* getDirectBufferAddress(JNIEnv* env, jobject buffer);
-void  setDirectBufferLimit(JNIEnv* env, jobject buffer, jint limit);
+void*  getNativeStruct(JNIEnv* env, jobject this);
+byte*  getDirectBufferAddress(JNIEnv* env, jobject buffer);
+word32 getDirectBufferLimit(JNIEnv* env, jobject buffer);
+void   setDirectBufferLimit(JNIEnv* env, jobject buffer, jint limit);
 
 #ifdef __cplusplus
 }

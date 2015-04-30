@@ -52,6 +52,31 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_decodeRawPublicKey(
 #endif
 }
 
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_exportRawPublicKey(
+    JNIEnv* env, jobject this, jobject n_object, jobject e_object)
+{
+#ifdef NO_RSA
+    throwNotCompiledInException(env);
+#else
+
+    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
+    byte* n = getDirectBufferAddress(env, n_object);
+    byte* e = getDirectBufferAddress(env, e_object);
+    word32 nSize = n ? getDirectBufferLimit(env, n_object) : 0;
+    word32 eSize = e ? getDirectBufferLimit(env, e_object) : 0;
+
+    if (!key || !n || !e)
+        throwWolfCryptException(env, "Bad method argument provided");
+    else if (RsaFlattenPublicKey(key, e, &eSize, n, &nSize) != 0)
+        throwWolfCryptException(env, "Failed to export raw public key");
+    else {
+        setDirectBufferLimit(env, n_object, nSize);
+        setDirectBufferLimit(env, e_object, eSize);
+    }
+
+#endif
+}
+
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_makeKey(
     JNIEnv *env, jobject this, jint size, jlong e, jobject rng_object)
 {

@@ -61,6 +61,15 @@ byte* getDirectBufferAddress(JNIEnv* env, jobject buffer)
     return buffer ? (*env)->GetDirectBufferAddress(env, buffer) : NULL;
 }
 
+word32 getDirectBufferLimit(JNIEnv* env, jobject buffer)
+{
+    jclass class = (*env)->GetObjectClass(env, buffer);
+    jmethodID method = (*env)->GetMethodID(env, class,
+                           "limit", "()I");
+
+    return (word32) (*env)->CallIntMethod(env, buffer, method);
+}
+
 void setDirectBufferLimit(JNIEnv* env, jobject buffer, jint limit)
 {
     jclass class = (*env)->GetObjectClass(env, buffer);

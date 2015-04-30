@@ -27,6 +27,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_decodeRawPublicKey
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    exportRawPublicKey
+ * Signature: (Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_exportRawPublicKey
+  (JNIEnv *, jobject, jobject, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
  * Method:    makeKey
  * Signature: (IJLcom/wolfssl/wolfcrypt/Rng;)V
  */
