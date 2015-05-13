@@ -8,6 +8,7 @@ import org.junit.Test;
 
 import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.Fips.ErrorCallback;
 
@@ -15,6 +16,13 @@ public class FipsTest {
 	@Test
 	public void wolfCrypt_GetStatus_fipsShouldReturnZero() {
 		assertEquals(WolfCrypt.SUCCESS, Fips.wolfCrypt_GetStatus_fips());
+	}
+
+	@Test
+	public void wolfCrypt_SetStatus_fipsShouldReturnZero() {
+		assertEquals(WolfCryptError.NOT_COMPILED_IN.getCode(),
+				Fips.wolfCrypt_SetStatus_fips(WolfCryptError.DRBG_CONT_FIPS_E
+						.getCode()));
 	}
 
 	public class MyCallback implements ErrorCallback {

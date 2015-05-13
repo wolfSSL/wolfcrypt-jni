@@ -329,6 +329,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetStatus_1fip
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    wolfCrypt_SetStatus_fips
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1SetStatus_1fips
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    RsaPublicEncrypt_fips
  * Signature: (Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;JLcom/wolfssl/wolfcrypt/Rsa;Lcom/wolfssl/wolfcrypt/Rng;)I
  */

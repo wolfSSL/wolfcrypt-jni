@@ -656,6 +656,16 @@ public class Fips extends WolfObject {
 	 */
 	public static native int wolfCrypt_GetStatus_fips();
 
+	/**
+	 * Sets the fips module status. Only available if HAVE_FORCE_FIPS_FAILURE is
+	 * defined on the native library.
+	 * 
+	 * @param status
+	 *            the new status.
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int wolfCrypt_SetStatus_fips(int status);
+
 	/*
 	 * ### FIPS Allowed Security Methods #######################################
 	 */

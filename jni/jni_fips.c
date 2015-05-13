@@ -1094,6 +1094,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetStatus_1fip
     return (jint) wolfCrypt_GetStatus_fips();
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1SetStatus_1fips(
+    JNIEnv* env, jclass class, jint status)
+{
+#ifdef HAVE_FORCE_FIPS_FAILURE
+    return (jint) wolfCrypt_SetStatus_fips(status);
+#else
+    return NOT_COMPILED_IN;
+#endif
+}
+
 /*
  * ### FIPS Allowed Security Methods ###########################################
  */
