@@ -29,3 +29,22 @@ $ make
 $ ant
 $ ant test
 ```
+
+### API Javadocs
+---------
+
+After the "ant" command has been executed, this will generate a set of
+Javadocs under the wolfcrypt-jni/docs directory.  To view the root document,
+open the following file in a web browser:
+
+wolfcrypt-jni/docs/index.html
+
+### Example / Test Code
+---------
+
+The JUnit test code can act as a good usage example of the wolfCrypt JNI
+API. This test code is run automatically when "ant test" is executed from
+the root wolfcrypt-jni directory.  The test source code is located at:
+
+wolfcrypt-jni/src/test/com/wolfssl/wolfcrypt
+
