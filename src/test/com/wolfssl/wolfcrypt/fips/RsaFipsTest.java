@@ -106,6 +106,8 @@ public class RsaFipsTest {
 			result.limit(encoded.limit());
 
 			assertEquals(encoded, result);
+
+    		assertEquals(WolfCrypt.SUCCESS, Fips.FreeRsaKey_fips(key));
 		}
 	}
 }
