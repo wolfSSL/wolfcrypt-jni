@@ -49,6 +49,18 @@ public abstract class NativeStruct extends WolfObject {
 		this.pointer = nativeStruct;
 	}
 
+	/**
+	 * Releases the host data stored in a NativeStruct.
+	 *
+	 * This method provides a way to release host data without depending on the
+	 * garbage collector to get around to releasing it. Derived objects whose
+	 * native data structures have their own free functions, should be override
+	 * this method to call that function.
+	 */
+	public void releaseNativeStruct() {
+		setNativeStruct(NULL);
+	}
+
 	protected abstract long mallocNativeStruct() throws OutOfMemoryError;
 
 	private native void xfree(long pointer);
