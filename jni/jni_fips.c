@@ -1523,7 +1523,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret(
     LogStr("ecc_shared_secret(priv=%p, pub=%p, out, outLen) = %d\n", priv, pub,
         ret);
     LogStr("out:\n");
-    LogHex(out, outlen);
+    LogHex(out, tmpOutLen);
 
 #endif
 
@@ -1553,7 +1553,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963(
 
     LogStr("ecc_export_x963(key=%p, out, outLen) = %d\n", key, ret);
     LogStr("out:\n");
-    LogHex(out, outLen);
+    LogHex(out, tmpOutLen);
 
 #endif
 

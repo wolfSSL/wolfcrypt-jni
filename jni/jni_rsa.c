@@ -46,7 +46,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rsa_mallocNativeStruct(
     if (!ret)
         throwOutOfMemoryException(env, "Failed to allocate Rsa object");
 
-    LogStr("new Rsa() = %p\n", ret);
+    LogStr("new Rsa() = %p\n", (void*)ret);
 
 #endif
 
@@ -108,6 +108,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_makeKey(
     int ret = 0;
     RsaKey* key = (RsaKey*) getNativeStruct(env, this);
     RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+
+    LogStr("rsa.makeKey(%d, %lu)\n", size, e);
 
     if (!key || !rng)
         throwWolfCryptException(env, "Bad method argument provided");
