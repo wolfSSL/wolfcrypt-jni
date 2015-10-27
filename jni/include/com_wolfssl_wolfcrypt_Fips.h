@@ -465,6 +465,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    ecc_import_x963
+ * Signature: (Ljava/nio/ByteBuffer;JLcom/wolfssl/wolfcrypt/Ecc;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1import_1x963
+  (JNIEnv *, jclass, jobject, jlong, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    ecc_export_x963
  * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;Ljava/nio/ByteBuffer;[J)I
  */

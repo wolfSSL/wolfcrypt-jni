@@ -951,6 +951,21 @@ public class Fips extends WolfObject {
 			ByteBuffer out, long[] outlen);
 
 	/**
+	 * Imports the public ecc key from in of length inLen in x963 format.
+	 * 
+	 * @param in
+	 *            the input buffer.
+	 * @param inLen
+	 *            the input length.
+	 * @param key
+	 *            the Ecc object.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int ecc_import_x963(ByteBuffer in, long inLen, 
+			Ecc key);
+
+	/**
 	 * Exports the public ecc key into out of length outLen in x963 format.
 	 * 
 	 * @param key

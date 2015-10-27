@@ -1530,6 +1530,31 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret(
     return ret;
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1import_1x963(
+    JNIEnv* env, jclass class, jobject in_buffer, jlong inLen,
+    jobject key_object)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(HAVE_ECC)
+
+    ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
+    byte* in = getDirectBufferAddress(env, in_buffer);
+
+    if (!key || !in)
+        return BAD_FUNC_ARG;
+
+    ret = ecc_import_x963(in, inLen, key);
+
+    LogStr("ecc_import_x963(in, inLen, key=%p) = %d\n", key, ret);
+    LogStr("in:\n");
+    LogHex(in, inLen);
+
+#endif
+
+    return ret;
+}
+
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963(
     JNIEnv* env, jclass class, jobject key_object, jobject out_buffer,
     jlongArray outLen)
