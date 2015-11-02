@@ -85,6 +85,25 @@ public class Fips extends WolfObject {
 			long keylen, ByteBuffer iv, int dir);
 
 	/**
+	 * Initializes Aes object for CBC mode with key and iv.
+	 * 
+	 * @param aes
+	 *            the Aes object.
+	 * @param userKey
+	 *            the key to be set.
+	 * @param keylen
+	 *            the key length.
+	 * @param iv
+	 *            the initialization vector (optional).
+	 * @param dir
+	 *            the direction (encryption|decryption).
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int AesSetKey_fips(Aes aes, byte[] userKey,
+			long keylen, byte[] iv, int dir);
+
+	/**
 	 * Initializes Aes object with iv.
 	 * 
 	 * @param aes
@@ -95,6 +114,18 @@ public class Fips extends WolfObject {
 	 * @return 0 on success, {@literal <} 0 on error.
 	 */
 	public static native int AesSetIV_fips(Aes aes, ByteBuffer iv);
+
+	/**
+	 * Initializes Aes object with iv.
+	 * 
+	 * @param aes
+	 *            the Aes object.
+	 * @param iv
+	 *            the initialization vector.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int AesSetIV_fips(Aes aes, byte[] iv);
 
 	/**
 	 * Performs Aes Cbc Encryption.
@@ -114,6 +145,23 @@ public class Fips extends WolfObject {
 			ByteBuffer in, long sz);
 
 	/**
+	 * Performs Aes Cbc Encryption.
+	 * 
+	 * @param aes
+	 *            the Aes object.
+	 * @param out
+	 *            the output buffer.
+	 * @param in
+	 *            the input buffer.
+	 * @param sz
+	 *            the input length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int AesCbcEncrypt_fips(Aes aes, byte[] out, byte[] in,
+			long sz);
+
+	/**
 	 * Performs Aes Cbc Decryption.
 	 * 
 	 * @param aes
@@ -129,6 +177,23 @@ public class Fips extends WolfObject {
 	 */
 	public static native int AesCbcDecrypt_fips(Aes aes, ByteBuffer out,
 			ByteBuffer in, long sz);
+
+	/**
+	 * Performs Aes Cbc Decryption.
+	 * 
+	 * @param aes
+	 *            the Aes object.
+	 * @param out
+	 *            the output buffer.
+	 * @param in
+	 *            the input buffer.
+	 * @param sz
+	 *            the input length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int AesCbcDecrypt_fips(Aes aes, byte[] out, byte[] in,
+			long sz);
 
 	/**
 	 * Initializes Aes object for GCM mode with key.

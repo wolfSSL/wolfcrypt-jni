@@ -109,7 +109,7 @@ JNIEXPORT jstring JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetCoreHash
 
 /* AES */
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetKey_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetKey_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2I(
     JNIEnv* env, jclass class, jobject aes_object, jobject key_buffer,
     jlong size, jobject iv_buffer, jint dir)
 {
@@ -138,7 +138,37 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetKey_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetIV_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetKey_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3BJ_3BI(
+    JNIEnv* env, jclass class, jobject aes_object, jbyteArray key_buffer,
+    jlong size, jbyteArray iv_buffer, jint dir)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_AES)
+
+    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
+    byte* key = getByteArray(env, key_buffer);
+    byte* iv = getByteArray(env, iv_buffer);
+
+    ret = (!aes || !key) ? BAD_FUNC_ARG
+                         : AesSetKey_fips(aes, key, size, iv, dir);
+
+    LogStr("AesSetKey_fips(aes=%p, key, iv, %s) = %d\n", aes,
+        dir ? "dec" : "enc", ret);
+    LogStr("key:\n");
+    LogHex(key, size);
+    LogStr("iv:\n");
+    LogHex(iv, AES_BLOCK_SIZE);
+
+    releaseByteArray(env, key_buffer, key, ret);
+    releaseByteArray(env,  iv_buffer,  iv, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetIV_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2(
     JNIEnv* env, jclass class, jobject aes_object, jobject iv_buffer)
 {
     jint ret = NOT_COMPILED_IN;
@@ -162,7 +192,31 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetIV_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcEncrypt_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetIV_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3B(
+    JNIEnv* env, jclass class, jobject aes_object, jbyteArray iv_buffer)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_AES)
+
+    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
+    byte* iv = getByteArray(env, iv_buffer);
+
+    ret = (!aes || !iv) ? BAD_FUNC_ARG
+                        : AesSetIV_fips(aes, iv);
+
+    LogStr("AesSetIV_fips(aes=%p, iv) = %d\n", aes, ret);
+    LogStr("iv:\n");
+    LogHex(iv, AES_BLOCK_SIZE);
+
+    releaseByteArray(env, iv_buffer, iv, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcEncrypt_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject aes_object, jobject out_buffer,
     jobject in_buffer, jlong size)
 {
@@ -190,7 +244,37 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcEncrypt_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcDecrypt_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcEncrypt_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3B_3BJ(
+    JNIEnv* env, jclass class, jobject aes_object, jbyteArray out_buffer,
+    jbyteArray in_buffer, jlong size)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_AES)
+
+    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
+    byte* out = getByteArray(env, out_buffer);
+    byte* in = getByteArray(env, in_buffer);
+
+    ret = (!aes || !out || !in)
+        ? BAD_FUNC_ARG
+        : AesCbcEncrypt_fips(aes, out, in, (word32) size);
+
+    LogStr("AesCbcEncrypt_fips(aes=%p, msg, cipher) = %d\n", aes, ret);
+    LogStr("in:\n");
+    LogHex(in, size);
+    LogStr("out:\n");
+    LogHex(out, size);
+
+    releaseByteArray(env, out_buffer, out, ret);
+    releaseByteArray(env,  in_buffer,  in, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcDecrypt_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject aes_object, jobject out_buffer,
     jobject in_buffer, jlong size)
 {
@@ -212,6 +296,36 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcDecrypt_1fips(
     LogHex(in, size);
     LogStr("out:\n");
     LogHex(out, size);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcDecrypt_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3B_3BJ(
+    JNIEnv* env, jclass class, jobject aes_object, jbyteArray out_buffer,
+    jbyteArray in_buffer, jlong size)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_AES)
+
+    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
+    byte* out = getByteArray(env, out_buffer);
+    byte* in = getByteArray(env, in_buffer);
+
+    ret = (!aes || !out || !in)
+        ? BAD_FUNC_ARG
+        : AesCbcDecrypt_fips(aes, out, in, (word32) size);
+
+    LogStr("AesCbcDecrypt_fips(aes=%p, cipher, plain) = %d\n", aes, ret);
+    LogStr("in:\n");
+    LogHex(in, size);
+    LogStr("out:\n");
+    LogHex(out, size);
+
+    releaseByteArray(env, out_buffer, out, ret);
+    releaseByteArray(env,  in_buffer,  in, ret);
 
 #endif
 

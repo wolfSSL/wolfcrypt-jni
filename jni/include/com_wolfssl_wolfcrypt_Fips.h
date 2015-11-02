@@ -28,32 +28,64 @@ JNIEXPORT jstring JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetCoreHash
  * Method:    AesSetKey_fips
  * Signature: (Lcom/wolfssl/wolfcrypt/Aes;Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;I)I
  */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetKey_1fips
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetKey_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2I
   (JNIEnv *, jclass, jobject, jobject, jlong, jobject, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    AesSetKey_fips
+ * Signature: (Lcom/wolfssl/wolfcrypt/Aes;[BJ[BI)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetKey_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3BJ_3BI
+  (JNIEnv *, jclass, jobject, jbyteArray, jlong, jbyteArray, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    AesSetIV_fips
  * Signature: (Lcom/wolfssl/wolfcrypt/Aes;Ljava/nio/ByteBuffer;)I
  */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetIV_1fips
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetIV_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2
   (JNIEnv *, jclass, jobject, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    AesSetIV_fips
+ * Signature: (Lcom/wolfssl/wolfcrypt/Aes;[B)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetIV_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3B
+  (JNIEnv *, jclass, jobject, jbyteArray);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    AesCbcEncrypt_fips
  * Signature: (Lcom/wolfssl/wolfcrypt/Aes;Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;J)I
  */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcEncrypt_1fips
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcEncrypt_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2J
   (JNIEnv *, jclass, jobject, jobject, jobject, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    AesCbcEncrypt_fips
+ * Signature: (Lcom/wolfssl/wolfcrypt/Aes;[B[BJ)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcEncrypt_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3B_3BJ
+  (JNIEnv *, jclass, jobject, jbyteArray, jbyteArray, jlong);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    AesCbcDecrypt_fips
  * Signature: (Lcom/wolfssl/wolfcrypt/Aes;Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;J)I
  */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcDecrypt_1fips
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcDecrypt_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2J
   (JNIEnv *, jclass, jobject, jobject, jobject, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    AesCbcDecrypt_fips
+ * Signature: (Lcom/wolfssl/wolfcrypt/Aes;[B[BJ)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcDecrypt_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3B_3BJ
+  (JNIEnv *, jclass, jobject, jbyteArray, jbyteArray, jlong);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
