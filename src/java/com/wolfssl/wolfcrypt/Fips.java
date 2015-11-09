@@ -972,8 +972,10 @@ public class Fips extends WolfObject {
 	 * 
 	 * @param key
 	 *            the Ecc object.
+	 *
+	 * @return 0 on success, {@literal <} 0 on error.
 	 */
-	public static native void ecc_init(Ecc key);
+	public static native int ecc_init(Ecc key);
 
 	/**
 	 * Releases Ecc object's resources.

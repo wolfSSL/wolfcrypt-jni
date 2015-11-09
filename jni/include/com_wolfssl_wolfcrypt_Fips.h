@@ -466,9 +466,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhParamsLoad
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    ecc_init
- * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;)V
+ * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;)I
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1init
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1init
   (JNIEnv *, jclass, jobject);
 
 /*

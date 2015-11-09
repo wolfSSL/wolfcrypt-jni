@@ -1588,6 +1588,44 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhParamsLoad(
     return ret;
 }
 
+JNIEXPORT int JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1init(
+    JNIEnv *env, jclass class, jobject key_object)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(HAVE_ECC)
+
+    ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
+
+    if (!key)
+        return BAD_FUNC_ARG;
+
+    ret = ecc_init(key);
+
+    LogStr("ecc_init(key=%p) = %d\n", key, ret);
+
+#endif
+
+    return ret;
+
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1free(
+    JNIEnv *env, jclass class, jobject key_object)
+{
+#if defined(HAVE_FIPS) && defined(HAVE_ECC)
+
+    ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
+
+    if (key) {
+        ecc_free(key);
+
+        LogStr("ecc_free(key=%p)\n", key);
+    }
+
+#endif
+}
+
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1make_1key(
     JNIEnv* env, jclass class, jobject rng_object, jint keysize,
     jobject key_object)
