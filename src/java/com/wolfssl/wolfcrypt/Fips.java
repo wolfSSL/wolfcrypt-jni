@@ -211,6 +211,21 @@ public class Fips extends WolfObject {
 			long keylen);
 
 	/**
+	 * Initializes Aes object for GCM mode with key.
+	 * 
+	 * @param aes
+	 *            the Aes object.
+	 * @param userKey
+	 *            the key to be set.
+	 * @param keylen
+	 *            the key length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int AesGcmSetKey_fips(Aes aes, byte[] userKey,
+			long keylen);
+
+	/**
 	 * Performs aes GCM Encryption.
 	 * 
 	 * @param aes
@@ -239,6 +254,36 @@ public class Fips extends WolfObject {
 	public static native int AesGcmEncrypt_fips(Aes aes, ByteBuffer out,
 			ByteBuffer in, long sz, ByteBuffer iv, long ivSz,
 			ByteBuffer authTag, long authTagSz, ByteBuffer authIn, long authInSz);
+
+	/**
+	 * Performs aes GCM Encryption.
+	 * 
+	 * @param aes
+	 *            the Aes object.
+	 * @param out
+	 *            the output buffer.
+	 * @param in
+	 *            the input buffer.
+	 * @param sz
+	 *            the input length.
+	 * @param iv
+	 *            the initialization vector buffer.
+	 * @param ivSz
+	 *            the initialization vector length.
+	 * @param authTag
+	 *            the authTag buffer.
+	 * @param authTagSz
+	 *            the authTag length.
+	 * @param authIn
+	 *            the authIn buffer.
+	 * @param authInSz
+	 *            the authIn length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int AesGcmEncrypt_fips(Aes aes, byte[] out,
+			byte[] in, long sz, byte[] iv, long ivSz,
+			byte[] authTag, long authTagSz, byte[] authIn, long authInSz);
 
 	/**
 	 * Performs aes GCM Decryption.
@@ -270,6 +315,36 @@ public class Fips extends WolfObject {
 			ByteBuffer in, long sz, ByteBuffer iv, long ivSz,
 			ByteBuffer authTag, long authTagSz, ByteBuffer authIn, long authInSz);
 
+	/**
+	 * Performs aes GCM Decryption.
+	 * 
+	 * @param aes
+	 *            the Aes object.
+	 * @param out
+	 *            the output buffer.
+	 * @param in
+	 *            the input buffer.
+	 * @param sz
+	 *            the input length.
+	 * @param iv
+	 *            the initialization vector buffer.
+	 * @param ivSz
+	 *            the initialization vector length.
+	 * @param authTag
+	 *            the authTag buffer.
+	 * @param authTagSz
+	 *            the authTag length.
+	 * @param authIn
+	 *            the authIn buffer.
+	 * @param authInSz
+	 *            the authIn length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int AesGcmDecrypt_fips(Aes aes, byte[] out,
+			byte[] in, long sz, byte[] iv, long ivSz,
+			byte[] authTag, long authTagSz, byte[] authIn, long authInSz);
+
 	/* DES3 */
 
 	/**
@@ -290,6 +365,23 @@ public class Fips extends WolfObject {
 			ByteBuffer iv, int dir);
 
 	/**
+	 * Initializes Des3 object for CBC mode with key and iv.
+	 * 
+	 * @param des
+	 *            the Des3 object.
+	 * @param userKey
+	 *            the key to be set.
+	 * @param iv
+	 *            the initialization vector (optional).
+	 * @param dir
+	 *            the direction (encryption|decryption).
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int Des3_SetKey_fips(Des3 des, byte[] userKey,
+			byte[] iv, int dir);
+
+	/**
 	 * Initializes Des3 object with iv.
 	 * 
 	 * @param des
@@ -300,6 +392,18 @@ public class Fips extends WolfObject {
 	 * @return 0 on success, {@literal <} 0 on error.
 	 */
 	public static native int Des3_SetIV_fips(Des3 des, ByteBuffer iv);
+
+	/**
+	 * Initializes Des3 object with iv.
+	 * 
+	 * @param des
+	 *            the Des3 object.
+	 * @param iv
+	 *            the initialization vector.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int Des3_SetIV_fips(Des3 des, byte[] iv);
 
 	/**
 	 * Performs Des3 CBC Encryption.
@@ -319,6 +423,23 @@ public class Fips extends WolfObject {
 			ByteBuffer in, long sz);
 
 	/**
+	 * Performs Des3 CBC Encryption.
+	 * 
+	 * @param des
+	 *            the Des3 object.
+	 * @param out
+	 *            the output buffer.
+	 * @param in
+	 *            the input buffer.
+	 * @param sz
+	 *            the input length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int Des3_CbcEncrypt_fips(Des3 des, byte[] out,
+			byte[] in, long sz);
+
+	/**
 	 * Performs des3 CBC Decryption.
 	 * 
 	 * @param des
@@ -334,6 +455,23 @@ public class Fips extends WolfObject {
 	 */
 	public static native int Des3_CbcDecrypt_fips(Des3 des, ByteBuffer out,
 			ByteBuffer in, long sz);
+
+	/**
+	 * Performs des3 CBC Decryption.
+	 * 
+	 * @param des
+	 *            the Des3 object.
+	 * @param out
+	 *            the output buffer.
+	 * @param in
+	 *            the input buffer.
+	 * @param sz
+	 *            the input length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int Des3_CbcDecrypt_fips(Des3 des, byte[] out,
+			byte[] in, long sz);
 
 	/*
 	 * wolfCrypt FIPS API - Keyed hash Service
@@ -359,6 +497,23 @@ public class Fips extends WolfObject {
 			ByteBuffer key, long keySz);
 
 	/**
+	 * Initializes Hmac object with type and key.
+	 * 
+	 * @param hmac
+	 *            the Hmac object.
+	 * @param type
+	 *            the digest id.
+	 * @param key
+	 *            the key buffer.
+	 * @param keySz
+	 *            the key length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int HmacSetKey_fips(Hmac hmac, int type,
+			byte[] key, long keySz);
+
+	/**
 	 * Updates Hmac object with data.
 	 * 
 	 * @param hmac
@@ -374,6 +529,21 @@ public class Fips extends WolfObject {
 			long len);
 
 	/**
+	 * Updates Hmac object with data.
+	 * 
+	 * @param hmac
+	 *            the Hmac object.
+	 * @param data
+	 *            the input buffer.
+	 * @param len
+	 *            the input length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int HmacUpdate_fips(Hmac hmac, byte[] data,
+			long len);
+
+	/**
 	 * Outputs Hmac digest to hash.
 	 * 
 	 * @param hmac
@@ -384,6 +554,18 @@ public class Fips extends WolfObject {
 	 * @return 0 on success, {@literal <} 0 on error.
 	 */
 	public static native int HmacFinal_fips(Hmac hmac, ByteBuffer hash);
+
+	/**
+	 * Outputs Hmac digest to hash.
+	 * 
+	 * @param hmac
+	 *            the Hmac object.
+	 * @param hash
+	 *            the output buffer.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int HmacFinal_fips(Hmac hmac, byte[] hash);
 
 	/*
 	 * wolfCrypt FIPS API - Random number generation Service
@@ -429,6 +611,21 @@ public class Fips extends WolfObject {
 			long bufSz);
 
 	/**
+	 * Outputs block of random data from RNG object.
+	 * 
+	 * @param rng
+	 *            the RNG object.
+	 * @param buf
+	 *            the output buffer.
+	 * @param bufSz
+	 *            the output length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int RNG_GenerateBlock_fips(Rng rng, byte[] buf,
+			long bufSz);
+
+	/**
 	 * When reseed is 0, tests the output of a temporary instance of an RNG
 	 * against the expected output of size in bytes outputSz using the seed
 	 * buffer entropyA of size in bytes entropyASz, where entropyB and
@@ -457,6 +654,36 @@ public class Fips extends WolfObject {
 	public static native int RNG_HealthTest_fips(int reseed,
 			ByteBuffer entropyA, long entropyASz, ByteBuffer entropyB,
 			long entropyBSz, ByteBuffer output, long outputSz);
+
+	/**
+	 * When reseed is 0, tests the output of a temporary instance of an RNG
+	 * against the expected output of size in bytes outputSz using the seed
+	 * buffer entropyA of size in bytes entropyASz, where entropyB and
+	 * entropyBSz are ignored. When reseed is 1, the test also reseeds the
+	 * temporary instance of the RNG with the seed buffer entropyB of size in
+	 * bytes entropyBSz and then tests the RNG against the expected output of
+	 * size in bytes outputSz.
+	 * 
+	 * @param reseed
+	 *            the reseed flag.
+	 * @param entropyA
+	 *            the entropyA buffer.
+	 * @param entropyASz
+	 *            the entropyA length.
+	 * @param entropyB
+	 *            the entropyB buffer.
+	 * @param entropyBSz
+	 *            the entropyB length.
+	 * @param output
+	 *            the output buffer.
+	 * @param outputSz
+	 *            the output length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int RNG_HealthTest_fips(int reseed,
+			byte[] entropyA, long entropyASz, byte[] entropyB,
+			long entropyBSz, byte[] output, long outputSz);
 
 	/*
 	 * wolfCrypt FIPS API - Digital signature and Key transport Services
@@ -603,6 +830,20 @@ public class Fips extends WolfObject {
 	public static native int ShaUpdate_fips(Sha sha, ByteBuffer data, long len);
 
 	/**
+	 * Updates Sha object with data.
+	 * 
+	 * @param sha
+	 *            the Sha object.
+	 * @param data
+	 *            the input buffer.
+	 * @param len
+	 *            the input length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int ShaUpdate_fips(Sha sha, byte[] data, long len);
+
+	/**
 	 * Outputs Sha digest to hash.
 	 * 
 	 * @param sha
@@ -613,6 +854,18 @@ public class Fips extends WolfObject {
 	 * @return 0 on success, {@literal <} 0 on error.
 	 */
 	public static native int ShaFinal_fips(Sha sha, ByteBuffer hash);
+
+	/**
+	 * Outputs Sha digest to hash.
+	 * 
+	 * @param sha
+	 *            the Sha object.
+	 * @param hash
+	 *            the output buffer.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int ShaFinal_fips(Sha sha, byte[] hash);
 
 	/* SHA256 */
 
@@ -642,6 +895,21 @@ public class Fips extends WolfObject {
 			long len);
 
 	/**
+	 * Updates Sha256 object with data.
+	 * 
+	 * @param sha
+	 *            the Sha256 object.
+	 * @param data
+	 *            the input buffer.
+	 * @param len
+	 *            the input length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int Sha256Update_fips(Sha256 sha, byte[] data,
+			long len);
+
+	/**
 	 * Outputs Sha256 digest to hash.
 	 * 
 	 * @param sha
@@ -652,6 +920,18 @@ public class Fips extends WolfObject {
 	 * @return 0 on success, {@literal <} 0 on error.
 	 */
 	public static native int Sha256Final_fips(Sha256 sha, ByteBuffer hash);
+
+	/**
+	 * Outputs Sha256 digest to hash.
+	 * 
+	 * @param sha
+	 *            the Sha256 object.
+	 * @param hash
+	 *            the output buffer.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int Sha256Final_fips(Sha256 sha, byte[] hash);
 
 	/* SHA384 */
 
@@ -681,6 +961,21 @@ public class Fips extends WolfObject {
 			long len);
 
 	/**
+	 * Updates Sha384 object with data.
+	 * 
+	 * @param sha
+	 *            the Sha384 object.
+	 * @param data
+	 *            the input buffer.
+	 * @param len
+	 *            the input length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int Sha384Update_fips(Sha384 sha, byte[] data,
+			long len);
+
+	/**
 	 * Outputs Sha384 digest to hash.
 	 * 
 	 * @param sha
@@ -691,6 +986,18 @@ public class Fips extends WolfObject {
 	 * @return 0 on success, {@literal <} 0 on error.
 	 */
 	public static native int Sha384Final_fips(Sha384 sha, ByteBuffer hash);
+
+	/**
+	 * Outputs Sha384 digest to hash.
+	 * 
+	 * @param sha
+	 *            the Sha384 object.
+	 * @param hash
+	 *            the output buffer.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int Sha384Final_fips(Sha384 sha, byte[] hash);
 
 	/* SHA512 */
 
@@ -720,6 +1027,21 @@ public class Fips extends WolfObject {
 			long len);
 
 	/**
+	 * Updates Sha512 object with data.
+	 * 
+	 * @param sha
+	 *            the Sha512 object.
+	 * @param data
+	 *            the input buffer.
+	 * @param len
+	 *            the input length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int Sha512Update_fips(Sha512 sha, byte[] data,
+			long len);
+
+	/**
 	 * Outputs Sha512 digest to hash.
 	 * 
 	 * @param sha
@@ -730,6 +1052,18 @@ public class Fips extends WolfObject {
 	 * @return 0 on success, {@literal <} 0 on error.
 	 */
 	public static native int Sha512Final_fips(Sha512 sha, ByteBuffer hash);
+	
+	/**
+	 * Outputs Sha512 digest to hash.
+	 * 
+	 * @param sha
+	 *            the Sha512 object.
+	 * @param hash
+	 *            the output buffer.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int Sha512Final_fips(Sha512 sha, byte[] hash);
 
 	/*
 	 * wolfCrypt FIPS API - Show status Service

@@ -332,7 +332,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcDecrypt_1fips__Lcom
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmSetKey_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmSetKey_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject aes_object, jobject key_buffer,
     jlong size)
 {
@@ -357,7 +357,32 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmSetKey_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmEncrypt_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmSetKey_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3BJ(
+    JNIEnv* env, jclass class, jobject aes_object, jbyteArray key_buffer,
+    jlong size)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(HAVE_AESGCM)
+
+    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
+    byte* key = getByteArray(env, key_buffer);
+
+    ret = (!aes || !key) ? BAD_FUNC_ARG
+                         : AesGcmSetKey_fips(aes, key, size);
+
+    LogStr("AesGcmSetKey_fips(aes=%p, key) = %d\n", aes, ret);
+    LogStr("key:\n");
+    LogHex(key, size);
+
+    releaseByteArray(env, key_buffer, key, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmEncrypt_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject aes_object, jobject out_buffer,
     jobject in_buffer, jlong size, jobject iv_buffer, jlong ivSz,
     jobject authTag_buffer, jlong authTagSz, jobject authIn_buffer,
@@ -400,7 +425,56 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmEncrypt_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmDecrypt_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmEncrypt_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3B_3BJ_3BJ_3BJ_3BJ(
+    JNIEnv* env, jclass class, jobject aes_object, jbyteArray out_buffer,
+    jbyteArray in_buffer, jlong size, jbyteArray iv_buffer, jlong ivSz,
+    jbyteArray authTag_buffer, jlong authTagSz, jbyteArray authIn_buffer,
+    jlong authInSz)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(HAVE_AESGCM)
+
+    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
+    byte* out = getByteArray(env, out_buffer);
+    byte* in = getByteArray(env, in_buffer);
+    byte* iv = getByteArray(env, iv_buffer);
+    byte* authTag = getByteArray(env, authTag_buffer);
+    byte* authIn = getByteArray(env, authIn_buffer);
+
+    if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz)
+        || (!authIn && authInSz))
+        ret = BAD_FUNC_ARG;
+    else
+        ret = AesGcmEncrypt_fips(aes, out, in, (word32) size, iv, (word32) ivSz,
+            authTag, (word32) authTagSz, authIn, (word32) authInSz);
+
+    LogStr(
+        "AesGcmEncrypt_fips(aes=%p, msg, cipher, iv, authTag, authIn) = %d\n",
+        aes, ret);
+    LogStr("in:\n");
+    LogHex(in, size);
+    LogStr("out:\n");
+    LogHex(out, size);
+    LogStr("iv:\n");
+    LogHex(iv, ivSz);
+    LogStr("authTag:\n");
+    LogHex(authTag, authTagSz);
+    LogStr("authIn:\n");
+    LogHex(authIn, authInSz);
+
+    releaseByteArray(env, out_buffer, out, ret);
+    releaseByteArray(env, in_buffer, in, ret);
+    releaseByteArray(env, iv_buffer, iv, ret);
+    releaseByteArray(env, authTag_buffer, authTag, ret);
+    releaseByteArray(env, authIn_buffer, authIn, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmDecrypt_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject aes_object, jobject out_buffer,
     jobject in_buffer, jlong size, jobject iv_buffer, jlong ivSz,
     jobject authTag_buffer, jlong authTagSz, jobject authIn_buffer,
@@ -443,9 +517,58 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmDecrypt_1fips(
     return ret;
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmDecrypt_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3B_3BJ_3BJ_3BJ_3BJ(
+    JNIEnv* env, jclass class, jobject aes_object, jbyteArray out_buffer,
+    jbyteArray in_buffer, jlong size, jbyteArray iv_buffer, jlong ivSz,
+    jbyteArray authTag_buffer, jlong authTagSz, jbyteArray authIn_buffer,
+    jlong authInSz)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(HAVE_AESGCM)
+
+    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
+    byte* out = getByteArray(env, out_buffer);
+    byte* in = getByteArray(env, in_buffer);
+    byte* iv = getByteArray(env, iv_buffer);
+    byte* authTag = getByteArray(env, authTag_buffer);
+    byte* authIn = getByteArray(env, authIn_buffer);
+
+    if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz)
+        || (!authIn && authInSz))
+        ret = BAD_FUNC_ARG;
+    else
+        ret = AesGcmDecrypt_fips(aes, out, in, (word32) size, iv, (word32) ivSz,
+            authTag, (word32) authTagSz, authIn, (word32) authInSz);
+
+    LogStr(
+        "AesGcmDecrypt_fips(aes=%p, cipher, plain, iv, authTag, authIn) = %d\n",
+        aes, ret);
+    LogStr("in:\n");
+    LogHex(in, AES_BLOCK_SIZE);
+    LogStr("out:\n");
+    LogHex(out, AES_BLOCK_SIZE);
+    LogStr("iv:\n");
+    LogHex(iv, ivSz);
+    LogStr("authTag:\n");
+    LogHex(authTag, authTagSz);
+    LogStr("authIn:\n");
+    LogHex(authIn, authInSz);
+
+    releaseByteArray(env, out_buffer, out, ret);
+    releaseByteArray(env, in_buffer, in, ret);
+    releaseByteArray(env, iv_buffer, iv, ret);
+    releaseByteArray(env, authTag_buffer, authTag, ret);
+    releaseByteArray(env, authIn_buffer, authIn, ret);
+
+#endif
+
+    return ret;
+}
+
 /* DES3 */
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetKey_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetKey_1fips__Lcom_wolfssl_wolfcrypt_Des3_2Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2I(
     JNIEnv* env, jclass class, jobject des_object, jobject key_buffer,
     jobject iv_buffer, jint dir)
 {
@@ -474,7 +597,37 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetKey_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetIV_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetKey_1fips__Lcom_wolfssl_wolfcrypt_Des3_2_3B_3BI(
+    JNIEnv* env, jclass class, jobject des_object, jbyteArray key_buffer,
+    jbyteArray iv_buffer, jint dir)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_DES3)
+
+    Des3* des = (Des3*) getNativeStruct(env, des_object);
+    byte* key = getByteArray(env, key_buffer);
+    byte* iv = getByteArray(env, iv_buffer);
+
+    ret = (!des || !key) ? BAD_FUNC_ARG
+                         : Des3_SetKey_fips(des, key, iv, dir);
+
+    LogStr("Des3_SetKey_fips(des=%p, key, iv, %s) = %d\n", des,
+        dir ? "dec" : "enc", ret);
+    LogStr("key:\n");
+    LogHex(key, DES3_KEYLEN);
+    LogStr("iv:\n");
+    LogHex(iv, DES3_IVLEN);
+
+    releaseByteArray(env, key_buffer, key, ret);
+    releaseByteArray(env, iv_buffer, iv, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetIV_1fips__Lcom_wolfssl_wolfcrypt_Des3_2Ljava_nio_ByteBuffer_2(
     JNIEnv* env, jclass class, jobject des_object, jobject iv_buffer)
 {
     jint ret = NOT_COMPILED_IN;
@@ -497,7 +650,31 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetIV_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcEncrypt_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetIV_1fips__Lcom_wolfssl_wolfcrypt_Des3_2_3B(
+    JNIEnv* env, jclass class, jobject des_object, jbyteArray iv_buffer)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_DES3)
+
+    Des3* des = (Des3*) getNativeStruct(env, des_object);
+    byte* iv = getByteArray(env, iv_buffer);
+
+    ret = (!des || !iv) ? BAD_FUNC_ARG
+                        : Des3_SetIV_fips(des, iv);
+
+    LogStr("Des3_SetIV_fips(des=%p, iv) = %d\n", des, ret);
+    LogStr("iv:\n");
+    LogHex(iv, DES_BLOCK_SIZE);
+
+    releaseByteArray(env, iv_buffer, iv, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcEncrypt_1fips__Lcom_wolfssl_wolfcrypt_Des3_2Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject des_object, jobject out_buffer,
     jobject in_buffer, jlong size)
 {
@@ -525,7 +702,36 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcEncrypt_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcDecrypt_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcEncrypt_1fips__Lcom_wolfssl_wolfcrypt_Des3_2_3B_3BJ(
+    JNIEnv* env, jclass class, jobject des_object, jbyteArray out_buffer,
+    jbyteArray in_buffer, jlong size)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_DES3)
+
+    Des3* des = (Des3*) getNativeStruct(env, des_object);
+    byte* out = getByteArray(env, out_buffer);
+    byte* in = getByteArray(env, in_buffer);
+
+    ret = (!des || !out || !in) ? BAD_FUNC_ARG
+                                : Des3_CbcEncrypt_fips(des, out, in, (word32) size);
+
+    LogStr("Des3_CbcEncrypt_fips(des=%p, msg, cipher) = %d\n", des, ret);
+    LogStr("in:\n");
+    LogHex(in, size);
+    LogStr("out:\n");
+    LogHex(out, size);
+
+    releaseByteArray(env, out_buffer, out, ret);
+    releaseByteArray(env, in_buffer, in, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcDecrypt_1fips__Lcom_wolfssl_wolfcrypt_Des3_2Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject des_object, jobject out_buffer,
     jobject in_buffer, jlong size)
 {
@@ -553,13 +759,42 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcDecrypt_1fips(
     return ret;
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcDecrypt_1fips__Lcom_wolfssl_wolfcrypt_Des3_2_3B_3BJ(
+    JNIEnv* env, jclass class, jobject des_object, jbyteArray out_buffer,
+    jbyteArray in_buffer, jlong size)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_DES3)
+
+    Des3* des = (Des3*) getNativeStruct(env, des_object);
+    byte* out = getByteArray(env, out_buffer);
+    byte* in = getByteArray(env, in_buffer);
+
+    ret = (!des || !out || !in) ? BAD_FUNC_ARG
+                                : Des3_CbcDecrypt_fips(des, out, in, (word32) size);
+
+    LogStr("Des3_CbcDecrypt_fips(des=%p, cipher, plain) = %d\n", des, ret);
+    LogStr("in:\n");
+    LogHex(in, size);
+    LogStr("out:\n");
+    LogHex(out, size);
+
+    releaseByteArray(env, out_buffer, out, ret);
+    releaseByteArray(env, in_buffer, in, ret);
+
+#endif
+
+    return ret;
+}
+
 /*
  * wolfCrypt FIPS API - Keyed hash Service
  */
 
 /* HMAC */
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacSetKey_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacSetKey_1fips__Lcom_wolfssl_wolfcrypt_Hmac_2ILjava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject hmac_object, jint type,
     jobject key_buffer, jlong keySz)
 {
@@ -585,7 +820,33 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacSetKey_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacUpdate_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacSetKey_1fips__Lcom_wolfssl_wolfcrypt_Hmac_2I_3BJ(
+    JNIEnv* env, jclass class, jobject hmac_object, jint type,
+    jbyteArray key_buffer, jlong keySz)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_HMAC)
+
+    Hmac* hmac = (Hmac*) getNativeStruct(env, hmac_object);
+    byte* key = getByteArray(env, key_buffer);
+
+    ret = (!hmac || !key) ? BAD_FUNC_ARG
+                          : HmacSetKey_fips(hmac, type, key, keySz);
+
+    LogStr("HmacSetKey_fips(hmac=%p, type=%d, key, keySz) = %d\n", hmac, type,
+        ret);
+    LogStr("key:\n");
+    LogHex(key, keySz);
+
+    releaseByteArray(env, key_buffer, key, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacUpdate_1fips__Lcom_wolfssl_wolfcrypt_Hmac_2Ljava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject hmac_object, jobject data_buffer,
     jlong len)
 {
@@ -610,7 +871,32 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacUpdate_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacFinal_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacUpdate_1fips__Lcom_wolfssl_wolfcrypt_Hmac_2_3BJ(
+    JNIEnv* env, jclass class, jobject hmac_object, jbyteArray data_buffer,
+    jlong len)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_HMAC)
+
+    Hmac* hmac = (Hmac*) getNativeStruct(env, hmac_object);
+    byte* data = getByteArray(env, data_buffer);
+
+    ret = (!hmac || !data) ? BAD_FUNC_ARG
+                           : HmacUpdate_fips(hmac, data, len);
+
+    LogStr("HmacUpdate_fips(hmac=%p, data, len) = %d\n", hmac, ret);
+    LogStr("data:\n");
+    LogHex(data, len);
+
+    releaseByteArray(env, data_buffer, data, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacFinal_1fips__Lcom_wolfssl_wolfcrypt_Hmac_2Ljava_nio_ByteBuffer_2(
     JNIEnv* env, jclass class, jobject hmac_object, jobject hash_buffer)
 {
     jint ret = NOT_COMPILED_IN;
@@ -628,6 +914,30 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacFinal_1fips(
     LogStr("HmacFinal_fips(hmac=%p, hash) = %d\n", hmac, ret);
     LogStr("hash:\n");
     LogHex(hash, SHA_DIGEST_SIZE);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacFinal_1fips__Lcom_wolfssl_wolfcrypt_Hmac_2_3B(
+    JNIEnv* env, jclass class, jobject hmac_object, jbyteArray hash_buffer)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_HMAC)
+
+    Hmac* hmac = (Hmac*) getNativeStruct(env, hmac_object);
+    byte* hash = getByteArray(env, hash_buffer);
+
+    ret = (!hmac || !hash) ? BAD_FUNC_ARG
+                           : HmacFinal_fips(hmac, hash);
+
+    LogStr("HmacFinal_fips(hmac=%p, hash) = %d\n", hmac, ret);
+    LogStr("hash:\n");
+    LogHex(hash, SHA_DIGEST_SIZE);
+
+    releaseByteArray(env, hash_buffer, hash, ret);
 
 #endif
 
@@ -682,7 +992,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_FreeRng_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RNG_1GenerateBlock_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RNG_1GenerateBlock_1fips__Lcom_wolfssl_wolfcrypt_Rng_2Ljava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject rng_object, jobject buf_buffer,
     jlong bufSz)
 {
@@ -707,7 +1017,32 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RNG_1GenerateBlock_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RNG_1HealthTest_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RNG_1GenerateBlock_1fips__Lcom_wolfssl_wolfcrypt_Rng_2_3BJ(
+    JNIEnv* env, jclass class, jobject rng_object, jbyteArray buf_buffer,
+    jlong bufSz)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS)
+
+    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+    byte* buf = getByteArray(env, buf_buffer);
+
+    ret = (!rng || !buf) ? BAD_FUNC_ARG
+                         : RNG_GenerateBlock_fips(rng, buf, bufSz);
+
+    LogStr("RNG_GenerateBlock_fips(rng=%p, buf, bufSz) = %d\n", rng, ret);
+    LogStr("output:\n");
+    LogHex(buf, bufSz);
+
+    releaseByteArray(env, buf_buffer, buf, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RNG_1HealthTest_1fips__ILjava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jint reseed, jobject entropyA_object,
     jlong entropyASz, jobject entropyB_object, jlong entropyBSz,
     jobject output_object, jlong outputSz)
@@ -734,6 +1069,42 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RNG_1HealthTest_1fips(
     LogHex((byte*) entropyB, entropyBSz);
     LogStr("output:\n");
     LogHex(output, outputSz);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RNG_1HealthTest_1fips__I_3BJ_3BJ_3BJ(
+    JNIEnv* env, jclass class, jint reseed, jbyteArray entropyA_object,
+    jlong entropyASz, jbyteArray entropyB_object, jlong entropyBSz,
+    jbyteArray output_object, jlong outputSz)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS)
+
+    const byte* entropyA = getByteArray(env, entropyA_object);
+    const byte* entropyB = getByteArray(env, entropyB_object);
+    byte* output = getByteArray(env, output_object);
+
+    ret = (!entropyA || (reseed && !entropyB) || !output)
+        ? BAD_FUNC_ARG
+        : RNG_HealthTest_fips(reseed, entropyA, entropyASz, entropyB,
+            entropyBSz, output, outputSz);
+
+    LogStr("RNG_HealthTest_fips(reseed=%d, entropyA, entropyASz, "
+        "entropyB, entropyBSz, output, outputSz) = %d\n", reseed, ret);
+    LogStr("entropyA:\n");
+    LogHex((byte*) entropyA, entropyASz);
+    LogStr("entropyB:\n");
+    LogHex((byte*) entropyB, entropyBSz);
+    LogStr("output:\n");
+    LogHex(output, outputSz);
+
+    releaseByteArray(env, entropyA_object, entropyA, ret);
+    releaseByteArray(env, entropyB_object, entropyB, ret);
+    releaseByteArray(env, output_object, output, ret);
 
 #endif
 
@@ -960,7 +1331,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitSha_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaUpdate_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaUpdate_1fips__Lcom_wolfssl_wolfcrypt_Sha_2Ljava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject sha_object, jobject data_buffer,
     jlong len)
 {
@@ -985,7 +1356,32 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaUpdate_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaFinal_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaUpdate_1fips__Lcom_wolfssl_wolfcrypt_Sha_2_3BJ(
+    JNIEnv* env, jclass class, jobject sha_object, jbyteArray data_buffer,
+    jlong len)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_SHA)
+
+    Sha* sha = (Sha*) getNativeStruct(env, sha_object);
+    byte* data = getByteArray(env, data_buffer);
+
+    ret = (!sha || !data) ? BAD_FUNC_ARG
+                          : ShaUpdate_fips(sha, data, len);
+
+    LogStr("ShaUpdate_fips(sha=%p, data, len) = %d\n", sha, ret);
+    LogStr("data:\n");
+    LogHex(data, len);
+
+    releaseByteArray(env, data_buffer, data, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaFinal_1fips__Lcom_wolfssl_wolfcrypt_Sha_2Ljava_nio_ByteBuffer_2(
     JNIEnv* env, jclass class, jobject sha_object, jobject hash_buffer)
 {
     jint ret = NOT_COMPILED_IN;
@@ -1003,6 +1399,30 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaFinal_1fips(
     LogStr("ShaFinal_fips(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash:\n");
     LogHex(hash, SHA_DIGEST_SIZE);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaFinal_1fips__Lcom_wolfssl_wolfcrypt_Sha_2_3B(
+    JNIEnv* env, jclass class, jobject sha_object, jbyteArray hash_buffer)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_SHA)
+
+    Sha* sha = (Sha*) getNativeStruct(env, sha_object);
+    byte* hash = getByteArray(env, hash_buffer);
+
+    ret = (!sha || !hash) ? BAD_FUNC_ARG
+                          : ShaFinal_fips(sha, hash);
+
+    LogStr("ShaFinal_fips(sha=%p, hash) = %d\n", sha, ret);
+    LogStr("hash:\n");
+    LogHex(hash, SHA_DIGEST_SIZE);
+
+    releaseByteArray(env, hash_buffer, hash, ret);
 
 #endif
 
@@ -1030,7 +1450,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitSha256_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Update_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Update_1fips__Lcom_wolfssl_wolfcrypt_Sha256_2Ljava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject sha_object, jobject data_buffer,
     jlong len)
 {
@@ -1055,7 +1475,32 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Update_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Final_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Update_1fips__Lcom_wolfssl_wolfcrypt_Sha256_2_3BJ(
+    JNIEnv* env, jclass class, jobject sha_object, jbyteArray data_buffer,
+    jlong len)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_SHA256)
+
+    Sha256* sha = (Sha256*) getNativeStruct(env, sha_object);
+    byte* data = getByteArray(env, data_buffer);
+
+    ret = (!sha || !data) ? BAD_FUNC_ARG
+                          : Sha256Update_fips(sha, data, len);
+
+    LogStr("Sha256Update_fips(sha=%p, data, len) = %d\n", sha, ret);
+    LogStr("data:\n");
+    LogHex(data, len);
+
+    releaseByteArray(env, data_buffer, data, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Final_1fips__Lcom_wolfssl_wolfcrypt_Sha256_2Ljava_nio_ByteBuffer_2(
     JNIEnv* env, jclass class, jobject sha_object, jobject hash_buffer)
 {
     jint ret = NOT_COMPILED_IN;
@@ -1073,6 +1518,30 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Final_1fips(
     LogStr("Sha256Final_fips(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash:\n");
     LogHex(hash, SHA_DIGEST_SIZE);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Final_1fips__Lcom_wolfssl_wolfcrypt_Sha256_2_3B(
+    JNIEnv* env, jclass class, jobject sha_object, jbyteArray hash_buffer)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && !defined(NO_SHA256)
+
+    Sha256* sha = (Sha256*) getNativeStruct(env, sha_object);
+    byte* hash = getByteArray(env, hash_buffer);
+
+    ret = (!sha || !hash) ? BAD_FUNC_ARG
+                          : Sha256Final_fips(sha, hash);
+
+    LogStr("Sha256Final_fips(sha=%p, hash) = %d\n", sha, ret);
+    LogStr("hash:\n");
+    LogHex(hash, SHA_DIGEST_SIZE);
+
+    releaseByteArray(env, hash_buffer, hash, ret);
 
 #endif
 
@@ -1100,7 +1569,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitSha384_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Update_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Update_1fips__Lcom_wolfssl_wolfcrypt_Sha384_2Ljava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject sha_object, jobject data_buffer,
     jlong len)
 {
@@ -1125,7 +1594,32 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Update_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Final_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Update_1fips__Lcom_wolfssl_wolfcrypt_Sha384_2_3BJ(
+    JNIEnv* env, jclass class, jobject sha_object, jbyteArray data_buffer,
+    jlong len)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
+
+    Sha384* sha = (Sha384*) getNativeStruct(env, sha_object);
+    byte* data = getByteArray(env, data_buffer);
+
+    ret = (!sha || !data) ? BAD_FUNC_ARG
+                          : Sha384Update_fips(sha, data, len);
+
+    LogStr("Sha384Update_fips(sha=%p, data, len) = %d\n", sha, ret);
+    LogStr("data:\n");
+    LogHex(data, len);
+
+    releaseByteArray(env, data_buffer, data, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Final_1fips__Lcom_wolfssl_wolfcrypt_Sha384_2Ljava_nio_ByteBuffer_2(
     JNIEnv* env, jclass class, jobject sha_object, jobject hash_buffer)
 {
     jint ret = NOT_COMPILED_IN;
@@ -1143,6 +1637,30 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Final_1fips(
     LogStr("Sha384Final_fips(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash:\n");
     LogHex(hash, SHA_DIGEST_SIZE);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Final_1fips__Lcom_wolfssl_wolfcrypt_Sha384_2_3B(
+    JNIEnv* env, jclass class, jobject sha_object, jbyteArray hash_buffer)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
+
+    Sha384* sha = (Sha384*) getNativeStruct(env, sha_object);
+    byte* hash = getByteArray(env, hash_buffer);
+
+    ret = (!sha || !hash) ? BAD_FUNC_ARG
+                          : Sha384Final_fips(sha, hash);
+
+    LogStr("Sha384Final_fips(sha=%p, hash) = %d\n", sha, ret);
+    LogStr("hash:\n");
+    LogHex(hash, SHA_DIGEST_SIZE);
+
+    releaseByteArray(env, hash_buffer, hash, ret);
 
 #endif
 
@@ -1170,7 +1688,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitSha512_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Update_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Update_1fips__Lcom_wolfssl_wolfcrypt_Sha512_2Ljava_nio_ByteBuffer_2J(
     JNIEnv* env, jclass class, jobject sha_object, jobject data_buffer,
     jlong len)
 {
@@ -1195,7 +1713,32 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Update_1fips(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Final_1fips(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Update_1fips__Lcom_wolfssl_wolfcrypt_Sha512_2_3BJ(
+    JNIEnv* env, jclass class, jobject sha_object, jbyteArray data_buffer,
+    jlong len)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
+
+    Sha512* sha = (Sha512*) getNativeStruct(env, sha_object);
+    byte* data = getByteArray(env, data_buffer);
+
+    ret = (!sha || !data) ? BAD_FUNC_ARG
+                          : Sha512Update_fips(sha, data, len);
+
+    LogStr("Sha512Update_fips(sha=%p, data, len) = %d\n", sha, ret);
+    LogStr("data:\n");
+    LogHex(data, len);
+
+    releaseByteArray(env, data_buffer, data, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Final_1fips__Lcom_wolfssl_wolfcrypt_Sha512_2Ljava_nio_ByteBuffer_2(
     JNIEnv* env, jclass class, jobject sha_object, jobject hash_buffer)
 {
     jint ret = NOT_COMPILED_IN;
@@ -1213,6 +1756,30 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Final_1fips(
     LogStr("Sha512Final_fips(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash:\n");
     LogHex(hash, SHA_DIGEST_SIZE);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Final_1fips__Lcom_wolfssl_wolfcrypt_Sha512_2_3B(
+    JNIEnv* env, jclass class, jobject sha_object, jbyteArray hash_buffer)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
+
+    Sha512* sha = (Sha512*) getNativeStruct(env, sha_object);
+    byte* hash = getByteArray(env, hash_buffer);
+
+    ret = (!sha || !hash) ? BAD_FUNC_ARG
+                          : Sha512Final_fips(sha, hash);
+
+    LogStr("Sha512Final_fips(sha=%p, hash) = %d\n", sha, ret);
+    LogStr("hash:\n");
+    LogHex(hash, SHA_DIGEST_SIZE);
+
+    releaseByteArray(env, hash_buffer, hash, ret);
 
 #endif
 

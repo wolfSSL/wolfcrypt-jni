@@ -41,7 +41,7 @@ public class Des3FipsTest {
 	private ByteBuffer iv = ByteBuffer.allocateDirect(Des3.BLOCK_SIZE);
 
 	@Test
-	public void setKeyWithNullIVShouldReturnZero() {
+	public void setKeyWithNullIVShouldReturnZeroUsingByteBuffer() {
 		key.put(Util.h2b("000111222333444555666777888999aaabbbcccdddeeefff"))
 				.rewind();
 
@@ -50,14 +50,29 @@ public class Des3FipsTest {
 	}
 
 	@Test
-	public void setIVShouldReturnZero() {
+	public void setKeyWithNullIVShouldReturnZeroUsingByteArray() {
+		byte[] key = Util.h2b("000111222333444555666777888999aaabbbcccdddeeefff");
+
+		assertEquals(WolfCrypt.SUCCESS,
+				Fips.Des3_SetKey_fips(new Des3(), key, null, Des3.ENCRYPT_MODE));
+	}
+
+	@Test
+	public void setIVShouldReturnZeroUsingByteBuffer() {
 		vector.put(Util.h2b("0123456789abcdef")).rewind();
 
 		assertEquals(WolfCrypt.SUCCESS, Fips.Des3_SetIV_fips(new Des3(), iv));
 	}
 
 	@Test
-	public void cbcEncryptDecryptShouldMatch() {
+	public void setIVShouldReturnZeroUsingByteArray() {
+		byte[] iv = Util.h2b("0123456789abcdef");
+
+		assertEquals(WolfCrypt.SUCCESS, Fips.Des3_SetIV_fips(new Des3(), iv));
+	}
+
+	@Test
+	public void cbcEncryptDecryptShouldMatchUsingByteBuffer() {
 		String[] keysVector = new String[] {
 				"e61a38548694f1fd8cef251c518cc70bb613751c1ce52aa8",
 				"2ff4e5c1cda84946798cc4ea8a1cf8df579e8a70f438b554",
@@ -91,6 +106,46 @@ public class Des3FipsTest {
 
 			assertEquals(result, cipher);
 			assertEquals(plain, vector);
+		}
+	}
+	
+	@Test
+	public void cbcEncryptDecryptShouldMatchUsingByteArray() {
+		String[] keysVector = new String[] {
+				"e61a38548694f1fd8cef251c518cc70bb613751c1ce52aa8",
+				"2ff4e5c1cda84946798cc4ea8a1cf8df579e8a70f438b554",
+				"9151232c854cf7977562a4e098d9d6ce892a80f79b408934",
+				"9715c173b0a89292b3a88acbc7522085d5a1522f32109ea1" };
+		String[] initVector = new String[] { "48a8ceb8551fd4ad",
+				"76b779525bb0d1c0", "0e04ab4e1171451d", "19e6a2b2a690f026" };
+		String[] testVector = new String[] { "e8fb0ceb4e912e16",
+				"77340331c9c8e4f4", "2dab916e1b72c578", "7a3d5228d200e322" };
+		String[] cipherText = new String[] { "d2190e296a0bfc56",
+				"b7f1fd226680a6ee", "f50d41fc9fe9ba71", "5e124bc1d28414e7" };
+
+		for (int i = 0; i < testVector.length; i++) {
+			Des3 enc = new Des3();
+			Des3 dec = new Des3();
+
+			byte[] key    = Util.h2b(keysVector[i]);
+			byte[] iv     = Util.h2b(initVector[i]);
+			byte[] vector = Util.h2b(testVector[i]);
+			byte[] result = new byte[Des3.BLOCK_SIZE];
+			byte[] cipher = Util.h2b(cipherText[i]);
+			byte[] plain  = new byte[Des3.BLOCK_SIZE];
+
+			assertEquals(WolfCrypt.SUCCESS,
+					Fips.Des3_SetKey_fips(enc, key, iv, Des3.ENCRYPT_MODE));
+			assertEquals(WolfCrypt.SUCCESS,
+					Fips.Des3_SetKey_fips(dec, key, iv, Des3.DECRYPT_MODE));
+
+			assertEquals(WolfCrypt.SUCCESS, Fips.Des3_CbcEncrypt_fips(enc,
+					result, vector, Des3.BLOCK_SIZE));
+			assertEquals(WolfCrypt.SUCCESS, Fips.Des3_CbcDecrypt_fips(dec,
+					plain, result, Des3.BLOCK_SIZE));
+
+			assertArrayEquals(result, cipher);
+			assertArrayEquals(plain, vector);
 		}
 	}
 }
