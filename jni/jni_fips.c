@@ -2217,7 +2217,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1make_1key(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret__Lcom_wolfssl_wolfcrypt_Ecc_2Lcom_wolfssl_wolfcrypt_Ecc_2Ljava_nio_ByteBuffer_2_3J(
     JNIEnv* env, jclass class, jobject priv_object, jobject pub_object,
     jobject out_buffer, jlongArray outlen)
 {
@@ -2249,7 +2249,42 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1import_1x963(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret__Lcom_wolfssl_wolfcrypt_Ecc_2Lcom_wolfssl_wolfcrypt_Ecc_2_3B_3J(
+    JNIEnv* env, jclass class, jobject priv_object, jobject pub_object,
+    jbyteArray out_buffer, jlongArray outlen)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(HAVE_ECC)
+
+    ecc_key* priv = (ecc_key*) getNativeStruct(env, priv_object);
+    ecc_key* pub = (ecc_key*) getNativeStruct(env, pub_object);
+    byte* out = getByteArray(env, out_buffer);
+    word32 tmpOutLen;
+
+    if (!priv || !pub || !out)
+        ret = BAD_FUNC_ARG;
+    else {
+        (*env)->GetLongArrayRegion(env, outlen, 0, 1, (jlong*) &tmpOutLen);
+
+        ret = ecc_shared_secret(priv, pub, out, &tmpOutLen);
+
+        (*env)->SetLongArrayRegion(env, outlen, 0, 1, (jlong*) &tmpOutLen);
+    }
+
+    LogStr("ecc_shared_secret(priv=%p, pub=%p, out, outLen) = %d\n", priv, pub,
+        ret);
+    LogStr("out:\n");
+    LogHex(out, tmpOutLen);
+
+    releaseByteArray(env, out_buffer, out, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1import_1x963__Ljava_nio_ByteBuffer_2JLcom_wolfssl_wolfcrypt_Ecc_2(
     JNIEnv* env, jclass class, jobject in_buffer, jlong inLen,
     jobject key_object)
 {
@@ -2274,7 +2309,32 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1import_1x963(
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1import_1x963___3BJLcom_wolfssl_wolfcrypt_Ecc_2(
+    JNIEnv* env, jclass class, jbyteArray in_buffer, jlong inLen,
+    jobject key_object)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(HAVE_ECC)
+
+    ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
+    byte* in = getByteArray(env, in_buffer);
+
+    ret = (!key || !in) ? BAD_FUNC_ARG
+                        : ecc_import_x963(in, inLen, key);
+
+    LogStr("ecc_import_x963(in, inLen, key=%p) = %d\n", key, ret);
+    LogStr("in:\n");
+    LogHex(in, inLen);
+
+    releaseByteArray(env, in_buffer, in, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963__Lcom_wolfssl_wolfcrypt_Ecc_2Ljava_nio_ByteBuffer_2_3J(
     JNIEnv* env, jclass class, jobject key_object, jobject out_buffer,
     jlongArray outLen)
 {
@@ -2298,6 +2358,39 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963(
     LogStr("ecc_export_x963(key=%p, out, outLen) = %d\n", key, ret);
     LogStr("out:\n");
     LogHex(out, tmpOutLen);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963__Lcom_wolfssl_wolfcrypt_Ecc_2_3B_3J(
+    JNIEnv* env, jclass class, jobject key_object, jbyteArray out_buffer,
+    jlongArray outLen)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && defined(HAVE_ECC)
+
+    ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
+    byte* out = getByteArray(env, out_buffer);
+    word32 tmpOutLen;
+
+    if (!key || !out)
+        ret = BAD_FUNC_ARG;
+    else {
+        (*env)->GetLongArrayRegion(env, outLen, 0, 1, (jlong*) &tmpOutLen);
+
+        ret = ecc_export_x963(key, out, &tmpOutLen);
+
+        (*env)->SetLongArrayRegion(env, outLen, 0, 1, (jlong*) &tmpOutLen);
+    }
+
+    LogStr("ecc_export_x963(key=%p, out, outLen) = %d\n", key, ret);
+    LogStr("out:\n");
+    LogHex(out, tmpOutLen);
+
+    releaseByteArray(env, out_buffer, out, ret);
 
 #endif
 

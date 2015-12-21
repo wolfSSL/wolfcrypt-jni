@@ -652,24 +652,48 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1make_1key
  * Method:    ecc_shared_secret
  * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;Lcom/wolfssl/wolfcrypt/Ecc;Ljava/nio/ByteBuffer;[J)I
  */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret__Lcom_wolfssl_wolfcrypt_Ecc_2Lcom_wolfssl_wolfcrypt_Ecc_2Ljava_nio_ByteBuffer_2_3J
   (JNIEnv *, jclass, jobject, jobject, jobject, jlongArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    ecc_shared_secret
+ * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;Lcom/wolfssl/wolfcrypt/Ecc;[B[J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret__Lcom_wolfssl_wolfcrypt_Ecc_2Lcom_wolfssl_wolfcrypt_Ecc_2_3B_3J
+  (JNIEnv *, jclass, jobject, jobject, jbyteArray, jlongArray);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    ecc_import_x963
  * Signature: (Ljava/nio/ByteBuffer;JLcom/wolfssl/wolfcrypt/Ecc;)I
  */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1import_1x963
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1import_1x963__Ljava_nio_ByteBuffer_2JLcom_wolfssl_wolfcrypt_Ecc_2
   (JNIEnv *, jclass, jobject, jlong, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    ecc_import_x963
+ * Signature: ([BJLcom/wolfssl/wolfcrypt/Ecc;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1import_1x963___3BJLcom_wolfssl_wolfcrypt_Ecc_2
+  (JNIEnv *, jclass, jbyteArray, jlong, jobject);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    ecc_export_x963
  * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;Ljava/nio/ByteBuffer;[J)I
  */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963__Lcom_wolfssl_wolfcrypt_Ecc_2Ljava_nio_ByteBuffer_2_3J
   (JNIEnv *, jclass, jobject, jobject, jlongArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    ecc_export_x963
+ * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;[B[J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963__Lcom_wolfssl_wolfcrypt_Ecc_2_3B_3J
+  (JNIEnv *, jclass, jobject, jbyteArray, jlongArray);
 
 #ifdef __cplusplus
 }

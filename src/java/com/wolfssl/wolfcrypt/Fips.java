@@ -1352,6 +1352,24 @@ public class Fips extends WolfObject {
 			ByteBuffer out, long[] outlen);
 
 	/**
+	 * Creates the shared secret out of size outlen using ecc private_key and
+	 * the peer’s ecc public_key.
+	 * 
+	 * @param private_key
+	 *            the Ecc object for the private key.
+	 * @param public_key
+	 *            the Ecc object for the peer's public key.
+	 * @param out
+	 *            the output buffer.
+	 * @param outlen
+	 *            the output length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int ecc_shared_secret(Ecc private_key, Ecc public_key,
+			byte[] out, long[] outlen);
+
+	/**
 	 * Imports the public ecc key from in of length inLen in x963 format.
 	 * 
 	 * @param in
@@ -1367,6 +1385,21 @@ public class Fips extends WolfObject {
 			Ecc key);
 
 	/**
+	 * Imports the public ecc key from in of length inLen in x963 format.
+	 * 
+	 * @param in
+	 *            the input buffer.
+	 * @param inLen
+	 *            the input length.
+	 * @param key
+	 *            the Ecc object.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int ecc_import_x963(byte[] in, long inLen, 
+			Ecc key);
+
+	/**
 	 * Exports the public ecc key into out of length outLen in x963 format.
 	 * 
 	 * @param key
@@ -1379,5 +1412,20 @@ public class Fips extends WolfObject {
 	 * @return 0 on success, {@literal <} 0 on error.
 	 */
 	public static native int ecc_export_x963(Ecc key, ByteBuffer out,
+			long[] outLen);
+
+	/**
+	 * Exports the public ecc key into out of length outLen in x963 format.
+	 * 
+	 * @param key
+	 *            the Ecc object.
+	 * @param out
+	 *            the output buffer.
+	 * @param outLen
+	 *            the output length.
+	 * 
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+	public static native int ecc_export_x963(Ecc key, byte[] out,
 			long[] outLen);
 }
