@@ -29,7 +29,7 @@ extern "C" {
 void* getNativeStruct(JNIEnv* env, jobject this);
 byte* getDirectBufferAddress(JNIEnv* env, jobject buffer);
 byte* getByteArray(JNIEnv* env, jbyteArray array);
-void releaseByteArray(JNIEnv* env, jbyteArray array, byte* elements, jint ret);
+void releaseByteArray(JNIEnv* env, jbyteArray array, byte* elements, jint abort);
 word32 getByteArrayLength(JNIEnv* env, jbyteArray array);
 
 word32 getDirectBufferLimit(JNIEnv* env, jobject buffer);

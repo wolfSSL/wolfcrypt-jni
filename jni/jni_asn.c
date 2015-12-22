@@ -28,11 +28,12 @@
 #endif
 
 #include <wolfssl/wolfcrypt/asn_public.h>
+#include <wolfssl/wolfcrypt/error-crypt.h>
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature(
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature__Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2JI(
     JNIEnv* env, jclass class, jobject encoded_object, jobject hash_object,
     jlong hashSize, jint hashOID)
 {
@@ -44,6 +45,24 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature(
     else
         setDirectBufferLimit(env, encoded_object,
             wc_EncodeSignature(encoded, hash, hashSize, hashOID));
+}
+
+JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature___3B_3BJI(
+    JNIEnv* env, jclass class, jbyteArray encoded_object,
+    jbyteArray hash_object, jlong hashSize, jint hashOID)
+{
+    byte* encoded = getByteArray(env, encoded_object);
+    byte* hash = getByteArray(env, hash_object);
+    jlong ret = 0;
+
+    ret = (!encoded || !hash)
+        ? BAD_FUNC_ARG
+        : wc_EncodeSignature(encoded, hash, hashSize, hashOID);
+
+    releaseByteArray(env, encoded_object, encoded, ret < 0);
+    releaseByteArray(env, hash_object, hash, ret < 0);
+
+    return ret;
 }
 
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getCTC_1HashOID(

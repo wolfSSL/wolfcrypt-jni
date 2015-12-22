@@ -14,8 +14,16 @@ extern "C" {
  * Method:    encodeSignature
  * Signature: (Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;JI)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature__Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2JI
   (JNIEnv *, jclass, jobject, jobject, jlong, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    encodeSignature
+ * Signature: ([B[BJI)J
+ */
+JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature___3B_3BJI
+  (JNIEnv *, jclass, jbyteArray, jbyteArray, jlong, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Asn

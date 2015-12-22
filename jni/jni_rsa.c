@@ -28,6 +28,7 @@
 #endif
 
 #include <wolfssl/wolfcrypt/rsa.h>
+#include <wolfssl/wolfcrypt/error-crypt.h>
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
@@ -53,7 +54,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rsa_mallocNativeStruct(
     return ret;
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_decodeRawPublicKey(
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_decodeRawPublicKey__Ljava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2J(
     JNIEnv* env, jobject this, jobject n_object, jlong nSize, jobject e_object,
     jlong eSize)
 {
@@ -73,7 +74,31 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_decodeRawPublicKey(
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_exportRawPublicKey(
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_decodeRawPublicKey___3BJ_3BJ(
+    JNIEnv* env, jobject this, jbyteArray n_object, jlong nSize,
+    jbyteArray e_object, jlong eSize)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#ifndef NO_RSA
+
+    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
+    byte* n = getByteArray(env, n_object);
+    byte* e = getByteArray(env, e_object);
+
+    ret = (!key || !n || !e)
+        ? BAD_FUNC_ARG
+        : wc_RsaPublicKeyDecodeRaw(n, nSize, e, eSize, key);
+
+    releaseByteArray(env, n_object, n, ret);
+    releaseByteArray(env, e_object, e, ret);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_exportRawPublicKey__Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2(
     JNIEnv* env, jobject this, jobject n_object, jobject e_object)
 {
 #ifdef NO_RSA
@@ -96,6 +121,37 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_exportRawPublicKey(
     }
 
 #endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_exportRawPublicKey___3B_3B(
+    JNIEnv* env, jobject this, jbyteArray n_object, jlongArray nSize,
+    jbyteArray e_object, jlongArray eSize)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#ifndef NO_RSA
+    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
+    byte* n = getByteArray(env, n_object);
+    byte* e = getByteArray(env, e_object);
+    word32 nSz;
+    word32 eSz;
+
+    (*env)->GetLongArrayRegion(env, nSize, 0, 1, (jlong*) &nSz);
+    (*env)->GetLongArrayRegion(env, eSize, 0, 1, (jlong*) &eSz);
+
+    ret = (!key || !n || !e)
+        ? BAD_FUNC_ARG
+        : RsaFlattenPublicKey(key, e, &eSz, n, &nSz);
+
+    (*env)->SetLongArrayRegion(env, nSize, 0, 1, (jlong*) &nSz);
+    (*env)->SetLongArrayRegion(env, eSize, 0, 1, (jlong*) &eSz);
+
+    releaseByteArray(env, n_object, n, ret);
+    releaseByteArray(env, e_object, e, ret);
+
+#endif
+
+    return ret;
 }
 
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_makeKey(

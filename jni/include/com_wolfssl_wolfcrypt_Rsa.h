@@ -22,16 +22,32 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rsa_mallocNativeStruct
  * Method:    decodeRawPublicKey
  * Signature: (Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;J)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_decodeRawPublicKey
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_decodeRawPublicKey__Ljava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2J
   (JNIEnv *, jobject, jobject, jlong, jobject, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    decodeRawPublicKey
+ * Signature: ([BJ[BJ)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_decodeRawPublicKey___3BJ_3BJ
+  (JNIEnv *, jobject, jbyteArray, jlong, jbyteArray, jlong);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa
  * Method:    exportRawPublicKey
  * Signature: (Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_exportRawPublicKey
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_exportRawPublicKey__Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2
   (JNIEnv *, jobject, jobject, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    exportRawPublicKey
+ * Signature: ([B[J[B[J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_exportRawPublicKey___3B_3J_3B_3J
+  (JNIEnv *, jobject, jbyteArray, jlongArray, jbyteArray, jlongArray);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa

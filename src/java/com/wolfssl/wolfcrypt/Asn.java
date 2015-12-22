@@ -36,5 +36,8 @@ public class Asn extends WolfObject {
 	public static native void encodeSignature(ByteBuffer encoded,
 			ByteBuffer hash, long hashSize, int hashOID);
 
+	public static native long encodeSignature(byte[] encoded,
+			byte[] hash, long hashSize, int hashOID);
+
 	public static native int getCTC_HashOID(int type);
 }
