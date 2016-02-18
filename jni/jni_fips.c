@@ -1957,7 +1957,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicEncrypt_1fips__L
     byte* in = getDirectBufferAddress(env, in_object);
     byte* out = getDirectBufferAddress(env, out_object);
     RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
-    RNG* rng = (RNG*) getNativeStruct(env, rsa_object);
+    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
 
     /**
      * Providing an rng is optional. RNG_GenerateBlock will return BAD_FUNC_ARG
@@ -1992,7 +1992,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicEncrypt_1fips___
     byte* in = getByteArray(env, in_object);
     byte* out = getByteArray(env, out_object);
     RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
-    RNG* rng = (RNG*) getNativeStruct(env, rsa_object);
+    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
 
     /**
      * Providing an rng is optional. RNG_GenerateBlock will return BAD_FUNC_ARG
@@ -2702,6 +2702,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret__Lcom
     byte* out = getByteArray(env, out_buffer);
     word32 tmpOutLen;
 
+    LogStr("ecc_shared_secret(priv=%p, pub=%p, out, outLen) = %d\n", priv, pub,
+        ret);
+
     if (!priv || !pub || !out)
         ret = BAD_FUNC_ARG;
     else {
@@ -2710,12 +2713,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret__Lcom
         ret = ecc_shared_secret(priv, pub, out, &tmpOutLen);
 
         (*env)->SetLongArrayRegion(env, outlen, 0, 1, (jlong*) &tmpOutLen);
-    }
 
-    LogStr("ecc_shared_secret(priv=%p, pub=%p, out, outLen) = %d\n", priv, pub,
-        ret);
-    LogStr("out:\n");
-    LogHex(out, tmpOutLen);
+        LogStr("out:\n");
+        LogHex(out, tmpOutLen);
+    }
 
     releaseByteArray(env, out_buffer, out, ret);
 
@@ -2816,6 +2817,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963__Lcom_w
     byte* out = getByteArray(env, out_buffer);
     word32 tmpOutLen;
 
+    LogStr("ecc_export_x963(key=%p, out, outLen) = %d\n", key, ret);
+
     if (!key || !out)
         ret = BAD_FUNC_ARG;
     else {
@@ -2824,11 +2827,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963__Lcom_w
         ret = ecc_export_x963(key, out, &tmpOutLen);
 
         (*env)->SetLongArrayRegion(env, outLen, 0, 1, (jlong*) &tmpOutLen);
+
+        LogStr("out:\n");
+        LogHex(out, tmpOutLen);
     }
 
-    LogStr("ecc_export_x963(key=%p, out, outLen) = %d\n", key, ret);
-    LogStr("out:\n");
-    LogHex(out, tmpOutLen);
 
     releaseByteArray(env, out_buffer, out, ret);
 
