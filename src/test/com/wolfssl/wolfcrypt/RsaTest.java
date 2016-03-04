@@ -31,6 +31,11 @@ import com.wolfssl.wolfcrypt.Rsa;
 
 public class RsaTest {
 
+	private ByteBuffer n = ByteBuffer
+			.allocateDirect(WolfCrypt.SIZE_OF_2048_BITS);
+	private ByteBuffer e = ByteBuffer
+			.allocateDirect(WolfCrypt.SIZE_OF_2048_BITS);
+
 	@Test
 	public void constructorShouldInitializeNativeStruct() {
 		assertNotEquals(NativeStruct.NULL, new Rsa().getNativeStruct());
@@ -38,9 +43,35 @@ public class RsaTest {
 
 	@Test
 	public void decodeRawPublicKeyShouldNotRaiseExceptions() {
-		/*
-		 * TODO Rsa init needed for this test.
-		 */
+		Rsa key = new Rsa();
+
+		n.put(Util
+				.h2b("aff5f9e2e2622320d44dbf54f2274a0f96fa7d70a63ddaa563f48811"
+						+ "43112bb3c36fe65ba0c9ad99d6fb6e53cb08e3938ee415b3a8cb"
+						+ "7f9602f2154fab83dd160fa6f509ba2c41295af9eea8787d333e"
+						+ "961461447fc60b3c61616ef5b94e822114e6fad44d1f2c476bc2"
+						+ "3bc03609e2e70a483d826409fdb7c50a91269a773976ef137e7f"
+						+ "a477c3951e8fbcb48f2378aa5e430e8c60b481beeb63df9abe10"
+						+ "c7ccf266e394fbd925e8725e4675fb6ad895caed4b31d751c871"
+						+ "2533e1c42ebefe9166e1aa20631521858c7548c61626ede105f2"
+						+ "812632bac96eb769c9be560beef4200b86409727a5a61d1cc583"
+						+ "1785ba4d42f02dd298a56bbbd6c479ce724d5bb5")).rewind();
+		e.put(Util
+				.h2b("00000000000000000000000000000000000000000000000000000000"
+						+ "0000000000000000000000000000000000000000000000000000"
+						+ "0000000000000000000000000000000000000000000000000000"
+						+ "0000000000000000000000000000000000000000000000000000"
+						+ "0000000000000000000000000000000000000000000000000000"
+						+ "0000000000000000000000000000000000000000000000000000"
+						+ "0000000000000000000000000000000000000000000000000000"
+						+ "0000000000000000000000000000000000000000000000000000"
+						+ "0000000000000000000000000000000000000000000000000000"
+						+ "0000000000000000000000000000000000d0ee61")).rewind();
+
+		assertEquals(WolfCrypt.SUCCESS, Fips.InitRsaKey_fips(key, null));
+		key.decodeRawPublicKey(n, n.limit(), e, e.limit());
+
+		assertEquals(WolfCrypt.SUCCESS, Fips.FreeRsaKey_fips(key));
 	}
 
 	@Test
@@ -69,7 +100,7 @@ public class RsaTest {
 
 		key.makeKey(1024, 65537, rng);
 		key.exportRawPublicKey(n, e);
-		
+
 		assertEquals(WolfCrypt.SUCCESS, Fips.FreeRng_fips(rng));
 		assertEquals(WolfCrypt.SUCCESS, Fips.FreeRsaKey_fips(key));
 	}

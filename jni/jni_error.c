@@ -19,13 +19,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include <com_wolfssl_wolfcrypt_WolfCryptError.h>
-
 #ifndef __ANDROID__
     #include <wolfssl/options.h>
 #endif
 
+#include <com_wolfssl_wolfcrypt_WolfCryptError.h>
+
 #include <wolfssl/wolfcrypt/error-crypt.h>
+
 JNIEXPORT jstring JNICALL Java_com_wolfssl_wolfcrypt_WolfCryptError_wc_1GetErrorString
   (JNIEnv* env, jclass obj, jint error)
 {

@@ -19,12 +19,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include <com_wolfssl_wolfcrypt_Hmac.h>
-#include <wolfcrypt_jni_error.h>
-
 #ifndef __ANDROID__
     #include <wolfssl/options.h>
 #endif
+
+#include <com_wolfssl_wolfcrypt_Hmac.h>
+#include <wolfcrypt_jni_error.h>
 
 #include <wolfssl/wolfcrypt/hmac.h>
 

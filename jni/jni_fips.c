@@ -19,16 +19,15 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#ifndef __ANDROID__
+    #include <wolfssl/options.h>
+#endif
+
 #include <com_wolfssl_wolfcrypt_WolfCrypt.h>
 #include <com_wolfssl_wolfcrypt_Fips.h>
 #include <wolfcrypt_jni_NativeStruct.h>
 #include <wolfcrypt_jni_error.h>
 
-#ifndef __ANDROID__
-    #include <wolfssl/options.h>
-#endif
-
-#include <stdio.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/fips_test.h>
 #include <wolfssl/wolfcrypt/aes.h>
