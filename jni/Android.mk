@@ -28,7 +28,8 @@ LOCAL_SRC_FILES  := jni_fips.c \
 					jni_rsa.c \
 					jni_dh.c \
 					jni_ecc.c \
-					jni_asn.c
+					jni_asn.c \
+					jni_logging.c
 
 LOCAL_CFLAGS     := -DHAVE_CONFIG_H -Wall -Wno-unused
 LOCAL_LDLIBS     := -llog
