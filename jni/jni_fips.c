@@ -1318,18 +1318,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateKeyDecode_1fips
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    word32 tmpIdx;
+    jlong tmpIdx;
     byte* input = getDirectBufferAddress(env, input_object);
     RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
 
     if (!input || !key)
         return BAD_FUNC_ARG;
 
-    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpIdx);
+    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
-    ret = RsaPrivateKeyDecode_fips(input, &tmpIdx, key, inSz);
+    ret = 0; RsaPrivateKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
 
-    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpIdx);
+    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
     LogStr("RsaPrivateKeyDecode_fips(input, inOutIdx, key=%p, inSz) = %d\n",
         key, ret);
@@ -1349,20 +1349,19 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateKeyDecode_1fips
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    word32 tmpIdx;
+    jlong tmpIdx;
     byte* input = getByteArray(env, input_object);
     RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
 
 
-    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpIdx);
-    LogStr("inOutIdx=%u\n", tmpIdx);
+    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
     ret = (!input || !key)
         ? BAD_FUNC_ARG
-        : RsaPrivateKeyDecode_fips(input, &tmpIdx, key, inSz);
+        : RsaPrivateKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
 
-    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpIdx);
-    LogStr("inOutIdx=%u\n", tmpIdx);
+    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
+
     LogStr("RsaPrivateKeyDecode_fips(input, inOutIdx, key=%p, inSz) = %d\n",
         key, ret);
     LogStr("input[%u]: [%p]\n", (word32)inSz, input);
@@ -1383,18 +1382,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicKeyDecode_1fips_
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    word32 tmpIdx;
+    jlong tmpIdx;
     byte* input = getDirectBufferAddress(env, input_object);
     RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
 
     if (!input || !key)
         return BAD_FUNC_ARG;
 
-    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpIdx);
+    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
-    ret = RsaPublicKeyDecode_fips(input, &tmpIdx, key, inSz);
+    ret = RsaPublicKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
 
-    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpIdx);
+    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
     LogStr("RsaPublicKeyDecode_fips(input, inOutIdx, key=%p, inSz) = %d\n", key,
         ret);
@@ -1414,17 +1413,17 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicKeyDecode_1fips_
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    word32 tmpIdx;
+    jlong tmpIdx;
     byte* input = getByteArray(env, input_object);
     RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
 
-    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpIdx);
+    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
     ret = (!input || !key)
         ? BAD_FUNC_ARG
-        : RsaPublicKeyDecode_fips(input, &tmpIdx, key, inSz);
+        : RsaPublicKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
 
-    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpIdx);
+    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
     LogStr("RsaPublicKeyDecode_fips(input, inOutIdx, key=%p, inSz) = %d\n", key,
         ret);
@@ -2253,18 +2252,19 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhGenerateKeyPair__Lcom_w
     RNG* rng = (RNG*) getNativeStruct(env, rng_object);
     byte* priv = getDirectBufferAddress(env, priv_buffer);
     byte* pub = getDirectBufferAddress(env, pub_buffer);
-    word32 tmpPrivSz, tmpPubSz;
+    jlong tmpPrivSz, tmpPubSz;
 
     if (!key || !rng || !priv || !pub)
         return BAD_FUNC_ARG;
 
-    (*env)->GetLongArrayRegion(env, privSz, 0, 1, (jlong*) &tmpPrivSz);
-    (*env)->GetLongArrayRegion(env, pubSz, 0, 1, (jlong*) &tmpPubSz);
+    (*env)->GetLongArrayRegion(env, privSz, 0, 1, &tmpPrivSz);
+    (*env)->GetLongArrayRegion(env, pubSz, 0, 1, &tmpPubSz);
 
-    ret = DhGenerateKeyPair(key, rng, priv, &tmpPrivSz, pub, &tmpPubSz);
+    ret = DhGenerateKeyPair(key, rng, priv, (word32*) &tmpPrivSz,
+                                      pub,  (word32*) &tmpPubSz);
 
-    (*env)->SetLongArrayRegion(env, privSz, 0, 1, (jlong*) &tmpPrivSz);
-    (*env)->SetLongArrayRegion(env, pubSz, 0, 1, (jlong*) &tmpPubSz);
+    (*env)->SetLongArrayRegion(env, privSz, 0, 1, &tmpPrivSz);
+    (*env)->SetLongArrayRegion(env, pubSz, 0, 1, &tmpPubSz);
 
     LogStr("DhGenerateKeyPair(key=%p, rng=%p, priv, privSz, pub, pubSz) = %d\n",
         key, rng, ret);
@@ -2291,17 +2291,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhGenerateKeyPair__Lcom_w
     RNG* rng = (RNG*) getNativeStruct(env, rng_object);
     byte* priv = getByteArray(env, priv_buffer);
     byte* pub = getByteArray(env, pub_buffer);
-    word32 tmpPrivSz, tmpPubSz;
+    jlong tmpPrivSz, tmpPubSz;
 
-    (*env)->GetLongArrayRegion(env, privSz, 0, 1, (jlong*) &tmpPrivSz);
-    (*env)->GetLongArrayRegion(env, pubSz, 0, 1, (jlong*) &tmpPubSz);
+    (*env)->GetLongArrayRegion(env, privSz, 0, 1, &tmpPrivSz);
+    (*env)->GetLongArrayRegion(env, pubSz, 0, 1, &tmpPubSz);
 
     ret = (!key || !rng || !priv || !pub)
         ? BAD_FUNC_ARG
-        : DhGenerateKeyPair(key, rng, priv, &tmpPrivSz, pub, &tmpPubSz);
+        : DhGenerateKeyPair(key, rng, priv, (word32*) &tmpPrivSz,
+                                      pub,  (word32*) &tmpPubSz);
 
-    (*env)->SetLongArrayRegion(env, privSz, 0, 1, (jlong*) &tmpPrivSz);
-    (*env)->SetLongArrayRegion(env, pubSz, 0, 1, (jlong*) &tmpPubSz);
+    (*env)->SetLongArrayRegion(env, privSz, 0, 1, &tmpPrivSz);
+    (*env)->SetLongArrayRegion(env, pubSz, 0, 1, &tmpPubSz);
 
     LogStr("DhGenerateKeyPair(key=%p, rng=%p, priv, privSz, pub, pubSz) = %d\n",
         key, rng, ret);
@@ -2331,16 +2332,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhAgree__Lcom_wolfssl_wol
     byte* agree = getDirectBufferAddress(env, agree_buffer);
     byte* priv = getDirectBufferAddress(env, priv_buffer);
     byte* pub = getDirectBufferAddress(env, pub_buffer);
-    word32 tmpAgreeSz;
+    jlong tmpAgreeSz;
 
     if (!key || !agree || !priv || !pub)
         return BAD_FUNC_ARG;
 
-    (*env)->GetLongArrayRegion(env, agreeSz, 0, 1, (jlong*) &tmpAgreeSz);
+    (*env)->GetLongArrayRegion(env, agreeSz, 0, 1, &tmpAgreeSz);
 
-    ret = DhAgree(key, agree, &tmpAgreeSz, priv, privSz, pub, pubSz);
+    ret = DhAgree(key, agree, (word32*) &tmpAgreeSz, priv, privSz, pub, pubSz);
 
-    (*env)->SetLongArrayRegion(env, agreeSz, 0, 1, (jlong*) &tmpAgreeSz);
+    (*env)->SetLongArrayRegion(env, agreeSz, 0, 1, &tmpAgreeSz);
 
     LogStr("DhAgree(key=%p, agree, agreeSz, priv, privSz, pub, pubSz) = %d\n",
         key, ret);
@@ -2369,15 +2370,15 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhAgree__Lcom_wolfssl_wol
     byte* agree = getByteArray(env, agree_buffer);
     byte* priv = getByteArray(env, priv_buffer);
     byte* pub = getByteArray(env, pub_buffer);
-    word32 tmpAgreeSz;
+    jlong tmpAgreeSz;
 
-    (*env)->GetLongArrayRegion(env, agreeSz, 0, 1, (jlong*) &tmpAgreeSz);
+    (*env)->GetLongArrayRegion(env, agreeSz, 0, 1, &tmpAgreeSz);
 
     ret = (!key || !agree || !priv || !pub)
         ? BAD_FUNC_ARG
-        : DhAgree(key, agree, &tmpAgreeSz, priv, privSz, pub, pubSz);
+        : DhAgree(key, agree, (word32*) &tmpAgreeSz, priv, privSz, pub, pubSz);
 
-    (*env)->SetLongArrayRegion(env, agreeSz, 0, 1, (jlong*) &tmpAgreeSz);
+    (*env)->SetLongArrayRegion(env, agreeSz, 0, 1, &tmpAgreeSz);
 
     LogStr("DhAgree(key=%p, agree, agreeSz, priv, privSz, pub, pubSz) = %d\n",
         key, ret);
@@ -2407,16 +2408,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhKeyDecode__Ljava_nio_By
 
     DhKey* key = (DhKey*) getNativeStruct(env, key_object);
     byte* input = getDirectBufferAddress(env, input_buffer);
-    word32 tmpInOutIdx;
+    jlong tmpInOutIdx;
 
     if (!key || !input)
         return BAD_FUNC_ARG;
 
-    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpInOutIdx);
+    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpInOutIdx);
 
-    ret = DhKeyDecode(input, &tmpInOutIdx, key, inSz);
+    ret = DhKeyDecode(input, (word32*) &tmpInOutIdx, key, inSz);
 
-    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpInOutIdx);
+    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpInOutIdx);
 
     LogStr("DhKeyDecode(input, &inOutIdx, key=%p, inSz) = %d\n", key, ret);
     LogStr("input[%u]: [%p]\n", (word32)inSz, input);
@@ -2437,15 +2438,15 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhKeyDecode___3B_3JLcom_w
 
     DhKey* key = (DhKey*) getNativeStruct(env, key_object);
     byte* input = getByteArray(env, input_buffer);
-    word32 tmpInOutIdx;
+    jlong tmpInOutIdx;
 
-    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpInOutIdx);
+    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpInOutIdx);
 
     ret = (!key || !input)
         ? BAD_FUNC_ARG
-        : DhKeyDecode(input, &tmpInOutIdx, key, inSz);
+        : DhKeyDecode(input, (word32*) &tmpInOutIdx, key, inSz);
 
-    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, (jlong*) &tmpInOutIdx);
+    (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpInOutIdx);
 
     LogStr("DhKeyDecode(input, &inOutIdx, key=%p, inSz) = %d\n", key, ret);
     LogStr("input[%u]: [%p]\n", (word32)inSz, input);
@@ -2528,18 +2529,19 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhParamsLoad__Ljava_nio_B
     byte* input = getDirectBufferAddress(env, input_buffer);
     byte* p = getDirectBufferAddress(env, p_buffer);
     byte* g = getDirectBufferAddress(env, g_buffer);
-    word32 tmpPInOutSz, tmpGInOutSz;
+    jlong tmpPInOutSz, tmpGInOutSz;
 
     if (!input || !p || !g)
         return BAD_FUNC_ARG;
 
-    (*env)->GetLongArrayRegion(env, pInOutSz, 0, 1, (jlong*) &tmpPInOutSz);
-    (*env)->GetLongArrayRegion(env, gInOutSz, 0, 1, (jlong*) &tmpGInOutSz);
+    (*env)->GetLongArrayRegion(env, pInOutSz, 0, 1, &tmpPInOutSz);
+    (*env)->GetLongArrayRegion(env, gInOutSz, 0, 1, &tmpGInOutSz);
 
-    ret = DhParamsLoad(input, inSz, p, &tmpPInOutSz, g, &tmpGInOutSz);
+    ret = DhParamsLoad(input, inSz, p, (word32*) &tmpPInOutSz,
+                                    g, (word32*) &tmpGInOutSz);
 
-    (*env)->SetLongArrayRegion(env, pInOutSz, 0, 1, (jlong*) &tmpPInOutSz);
-    (*env)->SetLongArrayRegion(env, gInOutSz, 0, 1, (jlong*) &tmpGInOutSz);
+    (*env)->SetLongArrayRegion(env, pInOutSz, 0, 1, &tmpPInOutSz);
+    (*env)->SetLongArrayRegion(env, gInOutSz, 0, 1, &tmpGInOutSz);
 
     LogStr("DhParamsLoad(input, inSz, p, &pInOutSz, g, &gInOutSz) = %d\n", ret);
     LogStr("input[%u]: [%p]\n", (word32)inSz, input);
@@ -2566,17 +2568,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhParamsLoad___3BJ_3B_3J_
     byte* input = getByteArray(env, input_buffer);
     byte* p = getByteArray(env, p_buffer);
     byte* g = getByteArray(env, g_buffer);
-    word32 tmpPInOutSz, tmpGInOutSz;
+    jlong tmpPInOutSz, tmpGInOutSz;
 
-    (*env)->GetLongArrayRegion(env, pInOutSz, 0, 1, (jlong*) &tmpPInOutSz);
-    (*env)->GetLongArrayRegion(env, gInOutSz, 0, 1, (jlong*) &tmpGInOutSz);
+    (*env)->GetLongArrayRegion(env, pInOutSz, 0, 1, &tmpPInOutSz);
+    (*env)->GetLongArrayRegion(env, gInOutSz, 0, 1, &tmpGInOutSz);
 
     ret = (!input || !p || !g)
         ? BAD_FUNC_ARG
-        : DhParamsLoad(input, inSz, p, &tmpPInOutSz, g, &tmpGInOutSz);
+        : DhParamsLoad(input, inSz, p, (word32*) &tmpPInOutSz,
+                                    g, (word32*) &tmpGInOutSz);
 
-    (*env)->SetLongArrayRegion(env, pInOutSz, 0, 1, (jlong*) &tmpPInOutSz);
-    (*env)->SetLongArrayRegion(env, gInOutSz, 0, 1, (jlong*) &tmpGInOutSz);
+    (*env)->SetLongArrayRegion(env, pInOutSz, 0, 1, &tmpPInOutSz);
+    (*env)->SetLongArrayRegion(env, gInOutSz, 0, 1, &tmpGInOutSz);
 
     LogStr("DhParamsLoad(input, inSz, p, &pInOutSz, g, &gInOutSz) = %d\n", ret);
     LogStr("input[%u]: [%p]\n", (word32)inSz, input);
@@ -2668,16 +2671,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret__Lcom
     ecc_key* priv = (ecc_key*) getNativeStruct(env, priv_object);
     ecc_key* pub = (ecc_key*) getNativeStruct(env, pub_object);
     byte* out = getDirectBufferAddress(env, out_buffer);
-    word32 tmpOutLen;
+    jlong tmpOutLen;
 
     if (!priv || !pub || !out)
         return BAD_FUNC_ARG;
 
-    (*env)->GetLongArrayRegion(env, outlen, 0, 1, (jlong*) &tmpOutLen);
+    (*env)->GetLongArrayRegion(env, outlen, 0, 1, &tmpOutLen);
 
-    ret = ecc_shared_secret(priv, pub, out, &tmpOutLen);
+    ret = ecc_shared_secret(priv, pub, out, (word32*) &tmpOutLen);
 
-    (*env)->SetLongArrayRegion(env, outlen, 0, 1, (jlong*) &tmpOutLen);
+    (*env)->SetLongArrayRegion(env, outlen, 0, 1, &tmpOutLen);
 
     LogStr("ecc_shared_secret(priv=%p, pub=%p, out, outLen) = %d\n", priv, pub,
         ret);
@@ -2700,7 +2703,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret__Lcom
     ecc_key* priv = (ecc_key*) getNativeStruct(env, priv_object);
     ecc_key* pub = (ecc_key*) getNativeStruct(env, pub_object);
     byte* out = getByteArray(env, out_buffer);
-    word32 tmpOutLen;
+    jlong tmpOutLen;
 
     LogStr("ecc_shared_secret(priv=%p, pub=%p, out, outLen) = %d\n", priv, pub,
         ret);
@@ -2708,11 +2711,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret__Lcom
     if (!priv || !pub || !out)
         ret = BAD_FUNC_ARG;
     else {
-        (*env)->GetLongArrayRegion(env, outlen, 0, 1, (jlong*) &tmpOutLen);
+        (*env)->GetLongArrayRegion(env, outlen, 0, 1, &tmpOutLen);
 
-        ret = ecc_shared_secret(priv, pub, out, &tmpOutLen);
+        ret = ecc_shared_secret(priv, pub, out, (word32*) &tmpOutLen);
 
-        (*env)->SetLongArrayRegion(env, outlen, 0, 1, (jlong*) &tmpOutLen);
+        (*env)->SetLongArrayRegion(env, outlen, 0, 1, &tmpOutLen);
 
         LogStr("out[%u]: [%p]\n", (word32)tmpOutLen, out);
         LogHex(out, tmpOutLen);
@@ -2785,16 +2788,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963__Lcom_w
 
     ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
     byte* out = getDirectBufferAddress(env, out_buffer);
-    word32 tmpOutLen;
+    jlong tmpOutLen;
 
     if (!key || !out)
         return BAD_FUNC_ARG;
 
-    (*env)->GetLongArrayRegion(env, outLen, 0, 1, (jlong*) &tmpOutLen);
+    (*env)->GetLongArrayRegion(env, outLen, 0, 1, &tmpOutLen);
 
-    ret = ecc_export_x963(key, out, &tmpOutLen);
+    ret = ecc_export_x963(key, out, (word32*) &tmpOutLen);
 
-    (*env)->SetLongArrayRegion(env, outLen, 0, 1, (jlong*) &tmpOutLen);
+    (*env)->SetLongArrayRegion(env, outLen, 0, 1, &tmpOutLen);
 
     LogStr("ecc_export_x963(key=%p, out, outLen) = %d\n", key, ret);
     LogStr("out[%u]: [%p]\n", (word32)tmpOutLen, out);
@@ -2815,18 +2818,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963__Lcom_w
 
     ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
     byte* out = getByteArray(env, out_buffer);
-    word32 tmpOutLen;
+    jlong tmpOutLen;
 
     LogStr("ecc_export_x963(key=%p, out, outLen) = %d\n", key, ret);
 
     if (!key || !out)
         ret = BAD_FUNC_ARG;
     else {
-        (*env)->GetLongArrayRegion(env, outLen, 0, 1, (jlong*) &tmpOutLen);
+        (*env)->GetLongArrayRegion(env, outLen, 0, 1, &tmpOutLen);
 
-        ret = ecc_export_x963(key, out, &tmpOutLen);
+        ret = ecc_export_x963(key, out, (word32*) &tmpOutLen);
 
-        (*env)->SetLongArrayRegion(env, outLen, 0, 1, (jlong*) &tmpOutLen);
+        (*env)->SetLongArrayRegion(env, outLen, 0, 1, &tmpOutLen);
 
         LogStr("out[%u]: [%p]\n", (word32)tmpOutLen, out);
         LogHex(out, tmpOutLen);

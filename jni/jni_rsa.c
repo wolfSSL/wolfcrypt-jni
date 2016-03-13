@@ -133,18 +133,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_exportRawPublicKey___3B_3B
     RsaKey* key = (RsaKey*) getNativeStruct(env, this);
     byte* n = getByteArray(env, n_object);
     byte* e = getByteArray(env, e_object);
-    word32 nSz;
-    word32 eSz;
+    jlong nSz;
+    jlong eSz;
 
-    (*env)->GetLongArrayRegion(env, nSize, 0, 1, (jlong*) &nSz);
-    (*env)->GetLongArrayRegion(env, eSize, 0, 1, (jlong*) &eSz);
+    (*env)->GetLongArrayRegion(env, nSize, 0, 1, &nSz);
+    (*env)->GetLongArrayRegion(env, eSize, 0, 1, &eSz);
 
     ret = (!key || !n || !e)
         ? BAD_FUNC_ARG
-        : RsaFlattenPublicKey(key, e, &eSz, n, &nSz);
+        : RsaFlattenPublicKey(key, e, (word32*) &eSz, n, (word32*) &nSz);
 
-    (*env)->SetLongArrayRegion(env, nSize, 0, 1, (jlong*) &nSz);
-    (*env)->SetLongArrayRegion(env, eSize, 0, 1, (jlong*) &eSz);
+    (*env)->SetLongArrayRegion(env, nSize, 0, 1, &nSz);
+    (*env)->SetLongArrayRegion(env, eSize, 0, 1, &eSz);
 
     releaseByteArray(env, n_object, n, ret);
     releaseByteArray(env, e_object, e, ret);
