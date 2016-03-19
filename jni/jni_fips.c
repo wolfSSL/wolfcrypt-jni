@@ -23,6 +23,8 @@
     #include <wolfssl/options.h>
 #endif
 
+#include <stdio.h>
+
 #include <com_wolfssl_wolfcrypt_WolfCrypt.h>
 #include <com_wolfssl_wolfcrypt_Fips.h>
 #include <wolfcrypt_jni_NativeStruct.h>
