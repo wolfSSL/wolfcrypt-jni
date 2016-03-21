@@ -19,14 +19,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#ifndef __ANDROID__
-    #include <wolfssl/options.h>
-#endif
+#include <wolfssl/options.h>
+#include <wolfssl/wolfcrypt/random.h>
 
 #include <com_wolfssl_wolfcrypt_Rng.h>
 #include <wolfcrypt_jni_error.h>
 
-#include <wolfssl/wolfcrypt/random.h>
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
