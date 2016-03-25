@@ -29,7 +29,7 @@
 			<include name="wolfcrypt-jni.jar" />
 		</fileset>
 		<fileset dir="${env.JUNIT_HOME}">
-			<include name="${junit4}" />
+			<include name="junit-4.12.jar" />
 			<include name="ant-junit4.jar" />
 		</fileset>
 	</path>
