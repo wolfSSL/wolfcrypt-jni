@@ -21,7 +21,9 @@
 
 #include <stdio.h>
 
-#include <wolfssl/options.h>
+#ifndef __ANDROID__
+    #include <wolfssl/options.h>
+#endif
 #include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/fips_test.h>
 #include <wolfssl/wolfcrypt/aes.h>
