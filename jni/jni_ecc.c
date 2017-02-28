@@ -62,7 +62,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1init(
 
     ret = wc_ecc_init(ecc);
     if (ret != 0)
-        throwWolfCryptException(env, "Failed to initialize Ecc object");
+        throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("ecc_init(ecc=%p) = %d\n", ecc, ret);
 #else
@@ -96,13 +96,32 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key(
 
     ret = wc_ecc_make_key(rng, size, ecc);
     if (ret != 0)
-        throwWolfCryptException(env, "Failed to generate Ecc key");
+        throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("ecc_make_key(rng, size, ecc=%p) = %d\n", ecc, ret);
 #else
     throwNotCompiledInException(env);
 #endif
 }
+
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1check_1key(
+    JNIEnv* env, jobject this)
+{
+#ifdef HAVE_ECC
+    int ret = 0;
+    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+
+    ret = wc_ecc_check_key(ecc);
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_ecc_check_key(ecc=%p) = %d\n", ecc, ret);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 
 JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1x963(
@@ -116,7 +135,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1x963(
 
     ret = wc_ecc_import_x963(key, keySz, ecc);
     if (ret != 0)
-        throwWolfCryptException(env, "Failed to import X9.63 key");
+        throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("ecc_import_x963(key, keySz, ecc=%p) = %d\n", ecc, ret);
 #else
@@ -144,7 +163,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPrivateKeyDecode(
 
     ret = wc_EccPrivateKeyDecode(key, &idx, ecc, keySz);
     if (ret != 0)
-        throwWolfCryptException(env, "Failed to decode private key");
+        throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_EccPrivateKeyDecode(key, keySz, ecc=%p) = %d\n", ecc, ret);
 #else
@@ -172,7 +191,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyDecode(
 
     ret = wc_EccPublicKeyDecode(key, &idx, ecc, keySz);
     if (ret != 0)
-        throwWolfCryptException(env, "Failed to decode public key");
+        throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_EccPublicKeyDecode(key, keySz, ecc=%p) = %d\n", ecc, ret);
 #else
@@ -218,7 +237,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
             throwWolfCryptException(env, "Failed to allocate shared secret");
         }
     } else {
-        throwWolfCryptException(env, "Failed to generate shared secret");
+        throwWolfCryptExceptionFromError(env, ret);
     }
 
     LogStr("wc_ecc_shared_secret(priv, pub, output=%p, outputSz) = %d\n",
@@ -266,7 +285,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
             throwWolfCryptException(env, "Failed to allocate signature");
         }
     } else {
-        throwWolfCryptException(env, "Failed to generate signature");
+        throwWolfCryptExceptionFromError(env, ret);
     }
 
     LogStr("wc_ecc_sign_hash(input, inSz, output, &outSz, rng, ecc) = %d\n",
@@ -301,7 +320,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     if (ret == 0) {
         ret = status;
     } else {
-        throwWolfCryptException(env, "Failed to verify signature");
+        throwWolfCryptExceptionFromError(env, ret);
     }
 
     LogStr(

@@ -49,6 +49,8 @@ public class Ecc extends NativeStruct {
 	private native void wc_ecc_free();
 
 	private native void wc_ecc_make_key(Rng rng, int size);
+	
+	private native void wc_ecc_check_key();
 
 	private native byte[] wc_ecc_shared_secret(Ecc pubKey);
 
@@ -91,6 +93,15 @@ public class Ecc extends NativeStruct {
 			state = WolfCryptState.READY;
 		} else {
 			throw new IllegalStateException("Object already has a key.");
+		}
+	}
+	
+	public void checkKey() {
+		if (state == WolfCryptState.READY) {
+			wc_ecc_check_key();
+		} else {
+			throw new IllegalStateException(
+					"No available key to perform the opperation.");
 		}
 	}
 

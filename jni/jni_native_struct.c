@@ -26,6 +26,7 @@
 
 #include <com_wolfssl_wolfcrypt_NativeStruct.h>
 #include <wolfcrypt_jni_NativeStruct.h>
+#include <wolfcrypt_jni_error.h>
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
@@ -53,13 +54,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_NativeStruct_xfree(
 /*
  * Utilitary functions
  */
-static void throwGetNativeStructError(JNIEnv* env)
-{
-    (*env)->ThrowNew(env,
-        (*env)->FindClass(env, "com/wolfssl/wolfcrypt/WolfCryptException"),
-        "Failed to retrieve native struct");
-}
-
 void* getNativeStruct(JNIEnv* env, jobject this)
 {
     if (this) {
@@ -68,7 +62,7 @@ void* getNativeStruct(JNIEnv* env, jobject this)
         jlong nativeStruct = (*env)->GetLongField(env, this, field);
 
         if (!nativeStruct)
-            throwGetNativeStructError(env);
+            throwWolfCryptException(env, "Failed to retrieve native struct");
 
         return (void*) nativeStruct;
     }

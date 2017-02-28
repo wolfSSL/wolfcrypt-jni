@@ -49,9 +49,10 @@ public class EccTest {
 	public void setUpEcc() {
 		try {
 			key = new Ecc();
-		} catch (UnsupportedOperationException e) {
-			if (e.getMessage().equals("Feature not compiled in"))
-				Assume.assumeNoException(e);
+		} catch (WolfCryptException e) {
+			if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
+				System.out.println("Ecc test skipped: " + e.getError());
+			Assume.assumeNoException(e);
 		}
 	}
 

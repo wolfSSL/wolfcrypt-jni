@@ -24,16 +24,19 @@
 
 #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
 
+#include <wolfssl/wolfcrypt/error-crypt.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+void throwWolfCryptExceptionFromError(JNIEnv* env, int code);
+
 #define throwWolfCryptException(env, msg) (*env)->ThrowNew(env, \
     (*env)->FindClass(env, "com/wolfssl/wolfcrypt/WolfCryptException"), msg)
 
-#define throwNotCompiledInException(env) (*env)->ThrowNew(env,          \
-    (*env)->FindClass(env, "java/lang/UnsupportedOperationException"), \
-    "Feature not compiled in")
+#define throwNotCompiledInException(env) \
+    throwWolfCryptExceptionFromError(env, NOT_COMPILED_IN)
 
 #define throwOutOfMemoryException(env, msg) (*env)->ThrowNew(env, \
     (*env)->FindClass(env, "java/lang/OutOfMemoryError"), msg)

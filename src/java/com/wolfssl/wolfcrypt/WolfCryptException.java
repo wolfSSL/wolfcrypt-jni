@@ -29,18 +29,21 @@ import com.wolfssl.wolfcrypt.WolfCryptError;
  * @author Moisés Guimarães
  * @version 1.0, February 2015
  */
-public class WolfCryptException extends Exception {
+public class WolfCryptException extends RuntimeException {
 
 	private static final long serialVersionUID = 142053665132156225L;
     private WolfCryptError error;
+    private int code;
 
 	public WolfCryptException(String reason) {
         super(reason);
     }
 
-    public WolfCryptException(String reason, WolfCryptError error) {
-        super(reason);
-        this.error = error;
+	public WolfCryptException(int code) {
+		super(WolfCryptError.fromInt(code).getDescription());
+        
+		this.error = WolfCryptError.fromInt(code);
+		this.code = code;
     }
 
     public WolfCryptException(String reason, Throwable cause) {
@@ -53,6 +56,10 @@ public class WolfCryptException extends Exception {
 
     public WolfCryptError getError() {
         return this.error;
+    }
+    
+    public int getCode() {
+    	return this.code;
     }
 }
 
