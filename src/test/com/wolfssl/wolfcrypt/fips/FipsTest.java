@@ -47,7 +47,6 @@ public class FipsTest {
 	}
 
 	public class MyCallback implements ErrorCallback {
-		@Override
 		public void errorCallback(int ok, int err, String hash) {
 			System.out.println("in my Fips callback, ok =" + ok + " err = "
 					+ err);

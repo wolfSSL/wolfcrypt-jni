@@ -32,7 +32,7 @@ extern "C" {
     (*env)->FindClass(env, "com/wolfssl/wolfcrypt/WolfCryptException"), msg)
 
 #define throwNotCompiledInException(env) (*env)->ThrowNew(env,          \
-    (*env)->FindClass(env, "com/wolfssl/wolfcrypt/WolfCryptException"), \
+    (*env)->FindClass(env, "java/lang/UnsupportedOperationException"), \
     "Feature not compiled in")
 
 #define throwOutOfMemoryException(env, msg) (*env)->ThrowNew(env, \

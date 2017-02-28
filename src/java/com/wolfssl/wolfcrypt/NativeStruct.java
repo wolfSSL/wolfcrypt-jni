@@ -67,7 +67,7 @@ public abstract class NativeStruct extends WolfObject {
 
 	@Override
 	protected void finalize() throws Throwable {
-		setNativeStruct(NULL);
+		releaseNativeStruct();
 
 		super.finalize();
 	}
