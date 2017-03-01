@@ -29,7 +29,7 @@
 #include <wolfcrypt_jni_NativeStruct.h>
 #include <wolfcrypt_jni_error.h>
 
-#define WOLFCRYPT_JNI_DEBUG_ON
+/* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
 JNIEXPORT jlong JNICALL
@@ -147,7 +147,47 @@ JNIEXPORT jbyteArray JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1x963(
     JNIEnv* env, jobject this)
 {
-    return NULL;
+    jbyteArray result = NULL;
+
+#ifdef HAVE_ECC
+    int ret = 0;
+    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    byte* output = NULL;
+    word32 outputSz = 0;
+
+    /* get size */
+    wc_ecc_export_x963(ecc, NULL, &outputSz);
+
+    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (output == NULL) {
+        throwOutOfMemoryException(env, "Failed to allocate key buffer");
+        return result;
+    }
+
+    ret = wc_ecc_export_x963(ecc, output, &outputSz);
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, outputSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                                                         (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env, "Failed to allocate key");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_ecc_export_x963(ecc, output=%p, outputSz) = %d\n", output, ret);
+    LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
+    LogHex((byte*) output, outputSz);
+
+    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
 }
 
 JNIEXPORT void JNICALL
@@ -175,7 +215,45 @@ JNIEXPORT jbyteArray JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccKeyToDer(
     JNIEnv* env, jobject this)
 {
-    return NULL;
+    jbyteArray result = NULL;
+
+#ifdef HAVE_ECC
+    int ret = 0;
+    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    byte* output = NULL;
+    word32 outputSz = 256;
+
+    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (output == NULL) {
+        throwOutOfMemoryException(env, "Failed to allocate key buffer");
+        return result;
+    }
+
+    ret = wc_EccKeyToDer(ecc, output, outputSz);
+    if (ret >= 0) {
+        outputSz = ret;
+        result = (*env)->NewByteArray(env, outputSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                                                         (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env, "Failed to allocate key");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_EccKeyToDer(ecc, output=%p, outputSz) = %d\n", output, ret);
+    LogStr("output[%u]: [%p]\n", outputSz, output);
+    LogHex((byte*) output, outputSz);
+
+    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
 }
 
 JNIEXPORT void JNICALL
@@ -203,7 +281,45 @@ JNIEXPORT jbyteArray JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyToDer(
     JNIEnv* env, jobject this)
 {
-    return NULL;
+    jbyteArray result = NULL;
+
+#ifdef HAVE_ECC
+    int ret = 0;
+    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    byte* output = NULL;
+    word32 outputSz = 256;
+
+    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (output == NULL) {
+        throwOutOfMemoryException(env, "Failed to allocate key buffer");
+        return result;
+    }
+
+    ret = wc_EccPublicKeyToDer(ecc, output, outputSz, 1);
+    if (ret >= 0) {
+        outputSz = ret;
+        result = (*env)->NewByteArray(env, outputSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                                                         (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env, "Failed to allocate key");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_EccPublicKeyToDer(ecc, out=%p, outSz) = %d\n", output, ret);
+    LogStr("output[%u]: [%p]\n", outputSz, output);
+    LogHex((byte*) output, outputSz);
+
+    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
 }
 
 JNIEXPORT jbyteArray JNICALL

@@ -63,38 +63,54 @@ public class EccTest {
 
 	@Test
 	public void sharedSecretShouldMatch() {
+		Ecc pub = new Ecc();
 		Ecc peer = new Ecc();
 
-		key.makeKey(rng, 32);
-		peer.makeKey(rng, 32);
+		key.makeKey(rng, 66);
+		peer.makeKey(rng, 66);
+		pub.importX963(key.exportX963());
+		
+		byte[] sharedSecretA = key.makeSharedSecret(peer);
+		byte[] sharedSecretB = peer.makeSharedSecret(pub);
 
-		assertArrayEquals(key.makeSharedSecret(peer),
-				peer.makeSharedSecret(key));
+		assertArrayEquals(sharedSecretA, sharedSecretB);
 	}
 
 	@Test
 	public void signatureShouldMatchDecodingKeys() {
+		Ecc pub = new Ecc();
 		Ecc peer = new Ecc();
-
-		key.privateKeyDecode(Util.h2b("30770201010420F8CF92"
+		
+		byte[] prvKey = Util.h2b("30770201010420F8CF92"
 				+ "6BBD1E28F1A8ABA1234F3274188850AD7EC7EC92"
 				+ "F88F974DAF568965C7A00A06082A8648CE3D0301"
 				+ "07A1440342000455BFF40F44509A3DCE9BB7F0C5"
 				+ "4DF5707BD4EC248E1980EC5A4CA22403622C9BDA"
 				+ "EFA2351243847616C6569506CC01A9BDF6751A42"
-				+ "F7BDA9B236225FC75D7FB4"));
+				+ "F7BDA9B236225FC75D7FB4");
 
-		peer.publicKeyDecode(Util.h2b("3059301306072A8648CE"
+		byte[] pubKey = Util.h2b("3059301306072A8648CE"
 				+ "3D020106082A8648CE3D0301070342000455BFF4"
 				+ "0F44509A3DCE9BB7F0C54DF5707BD4EC248E1980"
 				+ "EC5A4CA22403622C9BDAEFA2351243847616C656"
-				+ "9506CC01A9BDF6751A42F7BDA9B236225FC75D7FB4"));
+				+ "9506CC01A9BDF6751A42F7BDA9B236225FC75D7FB4");
+
+		key.privateKeyDecode(prvKey);
+		peer.publicKeyDecode(pubKey);
 
 		byte[] hash = "Everyone gets Friday off. ecc p".getBytes();
 
 		byte[] signature = key.sign(hash, rng);
 
 		assertTrue(peer.verify(hash, signature));
+		
+		pub.importX963(key.exportX963());
 
+		assertTrue(pub.verify(hash, signature));
+		
+		assertArrayEquals(prvKey, key.privateKeyEncode());
+		assertArrayEquals(pubKey, key.publicKeyEncode());
+		assertArrayEquals(pubKey, pub.publicKeyEncode());
+		assertArrayEquals(pubKey, peer.publicKeyEncode());
 	}
 }

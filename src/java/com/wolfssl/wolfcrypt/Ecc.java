@@ -26,7 +26,7 @@ package com.wolfssl.wolfcrypt;
  *
  * @author Moisés Guimarães
  * @version 2.0, February 2017
-*/
+ */
 public class Ecc extends NativeStruct {
 
 	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
@@ -49,21 +49,21 @@ public class Ecc extends NativeStruct {
 	private native void wc_ecc_free();
 
 	private native void wc_ecc_make_key(Rng rng, int size);
-	
+
 	private native void wc_ecc_check_key();
 
 	private native byte[] wc_ecc_shared_secret(Ecc pubKey);
 
 	private native void wc_ecc_import_x963(byte[] key);
-	
+
 	private native byte[] wc_ecc_export_x963();
-	
+
 	private native void wc_EccPrivateKeyDecode(byte[] key);
-	
+
 	private native byte[] wc_EccKeyToDer();
-	
+
 	private native void wc_EccPublicKeyDecode(byte[] key);
-	
+
 	private native byte[] wc_EccPublicKeyToDer();
 
 	private native byte[] wc_ecc_sign_hash(byte[] hash, Rng rng);
@@ -95,7 +95,7 @@ public class Ecc extends NativeStruct {
 			throw new IllegalStateException("Object already has a key.");
 		}
 	}
-	
+
 	public void checkKey() {
 		if (state == WolfCryptState.READY) {
 			wc_ecc_check_key();
@@ -113,7 +113,16 @@ public class Ecc extends NativeStruct {
 			throw new IllegalStateException("Object already has a key.");
 		}
 	}
-	
+
+	public byte[] exportX963() {
+		if (state == WolfCryptState.READY) {
+			return wc_ecc_export_x963();
+		} else {
+			throw new IllegalStateException(
+					"No available key to perform the opperation.");
+		}
+	}
+
 	public void privateKeyDecode(byte[] key) {
 		if (state == WolfCryptState.INITIALIZED) {
 			wc_EccPrivateKeyDecode(key);
@@ -123,12 +132,30 @@ public class Ecc extends NativeStruct {
 		}
 	}
 
+	public byte[] privateKeyEncode() {
+		if (state == WolfCryptState.READY) {
+			return wc_EccKeyToDer();
+		} else {
+			throw new IllegalStateException(
+					"No available key to perform the opperation.");
+		}
+	}
+
 	public void publicKeyDecode(byte[] key) {
 		if (state == WolfCryptState.INITIALIZED) {
 			wc_EccPublicKeyDecode(key);
 			state = WolfCryptState.READY;
 		} else {
 			throw new IllegalStateException("Object already has a key.");
+		}
+	}
+	
+	public byte[] publicKeyEncode() {
+		if (state == WolfCryptState.READY) {
+			return wc_EccPublicKeyToDer();
+		} else {
+			throw new IllegalStateException(
+					"No available key to perform the opperation.");
 		}
 	}
 
