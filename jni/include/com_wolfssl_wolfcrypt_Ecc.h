@@ -59,6 +59,22 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1sec
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_import_private
+ * Signature: ([B[B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
+  (JNIEnv *, jobject, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_export_private
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
  * Method:    wc_ecc_import_x963
  * Signature: ([B)V
  */

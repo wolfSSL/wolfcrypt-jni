@@ -122,6 +122,72 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1check_1key(
 #endif
 }
 
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private(
+    JNIEnv* env, jobject this, jbyteArray prv_object, jbyteArray pub_object)
+{
+#ifdef HAVE_ECC
+    int ret = 0;
+    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    byte* prv = getByteArray(env, prv_object);
+    word32 prvSz = getByteArrayLength(env, prv_object);
+    byte* pub = getByteArray(env, pub_object);
+    word32 pubSz = getByteArrayLength(env, pub_object);
+
+    ret = wc_ecc_import_private_key(prv, prvSz, pub, pubSz, ecc);
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("ecc_import_x963(key, keySz, ecc=%p) = %d\n", ecc, ret);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private(
+    JNIEnv* env, jobject this)
+{
+    jbyteArray result = NULL;
+
+#ifdef HAVE_ECC
+    int ret = 0;
+    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    byte* output = NULL;
+    word32 outputSz = wc_ecc_size(ecc);
+
+    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (output == NULL) {
+        throwOutOfMemoryException(env, "Failed to allocate key buffer");
+        return result;
+    }
+
+    ret = wc_ecc_export_private_only(ecc, output, &outputSz);
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, outputSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                                                         (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env, "Failed to allocate key");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_ecc_export_x963(ecc, output=%p, outputSz) = %d\n", output, ret);
+    LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
+    LogHex((byte*) output, outputSz);
+
+    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
 
 JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1x963(

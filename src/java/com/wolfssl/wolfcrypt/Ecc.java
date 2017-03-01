@@ -54,6 +54,10 @@ public class Ecc extends NativeStruct {
 
 	private native byte[] wc_ecc_shared_secret(Ecc pubKey);
 
+	private native void wc_ecc_import_private(byte[] privKey, byte[] x963Key);
+
+	private native byte[] wc_ecc_export_private();
+
 	private native void wc_ecc_import_x963(byte[] key);
 
 	private native byte[] wc_ecc_export_x963();
@@ -105,6 +109,24 @@ public class Ecc extends NativeStruct {
 		}
 	}
 
+	public void importPrivate(byte[] privKey, byte[] x963Key) {
+		if (state == WolfCryptState.INITIALIZED) {
+			wc_ecc_import_private(privKey, x963Key);
+			state = WolfCryptState.READY;
+		} else {
+			throw new IllegalStateException("Object already has a key.");
+		}
+	}
+
+	public byte[] exportPrivate() {
+		if (state == WolfCryptState.READY) {
+			return wc_ecc_export_private();
+		} else {
+			throw new IllegalStateException(
+					"No available key to perform the opperation.");
+		}
+	}
+
 	public void importX963(byte[] key) {
 		if (state == WolfCryptState.INITIALIZED) {
 			wc_ecc_import_x963(key);
@@ -149,7 +171,7 @@ public class Ecc extends NativeStruct {
 			throw new IllegalStateException("Object already has a key.");
 		}
 	}
-	
+
 	public byte[] publicKeyEncode() {
 		if (state == WolfCryptState.READY) {
 			return wc_EccPublicKeyToDer();
