@@ -126,7 +126,7 @@ JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private(
     JNIEnv* env, jobject this, jbyteArray prv_object, jbyteArray pub_object)
 {
-#ifdef HAVE_ECC
+#ifdef HAVE_ECC_KEY_IMPORT
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     byte* prv = getByteArray(env, prv_object);
@@ -150,7 +150,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private(
 {
     jbyteArray result = NULL;
 
-#ifdef HAVE_ECC
+#ifdef HAVE_ECC_KEY_EXPORT
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     byte* output = NULL;
@@ -193,7 +193,7 @@ JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1x963(
     JNIEnv* env, jobject this, jbyteArray key_object)
 {
-#ifdef HAVE_ECC
+#ifdef HAVE_ECC_KEY_IMPORT
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     byte* key = getByteArray(env, key_object);
@@ -215,7 +215,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1x963(
 {
     jbyteArray result = NULL;
 
-#ifdef HAVE_ECC
+#ifdef HAVE_ECC_KEY_EXPORT
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     byte* output = NULL;
@@ -260,7 +260,7 @@ JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPrivateKeyDecode(
     JNIEnv* env, jobject this, jbyteArray key_object)
 {
-#ifdef HAVE_ECC
+#if defined(HAVE_ECC) && !defined(NO_ASN)
     int ret = 0;
     word32 idx = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
@@ -283,7 +283,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccKeyToDer(
 {
     jbyteArray result = NULL;
 
-#ifdef HAVE_ECC
+#if defined(HAVE_ECC) && !defined(NO_ASN)
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     byte* output = NULL;
@@ -326,7 +326,7 @@ JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyDecode(
     JNIEnv* env, jobject this, jbyteArray key_object)
 {
-#ifdef HAVE_ECC
+#if defined(HAVE_ECC) && !defined(NO_ASN)
     int ret = 0;
     word32 idx = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
@@ -349,7 +349,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyToDer(
 {
     jbyteArray result = NULL;
 
-#ifdef HAVE_ECC
+#if !defined(NO_ASN) && (defined(WOLFSSL_CERT_GEN) || defined(WOLFSSL_KEY_GEN))
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     byte* output = NULL;
@@ -394,7 +394,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
 {
     jbyteArray result = NULL;
 
-#ifdef HAVE_ECC
+#ifdef HAVE_ECC_DHE
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     ecc_key* pub = (ecc_key*) getNativeStruct(env, pub_object);
@@ -441,7 +441,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
 {
     jbyteArray result = NULL;
 
-#ifdef HAVE_ECC
+#ifdef HAVE_ECC_SIGN
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     RNG* rng = (RNG*) getNativeStruct(env, rng_object);
@@ -490,7 +490,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
 {
     jlong ret = 0;
 
-#ifdef HAVE_ECC
+#ifdef HAVE_ECC_VERIFY
     int status = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     byte* hash = getByteArray(env, hash_object);
