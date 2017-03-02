@@ -13,6 +13,8 @@ extern "C" {
 #define com_wolfssl_wolfcrypt_Hmac_MD5 0L
 #undef com_wolfssl_wolfcrypt_Hmac_SHA
 #define com_wolfssl_wolfcrypt_Hmac_SHA 1L
+#undef com_wolfssl_wolfcrypt_Hmac_SHA224
+#define com_wolfssl_wolfcrypt_Hmac_SHA224 8L
 #undef com_wolfssl_wolfcrypt_Hmac_SHA256
 #define com_wolfssl_wolfcrypt_Hmac_SHA256 2L
 #undef com_wolfssl_wolfcrypt_Hmac_SHA384
@@ -21,6 +23,54 @@ extern "C" {
 #define com_wolfssl_wolfcrypt_Hmac_SHA512 4L
 #undef com_wolfssl_wolfcrypt_Hmac_BLAKE2b
 #define com_wolfssl_wolfcrypt_Hmac_BLAKE2b 7L
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    wc_HmacSetKey
+ * Signature: (I[B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSetKey
+  (JNIEnv *, jobject, jint, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    wc_HmacUpdate
+ * Signature: (B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__B
+  (JNIEnv *, jobject, jbyte);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    wc_HmacUpdate
+ * Signature: ([BII)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII
+  (JNIEnv *, jobject, jbyteArray, jint, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    wc_HmacUpdate
+ * Signature: (Ljava/nio/ByteBuffer;II)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio_ByteBuffer_2II
+  (JNIEnv *, jobject, jobject, jint, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    wc_HmacFinal
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    wc_HmacSizeByType
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSizeByType
+  (JNIEnv *, jobject, jint);
+
 /*
  * Class:     com_wolfssl_wolfcrypt_Hmac
  * Method:    mallocNativeStruct

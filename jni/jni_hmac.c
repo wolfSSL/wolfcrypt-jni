@@ -25,28 +25,223 @@
 #include <wolfssl/wolfcrypt/hmac.h>
 
 #include <com_wolfssl_wolfcrypt_Hmac.h>
+#include <wolfcrypt_jni_NativeStruct.h>
 #include <wolfcrypt_jni_error.h>
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
-JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Hmac_mallocNativeStruct(
+/* copy from cyassl/hmac.c */
+static INLINE int GetHashSizeByType(int type)
+{
+    if (!(type == MD5 || type == SHA    || type == SHA256 || type == SHA384
+                      || type == SHA512 || type == BLAKE2B_ID))
+        return BAD_FUNC_ARG;
+
+    switch (type) {
+        #ifndef NO_MD5
+        case MD5:
+            return MD5_DIGEST_SIZE;
+        break;
+        #endif
+
+        #ifndef NO_SHA
+        case SHA:
+            return SHA_DIGEST_SIZE;
+        break;
+        #endif
+        
+        #ifndef NO_SHA256
+        case SHA256:
+            return SHA256_DIGEST_SIZE;
+        break;
+        #endif
+        
+        #ifdef CYASSL_SHA384
+        case SHA384:
+            return SHA384_DIGEST_SIZE;
+        break;
+        #endif
+        
+        #ifdef CYASSL_SHA512
+        case SHA512:
+            return SHA512_DIGEST_SIZE;
+        break;
+        #endif
+        
+        #ifdef HAVE_BLAKE2 
+        case BLAKE2B_ID:
+            return BLAKE2B_OUTBYTES;
+        break;
+        #endif
+        
+        default:
+            return BAD_FUNC_ARG;
+        break;
+    }
+}
+
+JNIEXPORT jlong JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
     jlong ret = 0;
 
-#ifdef NO_HMAC
-    throwNotCompiledInException(env);
-#else
-
+#ifndef NO_HMAC
     ret = (jlong) XMALLOC(sizeof(Hmac), NULL, DYNAMIC_TYPE_TMP_BUFFER);
 
     if (!ret)
         throwOutOfMemoryException(env, "Failed to allocate Hmac object");
 
-    LogStr("new Hmac() = %p\n", ret);
-
+    LogStr("new Hmac() = %p\n", (void*)ret);
+#else
+     throwNotCompiledInException(env);
 #endif
 
     return ret;
+}
+
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSetKey(
+    JNIEnv* env, jobject this, jint type, jbyteArray key_object)
+{
+#ifndef NO_HMAC
+    int ret = 0;
+    Hmac* hmac = (Hmac*) getNativeStruct(env, this);
+    byte* key = getByteArray(env, key_object);
+    word32 keySz = getByteArrayLength(env, key_object);
+
+    ret = wc_HmacSetKey(hmac, type, key, keySz);
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("HmacInit(hmac=%p) = %d\n", hmac, ret);
+#else
+     throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__B(
+    JNIEnv* env, jobject this, jbyte data)
+{
+#ifndef NO_HMAC
+    int ret = 0;
+    Hmac* hmac = (Hmac*) getNativeStruct(env, this);
+
+    ret = wc_HmacUpdate(hmac, (const byte*)&data, 1);
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_HmacUpdate(hmac=%p, data, 1) = %d\n", hmac, ret);
+    LogStr("data: %02x\n", data);
+#else
+     throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII(
+    JNIEnv* env, jobject this, jbyteArray data_object, jint offset, jint length)
+{
+#ifndef NO_HMAC
+    int ret = 0;
+    Hmac* hmac = (Hmac*) getNativeStruct(env, this);
+    byte* data = getByteArray(env, data_object);
+
+    ret = wc_HmacUpdate(hmac, data + offset, length);
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_HmacUpdate(hmac=%p, data, length) = %d\n", hmac, ret);
+    LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
+    LogHex((byte*) data + offset, length);
+#else
+     throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio_ByteBuffer_2II(
+    JNIEnv* env, jobject this, jobject data_object, jint offset, jint length)
+{
+#ifndef NO_HMAC
+    int ret = 0;
+    Hmac* hmac = (Hmac*) getNativeStruct(env, this);
+    byte* data = getDirectBufferAddress(env, data_object);
+
+    ret = wc_HmacUpdate(hmac, data + offset, length);
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_HmacUpdate(hmac=%p, data, length) = %d\n", hmac, ret);
+    LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
+    LogHex((byte*) data + offset, length);
+#else
+     throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal(
+    JNIEnv* env, jobject this)
+{
+    jbyteArray result = NULL;
+
+#ifndef NO_HMAC
+    int ret = 0;
+    Hmac* hmac = (Hmac*) getNativeStruct(env, this);
+    byte tmp[MAX_DIGEST_SIZE];
+    int hmacSz = GetHashSizeByType(hmac->macType);
+
+    if (hmacSz < 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+        return result;
+    }
+
+    ret = wc_HmacFinal(hmac, tmp);
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, hmacSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, hmacSz,
+                                                            (const jbyte*) tmp);
+        } else {
+            throwWolfCryptException(env, "Failed to allocate hmac");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_HmacFinal(hmac=%p, result) = %d\n", hmac, ret);
+    LogStr("result[%u]: [%p]\n", (word32)hmacSz, tmp);
+    LogHex(tmp, hmacSz);
+
+#else
+     throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSizeByType(
+    JNIEnv* env, jobject this, jint type)
+{
+    jint result = 0;
+
+#ifndef NO_HMAC
+    int ret = GetHashSizeByType(type);
+
+    if (ret < 0)
+        throwWolfCryptExceptionFromError(env, ret);
+    else
+        result = ret;
+
+    LogStr("wc_HmacSizeByType(type=%d) = %d\n", type, ret);
+#else
+     throwNotCompiledInException(env);
+#endif
+
+    return result;
 }

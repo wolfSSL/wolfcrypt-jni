@@ -85,7 +85,7 @@ public class Ecc extends NativeStruct {
 	}
 
 	protected void free() {
-		if (state.ordinal() > WolfCryptState.UNINITIALIZED.ordinal()) {
+		if (state != WolfCryptState.UNINITIALIZED) {
 			wc_ecc_free();
 			state = WolfCryptState.UNINITIALIZED;
 		}
