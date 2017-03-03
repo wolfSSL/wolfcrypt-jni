@@ -31,7 +31,7 @@ import javax.crypto.ShortBufferException;
  * @author Moisés Guimarães
  * @version 2.0, March 2017
  */
-public class Aes extends NativeStruct {
+public class Aes extends BlockCipher {
 
 	public static final int KEY_SIZE_128 = 16;
 	public static final int KEY_SIZE_192 = 24;
@@ -46,12 +46,12 @@ public class Aes extends NativeStruct {
 
 	protected native long mallocNativeStruct() throws OutOfMemoryError;
 
-	private native void wc_AesSetKey(byte[] key, byte[] iv, int opmode);
+	protected native void native_set_key(byte[] key, byte[] iv, int opmode);
 
-	private native int native_update(int opmode, byte[] input, int offset,
+	protected native int native_update(int opmode, byte[] input, int offset,
 			int length, byte[] output, int outputOffset);
 
-	private native int native_update(int opmode, ByteBuffer plain, int offset,
+	protected native int native_update(int opmode, ByteBuffer plain, int offset,
 			int length, ByteBuffer cipher);
 
 	public Aes() {
@@ -59,64 +59,5 @@ public class Aes extends NativeStruct {
 
 	public Aes(byte[] key, byte[] iv, int opmode) {
 		setKey(key, iv, opmode);
-	}
-
-	public void setKey(byte[] key, byte[] iv, int opmode) {
-		wc_AesSetKey(key, iv, opmode);
-
-		this.opmode = opmode;
-		state = WolfCryptState.READY;
-	}
-
-	public byte[] update(byte[] input, int offset, int length) {
-		byte[] output;
-
-		if (state == WolfCryptState.READY) {
-			output = new byte[input.length];
-
-			native_update(opmode, input, offset, length, output, 0);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
-
-		return output;
-	}
-
-	public int update(byte[] input, int offset, int length, byte[] output,
-			int outputOffset) throws ShortBufferException {
-		if (state == WolfCryptState.READY) {
-			if (outputOffset + length > output.length)
-				throw new ShortBufferException(
-						"output buffer is too small to hold the result.");
-
-			return native_update(opmode, input, offset, length, output,
-					outputOffset);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
-	}
-
-	public int update(ByteBuffer input, ByteBuffer output)
-			throws ShortBufferException {
-		int ret = 0;
-
-		if (state == WolfCryptState.READY) {
-			if (output.remaining() < input.remaining())
-				throw new ShortBufferException(
-						"output buffer is too small to hold the result.");
-
-			ret = native_update(opmode, input, input.position(),
-					input.remaining(), output);
-
-			output.position(output.position() + input.remaining());
-			input.position(input.position() + input.remaining());
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
-
-		return ret;
 	}
 }

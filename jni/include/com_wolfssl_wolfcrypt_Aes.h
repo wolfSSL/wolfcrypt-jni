@@ -31,10 +31,10 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Aes
- * Method:    wc_AesSetKey
+ * Method:    native_set_key
  * Signature: ([B[BI)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Aes_wc_1AesSetKey
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key
   (JNIEnv *, jobject, jbyteArray, jbyteArray, jint);
 
 /*

@@ -30,7 +30,6 @@ import javax.crypto.ShortBufferException;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.internal.runners.statements.Fail;
 
 import com.wolfssl.wolfcrypt.Aes;
 

@@ -51,7 +51,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Aes_wc_1AesSetKey(
+Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key(
     JNIEnv* env, jobject this, jbyteArray key_object, jbyteArray iv_object,
     jint opmode)
 {
