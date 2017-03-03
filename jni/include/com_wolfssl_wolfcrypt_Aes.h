@@ -29,6 +29,30 @@ extern "C" {
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct
   (JNIEnv *, jobject);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_Aes
+ * Method:    wc_AesSetKey
+ * Signature: ([B[BI)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Aes_wc_1AesSetKey
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Aes
+ * Method:    native_update
+ * Signature: (I[BII[BI)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Aes_native_1update__I_3BII_3BI
+  (JNIEnv *, jobject, jint, jbyteArray, jint, jint, jbyteArray, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Aes
+ * Method:    native_update
+ * Signature: (ILjava/nio/ByteBuffer;IILjava/nio/ByteBuffer;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Aes_native_1update__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2
+  (JNIEnv *, jobject, jint, jobject, jint, jint, jobject);
+
 #ifdef __cplusplus
 }
 #endif
