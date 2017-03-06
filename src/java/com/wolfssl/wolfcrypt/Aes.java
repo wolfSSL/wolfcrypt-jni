@@ -21,13 +21,17 @@
 
 package com.wolfssl.wolfcrypt;
 
+import java.nio.ByteBuffer;
+
+import javax.crypto.ShortBufferException;
+
 /**
  * Wrapper for the native WolfCrypt Aes implementation.
  *
  * @author Moisés Guimarães
- * @version 1.0, February 2015
+ * @version 2.0, March 2017
  */
-public class Aes extends NativeStruct {
+public class Aes extends BlockCipher {
 
 	public static final int KEY_SIZE_128 = 16;
 	public static final int KEY_SIZE_192 = 24;
@@ -36,5 +40,24 @@ public class Aes extends NativeStruct {
 	public static final int ENCRYPT_MODE = 0;
 	public static final int DECRYPT_MODE = 1;
 
+	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+
+	private int opmode;
+
 	protected native long mallocNativeStruct() throws OutOfMemoryError;
+
+	protected native void native_set_key(byte[] key, byte[] iv, int opmode);
+
+	protected native int native_update(int opmode, byte[] input, int offset,
+			int length, byte[] output, int outputOffset);
+
+	protected native int native_update(int opmode, ByteBuffer plain, int offset,
+			int length, ByteBuffer cipher);
+
+	public Aes() {
+	}
+
+	public Aes(byte[] key, byte[] iv, int opmode) {
+		setKey(key, iv, opmode);
+	}
 }

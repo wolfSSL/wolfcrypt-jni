@@ -21,18 +21,41 @@
 
 package com.wolfssl.wolfcrypt;
 
+import java.nio.ByteBuffer;
+
+import javax.crypto.ShortBufferException;
+
 /**
  * Wrapper for the native WolfCrypt Des3 implementation.
  *
  * @author Moisés Guimarães
  * @version 1.0, February 2015
  */
-public class Des3 extends NativeStruct {
+public class Des3 extends BlockCipher {
 
 	public static final int KEY_SIZE = 24;
 	public static final int BLOCK_SIZE = 8;
 	public static final int ENCRYPT_MODE = 0;
 	public static final int DECRYPT_MODE = 1;
 
+	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+
+	private int opmode;
+
 	protected native long mallocNativeStruct() throws OutOfMemoryError;
+
+	protected native void native_set_key(byte[] key, byte[] iv, int opmode);
+
+	protected native int native_update(int opmode, byte[] input, int offset,
+			int length, byte[] output, int outputOffset);
+
+	protected native int native_update(int opmode, ByteBuffer plain, int offset,
+			int length, ByteBuffer cipher);
+
+	public Des3() {
+	}
+
+	public Des3(byte[] key, byte[] iv, int opmode) {
+		setKey(key, iv, opmode);
+	}
 }
