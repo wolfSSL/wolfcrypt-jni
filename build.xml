@@ -20,7 +20,11 @@
 	<property name="test.dir" value="src/test/" />
 	<property name="test.build.dir" value="build/test" />
 	<property name="reports.dir" value="build/reports" />
-	<property name="junit4" value="junit-4.11.jar" />
+
+	<property name="junit4" value="junit-4.12.jar" />
+	<property name="hamcrest-core" value="hamcrest-core-1.3.jar" />
+	<property name="ant-junit4" value="ant/ant-junit4.jar" />
+
 	<property environment="env" />
 
 	<!-- classpath to compiled wolfcrypt-jni.jar, for running tests -->
@@ -29,8 +33,7 @@
 			<include name="wolfcrypt-jni.jar" />
 		</fileset>
 		<fileset dir="${env.JUNIT_HOME}">
-			<include name="junit-4.12.jar" />
-			<include name="ant-junit4.jar" />
+			<include name="${junit4}" />
 		</fileset>
 	</path>
 
@@ -106,11 +109,15 @@
 	</target>
 
 	<target name="test" depends="build-test">
-		<junit printsummary="yes" showoutput="yes" haltonfailure="yes">
+		<junit printsummary="yes" showoutput="yes" haltonfailure="yes" fork="true">
 			<classpath>
 				<pathelement location="${build.dir}" />
 				<pathelement location="${test.build.dir}" />
-				<pathelement location="${java.class.path}" />
+				<fileset dir="${env.JUNIT_HOME}">
+					<include name="${junit4}"/>
+					<include name="${hamcrest-core}"/>
+					<include name="${ant-junit4}"/>
+				</fileset>
 			</classpath>
 
 			<formatter type="plain" />

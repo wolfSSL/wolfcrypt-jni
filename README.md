@@ -30,6 +30,22 @@ $ ant
 $ ant test
 ```
 
+In order for the JUnit tests to be run correctly when executing "ant test",
+please follow these steps (for Linux/Mac):
+
+Running "ant test" will execute JUnit tests included in this package. These
+tests require JUnit to be available on your system and for the correct JAR
+files to be on your JUNIT_HOME path.
+
+To install and set up JUnit:
+
+a) Download "junit-4.12.jar" and "hamcrest-core-1.3.jar" from junit.org
+
+b) Place these JAR files on your system and set JUNIT_HOME to point to
+   that location:
+
+    $ export JUNIT_HOME=/path/to/jar/files
+
 ### API Javadocs
 ---------
 
