@@ -28,6 +28,9 @@ extern "C" {
 
 void* getNativeStruct(JNIEnv* env, jobject this);
 
+void setByteArrayMember(
+    JNIEnv* env, jobject this, const char* name, jobject value);
+
 byte* getDirectBufferAddress(JNIEnv* env, jobject buffer);
 word32 getDirectBufferLimit(JNIEnv* env, jobject buffer);
 void setDirectBufferLimit(JNIEnv* env, jobject buffer, jint limit);

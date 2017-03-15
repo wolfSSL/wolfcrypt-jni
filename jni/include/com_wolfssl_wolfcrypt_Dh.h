@@ -17,6 +17,46 @@ extern "C" {
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Dh_mallocNativeStruct
   (JNIEnv *, jobject);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_InitDhKey
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1InitDhKey
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_FreeDhKey
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1FreeDhKey
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhSetKey
+ * Signature: ([B[B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhSetKey
+  (JNIEnv *, jobject, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhGenerateKeyPair
+ * Signature: (Lcom/wolfssl/wolfcrypt/Rng;I)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair
+  (JNIEnv *, jobject, jobject, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhAgree
+ * Signature: ([B[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree
+  (JNIEnv *, jobject, jbyteArray, jbyteArray);
+
 #ifdef __cplusplus
 }
 #endif

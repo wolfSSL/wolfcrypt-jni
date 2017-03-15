@@ -326,7 +326,7 @@ JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyDecode(
     JNIEnv* env, jobject this, jbyteArray key_object)
 {
-#if defined(HAVE_ECC) && !defined(NO_ASN)
+#if defined(HAVE_ECC) && !defined(NO_ASN) && defined(WOLFSSL_CERT_EXT)
     int ret = 0;
     word32 idx = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
