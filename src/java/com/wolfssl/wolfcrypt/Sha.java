@@ -21,6 +21,8 @@
 
 package com.wolfssl.wolfcrypt;
 
+import java.nio.ByteBuffer;
+
 /**
  * Wrapper for the native WolfCrypt Sha implementation.
  *
@@ -32,5 +34,100 @@ public class Sha extends NativeStruct {
 	public static final int TYPE = 1; /* hash type unique */
 	public static final int DIGEST_SIZE = 20;
 
+    private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+
 	protected native long mallocNativeStruct() throws OutOfMemoryError;
+
+    /* native wrappers called by public functions below */
+	private native void initSha();
+	private native void shaUpdate(ByteBuffer data, long len);
+	private native void shaUpdate(byte[] data, long len);
+	private native void shaUpdate(byte[] data, int offset, int len);
+	private native void shaFinal(ByteBuffer hash);
+	private native void shaFinal(byte[] hash);
+
+    public void init() throws IllegalStateException {
+
+        if (getNativeStruct() == NULL)
+            throw new IllegalStateException("Object has been freed");
+
+        initSha();
+        state = WolfCryptState.INITIALIZED;
+    }
+
+    public void update(ByteBuffer data, long len)
+        throws IllegalStateException {
+
+        if (getNativeStruct() == NULL)
+            throw new IllegalStateException("Object has been freed");
+
+        if (state == WolfCryptState.INITIALIZED) {
+            shaUpdate(data, len);
+
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
+
+    public void update(byte[] data, long len)
+        throws IllegalStateException {
+
+        if (getNativeStruct() == NULL)
+           throw new IllegalStateException("Object has been freed");
+
+        if (state == WolfCryptState.INITIALIZED) {
+            shaUpdate(data, len);
+
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
+
+    public void update(byte[] data, int offset, int len)
+        throws IllegalStateException {
+
+        if (getNativeStruct() == NULL)
+           throw new IllegalStateException("Object has been freed");
+
+        if (state == WolfCryptState.INITIALIZED) {
+            shaUpdate(data, offset, len);
+
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
+
+    public void digest(ByteBuffer hash)
+        throws IllegalStateException {
+
+        if (getNativeStruct() == NULL)
+           throw new IllegalStateException("Object has been freed");
+
+        if (state == WolfCryptState.INITIALIZED) {
+            shaFinal(hash);
+
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
+
+    public void digest(byte[] hash)
+        throws IllegalStateException {
+
+        if (getNativeStruct() == NULL)
+           throw new IllegalStateException("Object has been freed");
+
+        if (state == WolfCryptState.INITIALIZED) {
+            shaFinal(hash);
+
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
 }
+

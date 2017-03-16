@@ -21,6 +21,8 @@
 
 package com.wolfssl.wolfcrypt;
 
+import java.nio.ByteBuffer;
+
 /**
  * Wrapper for the native WolfCrypt Md5 implementation.
  *
@@ -32,5 +34,100 @@ public class Md5 extends NativeStruct {
 	public static final int TYPE = 0; /* hash type unique */
 	public static final int DIGEST_SIZE = 16;
 
+    private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+
 	protected native long mallocNativeStruct() throws OutOfMemoryError;
+
+    /* native wrappers called by public functions below */
+	private native void initMd5();
+	private native void md5Update(ByteBuffer data, long len);
+	private native void md5Update(byte[] data, long len);
+	private native void md5Update(byte[] data, int offset, int len);
+	private native void md5Final(ByteBuffer hash);
+	private native void md5Final(byte[] hash);
+
+    public void init() throws IllegalStateException {
+
+        if (getNativeStruct() == NULL)
+            throw new IllegalStateException("Object has been freed");
+
+        initMd5();
+        state = WolfCryptState.INITIALIZED;
+    }
+
+    public void update(ByteBuffer data, long len)
+        throws IllegalStateException {
+
+        if (getNativeStruct() == NULL)
+            throw new IllegalStateException("Object has been freed");
+
+        if (state == WolfCryptState.INITIALIZED) {
+            md5Update(data, len);
+
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
+
+    public void update(byte[] data, long len)
+        throws IllegalStateException {
+
+        if (getNativeStruct() == NULL)
+            throw new IllegalStateException("Object has been freed");
+
+        if (state == WolfCryptState.INITIALIZED) {
+            md5Update(data, len);
+
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
+
+    public void update(byte[] data, int offset, int len)
+        throws IllegalStateException {
+
+        if (getNativeStruct() == NULL)
+            throw new IllegalStateException("Object has been freed");
+
+        if (state == WolfCryptState.INITIALIZED) {
+            md5Update(data, offset, len);
+
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
+
+    public void digest(ByteBuffer hash)
+        throws IllegalStateException {
+
+        if (getNativeStruct() == NULL)
+            throw new IllegalStateException("Object has been freed");
+
+        if (state == WolfCryptState.INITIALIZED) {
+            md5Final(hash);
+
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
+
+    public void digest(byte[] hash)
+        throws IllegalStateException {
+
+        if (getNativeStruct() == NULL)
+            throw new IllegalStateException("Object has been freed");
+
+        if (state == WolfCryptState.INITIALIZED) {
+            md5Final(hash);
+
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
 }
+
