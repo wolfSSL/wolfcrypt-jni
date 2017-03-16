@@ -70,6 +70,15 @@ void* getNativeStruct(JNIEnv* env, jobject this)
     return NULL;
 }
 
+void setByteArrayMember(
+    JNIEnv* env, jobject this, const char* name, jbyteArray value)
+{
+    jclass class = (*env)->GetObjectClass(env, this);
+    jfieldID field = (*env)->GetFieldID(env, class, name, "[B");
+
+    (*env)->SetObjectField(env, this, field, (jobject)value);
+}
+
 byte* getDirectBufferAddress(JNIEnv* env, jobject buffer)
 {
     return buffer ? (*env)->GetDirectBufferAddress(env, buffer) : NULL;

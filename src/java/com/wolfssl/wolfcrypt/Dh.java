@@ -29,5 +29,113 @@ package com.wolfssl.wolfcrypt;
  */
 public class Dh extends NativeStruct {
 
+	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+	private byte[] privateKey = null;
+	private byte[] publicKey = null;
+
+	public Dh() {
+		init();
+	}
+
+	public Dh(byte[] p, byte[] g) {
+		init();
+		setParams(p, g);
+	}
+
+	@Override
+	public void releaseNativeStruct() {
+		free();
+
+		super.releaseNativeStruct();
+	}
+
 	protected native long mallocNativeStruct() throws OutOfMemoryError;
+
+	private native void wc_InitDhKey();
+
+	private native void wc_FreeDhKey();
+
+	private native void wc_DhSetKey(byte[] p, byte[] g);
+
+	private native void wc_DhGenerateKeyPair(Rng rng, int size);
+
+	private native byte[] wc_DhAgree(byte[] priv, byte[] pub);
+
+	protected void init() {
+		if (state == WolfCryptState.UNINITIALIZED) {
+			wc_InitDhKey();
+			state = WolfCryptState.INITIALIZED;
+		} else {
+			throw new IllegalStateException(
+					"Native resources already initialized.");
+		}
+	}
+
+	protected void free() {
+		if (state != WolfCryptState.UNINITIALIZED) {
+			wc_FreeDhKey();
+			state = WolfCryptState.UNINITIALIZED;
+
+			setPrivateKey(new byte[0]);
+			setPublicKey(new byte[0]);
+		}
+	}
+
+	public void setPrivateKey(byte[] priv) {
+		if (state == WolfCryptState.READY) {
+			if (privateKey != null)
+				for (int i = 0; i < privateKey.length; i++)
+					privateKey[i] = 0;
+
+			privateKey = priv.clone();
+		} else {
+			throw new IllegalStateException(
+					"No available parameters to perform opetarion.");
+		}
+	}
+
+	public void setPublicKey(byte[] pub) {
+		if (state == WolfCryptState.READY) {
+			if (publicKey != null)
+				for (int i = 0; i < publicKey.length; i++)
+					publicKey[i] = 0;
+
+			publicKey = pub.clone();
+		} else {
+			throw new IllegalStateException(
+					"No available parameters to perform opetarion.");
+		}
+	}
+
+	public byte[] getPublicKey() {
+		return publicKey;
+	}
+
+	public void setParams(byte[] p, byte[] g) {
+		if (state == WolfCryptState.INITIALIZED) {
+			wc_DhSetKey(p, g);
+			state = WolfCryptState.READY;
+		} else {
+			throw new IllegalStateException("Object already has parameters.");
+		}
+	}
+
+	public void makeKey(Rng rng, int size) {
+		if (privateKey == null) {
+			wc_DhGenerateKeyPair(rng, size);
+		} else {
+			throw new IllegalStateException("Object already has a key.");
+		}
+	}
+
+	public byte[] makeSharedSecret(Dh pubKey) {
+		byte[] publicKey = pubKey.getPublicKey();
+
+		if (privateKey != null || publicKey != null) {
+			return wc_DhAgree(privateKey, publicKey);
+		} else {
+			throw new IllegalStateException(
+					"No available key to perform the opperation.");
+		}
+	}
 }
