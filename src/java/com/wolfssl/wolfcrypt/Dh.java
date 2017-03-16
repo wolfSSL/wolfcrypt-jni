@@ -25,7 +25,7 @@ package com.wolfssl.wolfcrypt;
  * Wrapper for the native WolfCrypt DH implementation.
  *
  * @author Moisés Guimarães
- * @version 1.0, April 2015
+ * @version 2.0, March 2017
  */
 public class Dh extends NativeStruct {
 

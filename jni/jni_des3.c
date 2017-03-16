@@ -92,6 +92,11 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__I_3BII_3BI(
         LogStr("wc_Des3CbcDecrypt(des=%p, out, in, inSz) = %d\n", des, ret);
     }
 
+    LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
+    LogHex((byte*) input + offset, length);
+    LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
+    LogHex((byte*) output + outputOffset, length);
+
     releaseByteArray(env, output_object, output, ret);
 
     if (ret != 0) {
@@ -101,11 +106,6 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__I_3BII_3BI(
     else {
         ret = length;
     }
-
-    LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
-    LogHex((byte*) input + offset, length);
-    LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
-    LogHex((byte*) output + outputOffset, length);
 #else
     throwNotCompiledInException(env);
 #endif
