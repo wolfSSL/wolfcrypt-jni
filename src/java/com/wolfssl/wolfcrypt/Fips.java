@@ -55,6 +55,14 @@ public class Fips extends WolfObject {
 	 */
 	public static native String wolfCrypt_GetCoreHash_fips();
 
+    /**
+     * Polls the underlying wolfCrypt library to see if HAVE_FIPS is defined.
+     *
+     * @return 1 if HAVE_FIPS has been defined and FIPS mode is enabled,
+     *         otherwise 0.
+     */
+    public static native int isFIPSEnabled();
+
 	/*
 	 * ### FIPS Aprooved Security Methods ######################################
 	 */
