@@ -21,6 +21,8 @@
 
 package com.wolfssl.wolfcrypt;
 
+import java.nio.ByteBuffer;
+
 /**
  * Wrapper for the native WolfCrypt Rng implementation.
  *
@@ -30,4 +32,57 @@ package com.wolfssl.wolfcrypt;
 public class Rng extends NativeStruct {
 
 	protected native long mallocNativeStruct() throws OutOfMemoryError;
+
+    private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+
+    /* native wrappers called by public functions below */
+	private native void initRng();
+	private native void freeRng();
+	private native void rngGenerateBlock(ByteBuffer buf, long bufSz);
+	private native void rngGenerateBlock(byte[] buf, long bufSz);
+
+    public void init() throws IllegalStateException {
+
+        if (state == WolfCryptState.UNINITIALIZED) {
+            initRng();
+            state = WolfCryptState.INITIALIZED;
+        } else {
+            throw new IllegalStateException(
+                "Object has already been initialized");
+        }
+    }
+
+    public void free() throws IllegalStateException {
+
+        if (state == WolfCryptState.INITIALIZED) {
+            freeRng();
+            state = WolfCryptState.UNINITIALIZED;
+        } else {
+            throw new IllegalStateException(
+                "Object has been freed");
+        }
+    }
+
+    public void generateBlock(ByteBuffer buf, long bufSz)
+        throws IllegalStateException {
+
+        if (state == WolfCryptState.INITIALIZED) {
+            rngGenerateBlock(buf, bufSz);
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
+
+    public void generateBlock(byte[] buf, long bufSz)
+        throws IllegalStateException {
+
+        if (state == WolfCryptState.INITIALIZED) {
+            rngGenerateBlock(buf, bufSz);
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
 }
+

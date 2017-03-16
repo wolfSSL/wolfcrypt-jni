@@ -17,6 +17,38 @@ extern "C" {
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rng_mallocNativeStruct
   (JNIEnv *, jobject);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rng
+ * Method:    initRng
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_initRng
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rng
+ * Method:    freeRng
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_freeRng
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rng
+ * Method:    rngGenerateBlock
+ * Signature: (Ljava/nio/ByteBuffer;J)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_nio_ByteBuffer_2J
+  (JNIEnv *, jobject, jobject, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rng
+ * Method:    rngGenerateBlock
+ * Signature: ([BJ)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BJ
+  (JNIEnv *, jobject, jbyteArray, jlong);
+
 #ifdef __cplusplus
 }
 #endif
