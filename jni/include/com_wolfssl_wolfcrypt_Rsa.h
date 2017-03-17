@@ -83,6 +83,30 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecode
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaPrivateKeyDecodePKCS8
+ * Signature: ([B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecodePKCS8
+  (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaPublicKeyDecode
+ * Signature: ([B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecode
+  (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaEncryptSize
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaEncryptSize
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
  * Method:    wc_RsaPublicEncrypt
  * Signature: ([BLcom/wolfssl/wolfcrypt/Rng;)[B
  */
