@@ -25,10 +25,10 @@ JNIEXPORT jstring JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetCoreHash
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
- * Method:    isFIPSEnabled
- * Signature: ()I
+ * Method:    enabled
+ * Signature: ()Z
  */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_isFIPSEnabled
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Fips_enabled
   (JNIEnv *, jclass);
 
 /*
