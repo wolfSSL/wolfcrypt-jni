@@ -23,6 +23,8 @@ package com.wolfssl.wolfcrypt;
 
 import java.nio.ByteBuffer;
 
+import javax.crypto.ShortBufferException;
+
 /**
  * Wrapper for the native WolfCrypt Md5 implementation.
  *
@@ -40,13 +42,12 @@ public class Md5 extends NativeStruct {
 
     /* native wrappers called by public functions below */
 	private native void initMd5();
-	private native void md5Update(ByteBuffer data, long len);
-	private native void md5Update(byte[] data, long len);
+	private native void md5Update(ByteBuffer data, int position, int len);
 	private native void md5Update(byte[] data, int offset, int len);
-	private native void md5Final(ByteBuffer hash);
+	private native void md5Final(ByteBuffer hash, int position);
 	private native void md5Final(byte[] hash);
 
-    public void init() throws IllegalStateException {
+    public void init() {
 
         if (getNativeStruct() == NULL)
             throw new IllegalStateException("Object has been freed");
@@ -55,14 +56,21 @@ public class Md5 extends NativeStruct {
         state = WolfCryptState.INITIALIZED;
     }
 
-    public void update(ByteBuffer data, long len)
-        throws IllegalStateException {
+    public void update(ByteBuffer data, int len)
+        throws ShortBufferException {
 
         if (getNativeStruct() == NULL)
             throw new IllegalStateException("Object has been freed");
 
         if (state == WolfCryptState.INITIALIZED) {
-            md5Update(data, len);
+
+            if ((data.remaining() - data.position()) < len)
+                throw new ShortBufferException(
+                    "Input length is larger than remaining ByteBuffer size");
+
+            md5Update(data, data.position(), len);
+
+            data.position(data.position() + len);
 
         } else {
             throw new IllegalStateException(
@@ -70,14 +78,19 @@ public class Md5 extends NativeStruct {
         }
     }
 
-    public void update(byte[] data, long len)
-        throws IllegalStateException {
+    public void update(byte[] data, int len)
+        throws ShortBufferException {
 
         if (getNativeStruct() == NULL)
             throw new IllegalStateException("Object has been freed");
 
         if (state == WolfCryptState.INITIALIZED) {
-            md5Update(data, len);
+
+            if (data.length < len)
+                throw new ShortBufferException(
+                    "Input length is larger than input buffer size");
+
+            md5Update(data, 0, len);
 
         } else {
             throw new IllegalStateException(
@@ -86,12 +99,17 @@ public class Md5 extends NativeStruct {
     }
 
     public void update(byte[] data, int offset, int len)
-        throws IllegalStateException {
+        throws ShortBufferException {
 
         if (getNativeStruct() == NULL)
             throw new IllegalStateException("Object has been freed");
 
         if (state == WolfCryptState.INITIALIZED) {
+
+            if (data.length - offset < len)
+                throw new ShortBufferException(
+                    "Input length is larger than remaining input buffer size");
+
             md5Update(data, offset, len);
 
         } else {
@@ -101,13 +119,20 @@ public class Md5 extends NativeStruct {
     }
 
     public void digest(ByteBuffer hash)
-        throws IllegalStateException {
+        throws ShortBufferException {
 
         if (getNativeStruct() == NULL)
             throw new IllegalStateException("Object has been freed");
 
         if (state == WolfCryptState.INITIALIZED) {
-            md5Final(hash);
+
+            if ((hash.remaining() - hash.position()) < Md5.DIGEST_SIZE)
+                throw new ShortBufferException(
+                    "Input buffer is too small for digest size");
+
+            md5Final(hash, hash.position());
+
+            hash.position(hash.position() + Md5.DIGEST_SIZE);
 
         } else {
             throw new IllegalStateException(
@@ -116,12 +141,17 @@ public class Md5 extends NativeStruct {
     }
 
     public void digest(byte[] hash)
-        throws IllegalStateException {
+        throws ShortBufferException {
 
         if (getNativeStruct() == NULL)
             throw new IllegalStateException("Object has been freed");
 
         if (state == WolfCryptState.INITIALIZED) {
+
+            if (hash.length < Md5.DIGEST_SIZE)
+                throw new ShortBufferException(
+                    "Input buffer is too small for digest size");
+
             md5Final(hash);
 
         } else {
