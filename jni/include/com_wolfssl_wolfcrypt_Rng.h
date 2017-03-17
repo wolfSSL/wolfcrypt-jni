@@ -36,18 +36,18 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_freeRng
 /*
  * Class:     com_wolfssl_wolfcrypt_Rng
  * Method:    rngGenerateBlock
- * Signature: (Ljava/nio/ByteBuffer;J)V
+ * Signature: (Ljava/nio/ByteBuffer;II)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_nio_ByteBuffer_2J
-  (JNIEnv *, jobject, jobject, jlong);
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_nio_ByteBuffer_2II
+  (JNIEnv *, jobject, jobject, jint, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rng
  * Method:    rngGenerateBlock
- * Signature: ([BJ)V
+ * Signature: ([B)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BJ
-  (JNIEnv *, jobject, jbyteArray, jlong);
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3B
+  (JNIEnv *, jobject, jbyteArray);
 
 #ifdef __cplusplus
 }

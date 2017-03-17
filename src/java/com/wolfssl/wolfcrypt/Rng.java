@@ -23,6 +23,8 @@ package com.wolfssl.wolfcrypt;
 
 import java.nio.ByteBuffer;
 
+import javax.crypto.ShortBufferException;
+
 /**
  * Wrapper for the native WolfCrypt Rng implementation.
  *
@@ -38,10 +40,10 @@ public class Rng extends NativeStruct {
     /* native wrappers called by public functions below */
 	private native void initRng();
 	private native void freeRng();
-	private native void rngGenerateBlock(ByteBuffer buf, long bufSz);
-	private native void rngGenerateBlock(byte[] buf, long bufSz);
+	private native void rngGenerateBlock(ByteBuffer buf, int position, int sz);
+	private native void rngGenerateBlock(byte[] buf);
 
-    public void init() throws IllegalStateException {
+    public void init() {
 
         if (state == WolfCryptState.UNINITIALIZED) {
             initRng();
@@ -52,7 +54,7 @@ public class Rng extends NativeStruct {
         }
     }
 
-    public void free() throws IllegalStateException {
+    public void free() {
 
         if (state == WolfCryptState.INITIALIZED) {
             freeRng();
@@ -63,22 +65,42 @@ public class Rng extends NativeStruct {
         }
     }
 
-    public void generateBlock(ByteBuffer buf, long bufSz)
-        throws IllegalStateException {
+    public void generateBlock(ByteBuffer buf) {
 
         if (state == WolfCryptState.INITIALIZED) {
-            rngGenerateBlock(buf, bufSz);
+
+            rngGenerateBlock(buf, buf.position(), buf.remaining());
+
+            buf.position(buf.position() + buf.remaining());
+
         } else {
             throw new IllegalStateException(
                 "Object must be initialized before use");
         }
     }
 
-    public void generateBlock(byte[] buf, long bufSz)
-        throws IllegalStateException {
+    public void generateBlock(byte[] buf) {
 
         if (state == WolfCryptState.INITIALIZED) {
-            rngGenerateBlock(buf, bufSz);
+
+            rngGenerateBlock(buf);
+
+        } else {
+            throw new IllegalStateException(
+                "Object must be initialized before use");
+        }
+    }
+
+    public byte[] generateBlock(int size) {
+
+        if (state == WolfCryptState.INITIALIZED) {
+
+            byte[] buffer = new byte[size];
+
+            rngGenerateBlock(buffer);
+
+            return buffer;
+
         } else {
             throw new IllegalStateException(
                 "Object must be initialized before use");
