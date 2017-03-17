@@ -23,6 +23,8 @@ package com.wolfssl.wolfcrypt;
 
 import java.nio.ByteBuffer;
 
+import javax.crypto.ShortBufferException;
+
 /**
  * Wrapper for the native WolfCrypt Sha384 implementation.
  *
@@ -40,10 +42,9 @@ public class Sha384 extends NativeStruct {
 
     /* native wrappers called by public functions below */
 	private native void initSha384();
-	private native void sha384Update(ByteBuffer data, long len);
-	private native void sha384Update(byte[] data, long len);
+	private native void sha384Update(ByteBuffer data, int position, int len);
 	private native void sha384Update(byte[] data, int offset, int len);
-	private native void sha384Final(ByteBuffer hash);
+	private native void sha384Final(ByteBuffer hash, int position);
 	private native void sha384Final(byte[] hash);
 
     public void init() {
@@ -55,14 +56,21 @@ public class Sha384 extends NativeStruct {
         state = WolfCryptState.INITIALIZED;
     }
 
-    public void update(ByteBuffer data, long len)
-        throws IllegalStateException {
+    public void update(ByteBuffer data, int len)
+        throws ShortBufferException {
 
         if (getNativeStruct() == NULL)
             throw new IllegalStateException("Object has been freed");
 
         if (state == WolfCryptState.INITIALIZED) {
-            sha384Update(data, len);
+
+            if ((data.remaining() - data.position()) < len)
+                throw new ShortBufferException(
+                    "Input length is larger than remaining ByteBuffer size");
+
+            sha384Update(data, data.position(), len);
+
+            data.position(data.position() + len);
 
         } else {
             throw new IllegalStateException(
@@ -70,14 +78,19 @@ public class Sha384 extends NativeStruct {
         }
     }
 
-    public void update(byte[] data, long len)
-        throws IllegalStateException {
+    public void update(byte[] data, int len)
+        throws ShortBufferException {
 
         if (getNativeStruct() == NULL)
            throw new IllegalStateException("Object has been freed");
 
         if (state == WolfCryptState.INITIALIZED) {
-            sha384Update(data, len);
+
+            if (data.length < len)
+                throw new ShortBufferException(
+                    "Input length is larger than input buffer size");
+
+            sha384Update(data, 0, len);
 
         } else {
             throw new IllegalStateException(
@@ -86,12 +99,17 @@ public class Sha384 extends NativeStruct {
     }
 
     public void update(byte[] data, int offset, int len)
-        throws IllegalStateException {
+        throws ShortBufferException {
 
         if (getNativeStruct() == NULL)
            throw new IllegalStateException("Object has been freed");
 
         if (state == WolfCryptState.INITIALIZED) {
+
+            if (data.length - offset < len)
+                throw new ShortBufferException(
+                    "Input length is larger than remaining input buffer size");
+
             sha384Update(data, offset, len);
 
         } else {
@@ -100,13 +118,21 @@ public class Sha384 extends NativeStruct {
         }
     }
 
-    public void digest(ByteBuffer hash) throws IllegalStateException {
+    public void digest(ByteBuffer hash)
+        throws ShortBufferException {
 
         if (getNativeStruct() == NULL)
            throw new IllegalStateException("Object has been freed");
 
         if (state == WolfCryptState.INITIALIZED) {
-            sha384Final(hash);
+
+            if ((hash.remaining() - hash.position()) < Sha384.DIGEST_SIZE)
+                throw new ShortBufferException(
+                    "Input buffer is too small for digest size");
+
+            sha384Final(hash, hash.position());
+
+            hash.position(hash.position() + Sha384.DIGEST_SIZE);
 
         } else {
             throw new IllegalStateException(
@@ -114,12 +140,18 @@ public class Sha384 extends NativeStruct {
         }
     }
 
-    public void digest(byte[] hash) throws IllegalStateException {
+    public void digest(byte[] hash)
+        throws ShortBufferException {
 
         if (getNativeStruct() == NULL)
            throw new IllegalStateException("Object has been freed");
 
         if (state == WolfCryptState.INITIALIZED) {
+
+            if (hash.length < Sha384.DIGEST_SIZE)
+                throw new ShortBufferException(
+                    "Input buffer is too small for digest size");
+
             sha384Final(hash);
 
         } else {
