@@ -21,6 +21,46 @@ extern "C" {
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Sha_mallocNativeStruct
   (JNIEnv *, jobject);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_Sha
+ * Method:    initSha
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_initSha
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Sha
+ * Method:    shaUpdate
+ * Signature: (Ljava/nio/ByteBuffer;II)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_shaUpdate__Ljava_nio_ByteBuffer_2II
+  (JNIEnv *, jobject, jobject, jint, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Sha
+ * Method:    shaUpdate
+ * Signature: ([BII)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_shaUpdate___3BII
+  (JNIEnv *, jobject, jbyteArray, jint, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Sha
+ * Method:    shaFinal
+ * Signature: (Ljava/nio/ByteBuffer;I)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_shaFinal__Ljava_nio_ByteBuffer_2I
+  (JNIEnv *, jobject, jobject, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Sha
+ * Method:    shaFinal
+ * Signature: ([B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_shaFinal___3B
+  (JNIEnv *, jobject, jbyteArray);
+
 #ifdef __cplusplus
 }
 #endif
