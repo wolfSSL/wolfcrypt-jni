@@ -99,6 +99,16 @@ JNIEXPORT jstring JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetCoreHash
     return (*env)->NewStringUTF(env, wolfCrypt_GetCoreHash_fips());
 }
 
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Fips_enabled
+  (JNIEnv* env, jclass class)
+{
+    #ifdef HAVE_FIPS
+        return JNI_TRUE;
+    #else
+        return JNI_FALSE;
+    #endif
+}
+
 /*
  * ### FIPS Aprooved Security Methods ##########################################
  */

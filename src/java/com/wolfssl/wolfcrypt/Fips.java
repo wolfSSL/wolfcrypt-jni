@@ -33,6 +33,8 @@ import com.wolfssl.wolfcrypt.Aes;
  */
 public class Fips extends WolfObject {
 
+    public static final boolean enabled = Fips.enabled();
+
 	private Fips() {
 	}
 
@@ -54,6 +56,14 @@ public class Fips extends WolfObject {
 	 * @return current inCore hash.
 	 */
 	public static native String wolfCrypt_GetCoreHash_fips();
+
+    /**
+     * Polls the underlying wolfCrypt library to see if HAVE_FIPS is defined.
+     *
+     * @return true if HAVE_FIPS has been defined and FIPS mode is enabled,
+     *         otherwise false.
+     */
+    private static native boolean enabled();
 
 	/*
 	 * ### FIPS Aprooved Security Methods ######################################
