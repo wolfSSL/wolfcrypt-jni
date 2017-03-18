@@ -23,9 +23,11 @@
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/random.h>
+#include <wolfssl/wolfcrypt/error-crypt.h>
 
 #include <com_wolfssl_wolfcrypt_Rng.h>
 #include <wolfcrypt_jni_error.h>
+#include <wolfcrypt_jni_NativeStruct.h>
 
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
@@ -43,3 +45,94 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rng_mallocNativeStruct(
 
     return (jlong) rng;
 }
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_initRng
+  (JNIEnv* env, jobject class)
+{
+#ifndef WC_NO_RNG
+
+    int ret = 0;
+    RNG* rng = (RNG*) getNativeStruct(env, class);
+
+    ret = wc_InitRng(rng);
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_InitRng(rng=%p) = %d\n", rng, ret);
+
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_freeRng
+  (JNIEnv* env, jobject class)
+{
+#ifndef WC_NO_RNG
+
+    int ret = 0;
+    RNG* rng = (RNG*) getNativeStruct(env, class);
+
+    ret = wc_FreeRng(rng);
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_FreeRng(rng=%p) = %d\n", rng, ret);
+
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_nio_ByteBuffer_2II
+  (JNIEnv* env, jobject class, jobject buf_buffer, jint position, jint sz)
+{
+#ifndef WC_NO_RNG
+
+    int ret = 0;
+    RNG* rng = (RNG*) getNativeStruct(env, class);
+    byte* buf = getDirectBufferAddress(env, buf_buffer);
+
+    if (!buf) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+
+    } else {
+        ret = wc_RNG_GenerateBlock(rng, buf + position, sz);
+        if (ret != 0)
+            throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_RNG_GenerateBlock(rng=%p, buf, sz) = %d\n", rng, ret);
+    LogStr("output[%u]: [%p]\n", (word32)sz, buf);
+    LogHex(buf, sz);
+
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3B
+  (JNIEnv* env, jobject class, jbyteArray buf_buffer)
+{
+#ifndef WC_NO_RNG
+
+    int ret = 0;
+    RNG* rng = (RNG*) getNativeStruct(env, class);
+    byte* buf = getByteArray(env, buf_buffer);
+    word32 bufSz = getByteArrayLength(env, buf_buffer);
+
+    ret = wc_RNG_GenerateBlock(rng, buf, bufSz);
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_RNG_GenerateBlock(rng=%p, buf, bufSz) = %d\n", rng, ret);
+    LogStr("output[%u]: [%p]\n", (word32)bufSz, buf);
+    LogHex(buf, bufSz);
+
+    releaseByteArray(env, buf_buffer, buf, ret);
+
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
