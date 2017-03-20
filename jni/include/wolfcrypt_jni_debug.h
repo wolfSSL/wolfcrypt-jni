@@ -29,7 +29,7 @@ extern "C" {
 
 #define LogStr printf
 
-static inline void LogHex(byte* data, word32 length)
+static inline void LogHex(byte* data, word32 offset, word32 length)
 {
     #define LINE_LEN 16
 
@@ -41,6 +41,8 @@ static inline void LogHex(byte* data, word32 length)
         printf("NULL\n");
         return;
     }
+
+    data += offset;
 
     for (i = 0; i < LINE_LEN; i++) {
         if (i < length)
@@ -58,7 +60,7 @@ static inline void LogHex(byte* data, word32 length)
     printf("\n");
 
     if (length > LINE_LEN)
-        LogHex(data + LINE_LEN, length - LINE_LEN);
+        LogHex(data, LINE_LEN, length - LINE_LEN);
 }
 
 #else

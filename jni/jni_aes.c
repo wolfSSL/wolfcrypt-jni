@@ -62,11 +62,18 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key(
     byte* iv = getByteArray(env, iv_object);
     word32 keySz = getByteArrayLength(env, key_object);
 
-    ret = wc_AesSetKey(aes, key, keySz, iv, opmode);
+    ret = (!aes || !key) /* iv is optional */
+        ? BAD_FUNC_ARG
+        : wc_AesSetKey(aes, key, keySz, iv, opmode);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
-    LogStr("wc_AesSetKey(aes=%p, key, iv, opmode) = %d\n", aes, ret);
+    LogStr("wc_AesSetKey(aes=%p, key=%p, iv=%p, opmode) = %d\n",
+        aes, key, iv, ret);
+
+    releaseByteArray(env, key_object, key, JNI_ABORT);
+    releaseByteArray(env, iv_object, iv, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -85,19 +92,26 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update__I_3BII_3BI(
     byte* output = getByteArray(env, output_object);
 
     if (opmode == AES_ENCRYPTION) {
-        ret = wc_AesCbcEncrypt(aes, output+outputOffset, input+offset, length);
+        ret = (!aes || !input || !output)
+            ? BAD_FUNC_ARG
+            : wc_AesCbcEncrypt(aes, output+outputOffset, input+offset, length);
+
         LogStr("wc_AesCbcEncrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
     }
     else {
-        ret = wc_AesCbcDecrypt(aes, output+outputOffset, input+offset, length);
+        ret = (!aes || !input || !output)
+            ? BAD_FUNC_ARG
+            : wc_AesCbcDecrypt(aes, output+outputOffset, input+offset, length);
+
         LogStr("wc_AesCbcDecrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
     }
 
     LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
-    LogHex((byte*) input + offset, length);
+    LogHex((byte*) input, offset, length);
     LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
-    LogHex((byte*) output + outputOffset, length);
+    LogHex((byte*) output, outputOffset, length);
 
+    releaseByteArray(env, input_object, input, JNI_ABORT);
     releaseByteArray(env, output_object, output, ret);
 
     if (ret != 0) {
@@ -128,11 +142,17 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update__ILjava_nio_ByteBuffer_2IILjava_ni
     byte* output = getDirectBufferAddress(env, output_object);
 
     if (opmode == AES_ENCRYPTION) {
-        ret = wc_AesCbcEncrypt(aes, output, input + offset, length);
+        ret = (!aes || !input || !output)
+            ? BAD_FUNC_ARG
+            : wc_AesCbcEncrypt(aes, output, input + offset, length);
+
         LogStr("wc_AesCbcEncrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
     }
     else {
-        ret = wc_AesCbcDecrypt(aes, output, input + offset, length);
+        ret = (!aes || !input || !output)
+            ? BAD_FUNC_ARG
+            : wc_AesCbcDecrypt(aes, output, input + offset, length);
+
         LogStr("wc_AesCbcDecrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
     }
 
@@ -145,9 +165,9 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update__ILjava_nio_ByteBuffer_2IILjava_ni
     }
 
     LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
-    LogHex((byte*) input + offset, length);
+    LogHex((byte*) input, offset, length);
     LogStr("output[%u]: [%p]\n", (word32)length, output);
-    LogHex((byte*) output, length);
+    LogHex((byte*) output, 0, length);
 #else
     throwNotCompiledInException(env);
 #endif
