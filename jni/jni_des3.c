@@ -61,11 +61,17 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1set_1key(
     byte* key = getByteArray(env, key_object);
     byte* iv = getByteArray(env, iv_object);
 
-    ret = wc_Des3_SetKey(des, key, iv, opmode);
+    ret = (!des || !key) /* iv is optional */
+        ? BAD_FUNC_ARG
+        : wc_Des3_SetKey(des, key, iv, opmode);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Des3SetKey(Des3=%p, key, iv, opmode) = %d\n", des, ret);
+
+    releaseByteArray(env, key_object, key, JNI_ABORT);
+    releaseByteArray(env, iv_object, iv, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -84,11 +90,17 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__I_3BII_3BI(
     byte* output = getByteArray(env, output_object);
 
     if (opmode == DES_ENCRYPTION) {
-        ret = wc_Des3_CbcEncrypt(des, output+outputOffset,input+offset, length);
+        ret = (!des || !input || !output)
+            ? BAD_FUNC_ARG
+            : wc_Des3_CbcEncrypt(des, output+outputOffset,input+offset, length);
+
         LogStr("wc_Des3CbcEncrypt(des=%p, out, in, inSz) = %d\n", des, ret);
     }
     else {
-        ret = wc_Des3_CbcDecrypt(des, output+outputOffset,input+offset, length);
+        ret = (!des || !input || !output)
+            ? BAD_FUNC_ARG
+            : wc_Des3_CbcDecrypt(des, output+outputOffset,input+offset, length);
+
         LogStr("wc_Des3CbcDecrypt(des=%p, out, in, inSz) = %d\n", des, ret);
     }
 
@@ -97,6 +109,7 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__I_3BII_3BI(
     LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
     LogHex((byte*) output, outputOffset, length);
 
+    releaseByteArray(env, input_object, input, JNI_ABORT);
     releaseByteArray(env, output_object, output, ret);
 
     if (ret != 0) {
@@ -127,11 +140,15 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__ILjava_nio_ByteBuffer_2IILjava_n
     byte* output = getDirectBufferAddress(env, output_object);
 
     if (opmode == DES_ENCRYPTION) {
-        ret = wc_Des3_CbcEncrypt(des, output, input + offset, length);
+        ret = (!des || !input || !output)
+            ? BAD_FUNC_ARG
+            : wc_Des3_CbcEncrypt(des, output, input + offset, length);
         LogStr("wc_Des3CbcEncrypt(des=%p, out, in, inSz) = %d\n", des, ret);
     }
     else {
-        ret = wc_Des3_CbcDecrypt(des, output, input + offset, length);
+        ret = (!des || !input || !output)
+            ? BAD_FUNC_ARG
+            : wc_Des3_CbcDecrypt(des, output, input + offset, length);
         LogStr("wc_Des3CbcDecrypt(des=%p, out, in, inSz) = %d\n", des, ret);
     }
 

@@ -40,7 +40,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature__Ljava_nio
     byte* hash = getDirectBufferAddress(env, hash_object);
 
     if (!encoded || !hash)
-        throwWolfCryptException(env, "Bad method argument provided");
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
     else
         setDirectBufferLimit(env, encoded_object,
             wc_EncodeSignature(encoded, hash, hashSize, hashOID));
