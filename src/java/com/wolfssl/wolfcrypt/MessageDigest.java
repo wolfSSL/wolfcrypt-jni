@@ -65,7 +65,7 @@ public abstract class MessageDigest extends NativeStruct {
 		}
 	}
 
-	public void update(ByteBuffer data) throws ShortBufferException {
+	public void update(ByteBuffer data) {
 		update(data, data.remaining());
 	}
 
