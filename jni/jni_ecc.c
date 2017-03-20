@@ -60,7 +60,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1init(
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
 
-    ret = wc_ecc_init(ecc);
+    ret = (!ecc)
+        ? BAD_FUNC_ARG
+        : wc_ecc_init(ecc);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
@@ -77,7 +80,8 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1free(
 #ifdef HAVE_ECC
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
 
-    wc_ecc_free(ecc);
+    if (ecc)
+        wc_ecc_free(ecc);
 
     LogStr("ecc_free(ecc=%p)\n", ecc);
 #else
@@ -94,7 +98,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key(
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     RNG* rng = (RNG*) getNativeStruct(env, rng_object);
 
-    ret = wc_ecc_make_key(rng, size, ecc);
+    ret = (!ecc || !rng)
+        ? BAD_FUNC_ARG
+        : wc_ecc_make_key(rng, size, ecc);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
@@ -112,7 +119,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1check_1key(
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
 
-    ret = wc_ecc_check_key(ecc);
+    ret = (!ecc)
+        ? BAD_FUNC_ARG
+        : wc_ecc_check_key(ecc);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
@@ -124,21 +134,27 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1check_1key(
 
 JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private(
-    JNIEnv* env, jobject this, jbyteArray prv_object, jbyteArray pub_object)
+    JNIEnv* env, jobject this, jbyteArray priv_object, jbyteArray pub_object)
 {
 #ifdef HAVE_ECC_KEY_IMPORT
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
-    byte* prv = getByteArray(env, prv_object);
-    word32 prvSz = getByteArrayLength(env, prv_object);
+    byte* priv = getByteArray(env, priv_object);
+    word32 privSz = getByteArrayLength(env, priv_object);
     byte* pub = getByteArray(env, pub_object);
     word32 pubSz = getByteArrayLength(env, pub_object);
 
-    ret = wc_ecc_import_private_key(prv, prvSz, pub, pubSz, ecc);
+    ret = (!ecc || !priv || !pub)
+        ? BAD_FUNC_ARG
+        : wc_ecc_import_private_key(priv, privSz, pub, pubSz, ecc);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("ecc_import_x963(key, keySz, ecc=%p) = %d\n", ecc, ret);
+
+    releaseByteArray(env, priv_object, priv, JNI_ABORT);
+    releaseByteArray(env, pub_object, pub, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -162,7 +178,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private(
         return result;
     }
 
-    ret = wc_ecc_export_private_only(ecc, output, &outputSz);
+    ret = (!ecc)
+        ? BAD_FUNC_ARG
+        : wc_ecc_export_private_only(ecc, output, &outputSz);
+
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
 
@@ -199,11 +218,16 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1x963(
     byte* key = getByteArray(env, key_object);
     word32 keySz = getByteArrayLength(env, key_object);
 
-    ret = wc_ecc_import_x963(key, keySz, ecc);
+    ret = (!ecc || !key)
+        ? BAD_FUNC_ARG
+        : wc_ecc_import_x963(key, keySz, ecc);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("ecc_import_x963(key, keySz, ecc=%p) = %d\n", ecc, ret);
+
+    releaseByteArray(env, key_object, key, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -230,7 +254,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1x963(
         return result;
     }
 
-    ret = wc_ecc_export_x963(ecc, output, &outputSz);
+    ret = (!ecc)
+        ? BAD_FUNC_ARG
+        : wc_ecc_export_x963(ecc, output, &outputSz);
+
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
 
@@ -267,11 +294,16 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPrivateKeyDecode(
     byte* key = getByteArray(env, key_object);
     word32 keySz = getByteArrayLength(env, key_object);
 
-    ret = wc_EccPrivateKeyDecode(key, &idx, ecc, keySz);
+    ret = (!ecc || !key)
+        ? BAD_FUNC_ARG
+        : wc_EccPrivateKeyDecode(key, &idx, ecc, keySz);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_EccPrivateKeyDecode(key, keySz, ecc=%p) = %d\n", ecc, ret);
+
+    releaseByteArray(env, key_object, key, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -295,7 +327,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccKeyToDer(
         return result;
     }
 
-    ret = wc_EccKeyToDer(ecc, output, outputSz);
+    ret = (!ecc)
+        ? BAD_FUNC_ARG
+        : wc_EccKeyToDer(ecc, output, outputSz);
+
     if (ret >= 0) {
         outputSz = ret;
         result = (*env)->NewByteArray(env, outputSz);
@@ -333,11 +368,16 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyDecode(
     byte* key = getByteArray(env, key_object);
     word32 keySz = getByteArrayLength(env, key_object);
 
-    ret = wc_EccPublicKeyDecode(key, &idx, ecc, keySz);
+    ret = (!ecc || !key)
+        ? BAD_FUNC_ARG
+        : wc_EccPublicKeyDecode(key, &idx, ecc, keySz);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_EccPublicKeyDecode(key, keySz, ecc=%p) = %d\n", ecc, ret);
+
+    releaseByteArray(env, key_object, key, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -361,7 +401,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyToDer(
         return result;
     }
 
-    ret = wc_EccPublicKeyToDer(ecc, output, outputSz, 1);
+    ret = (!ecc)
+        ? BAD_FUNC_ARG
+        : wc_EccPublicKeyToDer(ecc, output, outputSz, 1);
+
     if (ret >= 0) {
         outputSz = ret;
         result = (*env)->NewByteArray(env, outputSz);
@@ -408,7 +451,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
         return result;
     }
 
-    ret = wc_ecc_shared_secret(ecc, pub, output, &outputSz);
+    ret = (!ecc || !pub)
+        ? BAD_FUNC_ARG
+        : wc_ecc_shared_secret(ecc, pub, output, &outputSz);
+
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
 
@@ -453,10 +499,16 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
     signature = XMALLOC(signatureSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (signature == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate signature buffer");
+
+        releaseByteArray(env, hash_object, hash, JNI_ABORT);
+
         return result;
     }
 
-    ret = wc_ecc_sign_hash(hash, hashSz, signature, &signatureSz, rng, ecc);
+    ret = (!ecc || !rng || !hash)
+        ? BAD_FUNC_ARG
+        : wc_ecc_sign_hash(hash, hashSz, signature, &signatureSz, rng, ecc);
+
     if (ret == 0) {
         result = (*env)->NewByteArray(env, signatureSz);
 
@@ -476,6 +528,8 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
     LogHex((byte*) signature, 0, signatureSz);
 
     XFREE(signature, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+
+    releaseByteArray(env, hash_object, hash, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -498,7 +552,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     byte* signature = getByteArray(env, signature_object);
     word32 signatureSz = getByteArrayLength(env, signature_object);
 
-    ret = wc_ecc_verify_hash(signature, signatureSz, hash,hashSz, &status, ecc);
+    ret = (!ecc || !hash || !signature)
+        ? BAD_FUNC_ARG
+        : wc_ecc_verify_hash(signature, signatureSz, hash,hashSz, &status, ecc);
+
     if (ret == 0) {
         ret = status;
     } else {
@@ -508,6 +565,9 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     LogStr(
         "wc_ecc_verify_hash(sig, sigSz, hash, hashSz, &status, ecc); = %lu\n",
         ret);
+
+    releaseByteArray(env, hash_object, hash, JNI_ABORT);
+    releaseByteArray(env, signature_object, signature, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif

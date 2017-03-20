@@ -236,6 +236,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
     ret = (!key || !priv || !pub)
         ? BAD_FUNC_ARG
         : wc_DhAgree(key, secret, &secretSz, priv, privSz, pub, pubSz);
+
     if (ret == 0) {
         result = (*env)->NewByteArray(env, secretSz);
 
