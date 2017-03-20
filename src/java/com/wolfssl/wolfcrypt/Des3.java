@@ -23,8 +23,6 @@ package com.wolfssl.wolfcrypt;
 
 import java.nio.ByteBuffer;
 
-import javax.crypto.ShortBufferException;
-
 /**
  * Wrapper for the native WolfCrypt Des3 implementation.
  *

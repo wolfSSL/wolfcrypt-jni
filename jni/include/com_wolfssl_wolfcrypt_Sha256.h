@@ -23,42 +23,42 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Sha256_mallocNativeStruct
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Sha256
- * Method:    initSha256
+ * Method:    native_init
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_initSha256
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1init
   (JNIEnv *, jobject);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Sha256
- * Method:    sha256Update
+ * Method:    native_update
  * Signature: (Ljava/nio/ByteBuffer;II)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_sha256Update__Ljava_nio_ByteBuffer_2II
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1update__Ljava_nio_ByteBuffer_2II
   (JNIEnv *, jobject, jobject, jint, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Sha256
- * Method:    sha256Update
+ * Method:    native_update
  * Signature: ([BII)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_sha256Update___3BII
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1update___3BII
   (JNIEnv *, jobject, jbyteArray, jint, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Sha256
- * Method:    sha256Final
+ * Method:    native_final
  * Signature: (Ljava/nio/ByteBuffer;I)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_sha256Final__Ljava_nio_ByteBuffer_2I
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1final__Ljava_nio_ByteBuffer_2I
   (JNIEnv *, jobject, jobject, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Sha256
- * Method:    sha256Final
+ * Method:    native_final
  * Signature: ([B)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_sha256Final___3B
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1final___3B
   (JNIEnv *, jobject, jbyteArray);
 
 #ifdef __cplusplus

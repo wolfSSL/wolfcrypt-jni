@@ -23,42 +23,42 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Md5
- * Method:    initMd5
+ * Method:    native_init
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_initMd5
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1init
   (JNIEnv *, jobject);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Md5
- * Method:    md5Update
+ * Method:    native_update
  * Signature: (Ljava/nio/ByteBuffer;II)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Update__Ljava_nio_ByteBuffer_2II
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1update__Ljava_nio_ByteBuffer_2II
   (JNIEnv *, jobject, jobject, jint, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Md5
- * Method:    md5Update
+ * Method:    native_update
  * Signature: ([BII)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Update___3BII
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1update___3BII
   (JNIEnv *, jobject, jbyteArray, jint, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Md5
- * Method:    md5Final
+ * Method:    native_final
  * Signature: (Ljava/nio/ByteBuffer;I)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Final__Ljava_nio_ByteBuffer_2I
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1final__Ljava_nio_ByteBuffer_2I
   (JNIEnv *, jobject, jobject, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Md5
- * Method:    md5Final
+ * Method:    native_final
  * Signature: ([B)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Final___3B
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1final___3B
   (JNIEnv *, jobject, jbyteArray);
 
 #ifdef __cplusplus
