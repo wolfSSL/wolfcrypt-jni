@@ -92,7 +92,10 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhSetKey(
     byte* g = getByteArray(env, g_object);
     word32 gSz = getByteArrayLength(env, g_object);
 
-    ret = wc_DhSetKey(key, p, pSz, g, gSz);
+    ret = (!key || !p || !g)
+        ? BAD_FUNC_ARG
+        : wc_DhSetKey(key, p, pSz, g, gSz);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
@@ -101,6 +104,9 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhSetKey(
     LogHex((byte*) p, 0, pSz);
     LogStr("g[%u]: [%p]\n", (word32)gSz, g);
     LogHex((byte*) g, 0, gSz);
+
+    releaseByteArray(env, p_object, p, JNI_ABORT);
+    releaseByteArray(env, g_object, g, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -133,7 +139,10 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
         return;
     }
 
-    ret = wc_DhGenerateKeyPair(key, rng, priv, &privSz, pub, &pubSz);
+    ret = (!key || !rng || !priv || !pub)
+        ? BAD_FUNC_ARG
+        : wc_DhGenerateKeyPair(key, rng, priv, &privSz, pub, &pubSz);
+
     if (ret == 0) {
         jbyteArray privateKey = (*env)->NewByteArray(env, privSz);
         jbyteArray publicKey = (*env)->NewByteArray(env, pubSz);
@@ -181,13 +190,18 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhCheckPubKey(
     byte* pub = getByteArray(env, pub_object);
     word32 pubSz = getByteArrayLength(env, pub_object);
 
-    ret = wc_DhCheckPubKey(key, pub, pubSz);
+    ret = (!key || !pub)
+        ? BAD_FUNC_ARG
+        : wc_DhCheckPubKey(key, pub, pubSz);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_DhCheckPubKey(key=%p, pub, pubSz) = %d\n", key, ret);
     LogStr("p[%u]: [%p]\n", (word32)pubSz, pub);
     LogHex((byte*) pub, 0, pubSz);
+
+    releaseByteArray(env, pub_object, pub, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -212,10 +226,16 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
     secret = XMALLOC(pubSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (secret == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate private key buffer");
+
+        releaseByteArray(env, priv_object, priv, JNI_ABORT);
+        releaseByteArray(env, pub_object, pub, JNI_ABORT);
+
         return result;
     }
 
-    ret = wc_DhAgree(key, secret, &secretSz, priv, privSz, pub, pubSz);
+    ret = (!key || !priv || !pub)
+        ? BAD_FUNC_ARG
+        : wc_DhAgree(key, secret, &secretSz, priv, privSz, pub, pubSz);
     if (ret == 0) {
         result = (*env)->NewByteArray(env, secretSz);
 
@@ -235,6 +255,9 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
     LogHex(secret, 0, secretSz);
 
     XFREE(secret, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+
+    releaseByteArray(env, priv_object, priv, JNI_ABORT);
+    releaseByteArray(env, pub_object, pub, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
