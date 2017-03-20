@@ -95,7 +95,7 @@ Java_com_wolfssl_wolfcrypt_Hmac_mallocNativeStruct(
 
     LogStr("new Hmac() = %p\n", (void*)ret);
 #else
-     throwNotCompiledInException(env);
+    throwNotCompiledInException(env);
 #endif
 
     return ret;
@@ -111,13 +111,18 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSetKey(
     byte* key = getByteArray(env, key_object);
     word32 keySz = getByteArrayLength(env, key_object);
 
-    ret = wc_HmacSetKey(hmac, type, key, keySz);
+    ret = (!hmac || !key)
+        ? BAD_FUNC_ARG
+        : wc_HmacSetKey(hmac, type, key, keySz);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("HmacInit(hmac=%p) = %d\n", hmac, ret);
+
+    releaseByteArray(env, key_object, key, JNI_ABORT);
 #else
-     throwNotCompiledInException(env);
+    throwNotCompiledInException(env);
 #endif
 }
 
@@ -129,14 +134,17 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__B(
     int ret = 0;
     Hmac* hmac = (Hmac*) getNativeStruct(env, this);
 
-    ret = wc_HmacUpdate(hmac, (const byte*)&data, 1);
+    ret = (!hmac)
+        ? BAD_FUNC_ARG
+        : wc_HmacUpdate(hmac, (const byte*)&data, 1);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_HmacUpdate(hmac=%p, data, 1) = %d\n", hmac, ret);
     LogStr("data: %02x\n", data);
 #else
-     throwNotCompiledInException(env);
+    throwNotCompiledInException(env);
 #endif
 }
 
@@ -149,15 +157,20 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII(
     Hmac* hmac = (Hmac*) getNativeStruct(env, this);
     byte* data = getByteArray(env, data_object);
 
-    ret = wc_HmacUpdate(hmac, data + offset, length);
+    ret = (!hmac || !data)
+        ? BAD_FUNC_ARG
+        : wc_HmacUpdate(hmac, data + offset, length);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_HmacUpdate(hmac=%p, data, length) = %d\n", hmac, ret);
     LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
     LogHex((byte*) data, offset, length);
+
+    releaseByteArray(env, data_object, data, JNI_ABORT);
 #else
-     throwNotCompiledInException(env);
+    throwNotCompiledInException(env);
 #endif
 }
 
@@ -170,7 +183,10 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio_ByteBuffer_2II(
     Hmac* hmac = (Hmac*) getNativeStruct(env, this);
     byte* data = getDirectBufferAddress(env, data_object);
 
-    ret = wc_HmacUpdate(hmac, data + offset, length);
+    ret = (!hmac || !data)
+        ? BAD_FUNC_ARG
+        : wc_HmacUpdate(hmac, data + offset, length);
+
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
@@ -178,7 +194,7 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio_ByteBuffer_2II(
     LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
     LogHex((byte*) data, offset, length);
 #else
-     throwNotCompiledInException(env);
+    throwNotCompiledInException(env);
 #endif
 }
 
@@ -199,7 +215,10 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal(
         return result;
     }
 
-    ret = wc_HmacFinal(hmac, tmp);
+    ret = (!hmac)
+        ? BAD_FUNC_ARG
+        : wc_HmacFinal(hmac, tmp);
+
     if (ret == 0) {
         result = (*env)->NewByteArray(env, hmacSz);
 
@@ -216,9 +235,8 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal(
     LogStr("wc_HmacFinal(hmac=%p, result) = %d\n", hmac, ret);
     LogStr("result[%u]: [%p]\n", (word32)hmacSz, tmp);
     LogHex(tmp, 0, hmacSz);
-
 #else
-     throwNotCompiledInException(env);
+    throwNotCompiledInException(env);
 #endif
 
     return result;
@@ -240,7 +258,7 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSizeByType(
 
     LogStr("wc_HmacSizeByType(type=%d) = %d\n", type, ret);
 #else
-     throwNotCompiledInException(env);
+    throwNotCompiledInException(env);
 #endif
 
     return result;
