@@ -33,7 +33,8 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
-JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct(
+JNIEXPORT jlong JNICALL
+Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
     jlong ret = 0;
@@ -52,11 +53,12 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct(
     return ret;
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_initMd5
-  (JNIEnv* env, jobject class)
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Md5_initMd5(
+    JNIEnv* env, jobject this)
 {
 #ifndef NO_MD5
-    Md5* md5 = (Md5*) getNativeStruct(env, class);
+    Md5* md5 = (Md5*) getNativeStruct(env, this);
 
     if (!md5) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
@@ -68,11 +70,12 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_initMd5
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Update__Ljava_nio_ByteBuffer_2II
-  (JNIEnv* env, jobject class, jobject data_buffer, jint position, jint len)
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Md5_md5Update__Ljava_nio_ByteBuffer_2II(
+    JNIEnv* env, jobject this, jobject data_buffer, jint position, jint len)
 {
 #ifndef NO_MD5
-    Md5* md5 = (Md5*) getNativeStruct(env, class);
+    Md5* md5 = (Md5*) getNativeStruct(env, this);
     byte* data = getDirectBufferAddress(env, data_buffer);
 
     if (!md5 || !data) {
@@ -89,12 +92,12 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Update__Ljava_nio_ByteB
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Update___3BII
-  (JNIEnv* env, jobject class, jbyteArray data_buffer, jint offset,
-   jint len)
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Md5_md5Update___3BII(
+    JNIEnv* env, jobject this, jbyteArray data_buffer, jint offset, jint len)
 {
 #ifndef NO_MD5
-    Md5* md5 = (Md5*) getNativeStruct(env, class);
+    Md5* md5 = (Md5*) getNativeStruct(env, this);
     byte* data = getByteArray(env, data_buffer);
 
     if (!md5 || !data || (offset > len)) {
@@ -113,11 +116,12 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Update___3BII
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Final__Ljava_nio_ByteBuffer_2I
-  (JNIEnv* env, jobject class, jobject hash_buffer, jint position)
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Md5_md5Final__Ljava_nio_ByteBuffer_2I(
+    JNIEnv* env, jobject this, jobject hash_buffer, jint position)
 {
 #ifndef NO_MD5
-    Md5* md5 = (Md5*) getNativeStruct(env, class);
+    Md5* md5 = (Md5*) getNativeStruct(env, this);
     byte* hash = getDirectBufferAddress(env, hash_buffer);
 
     if (!md5 || !hash) {
@@ -134,11 +138,12 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Final__Ljava_nio_ByteBu
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Final___3B
-  (JNIEnv* env, jobject class, jbyteArray hash_buffer)
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Md5_md5Final___3B(
+    JNIEnv* env, jobject this, jbyteArray hash_buffer)
 {
 #ifndef NO_MD5
-    Md5* md5 = (Md5*) getNativeStruct(env, class);
+    Md5* md5 = (Md5*) getNativeStruct(env, this);
     byte* hash = getByteArray(env, hash_buffer);
 
     if (!md5 || !hash) {
