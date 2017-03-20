@@ -48,7 +48,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Sha_mallocNativeStruct(
     if (!ret)
         throwOutOfMemoryException(env, "Failed to allocate Sha object");
 
-    LogStr("new Sha() = %p\n", ret);
+    LogStr("new Sha() = %p\n", (void*)ret);
 
 #endif
 
@@ -69,7 +69,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Sha256_mallocNativeStruct(
     if (!ret)
         throwOutOfMemoryException(env, "Failed to allocate Sha256 object");
 
-    LogStr("new Sha256() = %p\n", ret);
+    LogStr("new Sha256() = %p\n", (void*)ret);
 
 #endif
 
@@ -90,7 +90,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Sha384_mallocNativeStruct(
     if (!ret)
         throwOutOfMemoryException(env, "Failed to allocate Sha384 object");
 
-    LogStr("new Sha384() = %p\n", ret);
+    LogStr("new Sha384() = %p\n", (void*)ret);
 
 #endif
 
@@ -111,7 +111,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Sha512_mallocNativeStruct(
     if (!ret)
         throwOutOfMemoryException(env, "Failed to allocate Sha512 object");
 
-    LogStr("new Sha512() = %p\n", ret);
+    LogStr("new Sha512() = %p\n", (void*)ret);
 
 #endif
 
@@ -159,7 +159,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_shaUpdate__Ljava_nio_ByteB
 
     LogStr("wc_ShaUpdate(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, len);
+    LogHex(data, 0, len);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -186,7 +186,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_shaUpdate___3BII
 
     LogStr("wc_ShaUpdate_fips(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, len);
+    LogHex(data, 0, len);
 
     releaseByteArray(env, data_buffer, data, 1);
 
@@ -215,7 +215,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_shaFinal__Ljava_nio_ByteBu
 
     LogStr("wc_ShaFinal(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash[%u]: [%p]\n", (word32)SHA_DIGEST_SIZE, hash);
-    LogHex(hash, SHA_DIGEST_SIZE);
+    LogHex(hash, 0, SHA_DIGEST_SIZE);
 
 #else
     throwNotCompiledInException(env);
@@ -242,7 +242,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_shaFinal___3B
 
     LogStr("wc_ShaFinal(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash[%u]: [%p]\n", (word32)SHA_DIGEST_SIZE, hash);
-    LogHex(hash, SHA_DIGEST_SIZE);
+    LogHex(hash, 0, SHA_DIGEST_SIZE);
 
     releaseByteArray(env, hash_buffer, hash, ret);
 
@@ -293,7 +293,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_sha256Update__Ljava_nio
 
     LogStr("wc_Sha256Update(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, len);
+    LogHex(data, 0, len);
 
 #else
     throwNotCompiledInException(env);
@@ -321,7 +321,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_sha256Update___3BII
 
     LogStr("wc_Sha256Update(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, len);
+    LogHex(data, 0, len);
 
     releaseByteArray(env, data_buffer, data, ret);
 
@@ -350,7 +350,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_sha256Final__Ljava_nio_
 
     LogStr("wc_Sha256Final(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash[%u]: [%p]\n", (word32)SHA256_DIGEST_SIZE, hash);
-    LogHex(hash, SHA256_DIGEST_SIZE);
+    LogHex(hash, 0, SHA256_DIGEST_SIZE);
 
 #else
     throwNotCompiledInException(env);
@@ -377,7 +377,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_sha256Final___3B
 
     LogStr("wc_Sha256Final(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash[%u]: [%p]\n", (word32)SHA256_DIGEST_SIZE, hash);
-    LogHex(hash, SHA256_DIGEST_SIZE);
+    LogHex(hash, 0, SHA256_DIGEST_SIZE);
 
     releaseByteArray(env, hash_buffer, hash, ret);
 
@@ -428,7 +428,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_sha384Update__Ljava_nio
 
     LogStr("wc_Sha384Update(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, len);
+    LogHex(data, 0, len);
 
 #else
     throwNotCompiledInException(env);
@@ -456,7 +456,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_sha384Update___3BII
 
     LogStr("wc_Sha384Update(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
-    LogHex(data + offset, len);
+    LogHex(data, offset, len);
 
     releaseByteArray(env, data_buffer, data, ret);
 
@@ -485,7 +485,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_sha384Final__Ljava_nio_
 
     LogStr("wc_Sha384Final(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash[%u]: [%p]\n", (word32)SHA384_DIGEST_SIZE, hash);
-    LogHex(hash, SHA384_DIGEST_SIZE);
+    LogHex(hash, 0, SHA384_DIGEST_SIZE);
 
 #else
     throwNotCompiledInException(env);
@@ -512,7 +512,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_sha384Final___3B
 
     LogStr("wc_Sha384Final(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash[%u]: [%p]\n", (word32)SHA384_DIGEST_SIZE, hash);
-    LogHex(hash, SHA384_DIGEST_SIZE);
+    LogHex(hash, 0, SHA384_DIGEST_SIZE);
 
     releaseByteArray(env, hash_buffer, hash, ret);
 
@@ -563,7 +563,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha512_sha512Update__Ljava_nio
 
     LogStr("wc_Sha512Update(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, len);
+    LogHex(data, 0, len);
 
 #else
     throwNotCompiledInException(env);
@@ -591,7 +591,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha512_sha512Update___3BII
 
     LogStr("wc_Sha512Update(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
-    LogHex(data + offset, len);
+    LogHex(data, offset, len);
 
     releaseByteArray(env, data_buffer, data, ret);
 
@@ -620,7 +620,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha512_sha512Final__Ljava_nio_
 
     LogStr("wc_Sha512Final(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash[%u]: [%p]\n", (word32)SHA512_DIGEST_SIZE, hash);
-    LogHex(hash, SHA512_DIGEST_SIZE);
+    LogHex(hash, 0, SHA512_DIGEST_SIZE);
 
 #else
     throwNotCompiledInException(env);
@@ -647,7 +647,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha512_sha512Final___3B
 
     LogStr("wc_Sha512Final(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash[%u]: [%p]\n", (word32)SHA512_DIGEST_SIZE, hash);
-    LogHex(hash, SHA512_DIGEST_SIZE);
+    LogHex(hash, 0, SHA512_DIGEST_SIZE);
 
     releaseByteArray(env, hash_buffer, hash, ret);
 

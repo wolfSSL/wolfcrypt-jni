@@ -98,9 +98,9 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhSetKey(
 
     LogStr("wc_DhSetKey(key=%p, p, pSz, g, gSz) = %d\n", key, ret);
     LogStr("p[%u]: [%p]\n", (word32)pSz, p);
-    LogHex((byte*) p, pSz);
+    LogHex((byte*) p, 0, pSz);
     LogStr("g[%u]: [%p]\n", (word32)gSz, g);
-    LogHex((byte*) g, gSz);
+    LogHex((byte*) g, 0, gSz);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -160,9 +160,9 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
     LogStr("wc_DhGenerateKeyPair(key, rng, priv, privSz, pub, pubSz) = %d\n",
         ret);
     LogStr("private[%u]: [%p]\n", privSz, priv);
-    LogHex(priv, privSz);
+    LogHex(priv, 0, privSz);
     LogStr("public[%u]: [%p]\n", pubSz, pub);
-    LogHex(pub, pubSz);
+    LogHex(pub, 0, pubSz);
 
     XFREE(priv, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     XFREE(pub, NULL, DYNAMIC_TYPE_TMP_BUFFER);
@@ -187,7 +187,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhCheckPubKey(
 
     LogStr("wc_DhCheckPubKey(key=%p, pub, pubSz) = %d\n", key, ret);
     LogStr("p[%u]: [%p]\n", (word32)pubSz, pub);
-    LogHex((byte*) pub, pubSz);
+    LogHex((byte*) pub, 0, pubSz);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -232,7 +232,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
     LogStr("wc_DhAgree(key, secret, secretSz, priv, privSz, pub, pubSz) = %d\n",
         ret);
     LogStr("secret[%u]: [%p]\n", secretSz, secret);
-    LogHex(secret, secretSz);
+    LogHex(secret, 0, secretSz);
 
     XFREE(secret, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else

@@ -46,7 +46,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_NativeStruct_xfree(
     JNIEnv* env, jobject this, jlong ptr)
 {
-    LogStr("Freeing (%p)\n", prt);
+    LogStr("Freeing (%p)\n", (void*)ptr);
 
     XFREE((void*)ptr, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 }

@@ -88,9 +88,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw__Ljava_nio_ByteBuffer_2
     
     LogStr("wc_RsaPublicKeyDecodeRaw(n, nSz, e, eSz) = %d\n", ret);
     LogStr("n[%u]: [%p]\n", (word32)nSize, n);
-    LogHex((byte*) n, nSize);
+    LogHex((byte*) n, 0, nSize);
     LogStr("e[%u]: [%p]\n", (word32)eSize, e);
-    LogHex((byte*) e, eSize);
+    LogHex((byte*) e, 0, eSize);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -113,9 +113,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw___3BJ_3BJ(
 
     LogStr("wc_RsaPublicKeyDecodeRaw(n, nSz, e, eSz) = %d\n", ret);
     LogStr("n[%u]: [%p]\n", (word32)nSize, n);
-    LogHex((byte*) n, nSize);
+    LogHex((byte*) n, 0, nSize);
     LogStr("e[%u]: [%p]\n", (word32)eSize, e);
-    LogHex((byte*) e, eSize);
+    LogHex((byte*) e, 0, eSize);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -143,9 +143,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey__Ljava_nio_ByteBuffer_2Ljava_
 
     LogStr("RsaFlattenPublicKey(key, e, eSz, n, nSz) = %d\n", ret);
     LogStr("n[%u]: [%p]\n", (word32)nSize, n);
-    LogHex((byte*) n, nSize);
+    LogHex((byte*) n, 0, nSize);
     LogStr("e[%u]: [%p]\n", (word32)eSize, e);
-    LogHex((byte*) e, eSize);
+    LogHex((byte*) e, 0, eSize);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -177,9 +177,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3J_3B_3J(
 
     LogStr("RsaFlattenPublicKey(key, e, eSz, n, nSz) = %d\n", ret);
     LogStr("n[%u]: [%p]\n", (word32)nSz, n);
-    LogHex((byte*) n, nSz);
+    LogHex((byte*) n, 0, nSz);
     LogStr("e[%u]: [%p]\n", (word32)eSz, e);
-    LogHex((byte*) e, eSz);
+    LogHex((byte*) e, 0, eSz);
 
     releaseByteArray(env, n_object, n, ret);
     releaseByteArray(env, e_object, e, ret);
@@ -241,7 +241,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecode(
 
     LogStr("wc_RsaPrivateKeyDecode(k, kSize, key) = %d\n", ret);
     LogStr("key[%u]: [%p]\n", (word32)kSz, k);
-    LogHex((byte*) k, kSz);
+    LogHex((byte*) k, 0, kSz);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -285,7 +285,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt(
 
     LogStr("wc_RsaPublicEncrypt(in, inSz, out, outSz, key=, rng) = %d\n", ret);
     LogStr("output[%u]: [%p]\n", outputSz, output);
-    LogHex((byte*) output, outputSz);
+    LogHex((byte*) output, 0, outputSz);
 
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
@@ -332,7 +332,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
 
     LogStr("wc_RsaPrivateDecrypt(in, inSz, out, outSz, key, rng) = %d\n", ret);
     LogStr("output[%u]: [%p]\n", outputSz, output);
-    LogHex((byte*) output, outputSz);
+    LogHex((byte*) output, 0, outputSz);
 
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
@@ -380,7 +380,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Sign(
 
     LogStr("wc_RsaSSL_Sign(in, inSz, out, outSz, key, rng) = %d\n", ret);
     LogStr("output[%u]: [%p]\n", outputSz, output);
-    LogHex((byte*) output, outputSz);
+    LogHex((byte*) output, 0, outputSz);
 
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
@@ -427,7 +427,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify(
 
     LogStr("wc_RsaSSL_Verify(in, inSz, out, outSz, key) = %d\n", ret);
     LogStr("output[%u]: [%p]\n", outputSz, output);
-    LogHex((byte*) output, outputSz);
+    LogHex((byte*) output, 0, outputSz);
 
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else

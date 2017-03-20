@@ -178,7 +178,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private(
 
     LogStr("wc_ecc_export_x963(ecc, output=%p, outputSz) = %d\n", output, ret);
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
-    LogHex((byte*) output, outputSz);
+    LogHex((byte*) output, 0, outputSz);
 
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
@@ -246,7 +246,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1x963(
 
     LogStr("wc_ecc_export_x963(ecc, output=%p, outputSz) = %d\n", output, ret);
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
-    LogHex((byte*) output, outputSz);
+    LogHex((byte*) output, 0, outputSz);
 
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
@@ -312,7 +312,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccKeyToDer(
 
     LogStr("wc_EccKeyToDer(ecc, output=%p, outputSz) = %d\n", output, ret);
     LogStr("output[%u]: [%p]\n", outputSz, output);
-    LogHex((byte*) output, outputSz);
+    LogHex((byte*) output, 0, outputSz);
 
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
@@ -378,7 +378,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyToDer(
 
     LogStr("wc_EccPublicKeyToDer(ecc, out=%p, outSz) = %d\n", output, ret);
     LogStr("output[%u]: [%p]\n", outputSz, output);
-    LogHex((byte*) output, outputSz);
+    LogHex((byte*) output, 0, outputSz);
 
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
@@ -425,7 +425,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
     LogStr("wc_ecc_shared_secret(priv, pub, output=%p, outputSz) = %d\n",
         output, ret);
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
-    LogHex((byte*) output, outputSz);
+    LogHex((byte*) output, 0, outputSz);
 
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
@@ -473,7 +473,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
     LogStr("wc_ecc_sign_hash(input, inSz, output, &outSz, rng, ecc) = %d\n",
         ret);
     LogStr("signature[%u]: [%p]\n", (word32)signatureSz, signature);
-    LogHex((byte*) signature, signatureSz);
+    LogHex((byte*) signature, 0, signatureSz);
 
     XFREE(signature, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else

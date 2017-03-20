@@ -47,7 +47,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct(
     if (!ret)
         throwOutOfMemoryException(env, "Failed to allocate Md5 object");
 
-    LogStr("new Md5() = %p\n", ret);
+    LogStr("new Md5() = %p\n", (void*)ret);
 
 #endif
 
@@ -90,7 +90,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Update__Ljava_nio_ByteB
 
     LogStr("wc_Md5Update(md5=%p, data, len)\n", md5);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, len);
+    LogHex(data, 0, len);
 
 #else
     throwNotCompiledInException(env);
@@ -115,7 +115,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Update___3BII
 
     LogStr("wc_Md5Update(md5=%p, data, len)\n", md5);
     LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
-    LogHex(data + offset, len);
+    LogHex(data, offset, len);
 
     releaseByteArray(env, data_buffer, data, 0);
 
@@ -141,7 +141,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Final__Ljava_nio_ByteBu
 
     LogStr("wc_Md5Final(md5=%p, hash)\n", md5);
     LogStr("hash[%u]: [%p]\n", (word32)MD5_DIGEST_SIZE, hash);
-    LogHex(hash, MD5_DIGEST_SIZE);
+    LogHex(hash, 0, MD5_DIGEST_SIZE);
 
 #else
     throwNotCompiledInException(env);
@@ -165,7 +165,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_md5Final___3B
 
     LogStr("wc_Md5Final(md5=%p, hash)\n", md5);
     LogStr("hash[%u]: [%p]\n", (word32)MD5_DIGEST_SIZE, hash);
-    LogHex(hash, MD5_DIGEST_SIZE);
+    LogHex(hash, 0, MD5_DIGEST_SIZE);
 
     releaseByteArray(env, hash_buffer, hash, 0);
 

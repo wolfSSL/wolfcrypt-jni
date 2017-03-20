@@ -93,9 +93,9 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__I_3BII_3BI(
     }
 
     LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
-    LogHex((byte*) input + offset, length);
+    LogHex((byte*) input, offset, length);
     LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
-    LogHex((byte*) output + outputOffset, length);
+    LogHex((byte*) output, outputOffset, length);
 
     releaseByteArray(env, output_object, output, ret);
 
@@ -144,9 +144,9 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__ILjava_nio_ByteBuffer_2IILjava_n
     }
 
     LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
-    LogHex((byte*) input + offset, length);
+    LogHex((byte*) input, offset, length);
     LogStr("output[%u]: [%p]\n", (word32)length, output);
-    LogHex((byte*) output, length);
+    LogHex((byte*) output, 0, length);
 #else
     throwNotCompiledInException(env);
 #endif

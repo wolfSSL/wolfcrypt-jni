@@ -155,7 +155,7 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII(
 
     LogStr("wc_HmacUpdate(hmac=%p, data, length) = %d\n", hmac, ret);
     LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
-    LogHex((byte*) data + offset, length);
+    LogHex((byte*) data, offset, length);
 #else
      throwNotCompiledInException(env);
 #endif
@@ -176,7 +176,7 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio_ByteBuffer_2II(
 
     LogStr("wc_HmacUpdate(hmac=%p, data, length) = %d\n", hmac, ret);
     LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
-    LogHex((byte*) data + offset, length);
+    LogHex((byte*) data, offset, length);
 #else
      throwNotCompiledInException(env);
 #endif
@@ -215,7 +215,7 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal(
 
     LogStr("wc_HmacFinal(hmac=%p, result) = %d\n", hmac, ret);
     LogStr("result[%u]: [%p]\n", (word32)hmacSz, tmp);
-    LogHex(tmp, hmacSz);
+    LogHex(tmp, 0, hmacSz);
 
 #else
      throwNotCompiledInException(env);

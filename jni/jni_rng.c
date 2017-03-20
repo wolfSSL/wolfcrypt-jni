@@ -104,7 +104,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_ni
 
     LogStr("wc_RNG_GenerateBlock(rng=%p, buf, sz) = %d\n", rng, ret);
     LogStr("output[%u]: [%p]\n", (word32)sz, buf);
-    LogHex(buf, sz);
+    LogHex(buf, 0, sz);
 
 #else
     throwNotCompiledInException(env);
@@ -127,7 +127,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3B
 
     LogStr("wc_RNG_GenerateBlock(rng=%p, buf, bufSz) = %d\n", rng, ret);
     LogStr("output[%u]: [%p]\n", (word32)bufSz, buf);
-    LogHex(buf, bufSz);
+    LogHex(buf, 0, bufSz);
 
     releaseByteArray(env, buf_buffer, buf, ret);
 
