@@ -26,7 +26,8 @@ import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-@SuiteClasses({ WolfCryptMessageDigestMd5Test.class })
+@SuiteClasses({ WolfCryptMessageDigestMd5Test.class,
+                WolfCryptMessageDigestShaTest.class })
 
 public class WolfJCETestSuite { }
 
