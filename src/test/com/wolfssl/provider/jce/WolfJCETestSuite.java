@@ -30,7 +30,8 @@ import org.junit.runners.Suite.SuiteClasses;
                 WolfCryptMessageDigestShaTest.class,
                 WolfCryptMessageDigestSha256Test.class,
                 WolfCryptMessageDigestSha384Test.class,
-                WolfCryptMessageDigestSha512Test.class })
+                WolfCryptMessageDigestSha512Test.class,
+                WolfCryptRandomTest.class })
 
 public class WolfJCETestSuite { }
 
