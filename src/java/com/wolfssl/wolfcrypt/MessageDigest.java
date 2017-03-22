@@ -71,7 +71,7 @@ public abstract class MessageDigest extends NativeStruct {
 
 	public void update(byte[] data, int offset, int len) {
 		if (state == WolfCryptState.INITIALIZED) {
-			if (data.length - offset > len)
+			if (data.length - offset < len)
 				len = data.length - offset;
 
 			native_update(data, offset, len);
