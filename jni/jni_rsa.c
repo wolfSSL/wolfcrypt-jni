@@ -324,7 +324,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecodePKC
         length = wc_GetPkcs8TraditionalOffset(k, &offset, kSz);
         
         ret = (length < 0)
-            ? length;
+            ? length
             : wc_RsaPrivateKeyDecode(k, &offset, key, kSz);
     }
 
@@ -350,7 +350,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecode
     word32 index = 0;
 
     ret = (!key || !k)
-        ? BAD_FUNC_ARG;
+        ? BAD_FUNC_ARG
         : wc_RsaPublicKeyDecode(k, &index, key, kSz);
 
     if (ret != 0)
