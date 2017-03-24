@@ -35,12 +35,7 @@ public class DhTest {
 
 	@BeforeClass
 	public static void setUpRng() {
-		Fips.InitRng_fips(rng);
-	}
-
-	@AfterClass
-	public static void tearDownRng() {
-		Fips.FreeRng_fips(rng);
+		rng.init();
 	}
 
 	@BeforeClass

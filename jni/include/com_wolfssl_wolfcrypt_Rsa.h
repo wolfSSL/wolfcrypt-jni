@@ -75,6 +75,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1FreeRsaKey
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaSetRNG
+ * Signature: (Lcom/wolfssl/wolfcrypt/Rng;)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSetRNG
+  (JNIEnv *, jobject, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
  * Method:    wc_RsaPrivateKeyDecode
  * Signature: ([B)V
  */

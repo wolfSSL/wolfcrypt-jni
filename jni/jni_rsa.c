@@ -30,7 +30,7 @@
 #include <wolfcrypt_jni_NativeStruct.h>
 #include <wolfcrypt_jni_error.h>
 
-/* #define WOLFCRYPT_JNI_DEBUG_ON */
+#define WOLFCRYPT_JNI_DEBUG_ON
 #include <wolfcrypt_jni_debug.h>
 
 JNIEXPORT jlong JNICALL
@@ -148,7 +148,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey__Ljava_nio_ByteBuffer_2Ljava_
 
     ret = (!key || !n || !e)
         ? BAD_FUNC_ARG
-        : RsaFlattenPublicKey(key, e, &eSize, n, &nSize);
+        : wc_RsaFlattenPublicKey(key, e, &eSize, n, &nSize);
 
     if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
@@ -185,7 +185,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3J_3B_3J(
 
     ret = (!key || !n || !e)
         ? BAD_FUNC_ARG
-        : RsaFlattenPublicKey(key, e, (word32*) &eSz, n, (word32*) &nSz);
+        : wc_RsaFlattenPublicKey(key, e, (word32*) &eSz, n, (word32*) &nSz);
 
     if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
@@ -247,6 +247,36 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1FreeRsaKey(
 #else
     throwNotCompiledInException(env);
 #endif
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSetRNG(
+    JNIEnv* env, jobject this, jobject rng_object)
+{
+#ifndef NO_RSA
+
+#ifdef WC_RSA_BLINDING
+    int ret = 0;
+    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
+    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+
+    ret = (key == NULL)
+        ? BAD_FUNC_ARG
+        : wc_RsaSetRNG(key, rng);
+
+    LogStr("wc_RsaSetRNG(key, rng) = %d\n", ret);
+
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+    else
+        return JNI_TRUE;
+#endif
+
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
@@ -453,7 +483,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    LogStr("wc_RsaPrivateDecrypt(in, inSz, out, outSz, key, rng) = %d\n", ret);
+    LogStr("wc_RsaPrivateDecrypt(in, inSz, out, outSz, key) = %d\n", ret);
     LogStr("output[%u]: [%p]\n", outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 

@@ -33,6 +33,7 @@ public class Rsa extends NativeStruct {
 
 	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 	private boolean hasPrivateKey = false;
+	private Rng rng;
 
 	protected native long mallocNativeStruct() throws OutOfMemoryError;
 
@@ -53,6 +54,8 @@ public class Rsa extends NativeStruct {
 
 	private native void wc_FreeRsaKey();
 
+	private native boolean wc_RsaSetRNG(Rng rng);
+
 	private native void wc_RsaPrivateKeyDecode(byte[] key);
 
 	private native void wc_RsaPrivateKeyDecodePKCS8(byte[] key);
@@ -70,17 +73,22 @@ public class Rsa extends NativeStruct {
 	private native byte[] wc_RsaSSL_Verify(byte[] data);
 
 	public Rsa() {
-		init();
+		/* Lazy init for Fips compatibility */
 	}
 
 	public Rsa(byte[] key) {
-		init();
 		decodePrivateKey(key);
 	}
 
 	public Rsa(byte[] n, byte[] e) {
-		init();
 		decodeRawPublicKey(n, e);
+	}
+
+	public void setRng(Rng rng) {
+		init();
+
+		if (wc_RsaSetRNG(rng))
+			this.rng = rng;
 	}
 
 	@Override
@@ -94,10 +102,24 @@ public class Rsa extends NativeStruct {
 		if (state == WolfCryptState.UNINITIALIZED) {
 			wc_InitRsaKey();
 			state = WolfCryptState.INITIALIZED;
-		} else {
-			throw new IllegalStateException(
-					"Native resources already initialized.");
 		}
+	}
+
+	protected void willSetKey() {
+		init();
+
+		if (state != WolfCryptState.INITIALIZED)
+			throw new IllegalStateException("Object already has a key.");
+	}
+
+	protected void willUseKey(boolean priv) {
+		if (priv && !hasPrivateKey)
+			throw new IllegalStateException(
+					"No available key to perform the opperation.");
+
+		if (state != WolfCryptState.READY)
+			throw new IllegalStateException(
+					"No available key to perform the opperation.");
 	}
 
 	protected void free() {
@@ -108,13 +130,12 @@ public class Rsa extends NativeStruct {
 	}
 
 	public void makeKey(int size, long e, Rng rng) {
-		if (state == WolfCryptState.INITIALIZED) {
-			MakeRsaKey(size, e, rng);
-			state = WolfCryptState.READY;
-			hasPrivateKey = true;
-		} else {
-			throw new IllegalStateException("Object already has a key.");
-		}
+		willSetKey();
+
+		MakeRsaKey(size, e, rng);
+
+		state = WolfCryptState.READY;
+		hasPrivateKey = true;
 	}
 
     public void decodePublicKey(byte[] key) {
@@ -127,13 +148,11 @@ public class Rsa extends NativeStruct {
     }
 
 	public void decodePrivateKey(byte[] key) {
-		if (state == WolfCryptState.INITIALIZED) {
-			wc_RsaPrivateKeyDecode(key);
-			state = WolfCryptState.READY;
-			hasPrivateKey = true;
-		} else {
-			throw new IllegalStateException("Object already has a key.");
-		}
+		willSetKey();
+
+		wc_RsaPrivateKeyDecode(key);
+		state = WolfCryptState.READY;
+		hasPrivateKey = true;
 	}
 
     public void decodePrivateKeyPKCS8(byte[] key) {
@@ -151,12 +170,10 @@ public class Rsa extends NativeStruct {
 	}
 
 	public void decodeRawPublicKey(byte[] n, long nSize, byte[] e, long eSize) {
-		if (state == WolfCryptState.INITIALIZED) {
-			wc_RsaPublicKeyDecodeRaw(n, nSize, e, eSize);
-			state = WolfCryptState.READY;
-		} else {
-			throw new IllegalStateException("Object already has a key.");
-		}
+		willSetKey();
+
+		wc_RsaPublicKeyDecodeRaw(n, nSize, e, eSize);
+		state = WolfCryptState.READY;
 	}
 
 	public void decodeRawPublicKey(ByteBuffer n, ByteBuffer e) {
@@ -165,30 +182,22 @@ public class Rsa extends NativeStruct {
 
 	public void decodeRawPublicKey(ByteBuffer n, long nSz, ByteBuffer e,
 			long eSz) {
-		if (state == WolfCryptState.INITIALIZED) {
-			wc_RsaPublicKeyDecodeRaw(n, nSz, e, eSz);
-			state = WolfCryptState.READY;
-		} else {
-			throw new IllegalStateException("Object already has a key.");
-		}
+		willSetKey();
+
+		wc_RsaPublicKeyDecodeRaw(n, nSz, e, eSz);
+		state = WolfCryptState.READY;
 	}
 
 	public void exportRawPublicKey(byte[] n, long[] nSz, byte[] e, long[] eSz) {
-		if (state == WolfCryptState.READY) {
-			RsaFlattenPublicKey(n, nSz, e, eSz);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
+		willUseKey(false);
+
+		RsaFlattenPublicKey(n, nSz, e, eSz);
 	}
 
 	public void exportRawPublicKey(ByteBuffer n, ByteBuffer e) {
-		if (state == WolfCryptState.READY) {
-			RsaFlattenPublicKey(n, e);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
+		willUseKey(false);
+
+		RsaFlattenPublicKey(n, e);
 	}
 
     public int getEncryptSize() {
@@ -201,38 +210,26 @@ public class Rsa extends NativeStruct {
     }
 
 	public byte[] encrypt(byte[] plain, Rng rng) {
-		if (state == WolfCryptState.READY) {
-			return wc_RsaPublicEncrypt(plain, rng);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
+		willUseKey(false);
+
+		return wc_RsaPublicEncrypt(plain, rng);
 	}
 
 	public byte[] decrypt(byte[] ciphertext) {
-		if (hasPrivateKey) {
-			return wc_RsaPrivateDecrypt(ciphertext);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
+		willUseKey(true);
+
+		return wc_RsaPrivateDecrypt(ciphertext);
 	}
 
 	public byte[] sign(byte[] data, Rng rng) {
-		if (hasPrivateKey) {
-			return wc_RsaSSL_Sign(data, rng);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
+		willUseKey(true);
+
+		return wc_RsaSSL_Sign(data, rng);
 	}
 
 	public byte[] verify(byte[] signature) {
-		if (state == WolfCryptState.READY) {
-			return wc_RsaSSL_Verify(signature);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
+		willUseKey(false);
+
+		return wc_RsaSSL_Verify(signature);
 	}
 }

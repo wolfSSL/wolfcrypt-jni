@@ -37,12 +37,7 @@ public class RsaTest {
 
 	@BeforeClass
 	public static void setUpRng() {
-		Fips.InitRng_fips(rng);
-	}
-
-	@AfterClass
-	public static void tearDownRng() {
-		Fips.FreeRng_fips(rng);
+		rng.init();
 	}
 
 	@BeforeClass
@@ -187,6 +182,7 @@ public class RsaTest {
 		e_len[0] = e_out.length;
 
 		priv.exportRawPublicKey(n_out, n_len, e_out, e_len);
+		priv.setRng(rng);
 		
 		Rsa pub = new Rsa(n_out, e_out);
 				

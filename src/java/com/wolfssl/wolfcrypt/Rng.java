@@ -35,76 +35,73 @@ public class Rng extends NativeStruct {
 
 	protected native long mallocNativeStruct() throws OutOfMemoryError;
 
-    private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
-    /* native wrappers called by public functions below */
+	/* native wrappers called by public functions below */
 	private native void initRng();
+
 	private native void freeRng();
+
 	private native void rngGenerateBlock(ByteBuffer buf, int position, int sz);
+
 	private native void rngGenerateBlock(byte[] buf);
 
-    public void init() {
+	@Override
+	public void releaseNativeStruct() {
+		free();
 
-        if (state == WolfCryptState.UNINITIALIZED) {
-            initRng();
-            state = WolfCryptState.INITIALIZED;
-        } else {
-            throw new IllegalStateException(
-                "Object has already been initialized");
-        }
-    }
+		super.releaseNativeStruct();
+	}
 
-    public void free() {
+	public void init() {
+		if (state == WolfCryptState.UNINITIALIZED) {
+			initRng();
+			state = WolfCryptState.INITIALIZED;
+		} else {
+			throw new IllegalStateException(
+					"Object has already been initialized");
+		}
+	}
 
-        if (state == WolfCryptState.INITIALIZED) {
-            freeRng();
-            state = WolfCryptState.UNINITIALIZED;
-        } else {
-            throw new IllegalStateException(
-                "Object has been freed");
-        }
-    }
+	public void free() {
+		if (state == WolfCryptState.INITIALIZED) {
+			freeRng();
+			state = WolfCryptState.UNINITIALIZED;
+		} else {
+			throw new IllegalStateException("Object has been freed");
+		}
+	}
 
-    public void generateBlock(ByteBuffer buf) {
+	public void generateBlock(ByteBuffer buf) {
+		if (state == WolfCryptState.INITIALIZED) {
+			rngGenerateBlock(buf, buf.position(), buf.remaining());
+			buf.position(buf.position() + buf.remaining());
+		} else {
+			throw new IllegalStateException(
+					"Object must be initialized before use");
+		}
+	}
 
-        if (state == WolfCryptState.INITIALIZED) {
+	public void generateBlock(byte[] buf) {
+		if (state == WolfCryptState.INITIALIZED) {
+			rngGenerateBlock(buf);
+		} else {
+			throw new IllegalStateException(
+					"Object must be initialized before use");
+		}
+	}
 
-            rngGenerateBlock(buf, buf.position(), buf.remaining());
+	public byte[] generateBlock(int size) {
+		if (state == WolfCryptState.INITIALIZED) {
+			byte[] buffer = new byte[size];
 
-            buf.position(buf.position() + buf.remaining());
+			rngGenerateBlock(buffer);
 
-        } else {
-            throw new IllegalStateException(
-                "Object must be initialized before use");
-        }
-    }
+			return buffer;
 
-    public void generateBlock(byte[] buf) {
-
-        if (state == WolfCryptState.INITIALIZED) {
-
-            rngGenerateBlock(buf);
-
-        } else {
-            throw new IllegalStateException(
-                "Object must be initialized before use");
-        }
-    }
-
-    public byte[] generateBlock(int size) {
-
-        if (state == WolfCryptState.INITIALIZED) {
-
-            byte[] buffer = new byte[size];
-
-            rngGenerateBlock(buffer);
-
-            return buffer;
-
-        } else {
-            throw new IllegalStateException(
-                "Object must be initialized before use");
-        }
-    }
+		} else {
+			throw new IllegalStateException(
+					"Object must be initialized before use");
+		}
+	}
 }
-
