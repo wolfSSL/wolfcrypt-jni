@@ -55,7 +55,7 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1set_1key(
     JNIEnv* env, jobject this, jbyteArray key_object, jbyteArray iv_object,
     jint opmode)
 {
-#ifndef NO_Des3
+#ifndef NO_DES3
     int ret = 0;
     Des3* des = (Des3*) getNativeStruct(env, this);
     byte* key = getByteArray(env, key_object);
@@ -83,8 +83,9 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__I_3BII_3BI(
     jbyteArray input_object, jint offset, jint length,
     jbyteArray output_object, jint outputOffset)
 {
-#ifndef NO_Des3
     int ret = 0;
+
+#ifndef NO_DES3
     Des3* des = (Des3*) getNativeStruct(env, this);
     byte* input = getByteArray(env, input_object);
     byte* output = getByteArray(env, output_object);
@@ -134,7 +135,7 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__ILjava_nio_ByteBuffer_2IILjava_n
 {
     int ret = 0;
 
-#ifndef NO_Des3
+#ifndef NO_DES3
     Des3* des = (Des3*) getNativeStruct(env, this);
     byte* input = getDirectBufferAddress(env, input_object);
     byte* output = getDirectBufferAddress(env, output_object);
