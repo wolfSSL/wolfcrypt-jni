@@ -72,25 +72,13 @@ public final class WolfCryptMessageDigestSha256 extends MessageDigestSpi {
         byte[] tmp = new byte[1];
         tmp[0] = input;
 
-        try {
-
-            this.sha.update(tmp, 1);
-
-        } catch (ShortBufferException e) {
-            throw new RuntimeException(e.getMessage());
-        }
+        this.sha.update(tmp, 1);
     }
 
     @Override
     protected void engineUpdate(byte[] input, int offset, int len) {
 
-        try {
-
-            this.sha.update(input, offset, len);
-
-        } catch (ShortBufferException e) {
-            throw new RuntimeException(e.getMessage());
-        }
+        this.sha.update(input, offset, len);
     }
 
     @Override

@@ -356,6 +356,10 @@ public class WolfCryptSignature extends SignatureSpi {
             throw new SignatureException(e.getMessage());
         }
 
+        /* init RNG for padding */
+        Rng rng = new Rng();
+        rng.init();
+
         /* sign digest */
         switch (this.keyType) {
             case WC_RSA:
@@ -371,30 +375,28 @@ public class WolfCryptSignature extends SignatureSpi {
 
                 byte[] tmp = new byte[encodedSz];
                 System.arraycopy(encDigest, 0, tmp, 0, encodedSz);
-                signature = this.rsa.sign(tmp, null);
+                signature = this.rsa.sign(tmp, rng);
                 zeroArray(tmp);
 
-                return signature;
+                break;
 
             case WC_ECDSA:
-
-                /* init RNG for padding */
-                Rng rng = new Rng();
-                rng.init();
 
                 /* ECC sign */
                 signature = this.ecc.sign(digest, rng);
 
-                /* release RNG */
-                rng.free();
-                rng.releaseNativeStruct();
-
-                return signature;
+                break;
 
             default:
                 throw new SignatureException(
                     "Invalid signature algorithm type");
         }
+
+        /* release RNG */
+        rng.free();
+        rng.releaseNativeStruct();
+
+        return signature;
     }
 
     @Override
@@ -410,31 +412,26 @@ public class WolfCryptSignature extends SignatureSpi {
     protected void engineUpdate(byte[] b, int off, int len)
         throws SignatureException {
 
-        try {
-            switch (this.digestType) {
-                case WC_MD5:
-                    this.md5.update(b, off, len);
-                    break;
+        switch (this.digestType) {
+            case WC_MD5:
+                this.md5.update(b, off, len);
+                break;
 
-                case WC_SHA1:
-                    this.sha.update(b, off, len);
-                    break;
+            case WC_SHA1:
+                this.sha.update(b, off, len);
+                break;
 
-                case WC_SHA256:
-                    this.sha256.update(b, off, len);
-                    break;
+            case WC_SHA256:
+                this.sha256.update(b, off, len);
+                break;
 
-                case WC_SHA384:
-                    this.sha384.update(b, off, len);
-                    break;
+            case WC_SHA384:
+                this.sha384.update(b, off, len);
+                break;
 
-                case WC_SHA512:
-                    this.sha512.update(b, off, len);
-                    break;
-            }
-
-        } catch (ShortBufferException e) {
-            throw new SignatureException(e.getMessage());
+            case WC_SHA512:
+                this.sha512.update(b, off, len);
+                break;
         }
     }
 

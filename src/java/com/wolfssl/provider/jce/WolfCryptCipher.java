@@ -439,17 +439,19 @@ public class WolfCryptCipher extends CipherSpi {
             case WC_RSA:
 
                 if (this.direction == OpMode.WC_ENCRYPT) {
+
+                    Rng rng = new Rng();
+                    rng.init();
+
                     if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
+                        tmpOut = this.rsa.sign(tmpIn, rng);
 
-                        tmpOut = this.rsa.sign(tmpIn, null);
                     } else {
-
-                        Rng rng = new Rng();
-                        rng.init();
                         tmpOut = this.rsa.encrypt(tmpIn, rng);
-                        rng.free();
-                        rng.releaseNativeStruct();
                     }
+
+                    rng.free();
+                    rng.releaseNativeStruct();
 
                 } else {
                     if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
