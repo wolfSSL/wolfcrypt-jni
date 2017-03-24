@@ -11,7 +11,7 @@ TARGET    = $(OUT_PATH)/libwolfcryptjni.jnilib
 JAVA_HOME = $(shell /usr/libexec/java_home)
 CC        = gcc
 CCFLAGS   = -Wall -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/darwin \
-			-I/usr/local/include -I$(INC_PATH) -DHAVE_FIPS
+			-I/usr/local/include -I$(INC_PATH)
 LDFLAGS   = -L/usr/local/lib -dynamiclib -framework JavaVM -lwolfssl
 
 all: $(TARGET)
