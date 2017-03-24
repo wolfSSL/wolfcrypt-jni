@@ -1,4 +1,4 @@
-/* FipsTest.java
+/* RngTest.java
  *
  * Copyright (C) 2006-2016 wolfSSL Inc.
  *
@@ -19,16 +19,20 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.wolfcrypt.fips;
+package com.wolfssl.wolfcrypt.test;
 
-import org.junit.Assume;
-import org.junit.BeforeClass;
+import static org.junit.Assert.*;
 
-import com.wolfssl.wolfcrypt.Fips;
+import org.junit.Test;
 
-public class FipsTest {
-	@BeforeClass
-	public static void checkAvailability() {
-		Assume.assumeTrue(Fips.enabled);
+import com.wolfssl.wolfcrypt.Rng;
+import com.wolfssl.wolfcrypt.NativeStruct;
+
+public class RngTest {
+
+	@Test
+	public void constructorShouldInitializeNativeStruct() {
+		assertNotEquals(NativeStruct.NULL, new Rng().getNativeStruct());
 	}
+
 }

@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.wolfcrypt;
+package com.wolfssl.wolfcrypt.test;
 
 import static org.junit.Assert.*;
 
@@ -30,6 +30,7 @@ import javax.crypto.ShortBufferException;
 import org.junit.Test;
 
 import com.wolfssl.wolfcrypt.Sha;
+import com.wolfssl.wolfcrypt.NativeStruct;
 
 public class ShaTest {
 	private ByteBuffer data = ByteBuffer.allocateDirect(32);

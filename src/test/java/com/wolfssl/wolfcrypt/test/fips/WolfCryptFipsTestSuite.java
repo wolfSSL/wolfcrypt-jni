@@ -1,4 +1,4 @@
-/* Md5Test.java
+/* WolfCryptFipsTestSuite.java
  *
  * Copyright (C) 2006-2016 wolfSSL Inc.
  *
@@ -19,19 +19,17 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.wolfcrypt;
+package com.wolfssl.wolfcrypt.test.fips;
 
-import static org.junit.Assert.*;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+import org.junit.runners.Suite.SuiteClasses;
 
-import org.junit.Test;
-
-import com.wolfssl.wolfcrypt.Md5;
-
-public class Md5Test {
-
-	@Test
-	public void constructorShouldInitializeNativeStruct() {
-		assertNotEquals(NativeStruct.NULL, new Md5().getNativeStruct());
-	}
+@RunWith(Suite.class)
+@SuiteClasses({ FipsStatusTest.class, AesFipsTest.class, Des3FipsTest.class,
+		ShaFipsTest.class, Sha256FipsTest.class, Sha384FipsTest.class,
+		Sha512FipsTest.class, HmacFipsTest.class, RngFipsTest.class,
+		RsaFipsTest.class })
+public class WolfCryptFipsTestSuite {
 
 }

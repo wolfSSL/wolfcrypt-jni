@@ -1,4 +1,4 @@
-/* WolfCryptTestSuite.java
+/* Md5Test.java
  *
  * Copyright (C) 2006-2016 wolfSSL Inc.
  *
@@ -19,16 +19,20 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.wolfcrypt;
+package com.wolfssl.wolfcrypt.test;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
+import static org.junit.Assert.*;
 
-@RunWith(Suite.class)
-@SuiteClasses({ AesTest.class, Des3Test.class, Md5Test.class, ShaTest.class,
-		Sha256Test.class, Sha384Test.class, Sha512Test.class, HmacTest.class,
-		RngTest.class, RsaTest.class, DhTest.class, EccTest.class })
-public class WolfCryptTestSuite {
+import org.junit.Test;
+
+import com.wolfssl.wolfcrypt.Md5;
+import com.wolfssl.wolfcrypt.NativeStruct;
+
+public class Md5Test {
+
+	@Test
+	public void constructorShouldInitializeNativeStruct() {
+		assertNotEquals(NativeStruct.NULL, new Md5().getNativeStruct());
+	}
 
 }

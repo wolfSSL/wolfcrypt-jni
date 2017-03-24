@@ -1,4 +1,4 @@
-/* Sha384Test.java
+/* Sha384FipsTest.java
  *
  * Copyright (C) 2006-2016 wolfSSL Inc.
  *
@@ -19,30 +19,32 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.wolfcrypt;
+package com.wolfssl.wolfcrypt.test.fips;
 
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
-import javax.crypto.ShortBufferException;
-
 import org.junit.Test;
 
 import com.wolfssl.wolfcrypt.Sha384;
+import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.Fips;
 
-public class Sha384Test {
+import com.wolfssl.wolfcrypt.test.Util;
+
+public class Sha384FipsTest extends FipsTest {
 	private ByteBuffer data = ByteBuffer.allocateDirect(32);
 	private ByteBuffer result = ByteBuffer.allocateDirect(Sha384.DIGEST_SIZE);
 	private ByteBuffer expected = ByteBuffer.allocateDirect(Sha384.DIGEST_SIZE);
 
 	@Test
-	public void constructorShouldInitializeNativeStruct() {
-		assertNotEquals(NativeStruct.NULL, new Sha384().getNativeStruct());
+	public void initShouldReturnZero() {
+		assertEquals(WolfCrypt.SUCCESS, Fips.InitSha384_fips(new Sha384()));
 	}
 
 	@Test
-	public void hashShouldMatchUsingByteBuffer() throws ShortBufferException {
+	public void hashShouldMatchUsingByteBuffer() {
 		String[] dataVector = new String[] { "", "c2edba56a6b82cc3",
 				"2b1632b74a1c34b58af23274599a3aa1",
 				"4a4c09366fb6772637d9e696f1d0d0a98005ca33bc01062a",
@@ -65,10 +67,12 @@ public class Sha384Test {
 			data.put(Util.h2b(dataVector[i])).rewind();
 			expected.put(Util.h2b(hashVector[i])).rewind();
 
-			sha.update(data, dataVector[i].length() / 2);
-			sha.digest(result);
-			data.rewind();
-			result.rewind();
+			assertEquals(WolfCrypt.SUCCESS, Fips.InitSha384_fips(sha));
+
+			assertEquals(WolfCrypt.SUCCESS, Fips.Sha384Update_fips(sha, data,
+					dataVector[i].length() / 2));
+
+			assertEquals(WolfCrypt.SUCCESS, Fips.Sha384Final_fips(sha, result));
 
 			assertEquals(expected, result);
 		}
@@ -95,12 +99,17 @@ public class Sha384Test {
 		for (int i = 0; i < dataVector.length; i++) {
 			Sha384 sha = new Sha384();
 
-			byte[] data = Util.h2b(dataVector[i]);
+			byte[] data     = Util.h2b(dataVector[i]);
+			byte[] result   = new byte[Sha384.DIGEST_SIZE];
 			byte[] expected = Util.h2b(hashVector[i]);
 
-			sha.update(data);
-			byte[] result = sha.digest();
-			
+			assertEquals(WolfCrypt.SUCCESS, Fips.InitSha384_fips(sha));
+
+			assertEquals(WolfCrypt.SUCCESS, Fips.Sha384Update_fips(sha, data,
+					dataVector[i].length() / 2));
+
+			assertEquals(WolfCrypt.SUCCESS, Fips.Sha384Final_fips(sha, result));
+
 			assertArrayEquals(expected, result);
 		}
 	}

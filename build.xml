@@ -12,12 +12,12 @@
     </description>
 
 	<!-- set properties for this build -->
-	<property name="src.dir" value="src/java/" />
+    <property name="src.dir" value="src/main/java/" />
 	<property name="jni.dir" value="jni/include/" />
 	<property name="lib.dir" value="lib/" />
 	<property name="build.dir" value="build" />
 	<property name="doc.dir" value="docs" />
-	<property name="test.dir" value="src/test/" />
+    <property name="test.dir" value="src/test/java/" />
 	<property name="test.build.dir" value="build/test" />
 	<property name="reports.dir" value="build/reports" />
 
