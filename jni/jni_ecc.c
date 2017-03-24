@@ -144,7 +144,8 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private(
     byte* pub = getByteArray(env, pub_object);
     word32 pubSz = getByteArrayLength(env, pub_object);
 
-    ret = (!ecc || !priv || !pub)
+    /* pub may be null if only importing private key */
+    ret = (!ecc || !priv)
         ? BAD_FUNC_ARG
         : wc_ecc_import_private_key(priv, privSz, pub, pubSz, ecc);
 
