@@ -57,13 +57,13 @@ static INLINE int GetHashSizeByType(int type)
         break;
         #endif
         
-        #ifdef CYASSL_SHA384
+        #if defined(CYASSL_SHA384) || defined(WOLFSSL_SHA384)
         case SHA384:
             return SHA384_DIGEST_SIZE;
         break;
         #endif
         
-        #ifdef CYASSL_SHA512
+        #if defined(CYASSL_SHA512) || defined(WOLFSSL_SHA512)
         case SHA512:
             return SHA512_DIGEST_SIZE;
         break;
