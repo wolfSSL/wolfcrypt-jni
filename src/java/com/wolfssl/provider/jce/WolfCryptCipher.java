@@ -533,6 +533,39 @@ public class WolfCryptCipher extends CipherSpi {
     }
 
     @Override
+    protected int engineGetKeySize(Key key)
+        throws InvalidKeyException {
+
+        byte encodedKey[] = null;
+
+        /* validate key class type */
+        if (this.cipherType == CipherType.WC_RSA) {
+
+            if (key instanceof RSAPrivateKey) {
+                this.rsaKeyType = RsaKeyType.WC_RSA_PRIVATE;
+
+            } else if (key instanceof RSAPublicKey) {
+                this.rsaKeyType = RsaKeyType.WC_RSA_PUBLIC;
+
+            } else {
+                throw new InvalidKeyException(
+                    "Cipher key must be of type RSAPrivateKey or " +
+                    "RSAPublicKey when used for RSA encrypt or decrypt");
+            }
+
+        } else if (!(key instanceof SecretKey)) {
+            throw new InvalidKeyException(
+                "Cipher key must be of type SecretKey");
+        }
+
+        encodedKey = key.getEncoded();
+        if (encodedKey == null)
+            throw new InvalidKeyException("Key does not support encoding");
+
+        return encodedKey.length;
+    }
+
+    @Override
     protected void finalize() throws Throwable {
         try {
             this.aes.releaseNativeStruct();
