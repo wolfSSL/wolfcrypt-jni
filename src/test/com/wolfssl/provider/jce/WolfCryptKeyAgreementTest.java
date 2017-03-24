@@ -281,7 +281,7 @@ public class WolfCryptKeyAgreementTest {
                InvalidParameterSpecException, InvalidKeyException,
                InvalidAlgorithmParameterException {
 
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "SunEC");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
         ECGenParameterSpec ecsp = null;
 
         for (int i = 0; i < testCurves.length; i++) {
@@ -290,7 +290,7 @@ public class WolfCryptKeyAgreementTest {
                 keyGen.initialize(ecsp);
             } catch (InvalidAlgorithmParameterException e) {
                 System.out.println("ECDH: Skipping curve [" + testCurves[i] +
-                        "], not supported by SunEC");
+                        "], not supported by " + keyGen.getProvider());
                 continue;
             }
 
@@ -316,7 +316,7 @@ public class WolfCryptKeyAgreementTest {
                InvalidAlgorithmParameterException {
 
         /* initialize key pair generator */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "SunEC");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
         ECGenParameterSpec ecsp = new ECGenParameterSpec("secp256r1");
         keyGen.initialize(ecsp);
 
@@ -359,7 +359,7 @@ public class WolfCryptKeyAgreementTest {
                ShortBufferException {
 
         /* initialize key pair generator */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "SunEC");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
         ECGenParameterSpec ecsp = new ECGenParameterSpec("secp256r1");
         keyGen.initialize(ecsp);
 
@@ -405,17 +405,16 @@ public class WolfCryptKeyAgreementTest {
                InvalidAlgorithmParameterException {
 
         /* initialize key pair generator */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "SunEC");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
         ECGenParameterSpec ecsp = new ECGenParameterSpec("secp256r1");
         keyGen.initialize(ecsp);
 
         KeyAgreement aKeyAgree = KeyAgreement.getInstance("ECDH", "wolfJCE");
-        KeyAgreement bKeyAgree = null;
+        KeyAgreement bKeyAgree = KeyAgreement.getInstance("ECDH");
 
-        try {
-            bKeyAgree = KeyAgreement.getInstance("ECDH", "SunEC");
-        } catch (NoSuchProviderException e) {
-            /* skip out if SunEC provider isn't available */
+        Provider prov = bKeyAgree.getProvider();
+        if (prov.equals("wolfJCE")) {
+            /* return, no other provider installed to interop against */
             return;
         }
 

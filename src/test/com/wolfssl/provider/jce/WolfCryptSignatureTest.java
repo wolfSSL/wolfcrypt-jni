@@ -248,7 +248,7 @@ public class WolfCryptSignatureTest {
 
     /**
      * Generates public/private key pair for use in signature tests.
-     * Currently generates keys using SUN provider, as wolfJCE does not
+     * Currently generates keys using default provider, as wolfJCE does not
      * yet support key generation.
      */
     private KeyPair generateKeyPair(String algo, SecureRandom rand)
@@ -259,16 +259,13 @@ public class WolfCryptSignatureTest {
 
         if (algo.contains("RSA")) {
 
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA",
-                    "SunRsaSign");
-
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
             keyGen.initialize(2048, rand);
             pair = keyGen.generateKeyPair();
 
         } else if (algo.contains("ECDSA")) {
 
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC",
-                    "SunEC");
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
             ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp521r1");
             keyGen.initialize(ecSpec);
 

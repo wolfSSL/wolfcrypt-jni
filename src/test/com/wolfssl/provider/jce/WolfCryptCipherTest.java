@@ -381,8 +381,7 @@ public class WolfCryptCipherTest {
         byte ciphertext[];
         byte plaintext[];
 
-        KeyPairGenerator keyGen =
-            KeyPairGenerator.getInstance("RSA", "SunRsaSign");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048, new SecureRandom());
 
         KeyPair pair = keyGen.generateKeyPair();
@@ -443,8 +442,7 @@ public class WolfCryptCipherTest {
         byte ciphertext[];
         byte plaintext[];
 
-        KeyPairGenerator keyGen =
-            KeyPairGenerator.getInstance("RSA", "SunRsaSign");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048, new SecureRandom());
 
         KeyPair pair = keyGen.generateKeyPair();
