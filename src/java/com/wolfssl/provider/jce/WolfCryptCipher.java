@@ -129,26 +129,22 @@ public class WolfCryptCipher extends CipherSpi {
 
         int supported = 0;
 
-        switch (mode) {
-            case "ECB":
-                /* RSA is ECB mode */
-                if (cipherType == CipherType.WC_RSA) {
-                    cipherMode = CipherMode.WC_ECB;
-                    supported = 1;
-                }
-                break;
+        if (mode.equals("ECB")) {
 
-            case "CBC":
-                /* AES and 3DES support CBC */
-                if (cipherType == CipherType.WC_AES ||
-                    cipherType == CipherType.WC_DES3 ) {
-                    cipherMode = CipherMode.WC_CBC;
-                    supported = 1;
-                }
-                break;
+            /* RSA is ECB mode */
+            if (cipherType == CipherType.WC_RSA) {
+                cipherMode = CipherMode.WC_ECB;
+                supported = 1;
+            }
 
-            default:
-                break;
+        } else if (mode.equals("CBC")) {
+
+            /* AES and 3DES support CBC */
+            if (cipherType == CipherType.WC_AES ||
+                cipherType == CipherType.WC_DES3 ) {
+                cipherMode = CipherMode.WC_CBC;
+                supported = 1;
+            }
         }
 
         if (supported == 0) {
@@ -163,24 +159,20 @@ public class WolfCryptCipher extends CipherSpi {
 
         int supported = 0;
 
-        switch (padding) {
-            case "NoPadding":
-                if (cipherType == CipherType.WC_AES ||
-                    cipherType == CipherType.WC_DES3) {
-                    paddingType = PaddingType.WC_NONE;
-                    supported = 1;
-                }
-                break;
+        if (padding.equals("NoPadding")) {
 
-            case "PKCS1Padding":
-                if (cipherType == CipherType.WC_RSA) {
-                    paddingType = PaddingType.WC_PKCS1;
-                    supported = 1;
-                }
-                break;
+            if (cipherType == CipherType.WC_AES ||
+                cipherType == CipherType.WC_DES3) {
+                paddingType = PaddingType.WC_NONE;
+                supported = 1;
+            }
 
-            default:
-                break;
+        } else if (padding.equals("PKCS1Padding")) {
+
+            if (cipherType == CipherType.WC_RSA) {
+                paddingType = PaddingType.WC_PKCS1;
+                supported = 1;
+            }
         }
         
         if (supported == 0) {

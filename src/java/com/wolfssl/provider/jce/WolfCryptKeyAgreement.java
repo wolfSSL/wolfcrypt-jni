@@ -285,14 +285,15 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
         byte secret[] = engineGenerateSecret();
 
-        switch (algorithm) {
-            case "DES":
-                return (SecretKey)new DESKeySpec(secret);
-            case "DESede":
-                return (SecretKey)new DESedeKeySpec(secret);
-            case "AES":
-            default:
-                return new SecretKeySpec(secret, algorithm);
+        if (algorithm.equals("DES")) {
+            return (SecretKey)new DESKeySpec(secret);
+
+        } else if (algorithm.equals("DESede")) {
+            return (SecretKey)new DESedeKeySpec(secret);
+
+        } else {
+            /* AES and default */
+            return new SecretKeySpec(secret, algorithm);
         }
     }
 
