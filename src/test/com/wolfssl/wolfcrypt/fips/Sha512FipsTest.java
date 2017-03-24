@@ -32,7 +32,7 @@ import com.wolfssl.wolfcrypt.Util;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Fips;
 
-public class Sha512FipsTest {
+public class Sha512FipsTest extends FipsTest {
 	private ByteBuffer data = ByteBuffer.allocateDirect(32);
 	private ByteBuffer result = ByteBuffer.allocateDirect(Sha512.DIGEST_SIZE);
 	private ByteBuffer expected = ByteBuffer.allocateDirect(Sha512.DIGEST_SIZE);

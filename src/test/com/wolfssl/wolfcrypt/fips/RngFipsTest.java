@@ -32,7 +32,7 @@ import com.wolfssl.wolfcrypt.Util;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Fips;
 
-public class RngFipsTest {
+public class RngFipsTest extends FipsTest {
 	private ByteBuffer entropyA = ByteBuffer.allocateDirect(48);
 	private ByteBuffer entropyB = ByteBuffer.allocateDirect(32);
 	private ByteBuffer expected = ByteBuffer.allocateDirect(128);

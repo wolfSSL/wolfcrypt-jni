@@ -32,7 +32,7 @@ import com.wolfssl.wolfcrypt.Util;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Fips;
 
-public class Des3FipsTest {
+public class Des3FipsTest extends FipsTest {
 	private ByteBuffer vector = ByteBuffer.allocateDirect(Des3.BLOCK_SIZE);
 	private ByteBuffer result = ByteBuffer.allocateDirect(Des3.BLOCK_SIZE);
 	private ByteBuffer cipher = ByteBuffer.allocateDirect(Des3.BLOCK_SIZE);

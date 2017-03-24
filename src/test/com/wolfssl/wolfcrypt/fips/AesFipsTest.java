@@ -32,7 +32,7 @@ import com.wolfssl.wolfcrypt.Util;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Fips;
 
-public class AesFipsTest {
+public class AesFipsTest extends FipsTest {
 	private ByteBuffer input = ByteBuffer.allocateDirect(Aes.BLOCK_SIZE);
 	private ByteBuffer output = ByteBuffer.allocateDirect(Aes.BLOCK_SIZE);
 	private ByteBuffer cipher = ByteBuffer.allocateDirect(Aes.BLOCK_SIZE);

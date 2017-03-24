@@ -36,7 +36,7 @@ import com.wolfssl.wolfcrypt.Util;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Fips;
 
-public class HmacFipsTest {
+public class HmacFipsTest extends FipsTest {
 	private ByteBuffer key = ByteBuffer.allocateDirect(14);
 	private ByteBuffer data = ByteBuffer.allocateDirect(256);
 	private ByteBuffer result = ByteBuffer.allocateDirect(Sha512.DIGEST_SIZE);

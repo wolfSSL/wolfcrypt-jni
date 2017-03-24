@@ -35,7 +35,7 @@ import com.wolfssl.wolfcrypt.Util;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Fips;
 
-public class RsaFipsTest {
+public class RsaFipsTest extends FipsTest {
 	private ByteBuffer privKey = ByteBuffer.allocateDirect(2048);
 	private ByteBuffer cipher = ByteBuffer
 			.allocateDirect(WolfCrypt.SIZE_OF_2048_BITS);
