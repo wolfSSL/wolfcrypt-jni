@@ -22,18 +22,21 @@
 #ifndef __ANDROID__
     #include <wolfssl/options.h>
 #endif
-#include <wolfssl/wolfcrypt/error-crypt.h>
-#include <wolfssl/wolfcrypt/fips_test.h>
-#include <wolfssl/wolfcrypt/aes.h>
-#include <wolfssl/wolfcrypt/des3.h>
-#include <wolfssl/wolfcrypt/sha.h>
-#include <wolfssl/wolfcrypt/sha256.h>
-#include <wolfssl/wolfcrypt/sha512.h>
-#include <wolfssl/wolfcrypt/hmac.h>
-#include <wolfssl/wolfcrypt/random.h>
-#include <wolfssl/wolfcrypt/rsa.h>
-#include <cyassl/ctaocrypt/dh.h>
-#include <cyassl/ctaocrypt/ecc.h>
+
+#ifdef HAVE_FIPS
+    #include <wolfssl/wolfcrypt/error-crypt.h>
+    #include <wolfssl/wolfcrypt/fips_test.h>
+    #include <wolfssl/wolfcrypt/aes.h>
+    #include <wolfssl/wolfcrypt/des3.h>
+    #include <wolfssl/wolfcrypt/sha.h>
+    #include <wolfssl/wolfcrypt/sha256.h>
+    #include <wolfssl/wolfcrypt/sha512.h>
+    #include <wolfssl/wolfcrypt/hmac.h>
+    #include <wolfssl/wolfcrypt/random.h>
+    #include <wolfssl/wolfcrypt/rsa.h>
+    #include <cyassl/ctaocrypt/dh.h>
+    #include <cyassl/ctaocrypt/ecc.h>
+#endif
 
 #include <stdio.h>
 
@@ -45,11 +48,14 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+#ifdef HAVE_FIPS
 extern JavaVM* g_vm;
 static jobject g_errCb;
+#endif
 
 void NativeErrorCallback(const int ok, const int err, const char * const hash)
 {
+#ifdef HAVE_FIPS
     JNIEnv* env;
     jclass class;
     jmethodID method;
@@ -82,21 +88,28 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
     else
         (*env)->CallVoidMethod(env, g_errCb, method, ok, err,
             (*env)->NewStringUTF(env, hash));
+#endif
 }
 
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1SetCb_1fips(
     JNIEnv* env, jclass class, jobject callback)
 {
+#ifdef HAVE_FIPS
     if ((g_errCb = (*env)->NewGlobalRef(env, callback)))
         wolfCrypt_SetCb_fips(NativeErrorCallback);
     else
         throwWolfCryptException(env, "Failed to store global error callback");
+#endif
 }
 
 JNIEXPORT jstring JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetCoreHash_1fips(
     JNIEnv* env, jclass class)
 {
-    return (*env)->NewStringUTF(env, wolfCrypt_GetCoreHash_fips());
+    #ifdef HAVE_FIPS
+        return (*env)->NewStringUTF(env, wolfCrypt_GetCoreHash_fips());
+    #else
+        return NULL;
+    #endif
 }
 
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Fips_enabled
@@ -1935,7 +1948,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Final_1fips__Lcom_w
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetStatus_1fips(
     JNIEnv* env, jclass class)
 {
+#ifdef HAVE_FIPS
     return (jint) wolfCrypt_GetStatus_fips();
+#else
+    return NOT_COMPILED_IN;
+#endif
 }
 
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1SetStatus_1fips(
