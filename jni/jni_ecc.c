@@ -316,7 +316,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccKeyToDer(
 {
     jbyteArray result = NULL;
 
-#if defined(HAVE_ECC) && !defined(NO_ASN)
+#if defined(HAVE_ECC) && !defined(NO_ASN) && defined(WOLFSSL_KEY_GEN)
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     byte* output = NULL;
