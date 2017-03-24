@@ -25,6 +25,9 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.IvParameterSpec;
@@ -48,26 +51,45 @@ import com.wolfssl.provider.jce.WolfCryptProvider;
 
 public class WolfCryptCipherTest {
 
-    private String wolfJCEAlgos[] = {
+    /* all supported algos from wolfJCE provider, if enabled */
+    private static String supportedJCEAlgos[] = {
         "AES/CBC/NoPadding",
         "DESede/CBC/NoPadding",
         "RSA/ECB/PKCS1Padding"
     };
 
-    private int expectedBlockSizes[] = {
-        16,
-        8,
-        0
-    };
+    /* populated with all enabled algos (some could have been compiled out) */
+    private static ArrayList<String> enabledJCEAlgos =
+        new ArrayList<String>();
+
+    private static HashMap<String, Integer> expectedBlockSizes =
+        new HashMap<String, Integer>();
 
     @BeforeClass
-    public static void testProviderInstallationAtRuntime() {
+    public static void testProviderInstallationAtRuntime()
+        throws NoSuchProviderException, NoSuchPaddingException {
 
         /* install wolfJCE provider at runtime */
         Security.addProvider(new WolfCryptProvider());
 
         Provider p = Security.getProvider("wolfJCE");
         assertNotNull(p);
+
+        /* populate enabledJCEAlgos to test */
+        for (int i = 0; i < supportedJCEAlgos.length; i++) {
+            try {
+                Cipher c = Cipher.getInstance(supportedJCEAlgos[i], "wolfJCE");
+                enabledJCEAlgos.add(supportedJCEAlgos[i]);
+
+            } catch (NoSuchAlgorithmException e) {
+                /* algorithm not enabled */
+            }
+        }
+
+        /* fill expected block size HashMap */
+        expectedBlockSizes.put("AES/CBC/NoPadding", 16);
+        expectedBlockSizes.put("DESede/CBC/NoPadding", 8);
+        expectedBlockSizes.put("RSA/ECB/PKCS1Padding", 0);
     }
 
     @Test
@@ -78,8 +100,8 @@ public class WolfCryptCipherTest {
         Cipher cipher;
 
         /* try to get all available options we expect to have */
-        for (int i = 0; i < wolfJCEAlgos.length; i++) {
-            cipher = Cipher.getInstance(wolfJCEAlgos[i], "wolfJCE");
+        for (int i = 0; i < enabledJCEAlgos.size(); i++) {
+            cipher = Cipher.getInstance(enabledJCEAlgos.get(i), "wolfJCE");
         }
 
         /* getting a garbage algorithm should throw
@@ -100,12 +122,14 @@ public class WolfCryptCipherTest {
 
         Cipher cipher;
 
-        for (int i = 0; i < wolfJCEAlgos.length; i++) {
-            cipher = Cipher.getInstance(wolfJCEAlgos[i], "wolfJCE");
+        for (int i = 0; i < enabledJCEAlgos.size(); i++) {
+            cipher = Cipher.getInstance(enabledJCEAlgos.get(i), "wolfJCE");
 
-            if (cipher.getBlockSize() != expectedBlockSizes[i])
+            if (cipher.getBlockSize() !=
+                    expectedBlockSizes.get((enabledJCEAlgos.get(i)))) {
                 fail("Expected Cipher block size did not match, " +
-                        "algo = " + wolfJCEAlgos[i]);
+                        "algo = " + enabledJCEAlgos.get(i));
+            }
         }
     }
 
@@ -147,6 +171,11 @@ public class WolfCryptCipherTest {
         };
 
         byte output[];
+
+        if (!enabledJCEAlgos.contains("AES/CBC/NoPadding")) {
+            /* bail out if AES is not enabled */
+            return;
+        }
 
         Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding", "wolfJCE");
 
@@ -275,6 +304,11 @@ public class WolfCryptCipherTest {
         byte cipher[] = new byte[input.length];
         byte plain[]  = new byte[input.length];
 
+        if (!enabledJCEAlgos.contains("AES/CBC/NoPadding")) {
+            /* bail out if AES is not enabled */
+            return;
+        }
+
         Cipher ciph = Cipher.getInstance("AES/CBC/NoPadding", "wolfJCE");
         SecretKeySpec secretkey = new SecretKeySpec(key, "AES");
         IvParameterSpec spec = new IvParameterSpec(iv);
@@ -337,6 +371,11 @@ public class WolfCryptCipherTest {
 
         byte output[];
 
+        if (!enabledJCEAlgos.contains("DESede/CBC/NoPadding")) {
+            /* bail out if 3DES is not enabled */
+            return;
+        }
+
         Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding", "wolfJCE");
 
         for (int i = 0; i < vectors.length; i++) {
@@ -380,6 +419,11 @@ public class WolfCryptCipherTest {
 
         byte ciphertext[];
         byte plaintext[];
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            /* bail out if RSA is not enabled */
+            return;
+        }
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048, new SecureRandom());
@@ -441,6 +485,11 @@ public class WolfCryptCipherTest {
 
         byte ciphertext[];
         byte plaintext[];
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            /* bail out if RSA is not enabled */
+            return;
+        }
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048, new SecureRandom());
