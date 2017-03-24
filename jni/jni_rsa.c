@@ -30,7 +30,7 @@
 #include <wolfcrypt_jni_NativeStruct.h>
 #include <wolfcrypt_jni_error.h>
 
-#define WOLFCRYPT_JNI_DEBUG_ON
+/* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
 JNIEXPORT jlong JNICALL
