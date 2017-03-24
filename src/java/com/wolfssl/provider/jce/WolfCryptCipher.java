@@ -95,6 +95,7 @@ public class WolfCryptCipher extends CipherSpi {
     private Aes  aes  = null;
     private Des3 des3 = null;
     private Rsa  rsa  = null;
+    private Rng  rng  = null;
 
     /* stash IV here for easy lookup */
     private byte[] iv = null;
@@ -105,6 +106,9 @@ public class WolfCryptCipher extends CipherSpi {
         this.cipherType = type;
         this.cipherMode = mode;
         this.paddingType = pad;
+
+        this.rng = new Rng();
+        this.rng.init();
 
         switch (cipherType) {
             case WC_AES:
@@ -119,6 +123,7 @@ public class WolfCryptCipher extends CipherSpi {
 
             case WC_RSA:
                 rsa = new Rsa();
+                rsa.setRng(this.rng);
                 break;
         }
     }
@@ -320,6 +325,7 @@ public class WolfCryptCipher extends CipherSpi {
                     this.rsa.releaseNativeStruct();
 
                 this.rsa = new Rsa();
+                this.rsa.setRng(this.rng);
 
                 if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
 
@@ -440,18 +446,12 @@ public class WolfCryptCipher extends CipherSpi {
 
                 if (this.direction == OpMode.WC_ENCRYPT) {
 
-                    Rng rng = new Rng();
-                    rng.init();
-
                     if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
-                        tmpOut = this.rsa.sign(tmpIn, rng);
+                        tmpOut = this.rsa.sign(tmpIn, this.rng);
 
                     } else {
-                        tmpOut = this.rsa.encrypt(tmpIn, rng);
+                        tmpOut = this.rsa.encrypt(tmpIn, this.rng);
                     }
-
-                    rng.free();
-                    rng.releaseNativeStruct();
 
                 } else {
                     if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
@@ -564,8 +564,8 @@ public class WolfCryptCipher extends CipherSpi {
         try {
             this.aes.releaseNativeStruct();
             this.des3.releaseNativeStruct();
-
             this.rsa.releaseNativeStruct();
+            this.rng.releaseNativeStruct();
 
             zeroArray(this.iv);
 
