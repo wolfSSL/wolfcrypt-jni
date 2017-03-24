@@ -118,7 +118,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_ni
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3B(
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
     JNIEnv* env, jobject this, jbyteArray buffer_buffer, jint offset,
     jint length)
 {
