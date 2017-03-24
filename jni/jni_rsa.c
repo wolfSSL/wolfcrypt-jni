@@ -23,6 +23,7 @@
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/rsa.h>
+#include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 
 #include <com_wolfssl_wolfcrypt_Rsa.h>
@@ -274,6 +275,85 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecode(
 #else
     throwNotCompiledInException(env);
 #endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecodePKCS8
+  (JNIEnv* env, jobject this, jbyteArray key_object)
+{
+#ifndef NO_RSA
+    int ret    = 0;
+    int length = 0;
+    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
+    byte* k = getByteArray(env, key_object);
+    word32 kSz = getByteArrayLength(env, key_object);
+    word32 offset = 0;
+
+    length = wc_GetPkcs8TraditionalOffset(k, &offset, kSz);
+
+    if (length < 0) {
+        throwWolfCryptExceptionFromError(env, length);
+
+    } else {
+        ret = wc_RsaPrivateKeyDecode(k, &offset, key, kSz);
+        if (ret != 0)
+            throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_RsaPrivateKeyDecodePKCS8(k, kSize, key) = %d\n", ret);
+    LogStr("key[%u]: [%p]\n", (word32)kSz, k);
+    LogHex((byte*) k, kSz);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecode
+  (JNIEnv* env, jobject this, jbyteArray key_object)
+{
+#ifndef NO_RSA
+    int ret = 0;
+    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
+    byte* k = getByteArray(env, key_object);
+    word32 kSz = getByteArrayLength(env, key_object);
+    word32 index = 0;
+
+    ret = wc_RsaPublicKeyDecode(k, &index, key, kSz);
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_RsaPublicKeyDecode(k, kSize, key) = %d\n", ret);
+    LogStr("key[%u]: [%p]\n", (word32)kSz, k);
+    LogHex((byte*) k, kSz);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaEncryptSize
+  (JNIEnv* env, jobject this)
+{
+    jint ret = 0;
+
+#ifndef NO_RSA
+    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
+
+    /* RsaEncryptSize doesn't sanitize key */
+    if (!key) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+
+    } else {
+        ret = wc_RsaEncryptSize(key);
+        if (ret < 0)
+            throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_RsaEncryptSize(key=%p) = %d\n", key, ret);
+
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return ret;
 }
 
 JNIEXPORT jbyteArray JNICALL
