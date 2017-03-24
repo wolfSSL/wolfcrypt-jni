@@ -44,10 +44,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_ni
 /*
  * Class:     com_wolfssl_wolfcrypt_Rng
  * Method:    rngGenerateBlock
- * Signature: ([B)V
+ * Signature: ([BII)V
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3B
-  (JNIEnv *, jobject, jbyteArray);
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII
+  (JNIEnv *, jobject, jbyteArray, jint, jint);
 
 #ifdef __cplusplus
 }

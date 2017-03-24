@@ -119,23 +119,23 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_ni
 }
 
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3B(
-    JNIEnv* env, jobject this, jbyteArray buffer_buffer)
+    JNIEnv* env, jobject this, jbyteArray buffer_buffer, jint offset,
+    jint length)
 {
 #ifndef WC_NO_RNG
     int ret = 0;
     RNG* rng = (RNG*) getNativeStruct(env, this);
     byte* buffer = getByteArray(env, buffer_buffer);
-    word32 size = getByteArrayLength(env, buffer_buffer);
 
     ret = (!rng || !buffer)
         ? BAD_FUNC_ARG
-        : wc_RNG_GenerateBlock(rng, buffer, size);
+        : wc_RNG_GenerateBlock(rng, buffer + offset, length);
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
-    LogStr("wc_RNG_GenerateBlock(rng=%p, buffer, size) = %d\n", rng, ret);
-    LogStr("output[%u]: [%p]\n", (word32)size, buf);
-    LogHex(buffer, 0, size);
+    LogStr("wc_RNG_GenerateBlock(rng=%p, buffer, length) = %d\n", rng, ret);
+    LogStr("output[%u]: [%p]\n", (word32)length, buf);
+    LogHex(buffer, 0, length);
 
     releaseByteArray(env, buffer_buffer, buffer, ret);
 #else

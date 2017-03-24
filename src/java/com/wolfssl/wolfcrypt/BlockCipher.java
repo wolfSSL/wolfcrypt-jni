@@ -52,58 +52,53 @@ public abstract class BlockCipher extends NativeStruct {
 		state = WolfCryptState.READY;
 	}
 
+	public void willUseKey() {
+		if (state != WolfCryptState.READY)
+			throw new IllegalStateException(
+					"No available key to perform the opperation.");
+	}
+
 	public byte[] update(byte[] input) {
 		return update(input, 0, input.length);
 	}
 
 	public byte[] update(byte[] input, int offset, int length) {
-		byte[] output;
+		willUseKey();
 
-		if (state == WolfCryptState.READY) {
-			output = new byte[input.length];
+		byte[] output = new byte[input.length];
 
-			native_update(opmode, input, offset, length, output, 0);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
+		native_update(opmode, input, offset, length, output, 0);
 
 		return output;
 	}
 
 	public int update(byte[] input, int offset, int length, byte[] output,
 			int outputOffset) throws ShortBufferException {
-		if (state == WolfCryptState.READY) {
-			if (outputOffset + length > output.length)
-				throw new ShortBufferException(
-						"output buffer is too small to hold the result.");
+		willUseKey();
 
-			return native_update(opmode, input, offset, length, output,
-					outputOffset);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
+		if (outputOffset + length > output.length)
+			throw new ShortBufferException(
+					"output buffer is too small to hold the result.");
+
+		return native_update(opmode, input, offset, length, output,
+				outputOffset);
 	}
 
 	public int update(ByteBuffer input, ByteBuffer output)
 			throws ShortBufferException {
+		willUseKey();
+
 		int ret = 0;
 
-		if (state == WolfCryptState.READY) {
-			if (output.remaining() < input.remaining())
-				throw new ShortBufferException(
-						"output buffer is too small to hold the result.");
+		if (output.remaining() < input.remaining())
+			throw new ShortBufferException(
+					"output buffer is too small to hold the result.");
 
-			ret = native_update(opmode, input, input.position(),
-					input.remaining(), output);
+		ret = native_update(opmode, input, input.position(), input.remaining(),
+				output);
 
-			output.position(output.position() + input.remaining());
-			input.position(input.position() + input.remaining());
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
+		output.position(output.position() + input.remaining());
+		input.position(input.position() + input.remaining());
 
 		return ret;
 	}
