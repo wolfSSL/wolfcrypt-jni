@@ -111,6 +111,39 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key(
 #endif
 }
 
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key_1ex
+  (JNIEnv* env, jobject this, jobject rng_object, jint size,
+   jstring curveName)
+{
+#ifdef HAVE_ECC
+    int ret = 0;
+    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+    const char* name = (*env)->GetStringUTFChars(env, curveName, 0);
+
+    ret = (!ecc || !rng || !curveName || !name)
+        ? BAD_FUNC_ARG
+        : wc_ecc_get_curve_id_from_name(name);
+
+    (*env)->ReleaseStringUTFChars(env, curveName, name);
+
+    if (ret < 0) {
+        throwWolfCryptException(env, "ECC curve unsupported or not enabled");
+
+    } else {
+        ret = wc_ecc_make_key_ex(rng, size, ecc, ret);
+
+        if (ret < 0) {
+            throwWolfCryptExceptionFromError(env, ret);
+        }
+    }
+
+    LogStr("ecc_make_key_ex(rng, size, ecc=%p) = %d\n", ecc, ret);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1check_1key(
     JNIEnv* env, jobject this)
@@ -574,5 +607,95 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
 #endif
 
     return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1size_1from_1name
+  (JNIEnv* env, jobject this, jstring curveName)
+{
+    jint ret = 0;
+#ifdef HAVE_ECC
+    const char* name = (*env)->GetStringUTFChars(env, curveName, 0);
+
+    ret = (!name)
+        ? BAD_FUNC_ARG
+        : wc_ecc_get_curve_size_from_name(name);
+
+    (*env)->ReleaseStringUTFChars(env, curveName, name);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1key_1to_1pkcs8
+  (JNIEnv* env, jobject this)
+{
+    jbyteArray result = NULL;
+
+#ifdef HAVE_ECC
+    int ret = 0;
+    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    byte* derKey = NULL;
+    byte* pkcs8  = NULL;
+    word32 derKeySz = 128;
+    word32 pkcs8Sz  = 0;
+
+    int algoID   = 0;
+    word32 oidSz = 0;
+    const byte* curveOID = NULL;
+
+    derKey = XMALLOC(derKeySz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (derKey == NULL) {
+        throwOutOfMemoryException(env, "Failed to allocate DER key buffer");
+        return result;
+    }
+
+    /* get pkcs8 output size, into pkcs8Sz */
+    ret = wc_CreatePKCS8Key(NULL, &pkcs8Sz, derKey, derKeySz, algoID,
+                            curveOID, oidSz);
+
+    pkcs8 = XMALLOC(pkcs8Sz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (pkcs8 == NULL) {
+        XFREE(derKey, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        throwOutOfMemoryException(env, "Failed to allocate PKCS8 key buffer");
+        return result;
+    }
+
+    ret = (!ecc)
+        ? BAD_FUNC_ARG
+        : wc_EccPrivateKeyToDer(ecc, derKey, derKeySz);
+
+    if (ret >= 0) {
+        derKeySz = ret;
+        algoID = ECDSAk;
+        ret = wc_ecc_get_oid(ecc->dp->oidSum, &curveOID, &oidSz);
+    }
+
+    if (ret >= 0) {
+        ret = wc_CreatePKCS8Key(pkcs8, &pkcs8Sz, derKey, derKeySz,
+                                algoID, curveOID, oidSz);
+    }
+
+    if (ret >= 0) {
+        result = (*env)->NewByteArray(env, ret);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, ret,
+                                       (const jbyte*) pkcs8);
+        }
+    }
+
+    XFREE(derKey, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE(pkcs8,  NULL, DYNAMIC_TYPE_TMP_BUFFER);
+
+    if (ret < 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
 }
 

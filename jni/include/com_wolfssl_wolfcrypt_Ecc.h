@@ -43,6 +43,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_make_key_ex
+ * Signature: (Lcom/wolfssl/wolfcrypt/Rng;ILjava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key_1ex
+  (JNIEnv *, jobject, jobject, jint, jstring);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
  * Method:    wc_ecc_check_key
  * Signature: ()V
  */
@@ -136,6 +144,22 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash
  */
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash
   (JNIEnv *, jobject, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_get_curve_size_from_name
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1size_1from_1name
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_private_key_to_pkcs8
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1key_1to_1pkcs8
+  (JNIEnv *, jobject);
 
 #ifdef __cplusplus
 }
