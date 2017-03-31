@@ -1,4 +1,4 @@
-/* Sha512FipsTest.java
+/* Sha512Test.java
  *
  * Copyright (C) 2006-2016 wolfSSL Inc.
  *
@@ -19,31 +19,31 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.wolfcrypt.fips;
+package com.wolfssl.wolfcrypt.test;
 
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
+import javax.crypto.ShortBufferException;
+
 import org.junit.Test;
 
 import com.wolfssl.wolfcrypt.Sha512;
-import com.wolfssl.wolfcrypt.Util;
-import com.wolfssl.wolfcrypt.WolfCrypt;
-import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.NativeStruct;
 
-public class Sha512FipsTest extends FipsTest {
+public class Sha512Test {
 	private ByteBuffer data = ByteBuffer.allocateDirect(32);
 	private ByteBuffer result = ByteBuffer.allocateDirect(Sha512.DIGEST_SIZE);
 	private ByteBuffer expected = ByteBuffer.allocateDirect(Sha512.DIGEST_SIZE);
 
 	@Test
-	public void initShouldReturnZero() {
-		assertEquals(WolfCrypt.SUCCESS, Fips.InitSha512_fips(new Sha512()));
+	public void constructorShouldInitializeNativeStruct() {
+		assertNotEquals(NativeStruct.NULL, new Sha512().getNativeStruct());
 	}
 
 	@Test
-	public void hashShouldMatchUsingByteBuffer() {
+	public void hashShouldMatchUsingByteBuffer() throws ShortBufferException {
 		String[] dataVector = new String[] { "", "20580a530f01e771",
 				"f4be10fcc53147e49c3ac0fb14da0cda",
 				"6377e356cb3319bac8f9c6f1b0de83b995b994dc69c22662",
@@ -66,12 +66,10 @@ public class Sha512FipsTest extends FipsTest {
 			data.put(Util.h2b(dataVector[i])).rewind();
 			expected.put(Util.h2b(hashVector[i])).rewind();
 
-			assertEquals(WolfCrypt.SUCCESS, Fips.InitSha512_fips(sha));
-
-			assertEquals(WolfCrypt.SUCCESS, Fips.Sha512Update_fips(sha, data,
-					dataVector[i].length() / 2));
-
-			assertEquals(WolfCrypt.SUCCESS, Fips.Sha512Final_fips(sha, result));
+			sha.update(data, dataVector[i].length() / 2);
+			sha.digest(result);
+			data.rewind();
+			result.rewind();
 
 			assertEquals(expected, result);
 		}
@@ -98,17 +96,12 @@ public class Sha512FipsTest extends FipsTest {
 		for (int i = 0; i < dataVector.length; i++) {
 			Sha512 sha = new Sha512();
 
-			byte[] data     = Util.h2b(dataVector[i]);
-			byte[] result   = new byte[Sha512.DIGEST_SIZE];
+			byte[] data = Util.h2b(dataVector[i]);
 			byte[] expected = Util.h2b(hashVector[i]);
 
-			assertEquals(WolfCrypt.SUCCESS, Fips.InitSha512_fips(sha));
-
-			assertEquals(WolfCrypt.SUCCESS, Fips.Sha512Update_fips(sha, data,
-					dataVector[i].length() / 2));
-
-			assertEquals(WolfCrypt.SUCCESS, Fips.Sha512Final_fips(sha, result));
-
+			sha.update(data);
+			byte[] result = sha.digest();
+			
 			assertArrayEquals(expected, result);
 		}
 	}

@@ -1,5 +1,8 @@
 <?xml version="1.0"?>
-<project name="wolfcrypt-jni" default="build" basedir=".">
+<project name="wolfcrypt-jni"
+         default="build"
+         basedir="."
+         xmlns:unless="ant:unless" >
 
 	<description>
 	    wolfCrypt JNI is a Java wrapper for the wolfCrypt lightweight crypto library.
@@ -12,12 +15,12 @@
     </description>
 
 	<!-- set properties for this build -->
-	<property name="src.dir" value="src/java/" />
+    <property name="src.dir" value="src/main/java/" />
 	<property name="jni.dir" value="jni/include/" />
 	<property name="lib.dir" value="lib/" />
 	<property name="build.dir" value="build" />
 	<property name="doc.dir" value="docs" />
-	<property name="test.dir" value="src/test/" />
+    <property name="test.dir" value="src/test/java/" />
 	<property name="test.build.dir" value="build/test" />
 	<property name="reports.dir" value="build/reports" />
 
@@ -53,8 +56,8 @@
 		<property name="java.debuglevel" value="source,lines,vars" />
 		<property name="java.deprecation" value="true" />
 		<property name="java.optimize" value="false" />
-		<property name="java.source" value="1.7" />
-		<property name="java.target" value="1.7" />
+		<property name="java.source" value="1.8" />
+		<property name="java.target" value="1.8" />
 	</target>
 
 	<target name="init" depends="clean, default-javac-flags">
@@ -72,8 +75,22 @@
 
 	<target name="jar" depends="compile">
 		<jar jarfile="${lib.dir}/wolfcrypt-jni.jar" basedir="${build.dir}">
-		</jar>
-	</target>
+        </jar>
+        <echo unless:set="sign.alias">WARNING: Skipping JAR signing, codeSigning.properties not found</echo>
+    </target>
+
+    <property file="codeSigning.properties" />
+    <target name="sign" if="sign.alias" depends="jar">
+        <signjar
+            alias="${sign.alias}"
+            keystore="${sign.keystore}"
+            storepass="${sign.storepass}"
+            tsaurl="${sign.tsaurl}" >
+            <path>
+                <fileset dir="${lib.dir}" includes="wolfcrypt-jni.jar" />
+            </path>
+        </signjar>
+    </target>
 
 	<target name="javah" depends="jar">
 		<javah destdir="${jni.dir}" force="yes" classpathref="classpath">
@@ -102,7 +119,7 @@
 		<javadoc sourcepath="${src.dir}" destdir="${doc.dir}" />
 	</target>
 
-	<target name="build-test" depends="jar">
+	<target name="build-test" depends="jar, sign">
 		<javac srcdir="${test.dir}" destdir="${test.build.dir}" debug="${java.debug}" debuglevel="${java.debuglevel}" deprecation="${java.depreciation}" optimize="${java.optimize}" source="${java.source}" target="${java.target}" classpathref="classpath" includeantruntime="false">
 			<compilerarg value="-Xlint:-options" />
 		</javac>
@@ -111,7 +128,7 @@
 	<target name="test" depends="build-test">
 		<junit printsummary="yes" showoutput="yes" haltonfailure="yes" fork="true">
 			<classpath>
-				<pathelement location="${build.dir}" />
+                <pathelement location="${lib.dir}/wolfcrypt-jni.jar" />
 				<pathelement location="${test.build.dir}" />
 				<fileset dir="${env.JUNIT_HOME}">
 					<include name="${junit4}"/>
@@ -136,6 +153,6 @@
 		</junit>
 	</target>
 
-	<target name="build" depends="jar, javah, javadoc" />
+	<target name="build" depends="jar, sign, javah, javadoc" />
 
 </project>

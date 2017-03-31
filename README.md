@@ -64,3 +64,20 @@ the root wolfcrypt-jni directory.  The test source code is located at:
 
 wolfcrypt-jni/src/test/com/wolfssl/wolfcrypt
 
+### JAR Code Signing
+---------
+
+The wolfcrypt-jni.jar can be code signed by placing a "codeSigning.properties"
+file in the "wolfcrypt-jni" root directory.  The ant build script (build.xml)
+will detect the prescense of this properties file and use the provided
+information to sign the generated JAR file.
+
+"codeSigning.properties" should have the following properties set:
+
+```
+sign.alias=<signing alias in keystore>
+sign.keystore=<path to signing keystore>
+sign.storepass=<keystore password>
+sign.tsaurl=<timestamp server url>
+```
+

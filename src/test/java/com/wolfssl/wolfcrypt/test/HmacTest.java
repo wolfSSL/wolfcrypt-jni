@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.wolfcrypt;
+package com.wolfssl.wolfcrypt.test;
 
 import static org.junit.Assert.*;
 
@@ -30,6 +30,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.wolfssl.wolfcrypt.Hmac;
+import com.wolfssl.wolfcrypt.NativeStruct;
+import com.wolfssl.wolfcrypt.WolfCryptError;
+import com.wolfssl.wolfcrypt.WolfCryptException;
 
 public class HmacTest {
 

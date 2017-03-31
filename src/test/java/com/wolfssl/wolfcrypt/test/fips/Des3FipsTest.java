@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.wolfcrypt.fips;
+package com.wolfssl.wolfcrypt.test.fips;
 
 import static org.junit.Assert.*;
 
@@ -28,9 +28,10 @@ import java.nio.ByteBuffer;
 import org.junit.Test;
 
 import com.wolfssl.wolfcrypt.Des3;
-import com.wolfssl.wolfcrypt.Util;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Fips;
+
+import com.wolfssl.wolfcrypt.test.Util;
 
 public class Des3FipsTest extends FipsTest {
 	private ByteBuffer vector = ByteBuffer.allocateDirect(Des3.BLOCK_SIZE);

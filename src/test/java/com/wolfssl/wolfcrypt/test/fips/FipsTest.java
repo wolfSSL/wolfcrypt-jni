@@ -1,4 +1,4 @@
-/* WolfCryptFipsTestSuite.java
+/* FipsTest.java
  *
  * Copyright (C) 2006-2016 wolfSSL Inc.
  *
@@ -19,17 +19,16 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.wolfcrypt.fips;
+package com.wolfssl.wolfcrypt.test.fips;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 
-@RunWith(Suite.class)
-@SuiteClasses({ FipsStatusTest.class, AesFipsTest.class, Des3FipsTest.class,
-		ShaFipsTest.class, Sha256FipsTest.class, Sha384FipsTest.class,
-		Sha512FipsTest.class, HmacFipsTest.class, RngFipsTest.class,
-		RsaFipsTest.class })
-public class WolfCryptFipsTestSuite {
+import com.wolfssl.wolfcrypt.Fips;
 
+public class FipsTest {
+	@BeforeClass
+	public static void checkAvailability() {
+		Assume.assumeTrue(Fips.enabled);
+	}
 }

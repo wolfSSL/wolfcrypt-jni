@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.wolfcrypt.fips;
+package com.wolfssl.wolfcrypt.test.fips;
 
 import static org.junit.Assert.*;
 
@@ -31,9 +31,10 @@ import com.wolfssl.wolfcrypt.Asn;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.Sha256;
-import com.wolfssl.wolfcrypt.Util;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Fips;
+
+import com.wolfssl.wolfcrypt.test.Util;
 
 public class RsaFipsTest extends FipsTest {
 	private ByteBuffer privKey = ByteBuffer.allocateDirect(2048);
