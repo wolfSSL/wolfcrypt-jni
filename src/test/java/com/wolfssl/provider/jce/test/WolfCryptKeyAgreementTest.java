@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.provider.jce;
+package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
 import org.junit.Test;
@@ -281,7 +281,8 @@ public class WolfCryptKeyAgreementTest {
                InvalidParameterSpecException, InvalidKeyException,
                InvalidAlgorithmParameterException {
 
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+        //KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "wolfJCE");
         ECGenParameterSpec ecsp = null;
 
         for (int i = 0; i < testCurves.length; i++) {
@@ -316,7 +317,8 @@ public class WolfCryptKeyAgreementTest {
                InvalidAlgorithmParameterException {
 
         /* initialize key pair generator */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+        //KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "wolfJCE");
         ECGenParameterSpec ecsp = new ECGenParameterSpec("secp256r1");
         keyGen.initialize(ecsp);
 
@@ -359,7 +361,8 @@ public class WolfCryptKeyAgreementTest {
                ShortBufferException {
 
         /* initialize key pair generator */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+        //KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "wolfJCE");
         ECGenParameterSpec ecsp = new ECGenParameterSpec("secp256r1");
         keyGen.initialize(ecsp);
 
@@ -405,7 +408,8 @@ public class WolfCryptKeyAgreementTest {
                InvalidAlgorithmParameterException {
 
         /* initialize key pair generator */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+        //KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "wolfJCE");
         ECGenParameterSpec ecsp = new ECGenParameterSpec("secp256r1");
         keyGen.initialize(ecsp);
 

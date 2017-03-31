@@ -101,6 +101,13 @@ public final class WolfCryptProvider extends Provider {
         put("Alg.Alias.KeyAgreement.DH", "DiffieHellman");
         put("KeyAgreement.ECDH",
                 "com.wolfssl.provider.jce.WolfCryptKeyAgreement$wcECDH");
+
+        /* KeyPairGenerator */
+        put("KeyPairGenerator.EC",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenECC");
+        put("KeyPairGenerator.DH",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenDH");
+        put("Alg.Alias.KeyPairGenerator.DiffieHellman", "DH");
     }
 }
 

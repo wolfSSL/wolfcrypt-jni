@@ -1,4 +1,4 @@
-/* WolfJCETestSuite.java
+/* DigestVector.java
  *
  * Copyright (C) 2006-2017 wolfSSL Inc.
  *
@@ -19,23 +19,32 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.provider.jce;
+package com.wolfssl.provider.jce.test;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
+class DigestVector {
 
-@RunWith(Suite.class)
-@SuiteClasses({ WolfCryptMessageDigestMd5Test.class,
-                WolfCryptMessageDigestShaTest.class,
-                WolfCryptMessageDigestSha256Test.class,
-                WolfCryptMessageDigestSha384Test.class,
-                WolfCryptMessageDigestSha512Test.class,
-                WolfCryptRandomTest.class,
-                WolfCryptSignatureTest.class,
-                WolfCryptMacTest.class,
-                WolfCryptCipherTest.class,
-                WolfCryptKeyAgreementTest.class})
+    private byte input[];
+    private byte output[];
 
-public class WolfJCETestSuite { }
+    public DigestVector(byte[] input, byte[] output) {
+        this.input = input;
+        this.output = output;
+    }
+
+    public void setInput(byte[] input) {
+        this.input = input;
+    }
+
+    public void setOutput(byte[] output) {
+        this.output = output;
+    }
+
+    public byte[] getInput() {
+        return this.input;
+    }
+
+    public byte[] getOutput() {
+        return this.output;
+    }
+}
 

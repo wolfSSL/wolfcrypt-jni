@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-package com.wolfssl.provider.jce;
+package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
 import org.junit.Test;
