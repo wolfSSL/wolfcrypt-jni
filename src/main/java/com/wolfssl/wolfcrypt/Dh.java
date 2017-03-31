@@ -74,10 +74,11 @@ public class Dh extends NativeStruct {
 	protected void free() {
 		if (state != WolfCryptState.UNINITIALIZED) {
 			wc_FreeDhKey();
-			state = WolfCryptState.UNINITIALIZED;
 
 			setPrivateKey(new byte[0]);
 			setPublicKey(new byte[0]);
+
+			state = WolfCryptState.UNINITIALIZED;
 		}
 	}
 
@@ -111,6 +112,10 @@ public class Dh extends NativeStruct {
 		return publicKey;
 	}
 
+    public byte[] getPrivateKey() {
+        return privateKey;
+    }
+
 	public void setParams(byte[] p, byte[] g) {
 		if (state == WolfCryptState.INITIALIZED) {
 			wc_DhSetKey(p, g);
@@ -139,3 +144,4 @@ public class Dh extends NativeStruct {
 		}
 	}
 }
+
