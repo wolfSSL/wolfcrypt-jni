@@ -265,7 +265,8 @@ public class WolfCryptSignatureTest {
 
         } else if (algo.contains("ECDSA")) {
 
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+            KeyPairGenerator keyGen =
+                KeyPairGenerator.getInstance("EC", "wolfJCE");
             ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp521r1");
             keyGen.initialize(ecSpec);
 

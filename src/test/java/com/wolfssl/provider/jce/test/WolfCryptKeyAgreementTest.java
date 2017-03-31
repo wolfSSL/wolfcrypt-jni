@@ -131,7 +131,7 @@ public class WolfCryptKeyAgreementTest {
             (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
 
         /* initialize key pair generator */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
         keyGen.initialize(dhParams, new SecureRandom());
 
         KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
@@ -182,7 +182,7 @@ public class WolfCryptKeyAgreementTest {
             (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
 
         /* initialize key pair generator */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
         keyGen.initialize(dhParams, new SecureRandom());
 
         KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
@@ -236,7 +236,7 @@ public class WolfCryptKeyAgreementTest {
             (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
 
         /* initialize key pair generator */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH");
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
         keyGen.initialize(dhParams, new SecureRandom());
 
         KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
@@ -281,7 +281,6 @@ public class WolfCryptKeyAgreementTest {
                InvalidParameterSpecException, InvalidKeyException,
                InvalidAlgorithmParameterException {
 
-        //KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "wolfJCE");
         ECGenParameterSpec ecsp = null;
 
@@ -317,7 +316,6 @@ public class WolfCryptKeyAgreementTest {
                InvalidAlgorithmParameterException {
 
         /* initialize key pair generator */
-        //KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "wolfJCE");
         ECGenParameterSpec ecsp = new ECGenParameterSpec("secp256r1");
         keyGen.initialize(ecsp);
@@ -361,7 +359,6 @@ public class WolfCryptKeyAgreementTest {
                ShortBufferException {
 
         /* initialize key pair generator */
-        //KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "wolfJCE");
         ECGenParameterSpec ecsp = new ECGenParameterSpec("secp256r1");
         keyGen.initialize(ecsp);
@@ -408,7 +405,6 @@ public class WolfCryptKeyAgreementTest {
                InvalidAlgorithmParameterException {
 
         /* initialize key pair generator */
-        //KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "wolfJCE");
         ECGenParameterSpec ecsp = new ECGenParameterSpec("secp256r1");
         keyGen.initialize(ecsp);

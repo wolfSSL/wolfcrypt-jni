@@ -26,9 +26,7 @@ import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-@SuiteClasses({ WolfCryptKeyPairGeneratorTest.class,
-                WolfCryptKeyAgreementTest.class })
-/*@SuiteClasses({ WolfCryptMessageDigestMd5Test.class,
+@SuiteClasses({ WolfCryptMessageDigestMd5Test.class,
                 WolfCryptMessageDigestShaTest.class,
                 WolfCryptMessageDigestSha256Test.class,
                 WolfCryptMessageDigestSha384Test.class,
@@ -37,7 +35,8 @@ import org.junit.runners.Suite.SuiteClasses;
                 WolfCryptSignatureTest.class,
                 WolfCryptMacTest.class,
                 WolfCryptCipherTest.class,
-                WolfCryptKeyAgreementTest.class})*/
+                WolfCryptKeyAgreementTest.class,
+                WolfCryptKeyPairGeneratorTest.class})
 
 public class WolfJCETestSuite { }
 
