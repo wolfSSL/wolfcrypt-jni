@@ -173,16 +173,23 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private(
 {
 #ifdef HAVE_ECC_KEY_IMPORT
     int ret = 0;
+    word32 idx = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     byte* priv = getByteArray(env, priv_object);
     word32 privSz = getByteArrayLength(env, priv_object);
     byte* pub = getByteArray(env, pub_object);
     word32 pubSz = getByteArrayLength(env, pub_object);
 
+    /* skip leading zero if present */
+    if (priv) {
+        if (priv[0] == 0)
+            idx = 1;
+    }
+
     /* pub may be null if only importing private key */
     ret = (!ecc || !priv)
         ? BAD_FUNC_ARG
-        : wc_ecc_import_private_key(priv, privSz, pub, pubSz, ecc);
+        : wc_ecc_import_private_key(priv + idx, privSz - idx, pub, pubSz, ecc);
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
