@@ -44,10 +44,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Des3_native_1update__I_3BII_3B
 /*
  * Class:     com_wolfssl_wolfcrypt_Des3
  * Method:    native_update
- * Signature: (ILjava/nio/ByteBuffer;IILjava/nio/ByteBuffer;)I
+ * Signature: (ILjava/nio/ByteBuffer;IILjava/nio/ByteBuffer;I)I
  */
-JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Des3_native_1update__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2
-  (JNIEnv *, jobject, jint, jobject, jint, jint, jobject);
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Des3_native_1update__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2I
+  (JNIEnv *, jobject, jint, jobject, jint, jint, jobject, jint);
 
 #ifdef __cplusplus
 }

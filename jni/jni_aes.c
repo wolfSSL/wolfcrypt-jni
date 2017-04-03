@@ -91,18 +91,24 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update__I_3BII_3BI(
     byte* input = getByteArray(env, input_object);
     byte* output = getByteArray(env, output_object);
 
-    if (opmode == AES_ENCRYPTION) {
-        ret = (!aes || !input || !output)
-            ? BAD_FUNC_ARG
-            : wc_AesCbcEncrypt(aes, output+outputOffset, input+offset, length);
-
+    if (!aes || !input || !output) {
+        ret = BAD_FUNC_ARG; /* NULL sanitizers */
+    }
+    else if (offset < 0 || length < 0 || outputOffset < 0) {
+        ret = BAD_FUNC_ARG; /* signed sanizizers */
+    }
+    else if (offset + length > getByteArrayLength(env, input_object)) {
+        ret = BUFFER_E; /* buffer overflow check */
+    }
+    else if (outputOffset + length > getByteArrayLength(env, output_object)) {
+        ret = BUFFER_E; /* buffer overflow check */
+    }
+    else if (opmode == AES_ENCRYPTION) {
+        ret = wc_AesCbcEncrypt(aes, output+outputOffset, input+offset, length);
         LogStr("wc_AesCbcEncrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
     }
     else {
-        ret = (!aes || !input || !output)
-            ? BAD_FUNC_ARG
-            : wc_AesCbcDecrypt(aes, output+outputOffset, input+offset, length);
-
+        ret = wc_AesCbcDecrypt(aes, output+outputOffset, input+offset, length);
         LogStr("wc_AesCbcDecrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
     }
 
@@ -129,10 +135,10 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update__I_3BII_3BI(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Aes_native_1update__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2(
+Java_com_wolfssl_wolfcrypt_Aes_native_1update__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2I(
     JNIEnv* env, jobject this, jint opmode,
     jobject input_object, jint offset, jint length,
-    jobject output_object)
+    jobject output_object, jint outputOffset)
 {
     int ret = 0;
 
@@ -141,18 +147,24 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update__ILjava_nio_ByteBuffer_2IILjava_ni
     byte* input = getDirectBufferAddress(env, input_object);
     byte* output = getDirectBufferAddress(env, output_object);
 
-    if (opmode == AES_ENCRYPTION) {
-        ret = (!aes || !input || !output)
-            ? BAD_FUNC_ARG
-            : wc_AesCbcEncrypt(aes, output, input + offset, length);
-
+    if (!aes || !input || !output) {
+        ret = BAD_FUNC_ARG; /* NULL sanitizers */
+    }
+    else if (offset < 0 || length < 0) {
+        ret = BAD_FUNC_ARG; /* signed sanizizers */
+    }
+    else if (offset + length > getDirectBufferLimit(env, input_object)) {
+        ret = BUFFER_E; /* buffer overflow check */
+    }
+    else if (outputOffset + length > getDirectBufferLimit(env, output_object)) {
+        ret = BUFFER_E; /* buffer overflow check */
+    }
+    else if (opmode == AES_ENCRYPTION) {
+        ret = wc_AesCbcEncrypt(aes, output, input + offset, length);
         LogStr("wc_AesCbcEncrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
     }
     else {
-        ret = (!aes || !input || !output)
-            ? BAD_FUNC_ARG
-            : wc_AesCbcDecrypt(aes, output, input + offset, length);
-
+        ret = wc_AesCbcDecrypt(aes, output, input + offset, length);
         LogStr("wc_AesCbcDecrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
     }
 

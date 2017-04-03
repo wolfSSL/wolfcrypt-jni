@@ -90,18 +90,24 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__I_3BII_3BI(
     byte* input = getByteArray(env, input_object);
     byte* output = getByteArray(env, output_object);
 
-    if (opmode == DES_ENCRYPTION) {
-        ret = (!des || !input || !output)
-            ? BAD_FUNC_ARG
-            : wc_Des3_CbcEncrypt(des, output+outputOffset,input+offset, length);
-
+    if (!des || !input || !output) {
+        ret = BAD_FUNC_ARG; /* NULL sanitizers */
+    }
+    else if (offset < 0 || length < 0 || outputOffset < 0) {
+        ret = BAD_FUNC_ARG; /* signed sanizizers */
+    }
+    else if (offset + length > getByteArrayLength(env, input_object)) {
+        ret = BUFFER_E; /* buffer overflow check */
+    }
+    else if (outputOffset + length > getByteArrayLength(env, output_object)) {
+        ret = BUFFER_E; /* buffer overflow check */
+    }
+    else if (opmode == DES_ENCRYPTION) {
+        ret = wc_Des3_CbcEncrypt(des, output+outputOffset,input+offset, length);
         LogStr("wc_Des3CbcEncrypt(des=%p, out, in, inSz) = %d\n", des, ret);
     }
     else {
-        ret = (!des || !input || !output)
-            ? BAD_FUNC_ARG
-            : wc_Des3_CbcDecrypt(des, output+outputOffset,input+offset, length);
-
+        ret = wc_Des3_CbcDecrypt(des, output+outputOffset,input+offset, length);
         LogStr("wc_Des3CbcDecrypt(des=%p, out, in, inSz) = %d\n", des, ret);
     }
 
@@ -128,10 +134,10 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__I_3BII_3BI(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Des3_native_1update__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2(
+Java_com_wolfssl_wolfcrypt_Des3_native_1update__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2I(
     JNIEnv* env, jobject this, jint opmode,
     jobject input_object, jint offset, jint length,
-    jobject output_object)
+    jobject output_object, jint outputOffset)
 {
     int ret = 0;
 
@@ -140,16 +146,24 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__ILjava_nio_ByteBuffer_2IILjava_n
     byte* input = getDirectBufferAddress(env, input_object);
     byte* output = getDirectBufferAddress(env, output_object);
 
-    if (opmode == DES_ENCRYPTION) {
-        ret = (!des || !input || !output)
-            ? BAD_FUNC_ARG
-            : wc_Des3_CbcEncrypt(des, output, input + offset, length);
+    if (!des || !input || !output) {
+        ret = BAD_FUNC_ARG; /* NULL sanitizers */
+    }
+    else if (offset < 0 || length < 0) {
+        ret = BAD_FUNC_ARG; /* signed sanizizers */
+    }
+    else if (offset + length > getDirectBufferLimit(env, input_object)) {
+        ret = BUFFER_E; /* buffer overflow check */
+    }
+    else if (outputOffset + length > getDirectBufferLimit(env, output_object)) {
+        ret = BUFFER_E; /* buffer overflow check */
+    }
+    else if (opmode == DES_ENCRYPTION) {
+        ret = wc_Des3_CbcEncrypt(des, output, input + offset, length);
         LogStr("wc_Des3CbcEncrypt(des=%p, out, in, inSz) = %d\n", des, ret);
     }
     else {
-        ret = (!des || !input || !output)
-            ? BAD_FUNC_ARG
-            : wc_Des3_CbcDecrypt(des, output, input + offset, length);
+        ret = wc_Des3_CbcDecrypt(des, output, input + offset, length);
         LogStr("wc_Des3CbcDecrypt(des=%p, out, in, inSz) = %d\n", des, ret);
     }
 
