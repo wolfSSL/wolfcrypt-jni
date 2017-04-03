@@ -124,6 +124,8 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
     word32 privSz = size;
     byte* pub = NULL;
     word32 pubSz = size;
+    int lBitPriv = 0, lBitPub  = 0;
+    byte lBit[1] = { 0x00 };
 
     priv = XMALLOC(privSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (priv == NULL) {
@@ -144,20 +146,42 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
         : wc_DhGenerateKeyPair(key, rng, priv, &privSz, pub, &pubSz);
 
     if (ret == 0) {
-        jbyteArray privateKey = (*env)->NewByteArray(env, privSz);
-        jbyteArray publicKey = (*env)->NewByteArray(env, pubSz);
+
+        /* keys should be positive, if leading bit is set, add zero byte */
+        if (priv[0] & 0x80)
+            lBitPriv = 1;
+
+        if (pub[0] & 0x80)
+            lBitPub = 1;
+
+        jbyteArray privateKey = (*env)->NewByteArray(env, lBitPriv + privSz);
+        jbyteArray publicKey  = (*env)->NewByteArray(env, lBitPub + pubSz);
 
         if (privateKey) {
-            (*env)->SetByteArrayRegion(env, privateKey, 0, privSz,
+            if (lBitPriv) {
+                (*env)->SetByteArrayRegion(env, privateKey, 0, 1,
+                                                            (const jbyte*)lBit);
+                (*env)->SetByteArrayRegion(env, privateKey, 1, privSz,
                                                             (const jbyte*)priv);
+            } else {
+                (*env)->SetByteArrayRegion(env, privateKey, 0, privSz,
+                                                            (const jbyte*)priv);
+            }
             setByteArrayMember(env, this, "privateKey", privateKey);
         } else {
             throwWolfCryptException(env, "Failed to allocate privateKey");
         }
 
         if (publicKey) {
-            (*env)->SetByteArrayRegion(env, publicKey, 0, pubSz,
+            if (lBitPub) {
+                (*env)->SetByteArrayRegion(env, publicKey, 0, 1,
+                                                            (const jbyte*)lBit);
+                (*env)->SetByteArrayRegion(env, publicKey, 1, pubSz,
                                                              (const jbyte*)pub);
+            } else {
+                (*env)->SetByteArrayRegion(env, publicKey, 0, pubSz,
+                                                             (const jbyte*)pub);
+            }
             setByteArrayMember(env, this, "publicKey", publicKey);
         } else {
             throwWolfCryptException(env, "Failed to allocate publicKey");
