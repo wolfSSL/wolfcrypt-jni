@@ -23,7 +23,6 @@ package com.wolfssl.wolfcrypt.test;
 
 import static org.junit.Assert.*;
 
-import org.junit.AfterClass;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;

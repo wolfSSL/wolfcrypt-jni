@@ -49,8 +49,8 @@ public class Aes extends BlockCipher {
 	protected native int native_update(int opmode, byte[] input, int offset,
 			int length, byte[] output, int outputOffset);
 
-	protected native int native_update(int opmode, ByteBuffer plain, int offset,
-			int length, ByteBuffer cipher);
+	protected native int native_update(int opmode, ByteBuffer input,
+			int offset, int length, ByteBuffer output, int outputOffset);
 
 	public Aes() {
 	}

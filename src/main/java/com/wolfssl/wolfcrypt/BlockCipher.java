@@ -42,8 +42,8 @@ public abstract class BlockCipher extends NativeStruct {
 	protected abstract int native_update(int opmode, byte[] input, int offset,
 			int length, byte[] output, int outputOffset);
 
-	protected abstract int native_update(int opmode, ByteBuffer plain,
-			int offset, int length, ByteBuffer cipher);
+	protected abstract int native_update(int opmode, ByteBuffer input,
+			int offset, int length, ByteBuffer output, int outputOffset);
 
 	public void setKey(byte[] key, byte[] iv, int opmode) {
 		native_set_key(key, iv, opmode);
@@ -95,10 +95,10 @@ public abstract class BlockCipher extends NativeStruct {
 					"output buffer is too small to hold the result.");
 
 		ret = native_update(opmode, input, input.position(), input.remaining(),
-				output);
+				output, output.position());
 
-		output.position(output.position() + input.remaining());
-		input.position(input.position() + input.remaining());
+		input.position(input.position() + ret);
+		output.position(output.position() + ret);
 
 		return ret;
 	}
