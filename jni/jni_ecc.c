@@ -32,6 +32,8 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+#define MAX_ECC_PRIVATE_DER_SZ 128
+
 JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_mallocNativeStruct(
     JNIEnv* env, jobject this)
@@ -641,7 +643,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1ke
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
     byte* derKey = NULL;
     byte* pkcs8  = NULL;
-    word32 derKeySz = 128;
+    word32 derKeySz = MAX_ECC_PRIVATE_DER_SZ;
     word32 pkcs8Sz  = 0;
 
     int algoID   = 0;
