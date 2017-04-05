@@ -614,13 +614,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1size_
 {
     jint ret = 0;
 #ifdef HAVE_ECC
-    const char* name = (*env)->GetStringUTFChars(env, curveName, 0);
+    const char* name;
 
-    ret = (!name)
-        ? BAD_FUNC_ARG
-        : wc_ecc_get_curve_size_from_name(name);
+    if (curveName == NULL) {
+        ret = BAD_FUNC_ARG;
+    } else {
+        name = (*env)->GetStringUTFChars(env, curveName, 0);
+        ret = wc_ecc_get_curve_size_from_name(name);
+        (*env)->ReleaseStringUTFChars(env, curveName, name);
+    }
 
-    (*env)->ReleaseStringUTFChars(env, curveName, name);
 #else
     throwNotCompiledInException(env);
 #endif
