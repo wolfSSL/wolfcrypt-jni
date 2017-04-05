@@ -68,10 +68,10 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1sec
 /*
  * Class:     com_wolfssl_wolfcrypt_Ecc
  * Method:    wc_ecc_import_private
- * Signature: ([B[B)V
+ * Signature: ([B[BLjava/lang/String;)V
  */
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
-  (JNIEnv *, jobject, jbyteArray, jbyteArray);
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jstring);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Ecc

@@ -56,7 +56,8 @@ public class Ecc extends NativeStruct {
 
 	private native byte[] wc_ecc_shared_secret(Ecc pubKey);
 
-	private native void wc_ecc_import_private(byte[] privKey, byte[] x963Key);
+	private native void wc_ecc_import_private(byte[] privKey, byte[] x963Key,
+                                              String curveName);
 
 	private native byte[] wc_ecc_export_private();
 
@@ -126,7 +127,17 @@ public class Ecc extends NativeStruct {
 
 	public void importPrivate(byte[] privKey, byte[] x963Key) {
 		if (state == WolfCryptState.INITIALIZED) {
-			wc_ecc_import_private(privKey, x963Key);
+			wc_ecc_import_private(privKey, x963Key, null);
+			state = WolfCryptState.READY;
+		} else {
+			throw new IllegalStateException("Object already has a key.");
+		}
+	}
+
+	public void importPrivateOnCurve(byte[] privKey, byte[] x963Key,
+            String curveName) {
+		if (state == WolfCryptState.INITIALIZED) {
+			wc_ecc_import_private(privKey, x963Key, curveName);
 			state = WolfCryptState.READY;
 		} else {
 			throw new IllegalStateException("Object already has a key.");

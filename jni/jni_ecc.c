@@ -167,11 +167,11 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1check_1key(
 #endif
 }
 
-JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private(
-    JNIEnv* env, jobject this, jbyteArray priv_object, jbyteArray pub_object)
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
+  (JNIEnv* env, jobject this, jbyteArray priv_object,
+   jbyteArray pub_object, jstring curveName)
 {
-#ifdef HAVE_ECC_KEY_IMPORT
+#if defined(HAVE_ECC) && defined(HAVE_ECC_KEY_IMPORT)
     int ret = 0;
     word32 idx = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
@@ -179,22 +179,35 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private(
     word32 privSz = getByteArrayLength(env, priv_object);
     byte* pub = getByteArray(env, pub_object);
     word32 pubSz = getByteArrayLength(env, pub_object);
-
-    /* skip leading zero if present */
-    if (priv) {
-        if (priv[0] == 0)
-            idx = 1;
-    }
+    const char* name = NULL;
 
     /* pub may be null if only importing private key */
-    ret = (!ecc || !priv)
-        ? BAD_FUNC_ARG
-        : wc_ecc_import_private_key(priv + idx, privSz - idx, pub, pubSz, ecc);
+    if (!ecc || !priv) {
+        ret = BAD_FUNC_ARG;
+
+    } else {
+        /* detect, and later skip, leading zero byte */
+        if (priv[0] == 0)
+            idx = 1;
+
+        if (curveName != NULL) {
+            name = (*env)->GetStringUTFChars(env, curveName, 0);
+            ret = wc_ecc_get_curve_id_from_name(name);
+            (*env)->ReleaseStringUTFChars(env, curveName, name);
+
+            /* import with curve id, ret stores curve id */
+            ret = wc_ecc_import_private_key_ex(priv + idx, privSz - idx, pub,
+                                               pubSz, ecc, ret);
+        } else {
+            ret = wc_ecc_import_private_key(priv + idx, privSz - idx, pub,
+                                               pubSz, ecc);
+        }
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
-    LogStr("ecc_import_x963(key, keySz, ecc=%p) = %d\n", ecc, ret);
+    LogStr("wc_ecc_import_private_key(ecc=%p) = %d\n", ecc, ret);
 
     releaseByteArray(env, priv_object, priv, JNI_ABORT);
     releaseByteArray(env, pub_object, pub, JNI_ABORT);
