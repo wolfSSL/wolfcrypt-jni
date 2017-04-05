@@ -57,6 +57,10 @@ The JCE provider currently supports the following algorithms:
         DH
         ECDH
 
+    KeyPairGenerator Class
+        EC
+        DH
+
 ### Example / Test Code
 ---------
 
@@ -98,4 +102,10 @@ Please email support@wolfssl.com with any questions or feedback.
 - Compatibility with non-FIPS wolfSSL and wolfCrypt builds
 - Bug fixes regarding releasing native resources
 - Test package changed to (com.wolfssl.provider.jce.test)
+
+0.3 BETA
+
+- Support for ECC and DH key generation
+- Bug fixes regarding key import/export
+- Better argument sanitization at JNI level
 
