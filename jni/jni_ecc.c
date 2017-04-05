@@ -195,9 +195,15 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
             ret = wc_ecc_get_curve_id_from_name(name);
             (*env)->ReleaseStringUTFChars(env, curveName, name);
 
-            /* import with curve id, ret stores curve id */
-            ret = wc_ecc_import_private_key_ex(priv + idx, privSz - idx, pub,
-                                               pubSz, ecc, ret);
+            if (ret > 0) {
+                /* import with curve id, ret stores curve id */
+                ret = wc_ecc_import_private_key_ex(priv + idx, privSz - idx, pub,
+                                                   pubSz, ecc, ret);
+            } else {
+                /* unsupported curve name */
+                ret = BAD_FUNC_ARG;
+            }
+
         } else {
             ret = wc_ecc_import_private_key(priv + idx, privSz - idx, pub,
                                                pubSz, ecc);
