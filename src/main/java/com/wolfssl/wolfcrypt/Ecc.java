@@ -233,7 +233,7 @@ public class Ecc extends NativeStruct {
 
     public static int getCurveSizeFromName(String curveName) {
         /* Ecc object doesn't need to be initialied before call */
-        return wc_ecc_get_curve_size_from_name(curveName.toUpperCase());
+        return wc_ecc_get_curve_size_from_name(curveName);
     }
 
     public byte[] privateKeyEncodePKCS8() {
