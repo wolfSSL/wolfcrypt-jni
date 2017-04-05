@@ -36,6 +36,7 @@ import java.security.Key;
 import java.security.SecureRandom;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECParameterSpec;
+import java.security.spec.ECGenParameterSpec;
 import java.security.InvalidKeyException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
@@ -70,8 +71,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
     private Ecc ecPublic  = null;
     private Ecc ecPrivate = null;
 
-    private int  primeLen  = 0;
-    private int  fieldSize = 0;
+    private int primeLen  = 0;
+    private int curveSize = 0;
+    private String curveName = null;
 
     private KeyAgreeType type;
     private EngineState state = EngineState.WC_UNINITIALIZED;
@@ -170,7 +172,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                     tmp = new byte[this.primeLen];
                     break;
                 case WC_ECDH:
-                    secretLen = (int)Math.ceil(this.fieldSize / 8.0);
+                    secretLen = this.curveSize;
                     tmp = new byte[secretLen];
                     break;
             }
@@ -198,7 +200,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
     protected int engineGenerateSecret(byte[] sharedSecret, int offset)
         throws IllegalStateException, ShortBufferException {
 
-        int ret    = 0;
+        int  ret   = 0;
         byte tmp[] = null;
         long sz[]  = null;
 
@@ -262,7 +264,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 this.ecPublic = new Ecc();
                 this.ecPrivate.releaseNativeStruct();
                 this.ecPrivate = new Ecc();
-                this.ecPrivate.importPrivate(priv, null);
+                this.ecPrivate.importPrivateOnCurve(priv, null, this.curveName);
                 zeroArray(priv);
 
                 this.state = EngineState.WC_PRIVKEY_DONE;
@@ -307,7 +309,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         byte paramP[] = null;
         byte paramG[] = null;
         byte dhPriv[] = null;
-        DHPrivateKey dhKey  = null;
+        DHPrivateKey dhKey = null;
 
         if (!(key instanceof DHPrivateKey)) {
             throw new InvalidKeyException(
@@ -367,10 +369,40 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         return;
     }
 
+    private void getCurveFromSpec(AlgorithmParameterSpec spec)
+        throws InvalidAlgorithmParameterException {
+
+        int fieldSz = 0;
+
+        if (spec instanceof ECGenParameterSpec) {
+
+            ECGenParameterSpec gs = (ECGenParameterSpec)spec;
+
+            /* only have curve name available in spec */
+            this.curveName = gs.getName();
+
+            /* look up curve size */
+            this.curveSize = this.ecPrivate.getCurveSizeFromName(
+                                                this.curveName);
+
+        } else if (spec instanceof ECParameterSpec) {
+
+            ECParameterSpec espec = (ECParameterSpec)spec;
+
+            this.curveName = this.ecPrivate.getCurveName(espec);
+
+            this.curveSize = this.ecPrivate.getCurveSizeFromName(
+                                                this.curveName);
+        } else {
+            throw new InvalidAlgorithmParameterException(
+                "AlgorithmParameterSpec is not of type " +
+                "ECParameterSpec or ECGenParameterSpec");
+        }
+    }
+
     private void wcInitECDHParams(Key key, AlgorithmParameterSpec params)
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
-        int fieldSz = 0;
         ECPrivateKey ecKey;
 
         if (!(key instanceof ECPrivateKey)) {
@@ -379,42 +411,23 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         }
         ecKey = (ECPrivateKey)key;
 
-        /* try to extract field size from AlgorithmParameterSpec if given */
         if (params != null) {
-
-            if (!(params instanceof ECParameterSpec)) {
-                throw new InvalidAlgorithmParameterException(
-                    "AlgorithmParameterSpec is not of type ECParameterSpec");
-            }
-
-            fieldSz =
-                ((ECParameterSpec)params).getCurve().getField().getFieldSize();
-
-            if (fieldSz != 0) {
-                this.fieldSize = fieldSz;
-
-            } else {
-                throw new InvalidParameterException(
-                    "AlgorithmParameterSpec does not include required " +
-                    "ECC curve field size");
-            }
-        }
-
-        /* try to import params from key */
-        fieldSz = ecKey.getParams().getCurve().getField().getFieldSize();
-
-        if (fieldSz != 0) {
-            this.fieldSize = fieldSz;
+            /* try to extract curve info from AlgorithmParameterSpec */
+            getCurveFromSpec(params);
 
         } else {
-            throw new InvalidKeyException(
-                "Key must include ECC curve parameters when not called " +
-                "with explicit AlgorithmParameterSpec");
+            /* otherwise, try to import params from key */
+            ECParameterSpec spec = ecKey.getParams();
+            getCurveFromSpec(spec);
         }
 
         /* import private */
-        ecKey = (ECPrivateKey)key;
-        this.ecPrivate.importPrivate(ecKey.getS().toByteArray(), null);
+        if (this.curveName == null) {
+            throw new InvalidAlgorithmParameterException(
+                "ECC curve is null, please check algorithm parameters");
+        }
+        this.ecPrivate.importPrivateOnCurve(ecKey.getS().toByteArray(),
+                null, this.curveName);
     }
 
     /**
