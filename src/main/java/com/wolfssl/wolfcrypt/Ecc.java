@@ -50,6 +50,8 @@ public class Ecc extends NativeStruct {
 
 	private native void wc_ecc_make_key(Rng rng, int size);
 
+	private native void wc_ecc_make_key_ex(Rng rng, int size, String curveName);
+
 	private native void wc_ecc_check_key();
 
 	private native byte[] wc_ecc_shared_secret(Ecc pubKey);
@@ -73,6 +75,10 @@ public class Ecc extends NativeStruct {
 	private native byte[] wc_ecc_sign_hash(byte[] hash, Rng rng);
 
 	private native boolean wc_ecc_verify_hash(byte[] hash, byte[] signature);
+
+    private static native int wc_ecc_get_curve_size_from_name(String name);
+
+    private native byte[] wc_ecc_private_key_to_pkcs8();
 
 	protected void init() {
 		if (state == WolfCryptState.UNINITIALIZED) {
@@ -99,6 +105,15 @@ public class Ecc extends NativeStruct {
 			throw new IllegalStateException("Object already has a key.");
 		}
 	}
+
+    public void makeKeyOnCurve(Rng rng, int size, String curveName) {
+        if (state == WolfCryptState.INITIALIZED) {
+            wc_ecc_make_key_ex(rng, size, curveName.toUpperCase());
+            state = WolfCryptState.READY;
+        } else {
+            throw new IllegalStateException("Object already has a key.");
+        }
+    }
 
 	public void checkKey() {
 		if (state == WolfCryptState.READY) {
@@ -215,4 +230,18 @@ public class Ecc extends NativeStruct {
 
 		return result;
 	}
+
+    public static int getCurveSizeFromName(String curveName) {
+        /* Ecc object doesn't need to be initialied before call */
+        return wc_ecc_get_curve_size_from_name(curveName);
+    }
+
+    public byte[] privateKeyEncodePKCS8() {
+        if (state == WolfCryptState.READY) {
+            return wc_ecc_private_key_to_pkcs8();
+        } else {
+            throw new IllegalStateException(
+                    "No available key to perform the operation.");
+        }
+    }
 }

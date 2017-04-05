@@ -123,4 +123,65 @@ public class EccTest {
 
 		assertTrue(alice2.verify(hash, signature));
 	}
+
+    @Test
+    public void eccCurveSizeFromName() {
+        Ecc alice = new Ecc();
+        int size = 0;
+
+        /* valid case */
+        size = Ecc.getCurveSizeFromName("secp256r1");
+        assertEquals(size, 32);
+
+        /* mixed case should work */
+        size = Ecc.getCurveSizeFromName("SeCp256R1");
+        assertEquals(size, 32);
+
+        /* bad curve should return -1 */
+        size = Ecc.getCurveSizeFromName("BADCURVE");
+        assertEquals(size, -1);
+
+        /* null should return BAD_FUNC_ARG */
+        size = Ecc.getCurveSizeFromName(null);
+        assertEquals(size, -173);
+    }
+
+    @Test
+    public void eccMakeKeyOnCurve() {
+        Ecc alice = new Ecc();
+        alice.makeKeyOnCurve(rng, 32, "secp256r1");
+
+        try {
+            alice = new Ecc();
+            alice.makeKeyOnCurve(rng, 32, "BADCURVE");
+        } catch (WolfCryptException e) {
+            /* should throw exception here */
+        }
+    }
+
+    @Test
+    public void eccPrivateToPkcs8() {
+        Ecc alice = new Ecc();
+        byte[] pkcs8;
+        int size;
+
+        byte[] prvKey = Util.h2b("30770201010420F8CF92"
+                + "6BBD1E28F1A8ABA1234F3274188850AD7EC7EC92"
+                + "F88F974DAF568965C7A00A06082A8648CE3D0301"
+                + "07A1440342000455BFF40F44509A3DCE9BB7F0C5"
+                + "4DF5707BD4EC248E1980EC5A4CA22403622C9BDA"
+                + "EFA2351243847616C6569506CC01A9BDF6751A42"
+                + "F7BDA9B236225FC75D7FB4");
+
+        byte[] expectedPkcs8 = Util.h2b("304D02010030130607"
+                + "2A8648CE3D020106082A8648CE3D030107043330"
+                + "310201010420F8CF926BBD1E28F1A8ABA1234F32"
+                + "74188850AD7EC7EC92F88F974DAF568965C7A00A"
+                + "06082A8648CE3D030107");
+
+		alice.privateKeyDecode(prvKey);
+
+        pkcs8 = alice.privateKeyEncodePKCS8();
+        assertArrayEquals(pkcs8, expectedPkcs8);
+    }
 }
