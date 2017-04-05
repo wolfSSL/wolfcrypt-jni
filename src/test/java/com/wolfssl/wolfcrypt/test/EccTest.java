@@ -27,6 +27,14 @@ import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.security.KeyPairGenerator;
+import java.security.KeyPair;
+import java.security.spec.ECGenParameterSpec;
+import java.security.spec.ECParameterSpec;
+import java.security.interfaces.ECPrivateKey;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
+
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.NativeStruct;
@@ -185,6 +193,7 @@ public class EccTest {
         assertArrayEquals(pkcs8, expectedPkcs8);
     }
 
+    @Test
     public void eccImportPrivateOnly() {
 
         byte[] prvKeyLeadingZero = Util.h2b("00B298F9A9874F4"
@@ -266,6 +275,25 @@ public class EccTest {
         } catch (WolfCryptException e) {
             /* expected */
         }
+    }
+
+    @Test
+    public void getEccCurveNameFromSpec()
+        throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
+
+        /* generate key pair */
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
+        ECGenParameterSpec genSpec = new ECGenParameterSpec("secp256r1");
+        kpg.initialize(genSpec);
+
+        KeyPair pair = kpg.genKeyPair();
+        ECPrivateKey priv = (ECPrivateKey)pair.getPrivate();
+
+        ECParameterSpec spec = priv.getParams();
+
+        String curveName = Ecc.getCurveName(spec);
+
+        assertEquals(curveName, "SECP256R1");
     }
 }
 
