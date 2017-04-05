@@ -162,6 +162,7 @@ public class EccTest {
         try {
             alice = new Ecc();
             alice.makeKeyOnCurve(rng, 32, "BADCURVE");
+            fail("Creating ECC key on bad curve should fail with exception");
         } catch (WolfCryptException e) {
             /* should throw exception here */
         }
