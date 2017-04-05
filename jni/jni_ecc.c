@@ -655,8 +655,26 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1size_
 #else
     throwNotCompiledInException(env);
 #endif
-
     return ret;
+}
+
+JNIEXPORT jstring JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1name_1from_1id
+  (JNIEnv* env, jclass this, jint curve_id)
+{
+    jstring name = NULL;
+#ifdef HAVE_ECC
+    const char* tmp = NULL;
+
+    tmp = wc_ecc_get_curve_name_from_id(curve_id);
+    if (tmp != NULL) {
+        name = (*env)->NewStringUTF(env, tmp);
+    }
+
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return name;
 }
 
 JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1key_1to_1pkcs8
@@ -728,5 +746,42 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1ke
 #endif
 
     return result;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1id_1from_1params
+  (JNIEnv* env, jclass this, jint fieldSz, jbyteArray prime_object,
+   jbyteArray af_object, jbyteArray bf_object, jbyteArray order_object,
+   jbyteArray gx_object, jbyteArray gy_object, jint cofactor)
+{
+    int ret = 0;
+#ifdef HAVE_ECC
+    byte*  prime = getByteArray(env, prime_object);
+    word32 primeSz = getByteArrayLength(env, prime_object);
+    byte*  Af = getByteArray(env, af_object);
+    word32 AfSz = getByteArrayLength(env, af_object);
+    byte*  Bf = getByteArray(env, bf_object);
+    word32 BfSz = getByteArrayLength(env, bf_object);
+    byte*  order = getByteArray(env, order_object);
+    word32 orderSz = getByteArrayLength(env, order_object);
+    byte*  Gx = getByteArray(env, gx_object);
+    word32 GxSz = getByteArrayLength(env, gx_object);
+    byte*  Gy = getByteArray(env, gy_object);
+    word32 GySz = getByteArrayLength(env, gy_object);
+
+    ret = (!prime || !Af || !Bf || !order || !Gx || !Gy)
+        ? BAD_FUNC_ARG
+        : wc_ecc_get_curve_id_from_params(fieldSz, prime, primeSz,
+                Af, AfSz, Bf, BfSz, order, orderSz, Gx, GxSz,
+                Gy, GySz, cofactor);
+
+    if (ret < 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_ecc_get_curve_id_from_params() = %d\n", ret);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return ret;
 }
 

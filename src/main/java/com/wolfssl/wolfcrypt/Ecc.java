@@ -21,6 +21,11 @@
 
 package com.wolfssl.wolfcrypt;
 
+import java.security.InvalidAlgorithmParameterException;
+import java.security.spec.EllipticCurve;
+import java.security.spec.ECParameterSpec;
+import java.security.spec.ECFieldFp;
+
 /**
  * Wrapper for the native WolfCrypt ecc implementation.
  *
@@ -80,6 +85,12 @@ public class Ecc extends NativeStruct {
     private static native int wc_ecc_get_curve_size_from_name(String name);
 
     private native byte[] wc_ecc_private_key_to_pkcs8();
+
+    private static native String wc_ecc_get_curve_name_from_id(int curve_id);
+
+    private static native int wc_ecc_get_curve_id_from_params(int fieldSize,
+            byte[] prime, byte[] Af, byte[] Bf, byte[] order,
+            byte[] Gx, byte[] Gy, int cofactor);
 
 	protected void init() {
 		if (state == WolfCryptState.UNINITIALIZED) {
@@ -255,4 +266,31 @@ public class Ecc extends NativeStruct {
                     "No available key to perform the operation.");
         }
     }
+
+    public static String getCurveName(ECParameterSpec spec)
+        throws InvalidAlgorithmParameterException
+    {
+        int curve_id;
+
+        /* Ecc object doesn't need to be initialied before call */
+        if (!(spec.getCurve().getField() instanceof ECFieldFp)) {
+            throw new InvalidAlgorithmParameterException(
+                "Currently only ECFieldFp fields supported");
+        }
+        ECFieldFp field = (ECFieldFp)spec.getCurve().getField();
+        EllipticCurve curve = spec.getCurve();
+
+        curve_id = wc_ecc_get_curve_id_from_params(
+                    field.getFieldSize(),
+                    field.getP().toByteArray(),
+                    curve.getA().toByteArray(),
+                    curve.getB().toByteArray(),
+                    spec.getOrder().toByteArray(),
+                    spec.getGenerator().getAffineX().toByteArray(),
+                    spec.getGenerator().getAffineY().toByteArray(),
+                    spec.getCofactor());
+
+        return wc_ecc_get_curve_name_from_id(curve_id);
+    }
 }
+
