@@ -184,4 +184,88 @@ public class EccTest {
         pkcs8 = alice.privateKeyEncodePKCS8();
         assertArrayEquals(pkcs8, expectedPkcs8);
     }
+
+    public void eccImportPrivateOnly() {
+
+        byte[] prvKeyLeadingZero = Util.h2b("00B298F9A9874F4"
+                + "F30A492429DE0CD2A575A132F24323EF79AD2EFFE"
+                + "BF9D597620");
+
+        byte[] prvKeyNoLeadingZero = Util.h2b("B298F9A9874"
+                + "F4F30A492429DE0CD2A575A132F24323EF79AD2EF"
+                + "FEBF9D597620");
+
+		byte[] prvKeyInvalid = Util.h2b("30770201010420F8CF92"
+				+ "6BBD1E28F1A8ABA1234F3274188850AD7EC7EC92"
+				+ "F88F974DAF568965C7A00A06082A8648CE3D0301"
+				+ "07A1440342000455BFF40F44509A3DCE9BB7F0C5"
+				+ "4DF5707BD4EC248E1980EC5A4CA22403622C9BDA"
+				+ "EFA2351243847616C6569506CC01A9BDF6751A42"
+				+ "F7BDA9B236225FC75D7FB4");
+
+        /* with leading zero, as expected */
+        Ecc alice = new Ecc();
+        alice.importPrivate(prvKeyLeadingZero, null);
+
+        /* without leading zero, may encounter but not proper */
+        alice = new Ecc();
+        alice.importPrivate(prvKeyNoLeadingZero, null);
+
+        try {
+            /* try invalid key, expect failure */
+            alice = new Ecc();
+            alice.importPrivate(prvKeyInvalid, null);
+            fail("Importing invalid ECC private key should fail");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+    }
+
+    @Test
+    public void eccImportPrivateOnlyOnCurve() {
+
+        byte[] prvKeyLeadingZero = Util.h2b("00B298F9A9874F4"
+                + "F30A492429DE0CD2A575A132F24323EF79AD2EFFE"
+                + "BF9D597620");
+
+        byte[] prvKeyNoLeadingZero = Util.h2b("B298F9A9874"
+                + "F4F30A492429DE0CD2A575A132F24323EF79AD2EF"
+                + "FEBF9D597620");
+
+		byte[] prvKeyInvalid = Util.h2b("30770201010420F8CF92"
+				+ "6BBD1E28F1A8ABA1234F3274188850AD7EC7EC92"
+				+ "F88F974DAF568965C7A00A06082A8648CE3D0301"
+				+ "07A1440342000455BFF40F44509A3DCE9BB7F0C5"
+				+ "4DF5707BD4EC248E1980EC5A4CA22403622C9BDA"
+				+ "EFA2351243847616C6569506CC01A9BDF6751A42"
+				+ "F7BDA9B236225FC75D7FB4");
+
+        /* with leading zero, as expected */
+        Ecc alice = new Ecc();
+        alice.importPrivateOnCurve(prvKeyLeadingZero, null, "secp256r1");
+
+        /* without leading zero, may encounter but not proper */
+        alice = new Ecc();
+        alice.importPrivateOnCurve(prvKeyNoLeadingZero, null, "secp256r1");
+
+        /* try invalid key, expect failure */
+        try {
+            alice = new Ecc();
+            alice.importPrivateOnCurve(prvKeyInvalid, null, "secp256r1");
+            fail("Importing invalid ECC private key should fail");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* try invalid curve, expect failure */
+        try {
+            alice = new Ecc();
+            alice.importPrivateOnCurve(prvKeyLeadingZero, null, "BADCURVE");
+            fail("Importing invalid ECC private curve should fail");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
 }
+
