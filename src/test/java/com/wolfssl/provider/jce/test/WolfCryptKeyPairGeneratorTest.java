@@ -42,9 +42,15 @@ import java.security.KeyPairGenerator;
 import java.security.AlgorithmParameters;
 import java.security.AlgorithmParameterGenerator;
 import java.security.SecureRandom;
+import java.security.PublicKey;
+import java.security.PrivateKey;
+import java.security.KeyFactory;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.spec.InvalidParameterSpecException;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.ECGenParameterSpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.security.spec.PKCS8EncodedKeySpec;
 
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.test.Util;
@@ -249,6 +255,30 @@ public class WolfCryptKeyPairGeneratorTest {
 
             KeyPair kp1 = kpg.generateKeyPair();
             KeyPair kp2 = kpg.generateKeyPair();
+        }
+    }
+
+    @Test
+    public void testKeyPairGeneratorEccNewKeyFromExisting()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException, InvalidKeySpecException {
+
+        if (enabledCurves.size() > 0) {
+
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("EC", "wolfJCE");
+
+            ECGenParameterSpec ecSpec =
+                new ECGenParameterSpec(enabledCurves.get(0));
+            kpg.initialize(ecSpec);
+
+            KeyPair kp = kpg.generateKeyPair();
+
+            KeyFactory kf = KeyFactory.getInstance("EC");
+            PublicKey pub = kf.generatePublic(new X509EncodedKeySpec(
+                        kp.getPublic().getEncoded()));
+            PrivateKey priv = kf.generatePrivate(new PKCS8EncodedKeySpec(
+                        kp.getPrivate().getEncoded()));
         }
     }
 
