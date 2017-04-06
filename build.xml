@@ -80,12 +80,27 @@
     </target>
 
     <property file="codeSigning.properties" />
+    <!-- sign jar, necessary for Oracle JDK -->
     <target name="sign" if="sign.alias" depends="jar">
+        <echo>Signing JAR with PRIMARY signature</echo>
         <signjar
             alias="${sign.alias}"
             keystore="${sign.keystore}"
             storepass="${sign.storepass}"
             tsaurl="${sign.tsaurl}" >
+            <path>
+                <fileset dir="${lib.dir}" includes="wolfcrypt-jni.jar" />
+            </path>
+        </signjar>
+    </target>
+    <!-- allow 2nd alternate signature, for legacy JCE deployments -->
+    <target name="sign-alt" if="sign.alias2" depends="jar">
+        <echo>Signing JAR with SECONDARY signature</echo>
+        <signjar
+            alias="${sign.alias2}"
+            keystore="${sign.keystore2}"
+            storepass="${sign.storepass2}"
+            tsaurl="${sign.tsaurl2}" >
             <path>
                 <fileset dir="${lib.dir}" includes="wolfcrypt-jni.jar" />
             </path>
@@ -119,7 +134,7 @@
 		<javadoc sourcepath="${src.dir}" destdir="${doc.dir}" />
 	</target>
 
-	<target name="build-test" depends="jar, sign">
+	<target name="build-test" depends="jar, sign, sign-alt">
 		<javac srcdir="${test.dir}" destdir="${test.build.dir}" debug="${java.debug}" debuglevel="${java.debuglevel}" deprecation="${java.depreciation}" optimize="${java.optimize}" source="${java.source}" target="${java.target}" classpathref="classpath" includeantruntime="false">
 			<compilerarg value="-Xlint:-options" />
 		</javac>
@@ -153,6 +168,6 @@
 		</junit>
 	</target>
 
-	<target name="build" depends="jar, sign, javah, javadoc" />
+	<target name="build" depends="jar, sign, sign-alt, javah, javadoc" />
 
 </project>
