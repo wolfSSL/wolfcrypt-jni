@@ -25,6 +25,9 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
+import java.util.Arrays;
+import java.util.ArrayList;
+
 import javax.crypto.KeyAgreement;
 import javax.crypto.ShortBufferException;
 import javax.crypto.spec.DHParameterSpec;
@@ -43,6 +46,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.spec.InvalidParameterSpecException;
 import java.security.spec.ECGenParameterSpec;
 
+import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 
 public class WolfCryptKeyAgreementTest {
@@ -52,7 +56,7 @@ public class WolfCryptKeyAgreementTest {
         "ECDH"
     };
 
-    private String testCurves[] = {
+    private static String supportedCurves[] = {
         "secp192r1",
         "prime192v2",
         "prime192v3",
@@ -84,14 +88,57 @@ public class WolfCryptKeyAgreementTest {
         "brainpoolp512r1"
     };
 
+    private static ArrayList<String> enabledCurves =
+        new ArrayList<String>();
+
+    private static ArrayList<String> disabledCurves =
+        new ArrayList<String>();
+
+    private static void printDisabledCurves() {
+
+        if (disabledCurves.size() > 0)
+            System.out.print("KeyAgreement: skipping disabled ECC curves:\n\t");
+
+        for (int i = 1; i < disabledCurves.size()+1; i++) {
+
+            if ((i % 4) == 0) {
+                System.out.print(disabledCurves.get(i-1) + " \n\t");
+            } else {
+                System.out.print(disabledCurves.get(i-1) + " ");
+            }
+        }
+
+        System.out.println("");
+    }
+
     @BeforeClass
     public static void testProviderInstallationAtRuntime() {
+
+        int disabledCount = 0;
 
         /* install wolfJCE provider at runtime */
         Security.addProvider(new WolfCryptProvider());
 
         Provider p = Security.getProvider("wolfJCE");
         assertNotNull(p);
+
+        /* build list of enabled curves and key sizes,
+         * getCurveSizeFromName() will return 0 if curve not found */
+        Ecc tmp = new Ecc();
+        for (int i = 0; i < supportedCurves.length; i++) {
+
+            int size = tmp.getCurveSizeFromName(
+                        supportedCurves[i].toUpperCase());
+
+            if (size > 0) {
+                enabledCurves.add(supportedCurves[i]);
+            } else {
+                disabledCurves.add(supportedCurves[i]);
+            }
+        }
+
+        /* uncomment this line to print disabled curves */
+        /* printDisabledCurves(); */
     }
 
     @Test
@@ -284,12 +331,13 @@ public class WolfCryptKeyAgreementTest {
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC", "wolfJCE");
         ECGenParameterSpec ecsp = null;
 
-        for (int i = 0; i < testCurves.length; i++) {
+        for (int i = 0; i < enabledCurves.size(); i++) {
             try {
-                ecsp = new ECGenParameterSpec(testCurves[i]);
+                ecsp = new ECGenParameterSpec(enabledCurves.get(i));
                 keyGen.initialize(ecsp);
             } catch (InvalidAlgorithmParameterException e) {
-                System.out.println("ECDH: Skipping curve [" + testCurves[i] +
+                System.out.println("ECDH: Skipping curve [" +
+                        enabledCurves.get(i) +
                         "], not supported by " + keyGen.getProvider());
                 continue;
             }
