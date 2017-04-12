@@ -418,28 +418,31 @@ public class WolfCryptCipher extends CipherSpi {
         return 1;
     }
 
-    private byte[] wolfCryptUpdate(byte[] input, int inputOffset,
-            int inputLen) {
+    private byte[] wolfCryptUpdate(byte[] input, int inputOffset, int len) {
 
         int ret = 0;
 
         byte tmpIn[]  = Arrays.copyOfRange(input, inputOffset,
-                            inputOffset + inputLen);
+                            inputOffset + len);
         byte tmpOut[] = null;
 
         /* return null if input data is too short to result in a new
          * block, and algorithm is a block cipher */
-        if (input == null || isValidBlockLength(inputLen) == 0)
+        if (input == null || isValidBlockLength(len) == 0)
             return null;
 
         switch (this.cipherType) {
 
             case WC_AES:
-                tmpOut = this.aes.update(input, inputOffset, inputLen);
+                tmpOut = this.aes.update(input, inputOffset, len);
+                tmpOut = Arrays.copyOfRange(tmpOut, inputOffset,
+                                            inputOffset + len);
                 break;
 
             case WC_DES3:
-                tmpOut = this.des3.update(input, inputOffset, inputLen);
+                tmpOut = this.des3.update(input, inputOffset, len);
+                tmpOut = Arrays.copyOfRange(tmpOut, inputOffset,
+                                            inputOffset + len);
                 break;
 
             case WC_RSA:
@@ -488,14 +491,9 @@ public class WolfCryptCipher extends CipherSpi {
 
         tmpOut = wolfCryptUpdate(input, inputOffset, inputLen);
 
-        if ((output.length - outputOffset) < tmpOut.length) {
-            throw new ShortBufferException(
-                "Output buffer too small for encrypted output");
-        }
+        System.arraycopy(tmpOut, 0, output, outputOffset, inputLen);
 
-        System.arraycopy(tmpOut, 0, output, outputOffset, tmpOut.length);
-
-        return tmpOut.length;
+        return inputLen;
     }
 
     private void zeroArray(byte[] in) {
