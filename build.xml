@@ -166,7 +166,35 @@
 			</batchtest>
 
 		</junit>
-	</target>
+    </target>
+
+    <target name="testonly">
+        <junit printsummary="yes" showoutput="yes" haltonfailure="yes" fork="true">
+            <classpath>
+                <pathelement location="${lib.dir}/wolfcrypt-jni.jar" />
+                <pathelement location="${test.build.dir}" />
+                <fileset dir="${env.JUNIT_HOME}">
+                    <include name="${junit4}"/>
+                    <include name="${hamcrest-core}"/>
+                    <include name="${ant-junit4}"/>
+                </fileset>
+            </classpath>
+
+            <formatter type="plain" />
+            <formatter type="xml" />
+
+            <sysproperty key="sun.boot.library.path" value="$JAVA_HOME/bin:${lib.dir}" />
+            <env key="LD_LIBRARY_PATH" path="$LD_LIBRARY_PATH:{lib.dir}:/usr/local/lib" />
+            <env key="CLASSPATH" path="$LD_LIBRARY_PATH:${env.JUNIT_HOME}/${junit4}" />
+
+            <batchtest fork="yes" todir="${reports.dir}">
+                <fileset dir="${test.dir}">
+                    <include name="**/*TestSuite.java" />
+                </fileset>
+            </batchtest>
+
+        </junit>
+    </target>
 
 	<target name="build" depends="jar, sign, sign-alt, javah, javadoc" />
 
