@@ -165,8 +165,9 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update___3BII(
     int ret = 0;
     Sha* sha = (Sha*) getNativeStruct(env, this);
     byte* data = getByteArray(env, data_buffer);
+    word32 dataSz = getByteArrayLength(env, data_buffer);
 
-    ret = (!sha || !data || (offset > len))
+    ret = (!sha || !data || ((offset + len) > dataSz))
         ? BAD_FUNC_ARG
         : wc_ShaUpdate(sha, data + offset, len);
 
@@ -285,8 +286,9 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update___3BII(
     int ret = 0;
     Sha256* sha = (Sha256*) getNativeStruct(env, this);
     byte* data = getByteArray(env, data_buffer);
+    word32 dataSz = getByteArrayLength(env, data_buffer);
 
-    ret = (!sha || !data || (offset > len))
+    ret = (!sha || !data || ((offset + len) > dataSz))
         ? BAD_FUNC_ARG
         : wc_Sha256Update(sha, data + offset, len);
 
@@ -405,8 +407,9 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1update___3BII(
     int ret = 0;
     Sha384* sha = (Sha384*) getNativeStruct(env, this);
     byte* data = getByteArray(env, data_buffer);
+    word32 dataSz = getByteArrayLength(env, data_buffer);
 
-    ret = (!sha || !data || (offset > len))
+    ret = (!sha || !data || ((offset + len) > dataSz))
         ? BAD_FUNC_ARG
         : wc_Sha384Update(sha, data + offset, len);
 
@@ -525,8 +528,9 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1update___3BII(
     int ret = 0;
     Sha512* sha = (Sha512*) getNativeStruct(env, this);
     byte* data = getByteArray(env, data_buffer);
+    word32 dataSz = getByteArrayLength(env, data_buffer);
 
-    ret = (!sha || !data || (offset > len))
+    ret = (!sha || !data || ((offset + len) > dataSz))
         ? BAD_FUNC_ARG
         : wc_Sha512Update(sha, data + offset, len);
 
