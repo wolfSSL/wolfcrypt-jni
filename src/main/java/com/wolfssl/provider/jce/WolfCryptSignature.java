@@ -488,18 +488,17 @@ public class WolfCryptSignature extends SignatureSpi {
                         "Failed to DER encode digest during sig verification");
                 }
 
-                verify = this.rsa.verify(sigBytes);
+                try {
+                    verify = this.rsa.verify(sigBytes);
+                } catch (WolfCryptException e) {
+                    verified = false;
+                }
 
                 /* compare expected digest to one unwrapped from verify */
-                for (int i = 0; i < ret; i++) {
+                for (int i = 0; i < verify.length; i++) {
                     if (verify[i] != encDigest[i]) {
                         verified = false;
                     }
-                }
-
-                if (ret < 0) {
-                    throw new SignatureException(
-                        "Signature verification call failed");
                 }
 
                 break;
@@ -509,8 +508,7 @@ public class WolfCryptSignature extends SignatureSpi {
                 try {
                     verified = this.ecc.verify(digest, sigBytes);
                 } catch (WolfCryptException we) {
-                    throw new SignatureException(
-                        "Error in native ECC verify operation");
+                    verified = false;
                 }
 
                 break;
