@@ -69,8 +69,8 @@ public class DhTest {
 		assertNull(alice.getPublicKey());
 		assertNull(bob.getPublicKey());
 		
-		alice.makeKey(rng, 256);
-		bob.makeKey(rng, 256);
+		alice.makeKey(rng);
+		bob.makeKey(rng);
 
 		assertNotNull(alice.getPublicKey());
 		assertNotNull(bob.getPublicKey());

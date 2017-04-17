@@ -127,23 +127,29 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
     int lBitPriv = 0, lBitPub  = 0;
     byte lBit[1] = { 0x00 };
 
-    priv = XMALLOC(privSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (priv == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate private key buffer");
-        return;
+    if (!key || !rng || (size < 0))
+        ret = BAD_FUNC_ARG;
+
+    if (ret == 0) {
+
+        priv = XMALLOC(privSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (priv == NULL) {
+            throwOutOfMemoryException(env,
+                                      "Failed to allocate private key buffer");
+            return;
+        }
+
+        pub = XMALLOC(pubSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (pub == NULL) {
+            XFREE(priv, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+
+            throwOutOfMemoryException(env,
+                                      "Failed to allocate public key buffer");
+            return;
+        }
+
+        ret = wc_DhGenerateKeyPair(key, rng, priv, &privSz, pub, &pubSz);
     }
-
-    pub = XMALLOC(pubSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (pub == NULL) {
-        XFREE(priv, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-
-        throwOutOfMemoryException(env, "Failed to allocate public key buffer");
-        return;
-    }
-
-    ret = (!key || !rng || !priv || !pub)
-        ? BAD_FUNC_ARG
-        : wc_DhGenerateKeyPair(key, rng, priv, &privSz, pub, &pubSz);
 
     if (ret == 0) {
 
@@ -197,8 +203,10 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
     LogStr("public[%u]: [%p]\n", pubSz, pub);
     LogHex(pub, 0, pubSz);
 
-    XFREE(priv, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    XFREE(pub, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (priv)
+        XFREE(priv, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (pub)
+        XFREE(pub, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
     throwNotCompiledInException(env);
 #endif

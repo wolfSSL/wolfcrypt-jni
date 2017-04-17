@@ -32,6 +32,7 @@ public class Dh extends NativeStruct {
 	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 	private byte[] privateKey = null;
 	private byte[] publicKey = null;
+    private int pSize = 0;
 
 	public Dh() {
 		init();
@@ -57,7 +58,7 @@ public class Dh extends NativeStruct {
 
 	private native void wc_DhSetKey(byte[] p, byte[] g);
 
-	private native void wc_DhGenerateKeyPair(Rng rng, int size);
+	private native void wc_DhGenerateKeyPair(Rng rng, int pSize);
 
 	private native byte[] wc_DhAgree(byte[] priv, byte[] pub);
 
@@ -119,15 +120,17 @@ public class Dh extends NativeStruct {
 	public void setParams(byte[] p, byte[] g) {
 		if (state == WolfCryptState.INITIALIZED) {
 			wc_DhSetKey(p, g);
+            this.pSize = p.length;
 			state = WolfCryptState.READY;
 		} else {
 			throw new IllegalStateException("Object already has parameters.");
 		}
 	}
 
-	public void makeKey(Rng rng, int size) {
+	public void makeKey(Rng rng) {
 		if (privateKey == null) {
-			wc_DhGenerateKeyPair(rng, size);
+            /* use size of P to allocate key buffer size */
+			wc_DhGenerateKeyPair(rng, this.pSize);
 		} else {
 			throw new IllegalStateException("Object already has a key.");
 		}
