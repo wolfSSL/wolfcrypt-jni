@@ -1,4 +1,4 @@
-/* WolfCryptCipher.java
+/* WolfCryptDebug.java
  *
  * Copyright (C) 2006-2017 wolfSSL Inc.
  *
@@ -24,12 +24,6 @@ package com.wolfssl.provider.jce;
 class WolfCryptDebug {
 
     public static boolean DEBUG = checkProperty();
-
-    /*public WolfCryptDebug() {
-        if (System.getProperty("wolfjce.debug").equalsIgnoreCase("true")) {
-            DEBUG = true;
-        }
-    }*/
 
     private static boolean checkProperty() {
 
