@@ -139,12 +139,10 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 DHParameterSpec dhSpec = (DHParameterSpec)params;
                 this.dhP = dhSpec.getP().toByteArray();
                 this.dhG = dhSpec.getG().toByteArray();
-                this.keysize = dhSpec.getL();
 
-                if (dhP == null || dhG == null || keysize == 0) {
+                if (dhP == null || dhG == null) {
                     throw new InvalidAlgorithmParameterException(
-                        "Invalid parameters, either p or g is null " +
-                        "or l is zero");
+                        "Invalid parameters, either p or g is null");
                 }
 
                 break;
@@ -166,14 +164,15 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         KeySpec privSpec = null;
         KeySpec pubSpec  = null;
 
-        if (keysize == 0) {
-            throw new RuntimeException(
-                "Keysize is 0, please set before generating key");
-        }
 
         switch (this.type) {
 
             case WC_ECC:
+
+                if (keysize == 0) {
+                    throw new RuntimeException(
+                        "Keysize is 0, please set before generating key");
+                }
 
                 ECPrivateKey eccPriv = null;
                 ECPublicKey  eccPub  = null;
@@ -229,7 +228,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 dh.setParams(dhP, dhG);
 
                 /* make key */
-                dh.makeKey(rng, keysize);
+                dh.makeKey(rng);
 
                 privSpec = new DHPrivateKeySpec(
                                 new BigInteger(dh.getPrivateKey()),
