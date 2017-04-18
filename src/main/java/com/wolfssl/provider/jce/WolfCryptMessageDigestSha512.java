@@ -26,6 +26,7 @@ import java.security.MessageDigestSpi;
 import javax.crypto.ShortBufferException;
 
 import com.wolfssl.wolfcrypt.Sha512;
+import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE SHA-512 MessageDigest wrapper
@@ -37,6 +38,9 @@ public final class WolfCryptMessageDigestSha512 extends MessageDigestSpi {
 
     /* internal reference to wolfCrypt JNI Sha object */
     private Sha512 sha;
+
+    /* for debug logging */
+    private WolfCryptDebug debug;
 
     public WolfCryptMessageDigestSha512() {
 
@@ -57,6 +61,9 @@ public final class WolfCryptMessageDigestSha512 extends MessageDigestSpi {
             throw new RuntimeException(e.getMessage());
         }
 
+        if (debug.DEBUG)
+            log("generated final digest, len: " + digest.length);
+
         return digest;
     }
 
@@ -64,6 +71,9 @@ public final class WolfCryptMessageDigestSha512 extends MessageDigestSpi {
     protected void engineReset() {
 
         this.sha.init();
+
+        if (debug.DEBUG)
+            log("engine reset");
     }
 
     @Override
@@ -73,12 +83,22 @@ public final class WolfCryptMessageDigestSha512 extends MessageDigestSpi {
         tmp[0] = input;
 
         this.sha.update(tmp, 1);
+
+        if (debug.DEBUG)
+            log("update with single byte");
     }
 
     @Override
     protected void engineUpdate(byte[] input, int offset, int len) {
 
         this.sha.update(input, offset, len);
+
+        if (debug.DEBUG)
+            log("update, offset: " + offset + ", len: " + len);
+    }
+
+    private void log(String msg) {
+        debug.print("[MessageDigest, SHA512] " + msg);
     }
 
     @Override

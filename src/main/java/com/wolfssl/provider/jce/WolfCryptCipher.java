@@ -50,6 +50,8 @@ import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Rng;
 
+import com.wolfssl.provider.jce.WolfCryptDebug;
+
 /**
  * wolfCrypt JCE Cipher (AES, 3DES) wrapper
  *
@@ -97,6 +99,11 @@ public class WolfCryptCipher extends CipherSpi {
     private Rsa  rsa  = null;
     private Rng  rng  = null;
 
+    /* for debug logging */
+    private WolfCryptDebug debug;
+    private String algString;
+    private String algMode;
+
     /* stash IV here for easy lookup */
     private byte[] iv = null;
 
@@ -126,6 +133,11 @@ public class WolfCryptCipher extends CipherSpi {
                 rsa.setRng(this.rng);
                 break;
         }
+
+        if (debug.DEBUG) {
+            algString = typeToString(cipherType);
+            algMode = modeToString(cipherMode);
+        }
     }
 
     @Override
@@ -140,6 +152,9 @@ public class WolfCryptCipher extends CipherSpi {
             if (cipherType == CipherType.WC_RSA) {
                 cipherMode = CipherMode.WC_ECB;
                 supported = 1;
+
+                if (debug.DEBUG)
+                    log("set mode to ECB");
             }
 
         } else if (mode.equals("CBC")) {
@@ -149,6 +164,9 @@ public class WolfCryptCipher extends CipherSpi {
                 cipherType == CipherType.WC_DES3 ) {
                 cipherMode = CipherMode.WC_CBC;
                 supported = 1;
+
+                if (debug.DEBUG)
+                    log("set mode to CBC");
             }
         }
 
@@ -170,6 +188,9 @@ public class WolfCryptCipher extends CipherSpi {
                 cipherType == CipherType.WC_DES3) {
                 paddingType = PaddingType.WC_NONE;
                 supported = 1;
+
+                if (debug.DEBUG)
+                    log("set padding to NoPadding");
             }
 
         } else if (padding.equals("PKCS1Padding")) {
@@ -177,6 +198,9 @@ public class WolfCryptCipher extends CipherSpi {
             if (cipherType == CipherType.WC_RSA) {
                 paddingType = PaddingType.WC_PKCS1;
                 supported = 1;
+
+                if (debug.DEBUG)
+                    log("set padding to PKCS1Padding");
             }
         }
         
@@ -231,10 +255,12 @@ public class WolfCryptCipher extends CipherSpi {
         switch (opmode) {
             case Cipher.ENCRYPT_MODE:
                 this.direction = OpMode.WC_ENCRYPT;
+
                 break;
 
             case Cipher.DECRYPT_MODE:
                 this.direction = OpMode.WC_DECRYPT;
+
                 break;
 
             default:
@@ -356,6 +382,9 @@ public class WolfCryptCipher extends CipherSpi {
 
             wolfCryptCipherInit(opmode, key, null, random);
 
+            if (debug.DEBUG)
+                log("initialized with key");
+
         } catch (InvalidAlgorithmParameterException iape) {
             throw new InvalidKeyException("Invalid algorithm parameters");
         }
@@ -367,6 +396,9 @@ public class WolfCryptCipher extends CipherSpi {
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
         wolfCryptCipherInit(opmode, key, params, random);
+
+        if (debug.DEBUG)
+            log("initialized with key and AlgorithmParameterSpec");
     }
 
     @Override
@@ -379,6 +411,9 @@ public class WolfCryptCipher extends CipherSpi {
         try {
 
             spec = params.getParameterSpec(IvParameterSpec.class);
+
+            if (debug.DEBUG)
+                log("initialized with key and AlgorithmParameters");
 
         } catch (InvalidParameterSpecException ipe) {
             throw new InvalidAlgorithmParameterException(ipe);
@@ -476,6 +511,10 @@ public class WolfCryptCipher extends CipherSpi {
     protected byte[] engineUpdate(byte[] input, int inputOffset, int inputLen) {
 
         byte output[];
+
+        if (debug.DEBUG)
+            log("update (offset: " + inputOffset + ", len: " +
+                inputLen + ")");
         
         output = wolfCryptUpdate(input, inputOffset, inputLen);
 
@@ -488,6 +527,10 @@ public class WolfCryptCipher extends CipherSpi {
         throws ShortBufferException {
 
         byte tmpOut[];
+
+        if (debug.DEBUG)
+            log("update (in offset: " + inputOffset + ", len: " +
+                inputLen + ", out offset: " + outputOffset + ")");
 
         tmpOut = wolfCryptUpdate(input, inputOffset, inputLen);
 
@@ -511,6 +554,10 @@ public class WolfCryptCipher extends CipherSpi {
             int inputLen)
         throws IllegalBlockSizeException, BadPaddingException {
 
+        if (debug.DEBUG)
+            log("final (offset: " + inputOffset + ", len: " +
+                inputLen + ")");
+
         return engineUpdate(input, inputOffset, inputLen);
     }
 
@@ -519,6 +566,10 @@ public class WolfCryptCipher extends CipherSpi {
             int inputLen, byte[] output, int outputOffset)
         throws ShortBufferException, IllegalBlockSizeException,
                BadPaddingException {
+
+        if (debug.DEBUG)
+            log("final (in offset: " + inputOffset + ", len: " +
+                inputLen + ", out offset: " + outputOffset + ")");
 
         return engineUpdate(input, inputOffset, inputLen, output,
                            outputOffset);
@@ -555,6 +606,34 @@ public class WolfCryptCipher extends CipherSpi {
             throw new InvalidKeyException("Key does not support encoding");
 
         return encodedKey.length;
+    }
+
+    private String typeToString(CipherType type) {
+        switch (type) {
+            case WC_AES:
+                return "AES";
+            case WC_DES3:
+                return "3DES";
+            case WC_RSA:
+                return "RSA";
+            default:
+                return "None";
+        }
+    }
+
+    private String modeToString(CipherMode type) {
+        switch (type) {
+            case WC_ECB:
+                return "ECB";
+            case WC_CBC:
+                return "CBC";
+            default:
+                return "None";
+        }
+    }
+
+    private void log(String msg) {
+        debug.print("[Cipher, " + algString + "-" + algMode + "] " + msg);
     }
 
     @Override

@@ -26,6 +26,7 @@ import java.security.MessageDigestSpi;
 import javax.crypto.ShortBufferException;
 
 import com.wolfssl.wolfcrypt.Md5;
+import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE Md5 MessageDigest wrapper
@@ -37,6 +38,9 @@ public final class WolfCryptMessageDigestMd5 extends MessageDigestSpi {
 
     /* internal reference to wolfCrypt JNI Md5 object */
     private Md5 md5;
+
+    /* for debug logging */
+    private WolfCryptDebug debug;
 
     public WolfCryptMessageDigestMd5() {
 
@@ -57,6 +61,9 @@ public final class WolfCryptMessageDigestMd5 extends MessageDigestSpi {
             throw new RuntimeException(e.getMessage());
         }
 
+        if (debug.DEBUG)
+            log("generated final digest, len: " + digest.length);
+
         return digest;
     }
 
@@ -64,6 +71,9 @@ public final class WolfCryptMessageDigestMd5 extends MessageDigestSpi {
     protected void engineReset() {
 
         this.md5.init();
+
+        if (debug.DEBUG)
+            log("engine reset");
     }
 
     @Override
@@ -73,12 +83,22 @@ public final class WolfCryptMessageDigestMd5 extends MessageDigestSpi {
         tmp[0] = input;
 
         this.md5.update(tmp, 1);
+
+        if (debug.DEBUG)
+            log("update with single byte");
     }
 
     @Override
     protected void engineUpdate(byte[] input, int offset, int len) {
 
         this.md5.update(input, offset, len);
+
+        if (debug.DEBUG)
+            log("update, offset: " + offset + ", len: " + len);
+    }
+
+    private void log(String msg) {
+        debug.print("[MessageDigest, MD5] " + msg);
     }
 
     @Override

@@ -37,6 +37,8 @@ import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.Sha512;
 import com.wolfssl.wolfcrypt.Hmac;
 
+import com.wolfssl.provider.jce.WolfCryptDebug;
+
 /**
  * wolfCrypt JCE Mac wrapper
  *
@@ -57,6 +59,10 @@ public class WolfCryptMac extends MacSpi {
     private HmacType hmacType = null;
     private int nativeHmacType = 0;
     private int digestSize = 0;
+
+    /* for debug logging */
+    private WolfCryptDebug debug;
+    private String algString;
 
     private WolfCryptMac(HmacType type)
         throws NoSuchAlgorithmException {
@@ -94,12 +100,20 @@ public class WolfCryptMac extends MacSpi {
                 throw new NoSuchAlgorithmException(
                     "Unsupported HMAC type");
         }
+
+        if (debug.DEBUG)
+            algString = typeToString(type);
     }
 
     @Override
     protected byte[] engineDoFinal() {
 
-        return this.hmac.doFinal();
+        byte[] out = this.hmac.doFinal();
+
+        if (debug.DEBUG)
+            log("final digest generated, len: " + out.length);
+
+        return out;
     }
 
     @Override
@@ -124,21 +138,54 @@ public class WolfCryptMac extends MacSpi {
             throw new InvalidKeyException("Key does not support encoding");
 
         this.hmac.setKey(nativeHmacType, encodedKey);
+
+        if (debug.DEBUG)
+            log("init with key and spec");
     }
 
     @Override
     protected void engineReset() {
         this.hmac.reset();
+
+        if (debug.DEBUG)
+            log("engine reset");
     }
 
     @Override
     protected void engineUpdate(byte input) {
         this.hmac.update(input);
+
+        if (debug.DEBUG)
+            log("update with single byte");
     }
 
     @Override
     protected void engineUpdate(byte[] input, int offset, int len) {
         this.hmac.update(input, offset, len);
+
+        if (debug.DEBUG)
+            log("update, offset: " + offset + ", len: " + len);
+    }
+
+    private String typeToString(HmacType type) {
+        switch (type) {
+            case WC_HMAC_MD5:
+                return "MD5";
+            case WC_HMAC_SHA:
+                return "SHA";
+            case WC_HMAC_SHA256:
+                return "SHA256";
+            case WC_HMAC_SHA384:
+                return "SHA384";
+            case WC_HMAC_SHA512:
+                return "SHA512";
+            default:
+                return "None";
+        }
+    }
+
+    private void log(String msg) {
+        debug.print("[Mac, " + algString + "] " + msg);
     }
 
     @Override

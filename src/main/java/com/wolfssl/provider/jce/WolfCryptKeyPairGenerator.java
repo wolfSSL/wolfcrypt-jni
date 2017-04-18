@@ -52,6 +52,8 @@ import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Rng;
 
+import com.wolfssl.provider.jce.WolfCryptDebug;
+
 /**
  * wolfCrypt JCE KeyPairGenerator wrapper class
  *
@@ -75,12 +77,19 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
     private Rng rng = null;
 
+    /* for debug logging */
+    private WolfCryptDebug debug;
+    private String algString;
+
     private WolfCryptKeyPairGenerator(KeyType type) {
 
         this.type = type;
 
         rng = new Rng();
         rng.init();
+
+        if (debug.DEBUG)
+            algString = typeToString(type);
     }
 
     @Override
@@ -93,6 +102,9 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         }
 
         this.keysize = keysize;
+
+        if (debug.DEBUG)
+            log("init with keysize: " + keysize);
     }
 
     @Override
@@ -127,6 +139,10 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 this.curve = curveName;
                 this.keysize = curvesize;
 
+                if (debug.DEBUG)
+                    log("init with spec, curve: " + curveName +
+                        ", keysize: " + curvesize);
+
                 break;
 
             case WC_DH:
@@ -144,6 +160,9 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     throw new InvalidAlgorithmParameterException(
                         "Invalid parameters, either p or g is null");
                 }
+
+                if (debug.DEBUG)
+                    log("init with spec, prime len: " + this.dhP.length);
 
                 break;
 
@@ -209,6 +228,9 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     throw new RuntimeException(e.getMessage());
                 }
 
+                if (debug.DEBUG)
+                    log("generated KeyPair");
+
                 break;
 
             case WC_DH:
@@ -253,6 +275,10 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 } catch (Exception e) {
                     throw new RuntimeException(e.getMessage());
                 }
+
+                if (debug.DEBUG)
+                    log("generated KeyPair");
+
                 break;
 
             default:
@@ -261,6 +287,21 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         }
 
         return pair;
+    }
+
+    private String typeToString(KeyType type) {
+        switch (type) {
+            case WC_ECC:
+                return "ECC";
+            case WC_DH:
+                return "DH";
+            default:
+                return "None";
+        }
+    }
+
+    private void log(String msg) {
+        debug.print("[KeyPairGenerator, " + algString + "] " + msg);
     }
 
     @Override

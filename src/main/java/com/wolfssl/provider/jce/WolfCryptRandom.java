@@ -24,6 +24,7 @@ package com.wolfssl.provider.jce;
 import java.security.SecureRandomSpi;
 
 import com.wolfssl.wolfcrypt.Rng;
+import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE RNG/SecureRandom wrapper
@@ -36,9 +37,15 @@ public final class WolfCryptRandom extends SecureRandomSpi {
     /* internal reference to wolfCrypt JNI RNG object */
     private Rng rng;
 
+    /* for debug logging */
+    private WolfCryptDebug debug;
+
     public WolfCryptRandom() {
         this.rng = new Rng();
         this.rng.init();
+
+        if (debug.DEBUG)
+            log("initialized new object");
     }
 
     @Override
@@ -56,6 +63,12 @@ public final class WolfCryptRandom extends SecureRandomSpi {
     @Override
     protected void engineSetSeed(byte[] seed) {
         /* wolfCrypt reseeds internally automatically */
+        if (debug.DEBUG)
+            log("setSeed() not supported by wolfJCE");
+    }
+
+    private void log(String msg) {
+        debug.print("[Random] " + msg);
     }
 
     @Override

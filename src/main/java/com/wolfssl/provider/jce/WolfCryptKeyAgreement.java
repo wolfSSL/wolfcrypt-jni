@@ -47,6 +47,8 @@ import java.security.interfaces.ECPrivateKey;
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Ecc;
 
+import com.wolfssl.provider.jce.WolfCryptDebug;
+
 /**
  * wolfCrypt JCE Key Agreement wrapper
  *
@@ -78,6 +80,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
     private KeyAgreeType type;
     private EngineState state = EngineState.WC_UNINITIALIZED;
 
+    private WolfCryptDebug debug;
+    private String algString;
+
     private WolfCryptKeyAgreement(KeyAgreeType type) {
 
         this.type = type;
@@ -94,6 +99,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 break;
         };
 
+        if (debug.DEBUG)
+            algString = typeToString(type);
+
         this.state = EngineState.WC_INIT_DONE;
     }
 
@@ -102,6 +110,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         throws InvalidKeyException, IllegalStateException {
 
         byte[] pubKey = null;
+
+        if (debug.DEBUG)
+            log("engineDoPhase, lastPhase: " + lastPhase);
 
         if (this.state != EngineState.WC_PRIVKEY_DONE)
             throw new IllegalStateException(
@@ -178,6 +189,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             }
 
             len = engineGenerateSecret(tmp, 0);
+
+            if (debug.DEBUG)
+                log("generated secret, len: " + len);
 
             /* may need to truncate */
             secret = new byte[len];
@@ -273,6 +287,10 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         };
 
         if (tmp != null) {
+
+            if (debug.DEBUG)
+                log("generated secret, len: " + tmp.length);
+
             zeroArray(tmp);
             return tmp.length;
         }
@@ -286,6 +304,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                InvalidKeyException {
 
         byte secret[] = engineGenerateSecret();
+
+        if (debug.DEBUG)
+            log("generating SecretKey for " + algorithm);
 
         if (algorithm.equals("DES")) {
             return (SecretKey)new DESKeySpec(secret);
@@ -384,6 +405,8 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             /* look up curve size */
             this.curveSize = this.ecPrivate.getCurveSizeFromName(
                                                 this.curveName);
+            if (debug.DEBUG)
+                log("curveName: " + curveName + ", curveSize: " + curveSize);
 
         } else if (spec instanceof ECParameterSpec) {
 
@@ -393,6 +416,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
             this.curveSize = this.ecPrivate.getCurveSizeFromName(
                                                 this.curveName);
+            if (debug.DEBUG)
+                log("curveName: " + curveName + ", curveSize: " + curveSize);
+
         } else {
             throw new InvalidAlgorithmParameterException(
                 "AlgorithmParameterSpec is not of type " +
@@ -456,6 +482,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             SecureRandom random)
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
+        if (debug.DEBUG)
+            log("initialized with key and AlgorithmParameterSpec");
+
         wcKeyAgreementInit(key, params, random);
 
         this.state = EngineState.WC_PRIVKEY_DONE;
@@ -466,6 +495,10 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         throws InvalidKeyException {
 
         try {
+
+            if (debug.DEBUG)
+                log("initialized with key");
+
             wcKeyAgreementInit(key, null, random);
 
         } catch (InvalidAlgorithmParameterException e) {
@@ -483,6 +516,21 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         for (int i = 0; i < in.length; i++) {
             in[i] = 0;
         }
+    }
+
+    private String typeToString(KeyAgreeType type) {
+        switch (type) {
+            case WC_DH:
+                return "DH";
+            case WC_ECDH:
+                return "ECDH";
+            default:
+                return "None";
+        }
+    }
+
+    private void log(String msg) {
+        debug.print("[KeyAgreement, " + algString + "] " + msg);
     }
 
     @Override
