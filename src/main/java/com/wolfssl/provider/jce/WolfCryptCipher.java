@@ -457,8 +457,7 @@ public class WolfCryptCipher extends CipherSpi {
 
         int ret = 0;
 
-        byte tmpIn[]  = Arrays.copyOfRange(input, inputOffset,
-                            inputOffset + len);
+        byte tmpIn[]  = null;
         byte tmpOut[] = null;
 
         /* return null if input data is too short to result in a new
@@ -466,18 +465,25 @@ public class WolfCryptCipher extends CipherSpi {
         if (input == null || isValidBlockLength(len) == 0)
             return null;
 
+        tmpIn = Arrays.copyOfRange(input, inputOffset,
+                                   inputOffset + len);
+
         switch (this.cipherType) {
 
             case WC_AES:
                 tmpOut = this.aes.update(input, inputOffset, len);
-                tmpOut = Arrays.copyOfRange(tmpOut, inputOffset,
-                                            inputOffset + len);
+
+                /* truncate */
+                tmpOut = Arrays.copyOfRange(tmpOut, 0, len);
+
                 break;
 
             case WC_DES3:
                 tmpOut = this.des3.update(input, inputOffset, len);
-                tmpOut = Arrays.copyOfRange(tmpOut, inputOffset,
-                                            inputOffset + len);
+
+                /* truncate */
+                tmpOut = Arrays.copyOfRange(tmpOut, 0, len);
+
                 break;
 
             case WC_RSA:
