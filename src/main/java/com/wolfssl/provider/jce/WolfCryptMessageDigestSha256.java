@@ -104,7 +104,8 @@ public final class WolfCryptMessageDigestSha256 extends MessageDigestSpi {
     @Override
     protected void finalize() throws Throwable {
         try {
-            this.sha.releaseNativeStruct();
+            if (this.sha != null)
+                this.sha.releaseNativeStruct();
         } finally {
             super.finalize();
         }

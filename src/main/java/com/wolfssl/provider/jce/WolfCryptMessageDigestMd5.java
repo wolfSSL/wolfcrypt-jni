@@ -104,7 +104,8 @@ public final class WolfCryptMessageDigestMd5 extends MessageDigestSpi {
     @Override
     protected void finalize() throws Throwable {
         try {
-            this.md5.releaseNativeStruct();
+            if (this.md5 != null)
+                this.md5.releaseNativeStruct();
         } finally {
             super.finalize();
         }

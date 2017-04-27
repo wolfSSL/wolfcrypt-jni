@@ -191,7 +191,8 @@ public class WolfCryptMac extends MacSpi {
     @Override
     protected void finalize() throws Throwable {
         try {
-            this.hmac.releaseNativeStruct();
+            if (this.hmac != null)
+                this.hmac.releaseNativeStruct();
         } finally {
             super.finalize();
         }

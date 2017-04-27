@@ -595,15 +595,27 @@ public class WolfCryptSignature extends SignatureSpi {
     protected void finalize() throws Throwable {
         try {
             /* free native digest objects */
-            this.md5.releaseNativeStruct();
-            this.sha.releaseNativeStruct();
-            this.sha256.releaseNativeStruct();
-            this.sha384.releaseNativeStruct();
-            this.sha512.releaseNativeStruct();
+            if (this.md5 != null)
+                this.md5.releaseNativeStruct();
+
+            if (this.sha != null)
+                this.sha.releaseNativeStruct();
+
+            if (this.sha256 != null)
+                this.sha256.releaseNativeStruct();
+
+            if (this.sha384 != null)
+                this.sha384.releaseNativeStruct();
+
+            if (this.sha512 != null)
+                this.sha512.releaseNativeStruct();
 
             /* free native key objects */
-            this.rsa.releaseNativeStruct();
-            this.ecc.releaseNativeStruct();  /* frees internally */
+            if (this.rsa != null)
+                this.rsa.releaseNativeStruct();
+
+            if (this.ecc != null)
+                this.ecc.releaseNativeStruct();  /* frees internally */
 
         } finally {
             super.finalize();

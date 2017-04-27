@@ -307,8 +307,10 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     @Override
     protected void finalize() throws Throwable {
         try {
-            rng.free();
-            rng.releaseNativeStruct();
+            if (this.rng != null) {
+                rng.free();
+                rng.releaseNativeStruct();
+            }
         } finally {
             super.finalize();
         }

@@ -539,12 +539,16 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
             switch (this.type) {
                 case WC_DH:
-                    this.dh.releaseNativeStruct();
+                    if (this.dh != null)
+                        this.dh.releaseNativeStruct();
                     break;
 
                 case WC_ECDH:
-                    this.ecPublic.releaseNativeStruct();
-                    this.ecPrivate.releaseNativeStruct();
+                    if (this.ecPublic != null)
+                        this.ecPublic.releaseNativeStruct();
+
+                    if (this.ecPrivate != null)
+                        this.ecPrivate.releaseNativeStruct();
                     break;
             }
 

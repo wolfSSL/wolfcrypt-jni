@@ -645,10 +645,17 @@ public class WolfCryptCipher extends CipherSpi {
     @Override
     protected void finalize() throws Throwable {
         try {
-            this.aes.releaseNativeStruct();
-            this.des3.releaseNativeStruct();
-            this.rsa.releaseNativeStruct();
-            this.rng.releaseNativeStruct();
+            if (this.aes != null)
+                this.aes.releaseNativeStruct();
+
+            if (this.des3 != null)
+                this.des3.releaseNativeStruct();
+
+            if (this.rsa != null)
+                this.rsa.releaseNativeStruct();
+
+            if (this.rng != null)
+                this.rng.releaseNativeStruct();
 
             zeroArray(this.iv);
 

@@ -75,8 +75,10 @@ public final class WolfCryptRandom extends SecureRandomSpi {
     protected void finalize() throws Throwable {
         try {
 
-            this.rng.free();
-            this.rng.releaseNativeStruct();
+            if (this.rng != null) {
+                this.rng.free();
+                this.rng.releaseNativeStruct();
+            }
 
         } finally {
             super.finalize();
