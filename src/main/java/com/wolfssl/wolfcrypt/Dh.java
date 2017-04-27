@@ -84,7 +84,7 @@ public class Dh extends NativeStruct {
 	}
 
 	public void setPrivateKey(byte[] priv) {
-		if (state == WolfCryptState.READY) {
+		if (state != WolfCryptState.UNINITIALIZED) {
 			if (privateKey != null)
 				for (int i = 0; i < privateKey.length; i++)
 					privateKey[i] = 0;
@@ -97,7 +97,7 @@ public class Dh extends NativeStruct {
 	}
 
 	public void setPublicKey(byte[] pub) {
-		if (state == WolfCryptState.READY) {
+		if (state != WolfCryptState.UNINITIALIZED) {
 			if (publicKey != null)
 				for (int i = 0; i < publicKey.length; i++)
 					publicKey[i] = 0;
