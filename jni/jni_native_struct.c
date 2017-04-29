@@ -56,10 +56,22 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_NativeStruct_xfree(
  */
 void* getNativeStruct(JNIEnv* env, jobject this)
 {
+    jclass class;
+    jfieldID field;
+    jlong nativeStruct = 0;
+
     if (this) {
-        jclass class = (*env)->GetObjectClass(env, this);
-        jfieldID field = (*env)->GetFieldID(env, class, "pointer", "J");
-        jlong nativeStruct = (*env)->GetLongField(env, this, field);
+        class = (*env)->GetObjectClass(env, this);
+        field = (*env)->GetFieldID(env, class, "pointer", "J");
+
+        /* GetFieldID may throw exception */
+        if ((*env)->ExceptionOccurred(env)) {
+            (*env)->ExceptionDescribe(env);
+            (*env)->ExceptionClear(env);
+
+        } else {
+            nativeStruct = (*env)->GetLongField(env, this, field);
+        }
 
         if (!nativeStruct)
             throwWolfCryptException(env, "Failed to retrieve native struct");
@@ -73,8 +85,16 @@ void* getNativeStruct(JNIEnv* env, jobject this)
 void setByteArrayMember(
     JNIEnv* env, jobject this, const char* name, jbyteArray value)
 {
-    jclass class = (*env)->GetObjectClass(env, this);
-    jfieldID field = (*env)->GetFieldID(env, class, name, "[B");
+    jclass class;
+    jfieldID field;
+
+    class = (*env)->GetObjectClass(env, this);
+    field = (*env)->GetFieldID(env, class, name, "[B");
+
+    /* GetFieldID may throw an exception */
+    if ((*env)->ExceptionOccurred(env)) {
+        return;
+    }
 
     (*env)->SetObjectField(env, this, field, (jobject)value);
 }
@@ -86,18 +106,36 @@ byte* getDirectBufferAddress(JNIEnv* env, jobject buffer)
 
 word32 getDirectBufferLimit(JNIEnv* env, jobject buffer)
 {
-    jclass class = (*env)->GetObjectClass(env, buffer);
-    jmethodID method = (*env)->GetMethodID(env, class, "limit", "()I");
+    jclass class;
+    jmethodID method;
+
+    class  = (*env)->GetObjectClass(env, buffer);
+    method = (*env)->GetMethodID(env, class, "limit", "()I");
+
+    /* GetMethodID may throw an exception */
+    if ((*env)->ExceptionOccurred(env)) {
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+        return 0;
+    }
 
     return (word32) (*env)->CallIntMethod(env, buffer, method);
 }
 
 void setDirectBufferLimit(JNIEnv* env, jobject buffer, jint limit)
 {
-    jclass class = (*env)->GetObjectClass(env, buffer);
-    jmethodID method = (*env)->GetMethodID(env, class, "limit",
-        "(I)Ljava/nio/Buffer;");
+    jclass class;
+    jmethodID method;
 
+    class = (*env)->GetObjectClass(env, buffer);
+    method = (*env)->GetMethodID(env, class, "limit", "(I)Ljava/nio/Buffer;");
+
+    /* GetMethodID may throw an exception */
+    if ((*env)->ExceptionOccurred(env)) {
+        return;
+    }
+
+    /* may throw exception */
     (*env)->CallObjectMethod(env, buffer, method, limit);
 }
 

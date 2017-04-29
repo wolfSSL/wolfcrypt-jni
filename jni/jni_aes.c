@@ -57,10 +57,20 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key(
 {
 #ifndef NO_AES
     int ret = 0;
-    Aes* aes = (Aes*) getNativeStruct(env, this);
-    byte* key = getByteArray(env, key_object);
-    byte* iv = getByteArray(env, iv_object);
-    word32 keySz = getByteArrayLength(env, key_object);
+    Aes* aes  = NULL;
+    byte* key = NULL;
+    byte* iv  = NULL;
+    word32 keySz = 0;
+
+    aes = (Aes*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    key = getByteArray(env, key_object);
+    iv  = getByteArray(env, iv_object);
+    keySz = getByteArrayLength(env, key_object);
 
     ret = (!aes || !key) /* iv is optional */
         ? BAD_FUNC_ARG
@@ -87,9 +97,18 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update__I_3BII_3BI(
 {
 #ifndef NO_AES
     int ret = 0;
-    Aes* aes = (Aes*) getNativeStruct(env, this);
-    byte* input = getByteArray(env, input_object);
-    byte* output = getByteArray(env, output_object);
+    Aes*  aes    = NULL;
+    byte* input  = NULL;
+    byte* output = NULL;
+
+    aes = (Aes*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return 0;
+    }
+
+    input  = getByteArray(env, input_object);
+    output = getByteArray(env, output_object);
 
     if (!aes || !input || !output) {
         ret = BAD_FUNC_ARG; /* NULL sanitizers */
@@ -143,9 +162,18 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update__ILjava_nio_ByteBuffer_2IILjava_ni
     int ret = 0;
 
 #ifndef NO_AES
-    Aes* aes = (Aes*) getNativeStruct(env, this);
-    byte* input = getDirectBufferAddress(env, input_object);
-    byte* output = getDirectBufferAddress(env, output_object);
+    Aes*  aes    = NULL;
+    byte* input  = NULL;
+    byte* output = NULL;
+
+    aes = (Aes*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return 0;
+    }
+
+    input  = getDirectBufferAddress(env, input_object);
+    output = getDirectBufferAddress(env, output_object);
 
     if (!aes || !input || !output) {
         ret = BAD_FUNC_ARG; /* NULL sanitizers */
