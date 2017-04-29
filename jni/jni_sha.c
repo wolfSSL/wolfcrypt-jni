@@ -121,6 +121,10 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1init(
 #ifndef NO_SHA
     int ret = 0;
     Sha* sha = (Sha*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!sha)
         ? BAD_FUNC_ARG
@@ -139,8 +143,16 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update__Ljava_nio_ByteBuffer_2II(
 {
 #ifndef NO_SHA
     int ret = 0;
-    Sha* sha = (Sha*) getNativeStruct(env, this);
-    byte* data = getDirectBufferAddress(env, data_buffer);
+    Sha*  sha  = NULL;
+    byte* data = NULL;
+
+    sha = (Sha*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    data = getDirectBufferAddress(env, data_buffer);
 
     ret = (!sha || !data)
         ? BAD_FUNC_ARG
@@ -163,9 +175,18 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update___3BII(
 {
 #ifndef NO_SHA
     int ret = 0;
-    Sha* sha = (Sha*) getNativeStruct(env, this);
-    byte* data = getByteArray(env, data_buffer);
-    word32 dataSz = getByteArrayLength(env, data_buffer);
+    Sha*  sha  = NULL;
+    byte* data = NULL;
+    word32 dataSz = 0;
+
+    sha = (Sha*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    data   = getByteArray(env, data_buffer);
+    dataSz = getByteArrayLength(env, data_buffer);
 
     ret = (!sha || !data || ((offset + len) > dataSz))
         ? BAD_FUNC_ARG
@@ -190,8 +211,16 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1final__Ljava_nio_ByteBuffer_2I(
 {
 #ifndef NO_SHA
     int ret = 0;
-    Sha* sha = (Sha*) getNativeStruct(env, this);
-    byte* hash = getDirectBufferAddress(env, hash_buffer);
+    Sha*  sha  = NULL;
+    byte* hash = NULL;
+
+    sha = (Sha*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    hash = getDirectBufferAddress(env, hash_buffer);
 
     ret = (!sha || !hash)
         ? BAD_FUNC_ARG
@@ -214,8 +243,16 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1final___3B(
 {
 #ifndef NO_SHA
     int ret = 0;
-    Sha* sha = (Sha*) getNativeStruct(env, this);
-    byte* hash = getByteArray(env, hash_buffer);
+    Sha*  sha  = NULL;
+    byte* hash = NULL;
+
+    sha = (Sha*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    hash = getByteArray(env, hash_buffer);
 
     ret = (!sha || !hash)
         ? BAD_FUNC_ARG
@@ -241,6 +278,10 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1init(
 #ifndef NO_SHA256
     int ret = 0;
     Sha256* sha = (Sha256*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!sha)
         ? BAD_FUNC_ARG
@@ -259,8 +300,16 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update__Ljava_nio_ByteBuffer_2II(
 {
 #ifndef NO_SHA256
     int ret = 0;
-    Sha256* sha = (Sha256*) getNativeStruct(env, this);
-    byte* data = getDirectBufferAddress(env, data_buffer);
+    Sha256* sha = NULL;
+    byte*  data = NULL;
+
+    sha = (Sha256*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    data = getDirectBufferAddress(env, data_buffer);
 
     ret = (!sha || !data)
         ? BAD_FUNC_ARG
@@ -284,9 +333,18 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update___3BII(
 {
 #ifndef NO_SHA256
     int ret = 0;
-    Sha256* sha = (Sha256*) getNativeStruct(env, this);
-    byte* data = getByteArray(env, data_buffer);
-    word32 dataSz = getByteArrayLength(env, data_buffer);
+    Sha256* sha = NULL;
+    byte*  data = NULL;
+    word32 dataSz = 0;
+
+    sha = (Sha256*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    data   = getByteArray(env, data_buffer);
+    dataSz = getByteArrayLength(env, data_buffer);
 
     ret = (!sha || !data || ((offset + len) > dataSz))
         ? BAD_FUNC_ARG
@@ -311,8 +369,16 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1final__Ljava_nio_ByteBuffer_2I(
 {
 #ifndef NO_SHA256
     int ret = 0;
-    Sha256* sha = (Sha256*) getNativeStruct(env, this);
-    byte* hash = getDirectBufferAddress(env, hash_buffer);
+    Sha256* sha = NULL;
+    byte*  hash = NULL;
+
+    sha = (Sha256*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    hash = getDirectBufferAddress(env, hash_buffer);
 
     ret = (!sha || !hash)
         ? BAD_FUNC_ARG
@@ -335,8 +401,16 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1final___3B(
 {
 #ifndef NO_SHA256
     int ret = 0;
-    Sha256* sha = (Sha256*) getNativeStruct(env, this);
-    byte* hash = getByteArray(env, hash_buffer);
+    Sha256* sha = NULL;
+    byte*  hash = NULL;
+
+    sha = (Sha256*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    hash = getByteArray(env, hash_buffer);
 
     ret = (!sha || !hash)
         ? BAD_FUNC_ARG
@@ -362,6 +436,10 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1init(
 #ifdef WOLFSSL_SHA512
     int ret = 0;
     Sha384* sha = (Sha384*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!sha)
         ? BAD_FUNC_ARG
@@ -380,8 +458,16 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1update__Ljava_nio_ByteBuffer_2II(
 {
 #ifdef WOLFSSL_SHA512
     int ret = 0;
-    Sha384* sha = (Sha384*) getNativeStruct(env, this);
-    byte* data = getDirectBufferAddress(env, data_buffer);
+    Sha384* sha = NULL;
+    byte*  data = NULL;
+
+    sha = (Sha384*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    data = getDirectBufferAddress(env, data_buffer);
 
     ret = (!sha || !data)
         ? BAD_FUNC_ARG
@@ -405,9 +491,18 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1update___3BII(
 {
 #ifdef WOLFSSL_SHA512
     int ret = 0;
-    Sha384* sha = (Sha384*) getNativeStruct(env, this);
-    byte* data = getByteArray(env, data_buffer);
-    word32 dataSz = getByteArrayLength(env, data_buffer);
+    Sha384* sha = NULL;
+    byte*  data = NULL;
+    word32 dataSz = 0;
+
+    sha = (Sha384*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    data   = getByteArray(env, data_buffer);
+    dataSz = getByteArrayLength(env, data_buffer);
 
     ret = (!sha || !data || ((offset + len) > dataSz))
         ? BAD_FUNC_ARG
@@ -432,8 +527,16 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1final__Ljava_nio_ByteBuffer_2I(
 {
 #ifdef WOLFSSL_SHA512
     int ret = 0;
-    Sha384* sha = (Sha384*) getNativeStruct(env, this);
-    byte* hash = getDirectBufferAddress(env, hash_buffer);
+    Sha384* sha = NULL;
+    byte*  hash = NULL;
+
+    sha = (Sha384*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    hash = getDirectBufferAddress(env, hash_buffer);
 
     ret = (!sha || !hash)
         ? BAD_FUNC_ARG
@@ -456,8 +559,16 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1final___3B(
 {
 #ifdef WOLFSSL_SHA512
     int ret = 0;
-    Sha384* sha = (Sha384*) getNativeStruct(env, this);
-    byte* hash = getByteArray(env, hash_buffer);
+    Sha384* sha = NULL;
+    byte*  hash = NULL;
+
+    sha = (Sha384*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    hash = getByteArray(env, hash_buffer);
 
     ret = (!sha || !hash)
         ? BAD_FUNC_ARG
@@ -483,6 +594,10 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1init(
 #ifdef WOLFSSL_SHA512
     int ret = 0;
     Sha512* sha = (Sha512*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!sha)
         ? BAD_FUNC_ARG
@@ -501,8 +616,16 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1update__Ljava_nio_ByteBuffer_2II(
 {
 #ifdef WOLFSSL_SHA512
     int ret = 0;
-    Sha512* sha = (Sha512*) getNativeStruct(env, this);
-    byte* data = getDirectBufferAddress(env, data_buffer);
+    Sha512* sha = NULL;
+    byte*  data = NULL;
+
+    sha = (Sha512*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    data = getDirectBufferAddress(env, data_buffer);
 
     ret = (!sha || !data)
         ? BAD_FUNC_ARG
@@ -526,9 +649,18 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1update___3BII(
 {
 #ifdef WOLFSSL_SHA512
     int ret = 0;
-    Sha512* sha = (Sha512*) getNativeStruct(env, this);
-    byte* data = getByteArray(env, data_buffer);
-    word32 dataSz = getByteArrayLength(env, data_buffer);
+    Sha512* sha = NULL;
+    byte*  data = NULL;
+    word32 dataSz = 0;
+
+    sha = (Sha512*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    data   = getByteArray(env, data_buffer);
+    dataSz = getByteArrayLength(env, data_buffer);
 
     ret = (!sha || !data || ((offset + len) > dataSz))
         ? BAD_FUNC_ARG
@@ -553,8 +685,16 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1final__Ljava_nio_ByteBuffer_2I(
 {
 #ifdef WOLFSSL_SHA512
     int ret = 0;
-    Sha512* sha = (Sha512*) getNativeStruct(env, this);
-    byte* hash = getDirectBufferAddress(env, hash_buffer);
+    Sha512* sha = NULL;
+    byte*  hash = NULL;
+
+    sha = (Sha512*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    hash = getDirectBufferAddress(env, hash_buffer);
 
     ret = (!sha || !hash)
         ? BAD_FUNC_ARG
@@ -577,8 +717,16 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1final___3B(
 {
 #ifdef WOLFSSL_SHA512
     int ret = 0;
-    Sha512* sha = (Sha512*) getNativeStruct(env, this);
-    byte* hash = getByteArray(env, hash_buffer);
+    Sha512* sha = NULL;
+    byte*  hash = NULL;
+
+    sha = (Sha512*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    hash = getByteArray(env, hash_buffer);
 
     ret = (!sha || !hash)
         ? BAD_FUNC_ARG
