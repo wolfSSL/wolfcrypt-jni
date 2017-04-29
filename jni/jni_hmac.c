@@ -107,9 +107,18 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSetKey(
 {
 #ifndef NO_HMAC
     int ret = 0;
-    Hmac* hmac = (Hmac*) getNativeStruct(env, this);
-    byte* key = getByteArray(env, key_object);
-    word32 keySz = getByteArrayLength(env, key_object);
+    Hmac* hmac = NULL;
+    byte* key  = NULL;
+    word32 keySz = 0;
+
+    hmac = (Hmac*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    key   = getByteArray(env, key_object);
+    keySz = getByteArrayLength(env, key_object);
 
     ret = (!hmac || !key)
         ? BAD_FUNC_ARG
@@ -133,6 +142,10 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__B(
 #ifndef NO_HMAC
     int ret = 0;
     Hmac* hmac = (Hmac*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!hmac)
         ? BAD_FUNC_ARG
@@ -154,8 +167,16 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII(
 {
 #ifndef NO_HMAC
     int ret = 0;
-    Hmac* hmac = (Hmac*) getNativeStruct(env, this);
-    byte* data = getByteArray(env, data_object);
+    Hmac* hmac = NULL;
+    byte* data = NULL;
+
+    hmac = (Hmac*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    data = getByteArray(env, data_object);
 
     ret = (!hmac || !data)
         ? BAD_FUNC_ARG
@@ -180,8 +201,16 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio_ByteBuffer_2II(
 {
 #ifndef NO_HMAC
     int ret = 0;
-    Hmac* hmac = (Hmac*) getNativeStruct(env, this);
-    byte* data = getDirectBufferAddress(env, data_object);
+    Hmac* hmac = NULL;
+    byte* data = NULL;
+
+    hmac = (Hmac*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    data = getDirectBufferAddress(env, data_object);
 
     ret = (!hmac || !data)
         ? BAD_FUNC_ARG
@@ -206,9 +235,16 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal(
 
 #ifndef NO_HMAC
     int ret = 0;
-    Hmac* hmac = (Hmac*) getNativeStruct(env, this);
+    Hmac* hmac = NULL;
+    int   hmacSz = 0;
     byte tmp[MAX_DIGEST_SIZE];
-    int hmacSz = GetHashSizeByType(hmac->macType);
+
+    hmac = (Hmac*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+    hmacSz = GetHashSizeByType(hmac->macType);
 
     if (hmacSz < 0) {
         throwWolfCryptExceptionFromError(env, ret);
