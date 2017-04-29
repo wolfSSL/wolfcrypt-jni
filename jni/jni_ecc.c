@@ -61,6 +61,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1init(
 #ifdef HAVE_ECC
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!ecc)
         ? BAD_FUNC_ARG
@@ -81,6 +85,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1free(
 {
 #ifdef HAVE_ECC
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception */
+        return;
+    }
 
     if (ecc)
         wc_ecc_free(ecc);
@@ -97,8 +105,20 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key(
 {
 #ifdef HAVE_ECC
     int ret = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+    ecc_key* ecc = NULL;
+    RNG* rng = NULL;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!ecc || !rng)
         ? BAD_FUNC_ARG
@@ -119,9 +139,23 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key_1ex
 {
 #ifdef HAVE_ECC
     int ret = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+    ecc_key* ecc = NULL;
+    RNG* rng = NULL;
     const char* name = (*env)->GetStringUTFChars(env, curveName, 0);
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        (*env)->ReleaseStringUTFChars(env, curveName, name);
+        return;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        (*env)->ReleaseStringUTFChars(env, curveName, name);
+        return;
+    }
 
     ret = (!ecc || !rng || !curveName || !name)
         ? BAD_FUNC_ARG
@@ -153,6 +187,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1check_1key(
 #ifdef HAVE_ECC
     int ret = 0;
     ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!ecc)
         ? BAD_FUNC_ARG
@@ -174,12 +212,21 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
 #if defined(HAVE_ECC) && defined(HAVE_ECC_KEY_IMPORT)
     int ret = 0;
     word32 idx = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
-    byte* priv = getByteArray(env, priv_object);
-    word32 privSz = getByteArrayLength(env, priv_object);
-    byte* pub = getByteArray(env, pub_object);
-    word32 pubSz = getByteArrayLength(env, pub_object);
+    ecc_key* ecc = NULL;
+    byte* priv   = NULL;
+    byte* pub    = NULL;
+    word32 privSz = 0, pubSz = 0;
     const char* name = NULL;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+    priv   = getByteArray(env, priv_object);
+    privSz = getByteArrayLength(env, priv_object);
+    pub    = getByteArray(env, pub_object);
+    pubSz  = getByteArrayLength(env, pub_object);
 
     /* pub may be null if only importing private key */
     if (!ecc || !priv) {
@@ -230,9 +277,17 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private(
 
 #ifdef HAVE_ECC_KEY_EXPORT
     int ret = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    ecc_key* ecc = NULL;
     byte* output = NULL;
-    word32 outputSz = wc_ecc_size(ecc);
+    word32 outputSz = 0;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    outputSz = wc_ecc_size(ecc);
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
@@ -276,9 +331,18 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1x963(
 {
 #ifdef HAVE_ECC_KEY_IMPORT
     int ret = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
-    byte* key = getByteArray(env, key_object);
-    word32 keySz = getByteArrayLength(env, key_object);
+    ecc_key* ecc = NULL;
+    byte* key    = NULL;
+    word32 keySz = 0;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    key   = getByteArray(env, key_object);
+    keySz = getByteArrayLength(env, key_object);
 
     ret = (!ecc || !key)
         ? BAD_FUNC_ARG
@@ -303,9 +367,15 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1x963(
 
 #ifdef HAVE_ECC_KEY_EXPORT
     int ret = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    ecc_key* ecc = NULL;
     byte* output = NULL;
     word32 outputSz = 0;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
 
     /* get size */
     wc_ecc_export_x963(ecc, NULL, &outputSz);
@@ -352,9 +422,18 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPrivateKeyDecode(
 #if defined(HAVE_ECC) && !defined(NO_ASN)
     int ret = 0;
     word32 idx = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
-    byte* key = getByteArray(env, key_object);
-    word32 keySz = getByteArrayLength(env, key_object);
+    ecc_key* ecc = NULL;
+    byte*  key   = NULL;
+    word32 keySz = 0;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    key   = getByteArray(env, key_object);
+    keySz = getByteArrayLength(env, key_object);
 
     ret = (!ecc || !key)
         ? BAD_FUNC_ARG
@@ -379,9 +458,15 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccKeyToDer(
 
 #if defined(HAVE_ECC) && !defined(NO_ASN) && defined(WOLFSSL_KEY_GEN)
     int ret = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    ecc_key* ecc;
     byte* output = NULL;
     word32 outputSz = 256;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
@@ -426,9 +511,18 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyDecode(
 #if defined(HAVE_ECC) && !defined(NO_ASN)
     int ret = 0;
     word32 idx = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
-    byte* key = getByteArray(env, key_object);
-    word32 keySz = getByteArrayLength(env, key_object);
+    ecc_key* ecc = NULL;
+    byte*  key   = NULL;
+    word32 keySz = 0;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    key   = getByteArray(env, key_object);
+    keySz = getByteArrayLength(env, key_object);
 
     ret = (!ecc || !key)
         ? BAD_FUNC_ARG
@@ -453,9 +547,15 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyToDer(
 
 #if !defined(NO_ASN) && (defined(WOLFSSL_CERT_GEN) || defined(WOLFSSL_KEY_GEN))
     int ret = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    ecc_key* ecc = NULL;
     byte* output = NULL;
     word32 outputSz = 256;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
@@ -501,11 +601,24 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
 
 #ifdef HAVE_ECC_DHE
     int ret = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
-    ecc_key* pub = (ecc_key*) getNativeStruct(env, pub_object);
+    ecc_key* ecc = NULL;
+    ecc_key* pub = NULL;
     byte* output = NULL;
-    word32 outputSz = wc_ecc_size(ecc);
+    word32 outputSz = 0;
 
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    pub = (ecc_key*) getNativeStruct(env, pub_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    outputSz = wc_ecc_size(ecc);
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
         throwOutOfMemoryException(env,
@@ -551,12 +664,27 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
 
 #ifdef HAVE_ECC_SIGN
     int ret = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
-    byte* hash = getByteArray(env, hash_object);
-    word32 hashSz = getByteArrayLength(env, hash_object);
+    ecc_key* ecc = NULL;
+    RNG*  rng    = NULL;
+    byte* hash   = NULL;
     byte* signature = NULL;
-    word32 signatureSz = wc_ecc_sig_size(ecc);
+    word32 hashSz = 0, signatureSz = 0;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    hash   = getByteArray(env, hash_object);
+    hashSz = getByteArrayLength(env, hash_object);
+    signatureSz = wc_ecc_sig_size(ecc);
 
     signature = XMALLOC(signatureSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (signature == NULL) {
@@ -608,11 +736,22 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
 
 #ifdef HAVE_ECC_VERIFY
     int status = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
-    byte* hash = getByteArray(env, hash_object);
-    word32 hashSz = getByteArrayLength(env, hash_object);
-    byte* signature = getByteArray(env, signature_object);
-    word32 signatureSz = getByteArrayLength(env, signature_object);
+    ecc_key* ecc    = NULL;
+    byte* hash      = NULL;
+    byte* signature = NULL;
+    word32 hashSz = 0, signatureSz = 0;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return 0;
+    }
+
+    hash   = getByteArray(env, hash_object);
+    hashSz = getByteArrayLength(env, hash_object);
+
+    signature   = getByteArray(env, signature_object);
+    signatureSz = getByteArrayLength(env, signature_object);
 
     ret = (!ecc || !hash || !signature)
         ? BAD_FUNC_ARG
@@ -684,7 +823,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1ke
 
 #if defined(HAVE_ECC) && defined(WOLFSSL_KEY_GEN)
     int ret = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    ecc_key* ecc = NULL;
     byte* derKey = NULL;
     byte* pkcs8  = NULL;
     word32 derKeySz = MAX_ECC_PRIVATE_DER_SZ;
@@ -693,6 +832,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1ke
     int algoID   = 0;
     word32 oidSz = 0;
     const byte* curveOID = NULL;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
 
     derKey = XMALLOC(derKeySz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (derKey == NULL) {
