@@ -46,16 +46,27 @@ void throwWolfCryptExceptionFromError(JNIEnv* env, int code)
     }
 
     class = (*env)->FindClass(env, "com/wolfssl/wolfcrypt/WolfCryptException");
+    /* FindClass may throw exception */
+    if ((*env)->ExceptionOccurred(env)) {
+        return;
+    }
 
     if (class) {
         constructor = (*env)->GetMethodID(env, class, "<init>", "(I)V");
+        /* GetMethodID may throw exception */
+        if ((*env)->ExceptionOccurred(env)) {
+            return;
+        }
 
         if (constructor) {
             exception = (*env)->NewObject(env, class, constructor, code);
+            /* NewObject may throw exception */
+            if ((*env)->ExceptionOccurred(env)) {
+                return;
+            }
 
             if (exception) {
                 (*env)->Throw(env, exception);
-
                 return;
             }
         }
@@ -63,3 +74,4 @@ void throwWolfCryptExceptionFromError(JNIEnv* env, int code)
 
     throwWolfCryptException(env, wc_GetErrorString(code));
 }
+
