@@ -57,9 +57,18 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1set_1key(
 {
 #ifndef NO_DES3
     int ret = 0;
-    Des3* des = (Des3*) getNativeStruct(env, this);
-    byte* key = getByteArray(env, key_object);
-    byte* iv = getByteArray(env, iv_object);
+    Des3* des = NULL;
+    byte* key = NULL;
+    byte* iv  = NULL;
+
+    des = (Des3*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    key = getByteArray(env, key_object);
+    iv  = getByteArray(env, iv_object);
 
     ret = (!des || !key) /* iv is optional */
         ? BAD_FUNC_ARG
@@ -86,9 +95,18 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__I_3BII_3BI(
     int ret = 0;
 
 #ifndef NO_DES3
-    Des3* des = (Des3*) getNativeStruct(env, this);
-    byte* input = getByteArray(env, input_object);
-    byte* output = getByteArray(env, output_object);
+    Des3* des    = NULL;
+    byte* input  = NULL;
+    byte* output = NULL;
+
+    des = (Des3*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return 0;
+    }
+
+    input  = getByteArray(env, input_object);
+    output = getByteArray(env, output_object);
 
     if (!des || !input || !output) {
         ret = BAD_FUNC_ARG; /* NULL sanitizers */
@@ -142,9 +160,18 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__ILjava_nio_ByteBuffer_2IILjava_n
     int ret = 0;
 
 #ifndef NO_DES3
-    Des3* des = (Des3*) getNativeStruct(env, this);
-    byte* input = getDirectBufferAddress(env, input_object);
-    byte* output = getDirectBufferAddress(env, output_object);
+    Des3* des    = NULL;
+    byte* input  = NULL;
+    byte* output = NULL;
+
+    des = (Des3*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return 0;
+    }
+
+    input  = getDirectBufferAddress(env, input_object);
+    output = getDirectBufferAddress(env, output_object);
 
     if (!des || !input || !output) {
         ret = BAD_FUNC_ARG; /* NULL sanitizers */
