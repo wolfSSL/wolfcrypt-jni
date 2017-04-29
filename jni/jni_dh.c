@@ -56,6 +56,10 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1InitDhKey(
 {
 #ifndef NO_DH
     DhKey* key = (DhKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception */
+        return;
+    }
 
     wc_InitDhKey(key);
 
@@ -71,6 +75,10 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1FreeDhKey(
 {
 #ifndef NO_DH
     DhKey* key = (DhKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception */
+        return;
+    }
 
     wc_FreeDhKey(key);
 
@@ -86,11 +94,21 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhSetKey(
 {
 #ifndef NO_DH
     int ret = 0;
-    DhKey* key = (DhKey*) getNativeStruct(env, this);
-    byte* p = getByteArray(env, p_object);
-    word32 pSz = getByteArrayLength(env, p_object);
-    byte* g = getByteArray(env, g_object);
-    word32 gSz = getByteArrayLength(env, g_object);
+    DhKey* key = NULL;
+    byte* p = NULL;
+    byte* g = NULL;
+    word32 pSz = 0, gSz = 0;
+
+    key = (DhKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    p = getByteArray(env, p_object);
+    pSz = getByteArrayLength(env, p_object);
+    g = getByteArray(env, g_object);
+    gSz = getByteArrayLength(env, g_object);
 
     ret = (!key || !p || !g)
         ? BAD_FUNC_ARG
@@ -118,14 +136,27 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
 {
 #ifndef NO_DH
     int ret = 0;
-    DhKey* key = (DhKey*) getNativeStruct(env, this);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+    DhKey* key = NULL;
+    RNG* rng   = NULL;
     byte* priv = NULL;
+    byte* pub  = NULL;
     word32 privSz = size;
-    byte* pub = NULL;
-    word32 pubSz = size;
+    word32 pubSz  = size;
     int lBitPriv = 0, lBitPub  = 0;
     byte lBit[1] = { 0x00 };
+    int exceptionThrown = 0;
+
+    key = (DhKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     if (!key || !rng || (size < 0))
         ret = BAD_FUNC_ARG;
@@ -173,12 +204,18 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
                 (*env)->SetByteArrayRegion(env, privateKey, 0, privSz,
                                                             (const jbyte*)priv);
             }
+
             setByteArrayMember(env, this, "privateKey", privateKey);
+            if ((*env)->ExceptionOccurred(env)) {
+                /* if exception raised, skip any additional JNI functions */
+                exceptionThrown = 1;
+            }
+
         } else {
             throwWolfCryptException(env, "Failed to allocate privateKey");
         }
 
-        if (publicKey) {
+        if (publicKey && (exceptionThrown == 0)) {
             if (lBitPub) {
                 (*env)->SetByteArrayRegion(env, publicKey, 0, 1,
                                                             (const jbyte*)lBit);
@@ -188,6 +225,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
                 (*env)->SetByteArrayRegion(env, publicKey, 0, pubSz,
                                                              (const jbyte*)pub);
             }
+
             setByteArrayMember(env, this, "publicKey", publicKey);
         } else {
             throwWolfCryptException(env, "Failed to allocate publicKey");
@@ -218,9 +256,18 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhCheckPubKey(
 {
 #ifndef NO_DH
     int ret = 0;
-    DhKey* key = (DhKey*) getNativeStruct(env, this);
-    byte* pub = getByteArray(env, pub_object);
-    word32 pubSz = getByteArrayLength(env, pub_object);
+    DhKey* key = NULL;
+    byte*  pub = NULL;
+    word32 pubSz = 0;
+
+    key = (DhKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    pub   = getByteArray(env, pub_object);
+    pubSz = getByteArrayLength(env, pub_object);
 
     ret = (!key || !pub)
         ? BAD_FUNC_ARG
@@ -247,13 +294,23 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
 
 #ifndef NO_DH
     int ret = 0;
-    DhKey* key = (DhKey*) getNativeStruct(env, this);
-    byte* priv = getByteArray(env, priv_object);
-    word32 privSz = getByteArrayLength(env, priv_object);
-    byte* pub = getByteArray(env, pub_object);
-    word32 pubSz = getByteArrayLength(env, pub_object);
+    DhKey* key = NULL;
+    byte* priv = NULL;
+    byte* pub  = NULL;
     byte* secret = NULL;
-    word32 secretSz = pubSz;
+    word32 privSz = 0, pubSz = 0, secretSz = 0;
+
+    key = (DhKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    priv   = getByteArray(env, priv_object);
+    privSz = getByteArrayLength(env, priv_object);
+    pub    = getByteArray(env, pub_object);
+    pubSz  = getByteArrayLength(env, pub_object);
+    secretSz = pubSz;
 
     secret = XMALLOC(pubSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (secret == NULL) {
