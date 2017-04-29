@@ -59,8 +59,20 @@ Java_com_wolfssl_wolfcrypt_Rsa_MakeRsaKey(
 {
 #if !defined(NO_RSA) && defined(WOLFSSL_KEY_GEN)
     int ret = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+    RsaKey* key = NULL;
+    RNG*    rng = NULL;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!key || !rng)
         ? BAD_FUNC_ARG
@@ -82,9 +94,18 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw__Ljava_nio_ByteBuffer_2
 {
 #ifndef NO_RSA
     int ret = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    byte* n = getDirectBufferAddress(env, n_object);
-    byte* e = getDirectBufferAddress(env, e_object);
+    RsaKey* key = NULL;
+    byte* n = NULL;
+    byte* e = NULL;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    n = getDirectBufferAddress(env, n_object);
+    e = getDirectBufferAddress(env, e_object);
 
     ret = (!key || !n || !e)
         ? BAD_FUNC_ARG
@@ -110,9 +131,18 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw___3BJ_3BJ(
 {
 #ifndef NO_RSA
     int ret  = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    byte* n = getByteArray(env, n_object);
-    byte* e = getByteArray(env, e_object);
+    RsaKey* key = NULL;
+    byte* n = NULL;
+    byte* e = NULL;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    n = getByteArray(env, n_object);
+    e = getByteArray(env, e_object);
 
     ret = (!key || !n || !e)
         ? BAD_FUNC_ARG
@@ -140,11 +170,21 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey__Ljava_nio_ByteBuffer_2Ljava_
 {
 #ifndef NO_RSA
     int ret = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    byte* n = getDirectBufferAddress(env, n_object);
-    byte* e = getDirectBufferAddress(env, e_object);
-    word32 nSize = n ? getDirectBufferLimit(env, n_object) : 0;
-    word32 eSize = e ? getDirectBufferLimit(env, e_object) : 0;
+    RsaKey* key = NULL;
+    byte* n = NULL;
+    byte* e = NULL;
+    word32 nSize = 0, eSize = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    n = getDirectBufferAddress(env, n_object);
+    e = getDirectBufferAddress(env, e_object);
+    nSize = n ? getDirectBufferLimit(env, n_object) : 0;
+    eSize = e ? getDirectBufferLimit(env, e_object) : 0;
 
     ret = (!key || !n || !e)
         ? BAD_FUNC_ARG
@@ -153,8 +193,16 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey__Ljava_nio_ByteBuffer_2Ljava_
     if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
     } else {
+
         setDirectBufferLimit(env, n_object, nSize);
+        if ((*env)->ExceptionOccurred(env)) {
+            return;
+        }
+
         setDirectBufferLimit(env, e_object, eSize);
+        if ((*env)->ExceptionOccurred(env)) {
+            return;
+        }
     }
 
     LogStr("RsaFlattenPublicKey(key, e, eSz, n, nSz) = %d\n", ret);
@@ -174,14 +222,31 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3J_3B_3J(
 {
 #ifndef NO_RSA
     int ret = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    byte* n = getByteArray(env, n_object);
-    byte* e = getByteArray(env, e_object);
+    RsaKey* key = NULL;
+    byte* n = NULL;
+    byte* e = NULL;
     jlong nSz;
     jlong eSz;
 
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    n = getByteArray(env, n_object);
+    e = getByteArray(env, e_object);
+
     (*env)->GetLongArrayRegion(env, nSize, 0, 1, &nSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return;
+    }
+
     (*env)->GetLongArrayRegion(env, eSize, 0, 1, &eSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, n_object, n, ret);
+        return;
+    }
 
     ret = (!key || !n || !e)
         ? BAD_FUNC_ARG
@@ -190,8 +255,20 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3J_3B_3J(
     if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
     } else {
+
         (*env)->SetLongArrayRegion(env, nSize, 0, 1, &nSz);
+        if ((*env)->ExceptionOccurred(env)) {
+            releaseByteArray(env, n_object, n, ret);
+            releaseByteArray(env, e_object, e, ret);
+            return;
+        }
+
         (*env)->SetLongArrayRegion(env, eSize, 0, 1, &eSz);
+        if ((*env)->ExceptionOccurred(env)) {
+            releaseByteArray(env, n_object, n, ret);
+            releaseByteArray(env, e_object, e, ret);
+            return;
+        }
     }
 
     LogStr("RsaFlattenPublicKey(key, e, eSz, n, nSz) = %d\n", ret);
@@ -214,6 +291,10 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1InitRsaKey(
 #ifndef NO_RSA
     int ret = 0;
     RsaKey* key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!key)
         ? BAD_FUNC_ARG
@@ -235,6 +316,10 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1FreeRsaKey(
 #ifndef NO_RSA
     int ret = 0;
     RsaKey* key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!key)
         ? BAD_FUNC_ARG
@@ -257,8 +342,20 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSetRNG(
 
 #ifdef WC_RSA_BLINDING
     int ret = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+    RsaKey* key = NULL;
+    RNG*    rng = NULL;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (key == NULL)
         ? BAD_FUNC_ARG
@@ -285,10 +382,18 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecode(
 {
 #ifndef NO_RSA
     int ret = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    byte* k = getByteArray(env, key_object);
-    word32 kSz = getByteArrayLength(env, key_object);
-    word32 index = 0;
+    RsaKey* key = NULL;
+    byte* k = NULL;
+    word32 kSz = 0, index = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    k   = getByteArray(env, key_object);
+    kSz = getByteArrayLength(env, key_object);
 
     ret = (!key || !k)
         ? BAD_FUNC_ARG
@@ -313,10 +418,18 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecodePKC
 #ifndef NO_RSA
     int ret = 0;
     int length = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    byte* k = getByteArray(env, key_object);
-    word32 kSz = getByteArrayLength(env, key_object);
-    word32 offset = 0;
+    RsaKey* key = NULL;
+    byte* k = NULL;
+    word32 kSz = 0, offset = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    k   = getByteArray(env, key_object);
+    kSz = getByteArrayLength(env, key_object);
 
     if (!key || !k) {
         ret = BAD_FUNC_ARG;
@@ -344,10 +457,18 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecode
 {
 #ifndef NO_RSA
     int ret = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    byte* k = getByteArray(env, key_object);
-    word32 kSz = getByteArrayLength(env, key_object);
-    word32 index = 0;
+    RsaKey* key = NULL;
+    byte* k = NULL;
+    word32 kSz = 0, index = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    k   = getByteArray(env, key_object);
+    kSz = getByteArrayLength(env, key_object);
 
     ret = (!key || !k)
         ? BAD_FUNC_ARG
@@ -371,6 +492,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaEncryptSize
 
 #ifndef NO_RSA
     RsaKey* key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return 0;
+    }
 
     ret = (!key)
         ? BAD_FUNC_ARG
@@ -396,12 +521,27 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt(
 
 #ifndef NO_RSA
     int ret = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
-    byte* plaintext = getByteArray(env, plaintext_object);
-    word32 size = getByteArrayLength(env, plaintext_object);
+    RsaKey* key = NULL;
+    RNG*    rng = NULL;
+    byte* plaintext = NULL;
     byte* output = NULL;
-    word32 outputSz = wc_RsaEncryptSize(key);
+    word32 size = 0, outputSz = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    plaintext = getByteArray(env, plaintext_object);
+    size = getByteArrayLength(env, plaintext_object);
+    outputSz = wc_RsaEncryptSize(key);
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
@@ -452,11 +592,20 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
 
 #ifndef NO_RSA
     int ret = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    byte* ciphertext = getByteArray(env, ciphertext_object);
-    word32 size = getByteArrayLength(env, ciphertext_object);
+    RsaKey* key = NULL;
+    byte* ciphertext = NULL;
     byte* output = NULL;
-    word32 outputSz = wc_RsaEncryptSize(key);
+    word32 size = 0, outputSz = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    ciphertext = getByteArray(env, ciphertext_object);
+    size = getByteArrayLength(env, ciphertext_object);
+    outputSz = wc_RsaEncryptSize(key);
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
@@ -507,12 +656,27 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Sign(
 
 #ifndef NO_RSA
     int ret = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
-    byte* data = getByteArray(env, data_object);
-    word32 size = getByteArrayLength(env, data_object);
+    RsaKey* key  = NULL;
+    RNG*  rng    = NULL;
+    byte* data   = NULL;
     byte* output = NULL;
-    word32 outputSz = wc_RsaEncryptSize(key);
+    word32 size = 0, outputSz = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    data = getByteArray(env, data_object);
+    size = getByteArrayLength(env, data_object);
+    outputSz = wc_RsaEncryptSize(key);
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
@@ -563,11 +727,20 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify(
 
 #ifndef NO_RSA
     int ret = 0;
-    RsaKey* key = (RsaKey*) getNativeStruct(env, this);
-    byte* signature = getByteArray(env, signature_object);
-    word32 size = getByteArrayLength(env, signature_object);
-    byte* output = NULL;
-    word32 outputSz = wc_RsaEncryptSize(key);
+    RsaKey* key     = NULL;
+    byte* signature = NULL;
+    byte* output    = NULL;
+    word32 size = 0, outputSz = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    signature = getByteArray(env, signature_object);
+    size = getByteArrayLength(env, signature_object);
+    outputSz = wc_RsaEncryptSize(key);
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
