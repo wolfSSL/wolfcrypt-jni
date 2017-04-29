@@ -60,6 +60,10 @@ Java_com_wolfssl_wolfcrypt_Rng_initRng(
 #ifndef WC_NO_RNG
     int ret = 0;
     RNG* rng = (RNG*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!rng)
         ? BAD_FUNC_ARG
@@ -81,6 +85,10 @@ Java_com_wolfssl_wolfcrypt_Rng_freeRng(
 #ifndef WC_NO_RNG
     int ret = 0;
     RNG* rng = (RNG*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
 
     ret = (!rng)
         ? BAD_FUNC_ARG
@@ -100,8 +108,16 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_ni
 {
 #ifndef WC_NO_RNG
     int ret = 0;
-    RNG* rng = (RNG*) getNativeStruct(env, this);
-    byte* buffer = getDirectBufferAddress(env, buffer_buffer);
+    RNG*  rng    = NULL;
+    byte* buffer = NULL;
+
+    rng = (RNG*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    buffer = getDirectBufferAddress(env, buffer_buffer);
 
     ret = (!rng || !buffer)
         ? BAD_FUNC_ARG
@@ -124,8 +140,16 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
 {
 #ifndef WC_NO_RNG
     int ret = 0;
-    RNG* rng = (RNG*) getNativeStruct(env, this);
-    byte* buffer = getByteArray(env, buffer_buffer);
+    RNG*  rng    = NULL;
+    byte* buffer = NULL;
+
+    rng = (RNG*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    buffer = getByteArray(env, buffer_buffer);
 
     ret = (!rng || !buffer)
         ? BAD_FUNC_ARG
