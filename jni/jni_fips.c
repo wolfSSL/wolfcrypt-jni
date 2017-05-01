@@ -140,9 +140,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetKey_1fips__Lcom_wol
 
 #if defined(HAVE_FIPS) && !defined(NO_AES)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* key = getDirectBufferAddress(env, key_buffer);
-    byte* iv = getDirectBufferAddress(env, iv_buffer);
+    Aes* aes  = NULL;
+    byte* key = NULL;
+    byte* iv  = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    key = getDirectBufferAddress(env, key_buffer);
+    iv  = getDirectBufferAddress(env, iv_buffer);
 
     if (!aes || !key)
         return BAD_FUNC_ARG;
@@ -169,9 +178,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetKey_1fips__Lcom_wol
 
 #if defined(HAVE_FIPS) && !defined(NO_AES)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* key = getByteArray(env, key_buffer);
-    byte* iv = getByteArray(env, iv_buffer);
+    Aes* aes  = NULL;
+    byte* key = NULL;
+    byte* iv  = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    key = getByteArray(env, key_buffer);
+    iv  = getByteArray(env, iv_buffer);
 
     ret = (!aes || !key) ? BAD_FUNC_ARG
                          : AesSetKey_fips(aes, key, size, iv, dir);
@@ -198,8 +216,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetIV_1fips__Lcom_wolf
 
 #if defined(HAVE_FIPS) && !defined(NO_AES)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* iv = getDirectBufferAddress(env, iv_buffer);
+    Aes* aes = NULL;
+    byte* iv = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    iv = getDirectBufferAddress(env, iv_buffer);
 
     if (!aes || !iv)
         return BAD_FUNC_ARG;
@@ -222,8 +248,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetIV_1fips__Lcom_wolf
 
 #if defined(HAVE_FIPS) && !defined(NO_AES)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* iv = getByteArray(env, iv_buffer);
+    Aes* aes = NULL;
+    byte* iv = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    iv = getByteArray(env, iv_buffer);
 
     ret = (!aes || !iv) ? BAD_FUNC_ARG
                         : AesSetIV_fips(aes, iv);
@@ -247,9 +281,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcEncrypt_1fips__Lcom
 
 #if defined(HAVE_FIPS) && !defined(NO_AES)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* out = getDirectBufferAddress(env, out_buffer);
-    byte* in = getDirectBufferAddress(env, in_buffer);
+    Aes*  aes = NULL;
+    byte* out = NULL;
+    byte* in  = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    out = getDirectBufferAddress(env, out_buffer);
+    in  = getDirectBufferAddress(env, in_buffer);
 
     if (!aes || !out || !in)
         return BAD_FUNC_ARG;
@@ -275,9 +318,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcEncrypt_1fips__Lcom
 
 #if defined(HAVE_FIPS) && !defined(NO_AES)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* out = getByteArray(env, out_buffer);
-    byte* in = getByteArray(env, in_buffer);
+    Aes*  aes = NULL;
+    byte* out = NULL;
+    byte* in  = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    out = getByteArray(env, out_buffer);
+    in  = getByteArray(env, in_buffer);
 
     ret = (!aes || !out || !in)
         ? BAD_FUNC_ARG
@@ -305,9 +357,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcDecrypt_1fips__Lcom
 
 #if defined(HAVE_FIPS) && !defined(NO_AES)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* out = getDirectBufferAddress(env, out_buffer);
-    byte* in = getDirectBufferAddress(env, in_buffer);
+    Aes*  aes = NULL;
+    byte* out = NULL;
+    byte* in  = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    out = getDirectBufferAddress(env, out_buffer);
+    in  = getDirectBufferAddress(env, in_buffer);
 
     if (!aes || !out || !in)
         return BAD_FUNC_ARG;
@@ -333,9 +394,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesCbcDecrypt_1fips__Lcom
 
 #if defined(HAVE_FIPS) && !defined(NO_AES)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* out = getByteArray(env, out_buffer);
-    byte* in = getByteArray(env, in_buffer);
+    Aes*  aes = NULL;
+    byte* out = NULL;
+    byte* in  = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    out = getByteArray(env, out_buffer);
+    in  = getByteArray(env, in_buffer);
 
     ret = (!aes || !out || !in)
         ? BAD_FUNC_ARG
@@ -363,8 +433,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmSetKey_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && defined(HAVE_AESGCM)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* key = getDirectBufferAddress(env, key_buffer);
+    Aes*  aes = NULL;
+    byte* key = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    key = getDirectBufferAddress(env, key_buffer);
 
     if (!aes || !key)
         return BAD_FUNC_ARG;
@@ -388,8 +466,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmSetKey_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && defined(HAVE_AESGCM)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* key = getByteArray(env, key_buffer);
+    Aes*  aes = NULL;
+    byte* key = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    key = getByteArray(env, key_buffer);
 
     ret = (!aes || !key) ? BAD_FUNC_ARG
                          : AesGcmSetKey_fips(aes, key, size);
@@ -415,12 +501,24 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmEncrypt_1fips__Lcom
 
 #if defined(HAVE_FIPS) && defined(HAVE_AESGCM)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* out = getDirectBufferAddress(env, out_buffer);
-    byte* in = getDirectBufferAddress(env, in_buffer);
-    byte* iv = getDirectBufferAddress(env, iv_buffer);
-    byte* authTag = getDirectBufferAddress(env, authTag_buffer);
-    byte* authIn = getDirectBufferAddress(env, authIn_buffer);
+    Aes*  aes = NULL;
+    byte* out = NULL;
+    byte* in  = NULL;
+    byte* iv  = NULL;
+    byte* authTag = NULL;
+    byte* authIn  = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    out = getDirectBufferAddress(env, out_buffer);
+    in  = getDirectBufferAddress(env, in_buffer);
+    iv  = getDirectBufferAddress(env, iv_buffer);
+    authTag = getDirectBufferAddress(env, authTag_buffer);
+    authIn  = getDirectBufferAddress(env, authIn_buffer);
 
     if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz)
         || (!authIn && authInSz))
@@ -458,12 +556,24 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmEncrypt_1fips__Lcom
 
 #if defined(HAVE_FIPS) && defined(HAVE_AESGCM)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* out = getByteArray(env, out_buffer);
-    byte* in = getByteArray(env, in_buffer);
-    byte* iv = getByteArray(env, iv_buffer);
-    byte* authTag = getByteArray(env, authTag_buffer);
-    byte* authIn = getByteArray(env, authIn_buffer);
+    Aes*  aes = NULL;
+    byte* out = NULL;
+    byte* in  = NULL;
+    byte* iv  = NULL;
+    byte* authTag = NULL;
+    byte* authIn  = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    out = getByteArray(env, out_buffer);
+    in  = getByteArray(env, in_buffer);
+    iv  = getByteArray(env, iv_buffer);
+    authTag = getByteArray(env, authTag_buffer);
+    authIn  = getByteArray(env, authIn_buffer);
 
     if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz)
         || (!authIn && authInSz))
@@ -507,12 +617,24 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmDecrypt_1fips__Lcom
 
 #if defined(HAVE_FIPS) && defined(HAVE_AESGCM)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* out = getDirectBufferAddress(env, out_buffer);
-    byte* in = getDirectBufferAddress(env, in_buffer);
-    byte* iv = getDirectBufferAddress(env, iv_buffer);
-    byte* authTag = getDirectBufferAddress(env, authTag_buffer);
-    byte* authIn = getDirectBufferAddress(env, authIn_buffer);
+    Aes*  aes = NULL;
+    byte* out = NULL;
+    byte* in  = NULL;
+    byte* iv  = NULL;
+    byte* authTag = NULL;
+    byte* authIn  = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    out = getDirectBufferAddress(env, out_buffer);
+    in  = getDirectBufferAddress(env, in_buffer);
+    iv  = getDirectBufferAddress(env, iv_buffer);
+    authTag = getDirectBufferAddress(env, authTag_buffer);
+    authIn  = getDirectBufferAddress(env, authIn_buffer);
 
     if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz)
         || (!authIn && authInSz))
@@ -550,12 +672,24 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmDecrypt_1fips__Lcom
 
 #if defined(HAVE_FIPS) && defined(HAVE_AESGCM)
 
-    Aes* aes = (Aes*) getNativeStruct(env, aes_object);
-    byte* out = getByteArray(env, out_buffer);
-    byte* in = getByteArray(env, in_buffer);
-    byte* iv = getByteArray(env, iv_buffer);
-    byte* authTag = getByteArray(env, authTag_buffer);
-    byte* authIn = getByteArray(env, authIn_buffer);
+    Aes*  aes = NULL;
+    byte* out = NULL;
+    byte* in  = NULL;
+    byte* iv  = NULL;
+    byte* authTag = NULL;
+    byte* authIn  = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    out = getByteArray(env, out_buffer);
+    in  = getByteArray(env, in_buffer);
+    iv  = getByteArray(env, iv_buffer);
+    authTag = getByteArray(env, authTag_buffer);
+    authIn  = getByteArray(env, authIn_buffer);
 
     if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz)
         || (!authIn && authInSz))
@@ -599,9 +733,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetKey_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && !defined(NO_DES3)
 
-    Des3* des = (Des3*) getNativeStruct(env, des_object);
-    byte* key = getDirectBufferAddress(env, key_buffer);
-    byte* iv = getDirectBufferAddress(env, iv_buffer);
+    Des3* des = NULL;
+    byte* key = NULL;
+    byte* iv  = NULL;
+
+    des = (Des3*) getNativeStruct(env, des_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    key = getDirectBufferAddress(env, key_buffer);
+    iv  = getDirectBufferAddress(env, iv_buffer);
 
     if (!des || !key)
         return BAD_FUNC_ARG;
@@ -628,9 +771,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetKey_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && !defined(NO_DES3)
 
-    Des3* des = (Des3*) getNativeStruct(env, des_object);
-    byte* key = getByteArray(env, key_buffer);
-    byte* iv = getByteArray(env, iv_buffer);
+    Des3* des = NULL;
+    byte* key = NULL;
+    byte* iv  = NULL;
+
+    des = (Des3*) getNativeStruct(env, des_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    key = getByteArray(env, key_buffer);
+    iv  = getByteArray(env, iv_buffer);
 
     ret = (!des || !key) ? BAD_FUNC_ARG
                          : Des3_SetKey_fips(des, key, iv, dir);
@@ -657,8 +809,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetIV_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && !defined(NO_DES3)
 
-    Des3* des = (Des3*) getNativeStruct(env, des_object);
-    byte* iv = getDirectBufferAddress(env, iv_buffer);
+    Des3* des = NULL;
+    byte* iv  = NULL;
+
+    des = (Des3*) getNativeStruct(env, des_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    iv = getDirectBufferAddress(env, iv_buffer);
 
     if (!des || !iv)
         return BAD_FUNC_ARG;
@@ -680,8 +840,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetIV_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && !defined(NO_DES3)
 
-    Des3* des = (Des3*) getNativeStruct(env, des_object);
-    byte* iv = getByteArray(env, iv_buffer);
+    Des3* des = NULL;
+    byte* iv  = NULL;
+
+    des = (Des3*) getNativeStruct(env, des_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    iv = getByteArray(env, iv_buffer);
 
     ret = (!des || !iv) ? BAD_FUNC_ARG
                         : Des3_SetIV_fips(des, iv);
@@ -705,9 +873,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcEncrypt_1fips__L
 
 #if defined(HAVE_FIPS) && !defined(NO_DES3)
 
-    Des3* des = (Des3*) getNativeStruct(env, des_object);
-    byte* out = getDirectBufferAddress(env, out_buffer);
-    byte* in = getDirectBufferAddress(env, in_buffer);
+    Des3* des = NULL;
+    byte* out = NULL;
+    byte* in  = NULL;
+
+    des = (Des3*) getNativeStruct(env, des_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    out = getDirectBufferAddress(env, out_buffer);
+    in  = getDirectBufferAddress(env, in_buffer);
 
     if (!des || !out || !in)
         return BAD_FUNC_ARG;
@@ -733,12 +910,22 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcEncrypt_1fips__L
 
 #if defined(HAVE_FIPS) && !defined(NO_DES3)
 
-    Des3* des = (Des3*) getNativeStruct(env, des_object);
-    byte* out = getByteArray(env, out_buffer);
-    byte* in = getByteArray(env, in_buffer);
+    Des3* des = NULL;
+    byte* out = NULL;
+    byte* in  = NULL;
+
+    des = (Des3*) getNativeStruct(env, des_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    out = getByteArray(env, out_buffer);
+    in  = getByteArray(env, in_buffer);
 
     ret = (!des || !out || !in) ? BAD_FUNC_ARG
-                                : Des3_CbcEncrypt_fips(des, out, in, (word32) size);
+                                : Des3_CbcEncrypt_fips(des, out, in,
+                                                       (word32) size);
 
     LogStr("Des3_CbcEncrypt_fips(des=%p, out, in) = %d\n", des, ret);
     LogStr("in[%u]: [%p]\n", (word32)size, in);
@@ -762,9 +949,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcDecrypt_1fips__L
 
 #if defined(HAVE_FIPS) && !defined(NO_DES3)
 
-    Des3* des = (Des3*) getNativeStruct(env, des_object);
-    byte* out = getDirectBufferAddress(env, out_buffer);
-    byte* in = getDirectBufferAddress(env, in_buffer);
+    Des3* des = NULL;
+    byte* out = NULL;
+    byte* in  = NULL;
+
+    des = (Des3*) getNativeStruct(env, des_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    out = getDirectBufferAddress(env, out_buffer);
+    in  = getDirectBufferAddress(env, in_buffer);
 
     if (!des || !out || !in)
         return BAD_FUNC_ARG;
@@ -790,9 +986,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcDecrypt_1fips__L
 
 #if defined(HAVE_FIPS) && !defined(NO_DES3)
 
-    Des3* des = (Des3*) getNativeStruct(env, des_object);
-    byte* out = getByteArray(env, out_buffer);
-    byte* in = getByteArray(env, in_buffer);
+    Des3* des = NULL;
+    byte* out = NULL;
+    byte* in  = NULL;
+
+    des = (Des3*) getNativeStruct(env, des_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    out = getByteArray(env, out_buffer);
+    in  = getByteArray(env, in_buffer);
 
     ret = (!des || !out || !in) ? BAD_FUNC_ARG
                                 : Des3_CbcDecrypt_fips(des, out, in, (word32) size);
@@ -825,8 +1030,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacSetKey_1fips__Lcom_wo
 
 #if defined(HAVE_FIPS) && !defined(NO_HMAC)
 
-    Hmac* hmac = (Hmac*) getNativeStruct(env, hmac_object);
-    byte* key = getDirectBufferAddress(env, key_buffer);
+    Hmac* hmac = NULL;
+    byte* key  = NULL;
+
+    hmac = (Hmac*) getNativeStruct(env, hmac_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    key = getDirectBufferAddress(env, key_buffer);
 
     if (!hmac || !key)
         return BAD_FUNC_ARG;
@@ -851,8 +1064,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacSetKey_1fips__Lcom_wo
 
 #if defined(HAVE_FIPS) && !defined(NO_HMAC)
 
-    Hmac* hmac = (Hmac*) getNativeStruct(env, hmac_object);
-    byte* key = getByteArray(env, key_buffer);
+    Hmac* hmac = NULL;
+    byte* key  = NULL;
+
+    hmac = (Hmac*) getNativeStruct(env, hmac_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    key = getByteArray(env, key_buffer);
 
     ret = (!hmac || !key) ? BAD_FUNC_ARG
                           : HmacSetKey_fips(hmac, type, key, keySz);
@@ -877,8 +1098,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacUpdate_1fips__Lcom_wo
 
 #if defined(HAVE_FIPS) && !defined(NO_HMAC)
 
-    Hmac* hmac = (Hmac*) getNativeStruct(env, hmac_object);
-    byte* data = getDirectBufferAddress(env, data_buffer);
+    Hmac* hmac = NULL;
+    byte* data = NULL;
+
+    hmac = (Hmac*) getNativeStruct(env, hmac_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    data = getDirectBufferAddress(env, data_buffer);
 
     if (!hmac || !data)
         return BAD_FUNC_ARG;
@@ -902,8 +1131,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacUpdate_1fips__Lcom_wo
 
 #if defined(HAVE_FIPS) && !defined(NO_HMAC)
 
-    Hmac* hmac = (Hmac*) getNativeStruct(env, hmac_object);
-    byte* data = getByteArray(env, data_buffer);
+    Hmac* hmac = NULL;
+    byte* data = NULL;
+
+    hmac = (Hmac*) getNativeStruct(env, hmac_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    data = getByteArray(env, data_buffer);
 
     ret = (!hmac || !data) ? BAD_FUNC_ARG
                            : HmacUpdate_fips(hmac, data, len);
@@ -926,8 +1163,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacFinal_1fips__Lcom_wol
 
 #if defined(HAVE_FIPS) && !defined(NO_HMAC)
 
-    Hmac* hmac = (Hmac*) getNativeStruct(env, hmac_object);
-    byte* hash = getDirectBufferAddress(env, hash_buffer);
+    Hmac* hmac = NULL;
+    byte* hash = NULL;
+
+    hmac = (Hmac*) getNativeStruct(env, hmac_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    hash = getDirectBufferAddress(env, hash_buffer);
 
     if (!hmac || !hash)
         return BAD_FUNC_ARG;
@@ -950,8 +1195,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacFinal_1fips__Lcom_wol
 
 #if defined(HAVE_FIPS) && !defined(NO_HMAC)
 
-    Hmac* hmac = (Hmac*) getNativeStruct(env, hmac_object);
-    byte* hash = getByteArray(env, hash_buffer);
+    Hmac* hmac = NULL;
+    byte* hash = NULL;
+
+    hmac = (Hmac*) getNativeStruct(env, hmac_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    hash = getByteArray(env, hash_buffer);
 
     ret = (!hmac || !hash) ? BAD_FUNC_ARG
                            : HmacFinal_fips(hmac, hash);
@@ -981,9 +1234,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitRng_1fips(
 #if defined(HAVE_FIPS)
 
     RNG* rng = (RNG*) getNativeStruct(env, rng_object);
-
-    if (!rng)
+    if ((!rng) || ((*env)->ExceptionOccurred(env))) {
+        /* prevent additional JNI calls with pending exception */
         return BAD_FUNC_ARG;
+    }
 
     ret = InitRng_fips(rng);
 
@@ -1002,9 +1256,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_FreeRng_1fips(
 #if defined(HAVE_FIPS)
 
     RNG* rng = (RNG*) getNativeStruct(env, rng_object);
-
-    if (!rng)
+    if ((!rng) || ((*env)->ExceptionOccurred(env))) {
+        /* prevent additional JNI calls with pending exception */
         return BAD_FUNC_ARG;
+    }
 
     ret = FreeRng_fips(rng);
 
@@ -1023,8 +1278,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RNG_1GenerateBlock_1fips_
 
 #if defined(HAVE_FIPS)
 
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
-    byte* buf = getDirectBufferAddress(env, buf_buffer);
+    RNG*  rng = NULL;
+    byte* buf = NULL;
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    buf = getDirectBufferAddress(env, buf_buffer);
 
     if (!rng || !buf)
         return BAD_FUNC_ARG;
@@ -1048,8 +1311,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RNG_1GenerateBlock_1fips_
 
 #if defined(HAVE_FIPS)
 
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
-    byte* buf = getByteArray(env, buf_buffer);
+    RNG*  rng = NULL;
+    byte* buf = NULL;
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    buf = getByteArray(env, buf_buffer);
 
     ret = (!rng || !buf) ? BAD_FUNC_ARG
                          : RNG_GenerateBlock_fips(rng, buf, bufSz);
@@ -1147,11 +1418,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitRsaKey_1fips(
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
-    void* heap = getDirectBufferAddress(env, heap_object);
+    RsaKey* key = NULL;
+    void* heap  = NULL;
 
-    if (!key)
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        /* prevent additional JNI calls with pending exception */
         return BAD_FUNC_ARG;
+    }
+
+    heap = getDirectBufferAddress(env, heap_object);
 
     ret = InitRsaKey_fips(key, heap);
 
@@ -1171,8 +1447,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_FreeRsaKey_1fips(
 
     RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
 
-    if (!key)
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
+    }
 
     ret = FreeRsaKey_fips(key);
 
@@ -1191,16 +1468,31 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaSSL_1Sign_1fips__Ljava
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    byte* in = getDirectBufferAddress(env, in_object);
-    byte* out = getDirectBufferAddress(env, out_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
-    RNG* rng = (RNG*) getNativeStruct(env, rsa_object);
+    byte* in    = NULL;
+    byte* out   = NULL;
+    RsaKey* key = NULL;
+    RNG* rng    = NULL;
+
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rsa_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    in  = getDirectBufferAddress(env, in_object);
+    out = getDirectBufferAddress(env, out_object);
 
     /**
      * Providing an rng is optional. RNG_GenerateBlock will return BAD_FUNC_ARG
      * on a NULL rng if an RNG is needed by RsaPad.
      */
-    if (!in || !out || !key)
+    if (!in || !out)
         return BAD_FUNC_ARG;
 
     ret = RsaSSL_Sign_fips(in, inLen, out, outLen, key, rng);
@@ -1225,16 +1517,31 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaSSL_1Sign_1fips___3BJ_
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    byte* in = getByteArray(env, in_object);
-    byte* out = getByteArray(env, out_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
-    RNG* rng = (RNG*) getNativeStruct(env, rsa_object);
+    byte* in    = NULL;
+    byte* out   = NULL;
+    RsaKey* key = NULL;
+    RNG* rng    = NULL;
+
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rsa_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    in  = getByteArray(env, in_object);
+    out = getByteArray(env, out_object);
 
     /**
      * Providing an rng is optional. RNG_GenerateBlock will return BAD_FUNC_ARG
      * on a NULL rng if an RNG is needed by RsaPad.
      */
-    ret = (!in || !out || !key)
+    ret = (!in || !out)
         ? BAD_FUNC_ARG
         : RsaSSL_Sign_fips(in, inLen, out, outLen, key, rng);
 
@@ -1261,11 +1568,20 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaSSL_1Verify_1fips__Lja
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    byte* in = getDirectBufferAddress(env, in_object);
-    byte* out = getDirectBufferAddress(env, out_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
+    byte* in    = NULL;
+    byte* out   = NULL;
+    RsaKey* key = NULL;
 
-    if (!in || !out || !key)
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    in  = getDirectBufferAddress(env, in_object);
+    out = getDirectBufferAddress(env, out_object);
+
+    if (!in || !out)
         return BAD_FUNC_ARG;
 
     ret = RsaSSL_Verify_fips(in, inLen, out, outLen, key);
@@ -1290,11 +1606,20 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaSSL_1Verify_1fips___3B
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    byte* in = getByteArray(env, in_object);
-    byte* out = getByteArray(env, out_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
+    byte* in    = NULL;
+    byte* out   = NULL;
+    RsaKey* key = NULL;
 
-    ret = (!in || !out || !key)
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    in  = getByteArray(env, in_object);
+    out = getByteArray(env, out_object);
+
+    ret = (!in || !out)
         ? BAD_FUNC_ARG
         : RsaSSL_Verify_fips(in, inLen, out, outLen, key);
 
@@ -1321,9 +1646,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaEncryptSize_1fips(
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
     RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
-
-    if (!key)
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        /* prevent additional JNI calls with pending exception */
         return BAD_FUNC_ARG;
+    }
 
     ret = RsaEncryptSize_fips(key);
 
@@ -1343,13 +1669,23 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateKeyDecode_1fips
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
     jlong tmpIdx;
-    byte* input = getDirectBufferAddress(env, input_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
+    byte* input = NULL;
+    RsaKey* key = NULL;
 
-    if (!input || !key)
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    input = getDirectBufferAddress(env, input_object);
+    if (!input)
         return BAD_FUNC_ARG;
 
     (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
 
     ret = 0; RsaPrivateKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
 
@@ -1374,11 +1710,22 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateKeyDecode_1fips
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
     jlong tmpIdx;
-    byte* input = getByteArray(env, input_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
+    byte* input = NULL;
+    RsaKey* key = NULL;
 
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    input = getByteArray(env, input_object);
 
     (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, input_object, input, 1);
+        return BAD_FUNC_ARG;
+    }
 
     ret = (!input || !key)
         ? BAD_FUNC_ARG
@@ -1407,13 +1754,22 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicKeyDecode_1fips_
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
     jlong tmpIdx;
-    byte* input = getDirectBufferAddress(env, input_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
+    byte* input = NULL;
+    RsaKey* key = NULL;
 
-    if (!input || !key)
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    input = getDirectBufferAddress(env, input_object);
+    if (!input)
         return BAD_FUNC_ARG;
 
     (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
 
     ret = RsaPublicKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
 
@@ -1438,12 +1794,23 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicKeyDecode_1fips_
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
     jlong tmpIdx;
-    byte* input = getByteArray(env, input_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
+    byte* input = NULL;
+    RsaKey* key = NULL;
+
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    input = getByteArray(env, input_object);
 
     (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, input_object, input, 1);
+        return BAD_FUNC_ARG;
+    }
 
-    ret = (!input || !key)
+    ret = (!input)
         ? BAD_FUNC_ARG
         : RsaPublicKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
 
@@ -1475,9 +1842,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitSha_1fips(
 #if defined(HAVE_FIPS) && !defined(NO_SHA)
 
     Sha* sha = (Sha*) getNativeStruct(env, sha_object);
-
-    if (!sha)
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
+    }
 
     ret = InitSha_fips(sha);
 
@@ -1494,10 +1861,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaUpdate_1fips__Lcom_wol
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA)
 
-    Sha* sha = (Sha*) getNativeStruct(env, sha_object);
-    byte* data = getDirectBufferAddress(env, data_buffer);
+    Sha*  sha = NULL;
+    byte* data = NULL;
 
-    if (!sha || !data)
+    sha = (Sha*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    data = getDirectBufferAddress(env, data_buffer);
+    if (!data)
         return BAD_FUNC_ARG;
 
     ret = ShaUpdate_fips(sha, data, len);
@@ -1519,11 +1892,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaUpdate_1fips__Lcom_wol
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA)
 
-    Sha* sha = (Sha*) getNativeStruct(env, sha_object);
-    byte* data = getByteArray(env, data_buffer);
+    Sha*  sha = NULL;
+    byte* data = NULL;
 
-    ret = (!sha || !data) ? BAD_FUNC_ARG
-                          : ShaUpdate_fips(sha, data, len);
+    sha = (Sha*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    data = getByteArray(env, data_buffer);
+
+    ret = (!data) ? BAD_FUNC_ARG
+                  : ShaUpdate_fips(sha, data, len);
 
     LogStr("ShaUpdate_fips(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
@@ -1543,10 +1923,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaFinal_1fips__Lcom_wolf
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA)
 
-    Sha* sha = (Sha*) getNativeStruct(env, sha_object);
-    byte* hash = getDirectBufferAddress(env, hash_buffer);
+    Sha*  sha = NULL;
+    byte* hash = NULL;
 
-    if (!sha || !hash)
+    sha = (Sha*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    hash = getDirectBufferAddress(env, hash_buffer);
+    if (!hash)
         return BAD_FUNC_ARG;
 
     ret = ShaFinal_fips(sha, hash);
@@ -1567,11 +1953,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaFinal_1fips__Lcom_wolf
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA)
 
-    Sha* sha = (Sha*) getNativeStruct(env, sha_object);
-    byte* hash = getByteArray(env, hash_buffer);
+    Sha*  sha = NULL;
+    byte* hash = NULL;
 
-    ret = (!sha || !hash) ? BAD_FUNC_ARG
-                          : ShaFinal_fips(sha, hash);
+    sha = (Sha*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    hash = getByteArray(env, hash_buffer);
+
+    ret = (!hash) ? BAD_FUNC_ARG
+                  : ShaFinal_fips(sha, hash);
 
     LogStr("ShaFinal_fips(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash[%u]: [%p]\n", (word32)SHA_DIGEST_SIZE, hash);
@@ -1594,9 +1987,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitSha256_1fips(
 #if defined(HAVE_FIPS) && !defined(NO_SHA256)
 
     Sha256* sha = (Sha256*) getNativeStruct(env, sha_object);
-
-    if (!sha)
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
+    }
 
     ret = InitSha256_fips(sha);
 
@@ -1613,10 +2006,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Update_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA256)
 
-    Sha256* sha = (Sha256*) getNativeStruct(env, sha_object);
-    byte* data = getDirectBufferAddress(env, data_buffer);
+    Sha256* sha = NULL;
+    byte*  data = NULL;
 
-    if (!sha || !data)
+    sha = (Sha256*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    data = getDirectBufferAddress(env, data_buffer);
+    if (!data)
         return BAD_FUNC_ARG;
 
     ret = Sha256Update_fips(sha, data, len);
@@ -1638,11 +2037,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Update_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA256)
 
-    Sha256* sha = (Sha256*) getNativeStruct(env, sha_object);
-    byte* data = getByteArray(env, data_buffer);
+    Sha256* sha = NULL;
+    byte*  data = NULL;
 
-    ret = (!sha || !data) ? BAD_FUNC_ARG
-                          : Sha256Update_fips(sha, data, len);
+    sha = (Sha256*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    data = getByteArray(env, data_buffer);
+
+    ret = (!data) ? BAD_FUNC_ARG
+                  : Sha256Update_fips(sha, data, len);
 
     LogStr("Sha256Update_fips(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
@@ -1662,10 +2068,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Final_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA256)
 
-    Sha256* sha = (Sha256*) getNativeStruct(env, sha_object);
-    byte* hash = getDirectBufferAddress(env, hash_buffer);
+    Sha256* sha = NULL;
+    byte*  hash = NULL;
 
-    if (!sha || !hash)
+    sha = (Sha256*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    hash = getDirectBufferAddress(env, hash_buffer);
+    if (!hash)
         return BAD_FUNC_ARG;
 
     ret = Sha256Final_fips(sha, hash);
@@ -1686,11 +2098,17 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Final_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA256)
 
-    Sha256* sha = (Sha256*) getNativeStruct(env, sha_object);
-    byte* hash = getByteArray(env, hash_buffer);
+    Sha256* sha = NULL;
+    byte*  hash = NULL;
 
-    ret = (!sha || !hash) ? BAD_FUNC_ARG
-                          : Sha256Final_fips(sha, hash);
+    sha = (Sha256*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    hash = getByteArray(env, hash_buffer);
+    ret = (!hash) ? BAD_FUNC_ARG
+                  : Sha256Final_fips(sha, hash);
 
     LogStr("Sha256Final_fips(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash[%u]: [%p]\n", (word32)SHA256_DIGEST_SIZE, hash);
@@ -1713,9 +2131,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitSha384_1fips(
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
     Sha384* sha = (Sha384*) getNativeStruct(env, sha_object);
-
-    if (!sha)
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
+    }
 
     ret = InitSha384_fips(sha);
 
@@ -1732,10 +2150,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Update_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha384* sha = (Sha384*) getNativeStruct(env, sha_object);
-    byte* data = getDirectBufferAddress(env, data_buffer);
+    Sha384* sha = NULL;
+    byte*  data = NULL;
 
-    if (!sha || !data)
+    sha = (Sha384*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    data = getDirectBufferAddress(env, data_buffer);
+    if (!data)
         return BAD_FUNC_ARG;
 
     ret = Sha384Update_fips(sha, data, len);
@@ -1757,11 +2181,17 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Update_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha384* sha = (Sha384*) getNativeStruct(env, sha_object);
-    byte* data = getByteArray(env, data_buffer);
+    Sha384* sha = NULL;
+    byte*  data = NULL;
 
-    ret = (!sha || !data) ? BAD_FUNC_ARG
-                          : Sha384Update_fips(sha, data, len);
+    sha = (Sha384*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    data = getByteArray(env, data_buffer);
+    ret = (!data) ? BAD_FUNC_ARG
+                  : Sha384Update_fips(sha, data, len);
 
     LogStr("Sha384Update_fips(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
@@ -1781,10 +2211,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Final_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha384* sha = (Sha384*) getNativeStruct(env, sha_object);
-    byte* hash = getDirectBufferAddress(env, hash_buffer);
+    Sha384* sha = NULL;
+    byte*  hash = NULL;
 
-    if (!sha || !hash)
+    sha = (Sha384*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    hash = getDirectBufferAddress(env, hash_buffer);
+    if (!hash)
         return BAD_FUNC_ARG;
 
     ret = Sha384Final_fips(sha, hash);
@@ -1805,11 +2241,17 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Final_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha384* sha = (Sha384*) getNativeStruct(env, sha_object);
-    byte* hash = getByteArray(env, hash_buffer);
+    Sha384* sha = NULL;
+    byte*  hash = NULL;
 
-    ret = (!sha || !hash) ? BAD_FUNC_ARG
-                          : Sha384Final_fips(sha, hash);
+    sha = (Sha384*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    hash = getByteArray(env, hash_buffer);
+    ret = (!hash) ? BAD_FUNC_ARG
+                  : Sha384Final_fips(sha, hash);
 
     LogStr("Sha384Final_fips(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash[%u]: [%p]\n", (word32)SHA384_DIGEST_SIZE, hash);
@@ -1832,9 +2274,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitSha512_1fips(
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
     Sha512* sha = (Sha512*) getNativeStruct(env, sha_object);
-
-    if (!sha)
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
+    }
 
     ret = InitSha512_fips(sha);
 
@@ -1851,10 +2293,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Update_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha512* sha = (Sha512*) getNativeStruct(env, sha_object);
-    byte* data = getDirectBufferAddress(env, data_buffer);
+    Sha512* sha = NULL;
+    byte*  data = NULL;
 
-    if (!sha || !data)
+    sha = (Sha512*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    data = getDirectBufferAddress(env, data_buffer);
+    if (!data)
         return BAD_FUNC_ARG;
 
     ret = Sha512Update_fips(sha, data, len);
@@ -1876,11 +2324,17 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Update_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha512* sha = (Sha512*) getNativeStruct(env, sha_object);
-    byte* data = getByteArray(env, data_buffer);
+    Sha512* sha = NULL;
+    byte*  data = NULL;
 
-    ret = (!sha || !data) ? BAD_FUNC_ARG
-                          : Sha512Update_fips(sha, data, len);
+    sha = (Sha512*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    data = getByteArray(env, data_buffer);
+    ret = (!data) ? BAD_FUNC_ARG
+                  : Sha512Update_fips(sha, data, len);
 
     LogStr("Sha512Update_fips(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
@@ -1900,10 +2354,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Final_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha512* sha = (Sha512*) getNativeStruct(env, sha_object);
-    byte* hash = getDirectBufferAddress(env, hash_buffer);
+    Sha512* sha = NULL;
+    byte*  hash = NULL;
 
-    if (!sha || !hash)
+    sha = (Sha512*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    hash = getDirectBufferAddress(env, hash_buffer);
+    if (!hash)
         return BAD_FUNC_ARG;
 
     ret = Sha512Final_fips(sha, hash);
@@ -1924,11 +2384,17 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Final_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha512* sha = (Sha512*) getNativeStruct(env, sha_object);
-    byte* hash = getByteArray(env, hash_buffer);
+    Sha512* sha = NULL;
+    byte*  hash = NULL;
 
-    ret = (!sha || !hash) ? BAD_FUNC_ARG
-                          : Sha512Final_fips(sha, hash);
+    sha = (Sha512*) getNativeStruct(env, sha_object);
+    if ((!sha) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    hash = getByteArray(env, hash_buffer);
+    ret = (!hash) ? BAD_FUNC_ARG
+                  : Sha512Final_fips(sha, hash);
 
     LogStr("Sha512Final_fips(sha=%p, hash) = %d\n", sha, ret);
     LogStr("hash[%u]: [%p]\n", (word32)SHA512_DIGEST_SIZE, hash);
@@ -1981,16 +2447,29 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicEncrypt_1fips__L
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    byte* in = getDirectBufferAddress(env, in_object);
-    byte* out = getDirectBufferAddress(env, out_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+    byte* in    = NULL;
+    byte* out   = NULL;
+    RsaKey* key = NULL;
+    RNG* rng    = NULL;
+
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
+    in  = getDirectBufferAddress(env, in_object);
+    out = getDirectBufferAddress(env, out_object);
 
     /**
      * Providing an rng is optional. RNG_GenerateBlock will return BAD_FUNC_ARG
      * on a NULL rng if an RNG is needed by RsaPad.
      */
-    if (!in || !out || !key)
+    if (!in || !out)
         return BAD_FUNC_ARG;
 
     ret = RsaPublicEncrypt_fips(in, inLen, out, outLen, key, rng);
@@ -2016,16 +2495,29 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicEncrypt_1fips___
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    byte* in = getByteArray(env, in_object);
-    byte* out = getByteArray(env, out_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+    byte* in    = NULL;
+    byte* out   = NULL;
+    RsaKey* key = NULL;
+    RNG* rng    = NULL;
+
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
+    in  = getByteArray(env, in_object);
+    out = getByteArray(env, out_object);
 
     /**
      * Providing an rng is optional. RNG_GenerateBlock will return BAD_FUNC_ARG
      * on a NULL rng if an RNG is needed by RsaPad.
      */
-    ret = (!in || !out || !key)
+    ret = (!in || !out)
         ? BAD_FUNC_ARG
         : RsaPublicEncrypt_fips(in, inLen, out, outLen, key, rng);
 
@@ -2053,11 +2545,19 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateDecrypt_1fips__
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    byte* in = getDirectBufferAddress(env, in_object);
-    byte* out = getDirectBufferAddress(env, out_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
+    byte* in    = NULL;
+    byte* out   = NULL;
+    RsaKey* key = NULL;
 
-    if (!in || !out || !key)
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    in  = getDirectBufferAddress(env, in_object);
+    out = getDirectBufferAddress(env, out_object);
+
+    if (!in || !out)
         return BAD_FUNC_ARG;
 
     ret = RsaPrivateDecrypt_fips(in, inLen, out, outLen, key);
@@ -2082,11 +2582,19 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateDecrypt_1fips__
 
 #if defined(HAVE_FIPS) && !defined(NO_RSA)
 
-    byte* in = getByteArray(env, in_object);
-    byte* out = getByteArray(env, out_object);
-    RsaKey* key = (RsaKey*) getNativeStruct(env, rsa_object);
+    byte* in = NULL;
+    byte* out = NULL;
+    RsaKey* key = NULL;
 
-    ret = (!in || !out || !key)
+    key = (RsaKey*) getNativeStruct(env, rsa_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    in  = getByteArray(env, in_object);
+    out = getByteArray(env, out_object);
+
+    ret = (!in || !out)
         ? BAD_FUNC_ARG
         : RsaPrivateDecrypt_fips(in, inLen, out, outLen, key);
 
@@ -2117,9 +2625,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitMd5_1fips(
 #if defined(HAVE_FIPS) && !defined(NO_MD5)
 
     Md5* md5 = (Md5*) getNativeStruct(env, md5_object);
-
-    if (!md5)
+    if ((!md5) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
+    }
 
     InitMd5(md5);
     ret = com_wolfssl_wolfcrypt_WolfCrypt_SUCCESS;
@@ -2137,10 +2645,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Update__Lcom_wolfssl_w
 
 #if defined(HAVE_FIPS) && !defined(NO_MD5)
 
-    Md5* md5 = (Md5*) getNativeStruct(env, md5_object);
-    byte* data = getDirectBufferAddress(env, data_buffer);
+    Md5*  md5 = NULL;
+    byte* data = NULL;
 
-    if (!md5 || !data)
+    md5 = (Md5*) getNativeStruct(env, md5_object);
+    if ((!md5) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    data = getDirectBufferAddress(env, data_buffer);
+    if (!data)
         return BAD_FUNC_ARG;
 
     Md5Update(md5, data, len);
@@ -2163,10 +2677,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Update__Lcom_wolfssl_w
 
 #if defined(HAVE_FIPS) && !defined(NO_MD5)
 
-    Md5* md5 = (Md5*) getNativeStruct(env, md5_object);
-    byte* data = getByteArray(env, data_buffer);
+    Md5*  md5 = NULL;
+    byte* data = NULL;
 
-    if (!md5 || !data)
+    md5 = (Md5*) getNativeStruct(env, md5_object);
+    if ((!md5) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    data = getByteArray(env, data_buffer);
+    if (!data)
         ret = BAD_FUNC_ARG;
     else {
         Md5Update(md5, data, len);
@@ -2191,10 +2711,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Final__Lcom_wolfssl_wo
 
 #if defined(HAVE_FIPS) && !defined(NO_MD5)
 
-    Md5* md5 = (Md5*) getNativeStruct(env, md5_object);
-    byte* hash = getDirectBufferAddress(env, hash_buffer);
+    Md5*  md5 = NULL;
+    byte* hash = NULL;
 
-    if (!md5 || !hash)
+    md5 = (Md5*) getNativeStruct(env, md5_object);
+    if ((!md5) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    hash = getDirectBufferAddress(env, hash_buffer);
+    if (!hash)
         return BAD_FUNC_ARG;
 
     Md5Final(md5, hash);
@@ -2216,10 +2742,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Final__Lcom_wolfssl_wo
 
 #if defined(HAVE_FIPS) && !defined(NO_MD5)
 
-    Md5* md5 = (Md5*) getNativeStruct(env, md5_object);
-    byte* hash = getByteArray(env, hash_buffer);
+    Md5*  md5 = NULL;
+    byte* hash = NULL;
 
-    if (!md5 || !hash)
+    md5 = (Md5*) getNativeStruct(env, md5_object);
+    if ((!md5) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    hash = getByteArray(env, hash_buffer);
+    if (!hash)
         ret = BAD_FUNC_ARG;
     else {
         Md5Final(md5, hash);
@@ -2247,9 +2779,11 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitDhKey(
 #if defined(HAVE_FIPS) && !defined(NO_DH)
 
     DhKey* key = (DhKey*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return;
+    }
 
-    if (key)
-        InitDhKey(key);
+    InitDhKey(key);
 
 #endif
 }
@@ -2260,9 +2794,11 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_FreeDhKey(
 #if defined(HAVE_FIPS) && !defined(NO_DH)
 
     DhKey* key = (DhKey*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return;
+    }
 
-    if (key)
-        FreeDhKey(key);
+    FreeDhKey(key);
 
 #endif
 }
@@ -2276,23 +2812,48 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhGenerateKeyPair__Lcom_w
 
 #if defined(HAVE_FIPS) && !defined(NO_DH)
 
-    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
-    byte* priv = getDirectBufferAddress(env, priv_buffer);
-    byte* pub = getDirectBufferAddress(env, pub_buffer);
+    DhKey* key = NULL;
+    RNG*  rng  = NULL;
+    byte* priv = NULL;
+    byte* pub  = NULL;
     jlong tmpPrivSz, tmpPubSz;
 
-    if (!key || !rng || !priv || !pub)
+    key = (DhKey*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((!rng) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    priv = getDirectBufferAddress(env, priv_buffer);
+    pub  = getDirectBufferAddress(env, pub_buffer);
+
+    if (!priv || !pub)
         return BAD_FUNC_ARG;
 
     (*env)->GetLongArrayRegion(env, privSz, 0, 1, &tmpPrivSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
     (*env)->GetLongArrayRegion(env, pubSz, 0, 1, &tmpPubSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
 
     ret = DhGenerateKeyPair(key, rng, priv, (word32*) &tmpPrivSz,
                                       pub,  (word32*) &tmpPubSz);
 
     (*env)->SetLongArrayRegion(env, privSz, 0, 1, &tmpPrivSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
     (*env)->SetLongArrayRegion(env, pubSz, 0, 1, &tmpPubSz);
+    /* no more JNI calls, not checking for exception */
 
     LogStr("DhGenerateKeyPair(key=%p, rng=%p, priv, privSz, pub, pubSz) = %d\n",
         key, rng, ret);
@@ -2315,21 +2876,47 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhGenerateKeyPair__Lcom_w
 
 #if defined(HAVE_FIPS) && !defined(NO_DH)
 
-    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
-    byte* priv = getByteArray(env, priv_buffer);
-    byte* pub = getByteArray(env, pub_buffer);
+    DhKey* key = NULL;
+    RNG*  rng  = NULL;
+    byte* priv = NULL;
+    byte* pub  = NULL;
     jlong tmpPrivSz, tmpPubSz;
 
-    (*env)->GetLongArrayRegion(env, privSz, 0, 1, &tmpPrivSz);
-    (*env)->GetLongArrayRegion(env, pubSz, 0, 1, &tmpPubSz);
+    key = (DhKey*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
 
-    ret = (!key || !rng || !priv || !pub)
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((!rng) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    (*env)->GetLongArrayRegion(env, privSz, 0, 1, &tmpPrivSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
+    (*env)->GetLongArrayRegion(env, pubSz, 0, 1, &tmpPubSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
+    priv = getByteArray(env, priv_buffer);
+    pub  = getByteArray(env, pub_buffer);
+
+    ret = (!priv || !pub)
         ? BAD_FUNC_ARG
         : DhGenerateKeyPair(key, rng, priv, (word32*) &tmpPrivSz,
                                       pub,  (word32*) &tmpPubSz);
 
     (*env)->SetLongArrayRegion(env, privSz, 0, 1, &tmpPrivSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, priv_buffer, priv, ret < 0);
+        releaseByteArray(env, pub_buffer, pub, ret < 0);
+        return BAD_FUNC_ARG;
+    }
+
     (*env)->SetLongArrayRegion(env, pubSz, 0, 1, &tmpPubSz);
 
     LogStr("DhGenerateKeyPair(key=%p, rng=%p, priv, privSz, pub, pubSz) = %d\n",
@@ -2356,16 +2943,28 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhAgree__Lcom_wolfssl_wol
 
 #if defined(HAVE_FIPS) && !defined(NO_DH)
 
-    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
-    byte* agree = getDirectBufferAddress(env, agree_buffer);
-    byte* priv = getDirectBufferAddress(env, priv_buffer);
-    byte* pub = getDirectBufferAddress(env, pub_buffer);
+    DhKey* key = NULL;
+    byte* agree = NULL;
+    byte* priv = NULL;
+    byte* pub = NULL;
     jlong tmpAgreeSz;
 
-    if (!key || !agree || !priv || !pub)
+    key = (DhKey*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    agree = getDirectBufferAddress(env, agree_buffer);
+    priv  = getDirectBufferAddress(env, priv_buffer);
+    pub   = getDirectBufferAddress(env, pub_buffer);
+
+    if (!agree || !priv || !pub)
         return BAD_FUNC_ARG;
 
     (*env)->GetLongArrayRegion(env, agreeSz, 0, 1, &tmpAgreeSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
 
     ret = DhAgree(key, agree, (word32*) &tmpAgreeSz, priv, privSz, pub, pubSz);
 
@@ -2394,13 +2993,25 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhAgree__Lcom_wolfssl_wol
 
 #if defined(HAVE_FIPS) && !defined(NO_DH)
 
-    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
-    byte* agree = getByteArray(env, agree_buffer);
-    byte* priv = getByteArray(env, priv_buffer);
-    byte* pub = getByteArray(env, pub_buffer);
+    DhKey* key  = NULL;
+    byte* agree = NULL;
+    byte* priv  = NULL;
+    byte* pub   = NULL;
     jlong tmpAgreeSz;
 
+    key = (DhKey*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
     (*env)->GetLongArrayRegion(env, agreeSz, 0, 1, &tmpAgreeSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
+    agree = getByteArray(env, agree_buffer);
+    priv  = getByteArray(env, priv_buffer);
+    pub   = getByteArray(env, pub_buffer);
 
     ret = (!key || !agree || !priv || !pub)
         ? BAD_FUNC_ARG
@@ -2434,14 +3045,23 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhKeyDecode__Ljava_nio_By
 
 #if defined(HAVE_FIPS) && !defined(NO_DH)
 
-    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
-    byte* input = getDirectBufferAddress(env, input_buffer);
+    DhKey* key  = NULL;
+    byte* input = NULL;
     jlong tmpInOutIdx;
 
-    if (!key || !input)
+    key = (DhKey*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    input = getDirectBufferAddress(env, input_buffer);
+    if (!input)
         return BAD_FUNC_ARG;
 
     (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpInOutIdx);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
 
     ret = DhKeyDecode(input, (word32*) &tmpInOutIdx, key, inSz);
 
@@ -2464,13 +3084,22 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhKeyDecode___3B_3JLcom_w
 
 #if defined(HAVE_FIPS) && !defined(NO_DH)
 
-    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
-    byte* input = getByteArray(env, input_buffer);
+    DhKey* key  = NULL;
+    byte* input = NULL;
     jlong tmpInOutIdx;
 
-    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpInOutIdx);
+    key = (DhKey*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
 
-    ret = (!key || !input)
+    (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpInOutIdx);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
+    input = getByteArray(env, input_buffer);
+    ret = (!input)
         ? BAD_FUNC_ARG
         : DhKeyDecode(input, (word32*) &tmpInOutIdx, key, inSz);
 
@@ -2495,11 +3124,19 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhSetKey__Lcom_wolfssl_wo
 
 #if defined(HAVE_FIPS) && !defined(NO_DH)
 
-    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
-    byte* p = getDirectBufferAddress(env, p_buffer);
-    byte* g = getDirectBufferAddress(env, g_buffer);
+    DhKey* key = NULL;
+    byte* p = NULL;
+    byte* g = NULL;
 
-    if (!key || !p || !g)
+    key = (DhKey*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    p = getDirectBufferAddress(env, p_buffer);
+    g = getDirectBufferAddress(env, g_buffer);
+
+    if (!p || !g)
         return BAD_FUNC_ARG;
 
     ret = DhSetKey(key, p, pSz, g, gSz);
@@ -2523,11 +3160,19 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhSetKey__Lcom_wolfssl_wo
 
 #if defined(HAVE_FIPS) && !defined(NO_DH)
 
-    DhKey* key = (DhKey*) getNativeStruct(env, key_object);
-    byte* p = getByteArray(env, p_buffer);
-    byte* g = getByteArray(env, g_buffer);
+    DhKey* key = NULL;
+    byte* p = NULL;
+    byte* g = NULL;
 
-    ret = (!key || !p || !g)
+    key = (DhKey*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    p = getByteArray(env, p_buffer);
+    g = getByteArray(env, g_buffer);
+
+    ret = (!p || !g)
         ? BAD_FUNC_ARG
         : DhSetKey(key, p, pSz, g, gSz);
 
@@ -2563,12 +3208,23 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhParamsLoad__Ljava_nio_B
         return BAD_FUNC_ARG;
 
     (*env)->GetLongArrayRegion(env, pInOutSz, 0, 1, &tmpPInOutSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
     (*env)->GetLongArrayRegion(env, gInOutSz, 0, 1, &tmpGInOutSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
 
     ret = DhParamsLoad(input, inSz, p, (word32*) &tmpPInOutSz,
                                     g, (word32*) &tmpGInOutSz);
 
     (*env)->SetLongArrayRegion(env, pInOutSz, 0, 1, &tmpPInOutSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
     (*env)->SetLongArrayRegion(env, gInOutSz, 0, 1, &tmpGInOutSz);
 
     LogStr("DhParamsLoad(input, inSz, p, &pInOutSz, g, &gInOutSz) = %d\n", ret);
@@ -2593,13 +3249,24 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhParamsLoad___3BJ_3B_3J_
 
 #if defined(HAVE_FIPS) && !defined(NO_DH)
 
-    byte* input = getByteArray(env, input_buffer);
-    byte* p = getByteArray(env, p_buffer);
-    byte* g = getByteArray(env, g_buffer);
+    byte* input = NULL;
+    byte* p = NULL;
+    byte* g = NULL;
     jlong tmpPInOutSz, tmpGInOutSz;
 
     (*env)->GetLongArrayRegion(env, pInOutSz, 0, 1, &tmpPInOutSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
     (*env)->GetLongArrayRegion(env, gInOutSz, 0, 1, &tmpGInOutSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
+    input = getByteArray(env, input_buffer);
+    p = getByteArray(env, p_buffer);
+    g = getByteArray(env, g_buffer);
 
     ret = (!input || !p || !g)
         ? BAD_FUNC_ARG
@@ -2607,6 +3274,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_DhParamsLoad___3BJ_3B_3J_
                                     g, (word32*) &tmpGInOutSz);
 
     (*env)->SetLongArrayRegion(env, pInOutSz, 0, 1, &tmpPInOutSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, input_buffer, input, 1);
+        releaseByteArray(env, p_buffer, p, 1);
+        releaseByteArray(env, g_buffer, g, 1);
+        return BAD_FUNC_ARG;
+    }
+
     (*env)->SetLongArrayRegion(env, gInOutSz, 0, 1, &tmpGInOutSz);
 
     LogStr("DhParamsLoad(input, inSz, p, &pInOutSz, g, &gInOutSz) = %d\n", ret);
@@ -2634,9 +3308,9 @@ JNIEXPORT int JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1init(
 #if defined(HAVE_FIPS) && defined(HAVE_ECC)
 
     ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
-
-    if (!key)
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
+    }
 
     ret = ecc_init(key);
 
@@ -2654,12 +3328,13 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1free(
 #if defined(HAVE_FIPS) && defined(HAVE_ECC)
 
     ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
-
-    if (key) {
-        ecc_free(key);
-
-        LogStr("ecc_free(key=%p)\n", key);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return;
     }
+
+    ecc_free(key);
+
+    LogStr("ecc_free(key=%p)\n", key);
 
 #endif
 }
@@ -2672,11 +3347,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1make_1key(
 
 #if defined(HAVE_FIPS) && defined(HAVE_ECC)
 
-    ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
-    RNG* rng = (RNG*) getNativeStruct(env, rng_object);
+    ecc_key* key = NULL;
+    RNG* rng = NULL;
 
-    if (!key || !rng)
+    key = (ecc_key*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((!rng) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
 
     ret = ecc_make_key(rng, keysize, key);
 
@@ -2696,15 +3378,29 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret__Lcom
 
 #if defined(HAVE_FIPS) && defined(HAVE_ECC)
 
-    ecc_key* priv = (ecc_key*) getNativeStruct(env, priv_object);
-    ecc_key* pub = (ecc_key*) getNativeStruct(env, pub_object);
-    byte* out = getDirectBufferAddress(env, out_buffer);
+    ecc_key* priv = NULL;
+    ecc_key* pub  = NULL;
+    byte* out = NULL;
     jlong tmpOutLen;
 
-    if (!priv || !pub || !out)
+    priv = (ecc_key*) getNativeStruct(env, priv_object);
+    if ((!priv) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    pub = (ecc_key*) getNativeStruct(env, pub_object);
+    if ((!pub) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    out = getDirectBufferAddress(env, out_buffer);
+    if (!out)
         return BAD_FUNC_ARG;
 
     (*env)->GetLongArrayRegion(env, outlen, 0, 1, &tmpOutLen);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
 
     ret = ecc_shared_secret(priv, pub, out, (word32*) &tmpOutLen);
 
@@ -2728,18 +3424,33 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1shared_1secret__Lcom
 
 #if defined(HAVE_FIPS) && defined(HAVE_ECC)
 
-    ecc_key* priv = (ecc_key*) getNativeStruct(env, priv_object);
-    ecc_key* pub = (ecc_key*) getNativeStruct(env, pub_object);
-    byte* out = getByteArray(env, out_buffer);
+    ecc_key* priv = NULL;
+    ecc_key* pub  = NULL;
+    byte* out = NULL;
     jlong tmpOutLen;
+
+    priv = (ecc_key*) getNativeStruct(env, priv_object);
+    if ((!priv) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    pub = (ecc_key*) getNativeStruct(env, pub_object);
+    if ((!pub) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
 
     LogStr("ecc_shared_secret(priv=%p, pub=%p, out, outLen) = %d\n", priv, pub,
         ret);
 
-    if (!priv || !pub || !out)
+    out = getByteArray(env, out_buffer);
+    if (!out)
         ret = BAD_FUNC_ARG;
     else {
         (*env)->GetLongArrayRegion(env, outlen, 0, 1, &tmpOutLen);
+        if ((*env)->ExceptionOccurred(env)) {
+            releaseByteArray(env, out_buffer, out, 1);
+            return BAD_FUNC_ARG;
+        }
 
         ret = ecc_shared_secret(priv, pub, out, (word32*) &tmpOutLen);
 
@@ -2764,10 +3475,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1import_1x963__Ljava_
 
 #if defined(HAVE_FIPS) && defined(HAVE_ECC)
 
-    ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
-    byte* in = getDirectBufferAddress(env, in_buffer);
+    ecc_key* key = NULL;
+    byte* in = NULL;
 
-    if (!key || !in)
+    key = (ecc_key*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    in = getDirectBufferAddress(env, in_buffer);
+    if (!in)
         return BAD_FUNC_ARG;
 
     ret = ecc_import_x963(in, inLen, key);
@@ -2789,11 +3506,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1import_1x963___3BJLc
 
 #if defined(HAVE_FIPS) && defined(HAVE_ECC)
 
-    ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
-    byte* in = getByteArray(env, in_buffer);
+    ecc_key* key = NULL;
+    byte* in = NULL;
 
-    ret = (!key || !in) ? BAD_FUNC_ARG
-                        : ecc_import_x963(in, inLen, key);
+    key = (ecc_key*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    in = getByteArray(env, in_buffer);
+
+    ret = (!in) ? BAD_FUNC_ARG
+                : ecc_import_x963(in, inLen, key);
 
     LogStr("ecc_import_x963(in, inLen, key=%p) = %d\n", key, ret);
     LogStr("in[%u]: [%p]\n", (word32)inLen, in);
@@ -2814,14 +3538,23 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963__Lcom_w
 
 #if defined(HAVE_FIPS) && defined(HAVE_ECC)
 
-    ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
-    byte* out = getDirectBufferAddress(env, out_buffer);
+    ecc_key* key = NULL;
+    byte* out = NULL;
     jlong tmpOutLen;
 
-    if (!key || !out)
+    key = (ecc_key*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    out = getDirectBufferAddress(env, out_buffer);
+    if (!out)
         return BAD_FUNC_ARG;
 
     (*env)->GetLongArrayRegion(env, outLen, 0, 1, &tmpOutLen);
+    if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
 
     ret = ecc_export_x963(key, out, (word32*) &tmpOutLen);
 
@@ -2844,16 +3577,27 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963__Lcom_w
 
 #if defined(HAVE_FIPS) && defined(HAVE_ECC)
 
-    ecc_key* key = (ecc_key*) getNativeStruct(env, key_object);
-    byte* out = getByteArray(env, out_buffer);
+    ecc_key* key = NULL;
+    byte* out = NULL;
     jlong tmpOutLen;
+
+    key = (ecc_key*) getNativeStruct(env, key_object);
+    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+        return BAD_FUNC_ARG;
+    }
+
+    out = getByteArray(env, out_buffer);
 
     LogStr("ecc_export_x963(key=%p, out, outLen) = %d\n", key, ret);
 
-    if (!key || !out)
+    if (!out) {
         ret = BAD_FUNC_ARG;
-    else {
+    } else {
         (*env)->GetLongArrayRegion(env, outLen, 0, 1, &tmpOutLen);
+        if ((*env)->ExceptionOccurred(env)) {
+            releaseByteArray(env, out_buffer, out, 1);
+            return BAD_FUNC_ARG;
+        }
 
         ret = ecc_export_x963(key, out, (word32*) &tmpOutLen);
 
@@ -2870,3 +3614,4 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ecc_1export_1x963__Lcom_w
 
     return ret;
 }
+
