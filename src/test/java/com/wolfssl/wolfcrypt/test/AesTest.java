@@ -129,14 +129,14 @@ public class AesTest {
 		try {
 			enc.update(input, 0, Aes.BLOCK_SIZE, output, 0);
 			fail("native struct should not be null.");
-		} catch (WolfCryptException e) {
+		} catch (IllegalStateException e) {
 			/* test must throw */
 		}
 
 		try {
 			dec.update(input, 0, Aes.BLOCK_SIZE, output, 0);
 			fail("native struct should not be null.");
-		} catch (WolfCryptException e) {
+		} catch (IllegalStateException e) {
 			/* test must throw */
 		}
 	}

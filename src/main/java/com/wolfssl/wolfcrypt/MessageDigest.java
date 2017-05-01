@@ -131,4 +131,12 @@ public abstract class MessageDigest extends NativeStruct {
 					"Object must be initialized before use");
 		}
 	}
+
+    @Override
+    public void releaseNativeStruct() {
+
+        /* reset state first, then free */
+        state = WolfCryptState.UNINITIALIZED;
+        setNativeStruct(NULL);
+    }
 }
