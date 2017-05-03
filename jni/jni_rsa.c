@@ -348,13 +348,13 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSetRNG(
     key = (RsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
-        return;
+        return JNI_FALSE;
     }
 
     rng = (RNG*) getNativeStruct(env, rng_object);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
-        return;
+        return JNI_FALSE;
     }
 
     ret = (key == NULL)
