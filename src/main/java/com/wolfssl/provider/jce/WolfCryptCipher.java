@@ -107,6 +107,9 @@ public class WolfCryptCipher extends CipherSpi {
     /* stash IV here for easy lookup */
     private byte[] iv = null;
 
+    /* buffered data from update calls */
+    private byte[] buffered = new byte[0];
+
     private WolfCryptCipher(CipherType type, CipherMode mode,
             PaddingType pad) {
 
@@ -423,17 +426,17 @@ public class WolfCryptCipher extends CipherSpi {
     }
 
     /* return 1 if this is a block cipher, otherwise 0 */
-    private int isBlockCipher() {
+    private boolean isBlockCipher() {
 
-        int isBlockCipher = 0;
+        boolean isBlockCipher = false;
 
         switch (this.cipherType) {
             case WC_AES:
             case WC_DES3:
-                isBlockCipher = 1;
+                isBlockCipher = true;
                 break;
             default:
-                isBlockCipher = 0;
+                isBlockCipher = false;
         };
 
         return isBlockCipher;
@@ -444,7 +447,7 @@ public class WolfCryptCipher extends CipherSpi {
     private int isValidBlockLength(int length) {
 
         /* skip if not a block cipher */
-        if (isBlockCipher() == 0)
+        if (isBlockCipher() == false)
             return 1;
 
         if ((length % this.blockSize) != 0)
@@ -455,34 +458,101 @@ public class WolfCryptCipher extends CipherSpi {
 
     private byte[] wolfCryptUpdate(byte[] input, int inputOffset, int len) {
 
-        int ret = 0;
+        int  blocks    = 0;
+        int  remaining = 0;
+        byte tmpOut[]  = null;
+        byte tmpIn[]   = null;
 
-        byte tmpIn[]  = null;
-        byte tmpOut[] = null;
+        if (input == null || len < 0)
+            throw new IllegalArgumentException("Null input buffer or len < 0");
 
-        /* return null if input data is too short to result in a new
-         * block, and algorithm is a block cipher */
-        if (input == null || isValidBlockLength(len) == 0)
+        if ((cipherType == CipherType.WC_RSA) ||
+            ((buffered.length + len) < blockSize)) {
+            /* buffer for short inputs, or RSA */
+            tmpIn = new byte[buffered.length + len];
+            System.arraycopy(buffered, 0, tmpIn, 0, buffered.length);
+            System.arraycopy(input, inputOffset, tmpIn, buffered.length, len);
+            buffered = tmpIn;
             return null;
+        }
 
-        tmpIn = Arrays.copyOfRange(input, inputOffset,
-                                   inputOffset + len);
+        /* do update on block size multiples only */
+        blocks    = (buffered.length + len) / blockSize;
+        remaining = (buffered.length + len) % blockSize;
 
+        tmpIn = new byte[blocks * blockSize];
+        System.arraycopy(buffered, 0, tmpIn, 0, buffered.length);
+        System.arraycopy(input, inputOffset, tmpIn, buffered.length,
+                         len - remaining);
+
+        /* buffer remaining non-block size input, or reset */
+        buffered = new byte[remaining];
+        if (remaining > 0) {
+            System.arraycopy(input, inputOffset + (len - remaining),
+                             buffered, 0, remaining);
+        }
+
+        /* process tmp[] */
         switch (this.cipherType) {
 
             case WC_AES:
-                tmpOut = this.aes.update(input, inputOffset, len);
+                tmpOut = this.aes.update(tmpIn, 0, tmpIn.length);
 
                 /* truncate */
-                tmpOut = Arrays.copyOfRange(tmpOut, 0, len);
+                tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
 
                 break;
 
             case WC_DES3:
-                tmpOut = this.des3.update(input, inputOffset, len);
+                tmpOut = this.des3.update(tmpIn, 0, tmpIn.length);
 
                 /* truncate */
-                tmpOut = Arrays.copyOfRange(tmpOut, 0, len);
+                tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
+
+                break;
+
+            default:
+                throw new RuntimeException("Unsupported algorithm type");
+        };
+
+        return tmpOut;
+    }
+
+    private byte[] wolfCryptFinal(byte[] input, int inputOffset, int len)
+        throws IllegalBlockSizeException, BadPaddingException {
+
+        int  totalSz  = 0;
+        byte tmpIn[]  = null;
+        byte tmpOut[] = null;
+
+        totalSz = buffered.length + len;
+
+        if (isBlockCipher() && (totalSz % blockSize != 0)) {
+            throw new IllegalBlockSizeException(
+                    "Input length not multiple of " + blockSize + " bytes");
+        }
+
+        /* do final encrypt over totalSz */
+        tmpIn = new byte[totalSz];
+        System.arraycopy(buffered, 0, tmpIn, 0, buffered.length);
+        if (input != null && len > 0)
+            System.arraycopy(input, inputOffset, tmpIn, buffered.length, len);
+
+        switch (this.cipherType) {
+
+            case WC_AES:
+                tmpOut = this.aes.update(tmpIn, 0, tmpIn.length);
+
+                /* truncate */
+                tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
+
+                break;
+
+            case WC_DES3:
+                tmpOut = this.des3.update(tmpIn, 0, tmpIn.length);
+
+                /* truncate */
+                tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
 
                 break;
 
@@ -509,6 +579,9 @@ public class WolfCryptCipher extends CipherSpi {
             default:
                 throw new RuntimeException("Unsupported algorithm type");
         };
+
+        /* reset state, clear buffered */
+        buffered = new byte[0];
 
         return tmpOut;
     }
@@ -540,9 +613,9 @@ public class WolfCryptCipher extends CipherSpi {
 
         tmpOut = wolfCryptUpdate(input, inputOffset, inputLen);
 
-        System.arraycopy(tmpOut, 0, output, outputOffset, inputLen);
+        System.arraycopy(tmpOut, 0, output, outputOffset, tmpOut.length);
 
-        return inputLen;
+        return tmpOut.length;
     }
 
     private void zeroArray(byte[] in) {
@@ -564,7 +637,7 @@ public class WolfCryptCipher extends CipherSpi {
             log("final (offset: " + inputOffset + ", len: " +
                 inputLen + ")");
 
-        return engineUpdate(input, inputOffset, inputLen);
+        return wolfCryptFinal(input, inputOffset, inputLen);
     }
 
     @Override
@@ -573,12 +646,17 @@ public class WolfCryptCipher extends CipherSpi {
         throws ShortBufferException, IllegalBlockSizeException,
                BadPaddingException {
 
+        byte tmpOut[];
+
         if (debug.DEBUG)
             log("final (in offset: " + inputOffset + ", len: " +
                 inputLen + ", out offset: " + outputOffset + ")");
 
-        return engineUpdate(input, inputOffset, inputLen, output,
-                           outputOffset);
+        tmpOut = wolfCryptFinal(input, inputOffset, inputLen);
+
+        System.arraycopy(tmpOut, 0, output, outputOffset, tmpOut.length);
+
+        return tmpOut.length;
     }
 
     @Override
