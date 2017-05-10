@@ -809,8 +809,8 @@ public class WolfCryptCipherTest {
         tmp = cipher.update(Arrays.copyOfRange(input, 8, 16));
         assertArrayEquals(tmp, Arrays.copyOfRange(output, 8, 16));
 
-        tmp = cipher.doFinal(Arrays.copyOfRange(input, 16, 32));
-        assertArrayEquals(tmp, Arrays.copyOfRange(output, 16, 32));
+        tmp = cipher.doFinal(Arrays.copyOfRange(input, 16, 24));
+        assertArrayEquals(tmp, Arrays.copyOfRange(output, 16, 24));
 
         try {
             tmp = cipher.doFinal(Arrays.copyOfRange(input, 0, 2));
@@ -818,7 +818,7 @@ public class WolfCryptCipherTest {
                  "throw exception");
         } catch (IllegalBlockSizeException e) {
             assertEquals(e.getMessage(),
-                         "Input length not multiple of 16 bytes");
+                         "Input length not multiple of 8 bytes");
         }
     }
 
