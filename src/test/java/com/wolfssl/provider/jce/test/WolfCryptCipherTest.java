@@ -49,7 +49,7 @@ import java.security.InvalidKeyException;
 import java.security.InvalidAlgorithmParameterException;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
-import com.wolfssl.wolfcrypt.test.Util;
+import com.wolfssl.wolfcrypt.WolfCryptException;
 
 public class WolfCryptCipherTest {
 
@@ -448,6 +448,102 @@ public class WolfCryptCipherTest {
     }
 
     @Test
+    public void testAesCbcNoPaddingWithUpdateVerifyFinalResetsState()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        byte key[] = new byte[] {
+            (byte)0x30, (byte)0x31, (byte)0x32, (byte)0x33,
+            (byte)0x34, (byte)0x35, (byte)0x36, (byte)0x37,
+            (byte)0x38, (byte)0x39, (byte)0x61, (byte)0x62,
+            (byte)0x63, (byte)0x64, (byte)0x65, (byte)0x66
+        };
+
+        byte iv[] = new byte[] {
+            (byte)0x31, (byte)0x32, (byte)0x33, (byte)0x34,
+            (byte)0x35, (byte)0x36, (byte)0x37, (byte)0x38,
+            (byte)0x39, (byte)0x30, (byte)0x61, (byte)0x62,
+            (byte)0x63, (byte)0x64, (byte)0x65, (byte)0x66
+        };
+
+        byte input[] = new byte[] {
+            (byte)0x6e, (byte)0x6f, (byte)0x77, (byte)0x20,
+            (byte)0x69, (byte)0x73, (byte)0x20, (byte)0x74,
+            (byte)0x68, (byte)0x65, (byte)0x20, (byte)0x74,
+            (byte)0x69, (byte)0x6d, (byte)0x65, (byte)0x20
+        };
+
+        byte expected[] = new byte[] {
+            (byte)0x95, (byte)0x94, (byte)0x92, (byte)0x57,
+            (byte)0x5f, (byte)0x42, (byte)0x81, (byte)0x53,
+            (byte)0x2c, (byte)0xcc, (byte)0x9d, (byte)0x46,
+            (byte)0x77, (byte)0xa2, (byte)0x33, (byte)0xcb
+        };
+
+        byte tmp[];
+        byte output[];
+
+        if (!enabledJCEAlgos.contains("AES/CBC/NoPadding")) {
+            /* bail out if AES is not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding", "wolfJCE");
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+        /* test encrypt */
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+
+        tmp = cipher.update(Arrays.copyOfRange(input, 0, 8));
+        assertArrayEquals(tmp, null);
+        tmp = cipher.update(Arrays.copyOfRange(input, 8, 16));
+        assertEquals(tmp.length, 16);
+        output = Arrays.copyOfRange(tmp, 0, 16);
+
+        tmp = cipher.doFinal();
+        assertEquals(tmp.length, 0);
+        assertArrayEquals(output, expected);
+
+        /* doFinal should have reset our state, try to encrypt again no init */
+        tmp = cipher.update(Arrays.copyOfRange(input, 0, 8));
+        assertArrayEquals(tmp, null);
+        tmp = cipher.update(Arrays.copyOfRange(input, 8, 16));
+        assertEquals(tmp.length, 16);
+        output = Arrays.copyOfRange(tmp, 0, 16);
+
+        tmp = cipher.doFinal();
+        assertEquals(tmp.length, 0);
+        assertArrayEquals(output, expected);
+
+        /* test decrypt */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+
+        tmp = cipher.update(Arrays.copyOfRange(expected, 0, 8));
+        assertArrayEquals(tmp, null);
+        tmp = cipher.update(Arrays.copyOfRange(expected, 8, 16));
+        assertEquals(tmp.length, 16);
+        output = Arrays.copyOfRange(tmp, 0, 16);
+
+        tmp = cipher.doFinal();
+        assertEquals(tmp.length, 0);
+        assertArrayEquals(output, input);
+
+        /* doFinal should have reset our state, try to decrypt again no init */
+        tmp = cipher.update(Arrays.copyOfRange(expected, 0, 8));
+        assertArrayEquals(tmp, null);
+        tmp = cipher.update(Arrays.copyOfRange(expected, 8, 16));
+        assertEquals(tmp.length, 16);
+        output = Arrays.copyOfRange(tmp, 0, 16);
+
+        tmp = cipher.doFinal();
+        assertEquals(tmp.length, 0);
+        assertArrayEquals(output, input);
+    }
+
+    @Test
     public void testAesCbcNoPaddingBigMessage() 
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
@@ -828,48 +924,250 @@ public class WolfCryptCipherTest {
 
         Cipher ciph = Cipher.getInstance("RSA/ECB/PKCS1Padding", "wolfJCE");
 
-            /* PRIVATE ENCRYPT, 4 byte chunks + 1 remaining for final */
-            ciph.init(Cipher.ENCRYPT_MODE, priv);
-            tmp = ciph.update(Arrays.copyOfRange(input, 0, 4));
-            assertArrayEquals(tmp, null);
-            tmp = ciph.update(Arrays.copyOfRange(input, 4, 8));
-            assertArrayEquals(tmp, null);
-            tmp = ciph.update(Arrays.copyOfRange(input, 8, 16));
-            assertArrayEquals(tmp, null);
-            tmp = ciph.update(Arrays.copyOfRange(input, 16, 24));
-            assertArrayEquals(tmp, null);
-            ciphertext = ciph.doFinal(Arrays.copyOfRange(input, 24, 25));
+        /* PRIVATE ENCRYPT, 4 byte chunks + 1 remaining for final */
+        ciph.init(Cipher.ENCRYPT_MODE, priv);
+        tmp = ciph.update(Arrays.copyOfRange(input, 0, 4));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(input, 4, 8));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(input, 8, 16));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(input, 16, 24));
+        assertArrayEquals(tmp, null);
+        ciphertext = ciph.doFinal(Arrays.copyOfRange(input, 24, 25));
 
-            /* PUBLIC DECRYPT, 50-byte chunks + 56 remaining for final */
-            ciph.init(Cipher.DECRYPT_MODE, pub);
-            tmp = ciph.update(Arrays.copyOfRange(ciphertext, 0, 50));
-            assertArrayEquals(tmp, null);
-            tmp = ciph.update(Arrays.copyOfRange(ciphertext, 50, 100));
-            assertArrayEquals(tmp, null);
-            tmp = ciph.update(Arrays.copyOfRange(ciphertext, 100, 150));
-            assertArrayEquals(tmp, null);
-            tmp = ciph.update(Arrays.copyOfRange(ciphertext, 150, 200));
-            assertArrayEquals(tmp, null);
-            plaintext = ciph.doFinal(Arrays.copyOfRange(ciphertext, 200, 256));
+        /* PUBLIC DECRYPT, 50-byte chunks + 56 remaining for final */
+        ciph.init(Cipher.DECRYPT_MODE, pub);
+        tmp = ciph.update(Arrays.copyOfRange(ciphertext, 0, 50));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(ciphertext, 50, 100));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(ciphertext, 100, 150));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(ciphertext, 150, 200));
+        assertArrayEquals(tmp, null);
+        plaintext = ciph.doFinal(Arrays.copyOfRange(ciphertext, 200, 256));
 
-            assertArrayEquals(plaintext, input);
+        assertArrayEquals(plaintext, input);
 
-            /* PUBLIC ENCRYPT, 1 byte chunks, none remaining for final */
-            ciph.init(Cipher.ENCRYPT_MODE, pub);
-            for (int i = 1; i < input.length + 1; i++) {
-                tmp = ciph.update(Arrays.copyOfRange(input, i-1, i));
-                assertArrayEquals(tmp, null);
-            }
+        /* PUBLIC ENCRYPT, 1 byte chunks, none remaining for final */
+        ciph.init(Cipher.ENCRYPT_MODE, pub);
+        for (int i = 1; i < input.length + 1; i++) {
+            tmp = ciph.update(Arrays.copyOfRange(input, i-1, i));
+            assertArrayEquals(tmp, null);
+        }
+        ciphertext = ciph.doFinal();
+
+        /* PRIVATE DECRYPT, 100-byte chunks + 56 remaining for final */
+        ciph.init(Cipher.DECRYPT_MODE, priv);
+        tmp = ciph.update(Arrays.copyOfRange(ciphertext, 0, 100));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(ciphertext, 100, 200));
+        assertArrayEquals(tmp, null);
+        plaintext = ciph.doFinal(Arrays.copyOfRange(ciphertext, 200, 256));
+        assertArrayEquals(plaintext, input);
+    }
+
+    @Test
+    public void testRSAECBPKCS1PaddingWithUpdateVerifyFinalResetsState()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        byte input[] = new byte[] {
+            (byte)0x45, (byte)0x76, (byte)0x65, (byte)0x72,
+            (byte)0x79, (byte)0x6f, (byte)0x6e, (byte)0x65,
+            (byte)0x20, (byte)0x67, (byte)0x65, (byte)0x74,
+            (byte)0x73, (byte)0x20, (byte)0x46, (byte)0x72,
+            (byte)0x69, (byte)0x64, (byte)0x61, (byte)0x79,
+            (byte)0x20, (byte)0x6f, (byte)0x66, (byte)0x66,
+            (byte)0x2e
+        };
+
+        byte tmp[];
+        byte ciphertextA[] = null;
+        byte ciphertextB[] = null;
+        byte plaintextA[]  = null;
+        byte plaintextB[]  = null;
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            /* bail out if RSA is not enabled */
+            return;
+        }
+
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048, new SecureRandom());
+
+        KeyPair pair = keyGen.generateKeyPair();
+        PrivateKey priv = pair.getPrivate();
+        PublicKey  pub  = pair.getPublic();
+
+        Cipher ciph = Cipher.getInstance("RSA/ECB/PKCS1Padding", "wolfJCE");
+
+        /* PRIVATE ENCRYPT */
+        /* storing to ciphertextA */
+        ciph.init(Cipher.ENCRYPT_MODE, priv);
+        tmp = ciph.update(Arrays.copyOfRange(input, 0, 16));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(input, 16, 24));
+        assertArrayEquals(tmp, null);
+        ciphertextA = ciph.doFinal(Arrays.copyOfRange(input, 24, 25));
+
+        /* PRIVATE ENCRYPT */
+        /* doFinal should reset state, encrypt again without init */
+        tmp = ciph.update(Arrays.copyOfRange(input, 0, 16));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(input, 16, 24));
+        assertArrayEquals(tmp, null);
+        ciphertextB = ciph.doFinal(Arrays.copyOfRange(input, 24, 25));
+
+        /* PUBLIC DECRYPT */
+        /* public decrypt, verifying ciphertextA */
+        ciph.init(Cipher.DECRYPT_MODE, pub);
+        tmp = ciph.update(Arrays.copyOfRange(ciphertextA, 0, 150));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(ciphertextA, 150, 200));
+        assertArrayEquals(tmp, null);
+        plaintextA = ciph.doFinal(Arrays.copyOfRange(ciphertextA, 200, 256));
+        assertArrayEquals(plaintextA, input);
+
+        /* PUBLIC DECRYPT */
+        /* doFinal should reset state, decrypt ciphertext B without init */
+        tmp = ciph.update(Arrays.copyOfRange(ciphertextB, 0, 150));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(ciphertextB, 150, 200));
+        assertArrayEquals(tmp, null);
+        plaintextB = ciph.doFinal(Arrays.copyOfRange(ciphertextB, 200, 256));
+        assertArrayEquals(plaintextB, input);
+
+        /* PUBLIC ENCRYPT */
+        /* storing to ciphertextA */
+        ciph.init(Cipher.ENCRYPT_MODE, pub);
+        tmp = ciph.update(Arrays.copyOfRange(input, 0, 16));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(input, 16, 24));
+        assertArrayEquals(tmp, null);
+        ciphertextA = ciph.doFinal(Arrays.copyOfRange(input, 24, 25));
+
+        /* PUBLIC ENCRYPT */
+        /* doFinal should reset state, encrypt again without init */
+        tmp = ciph.update(Arrays.copyOfRange(input, 0, 16));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(input, 16, 24));
+        assertArrayEquals(tmp, null);
+        ciphertextB = ciph.doFinal(Arrays.copyOfRange(input, 24, 25));
+
+        /* PRIVATE DECRYPT */
+        /* public decrypt, verifying ciphertextA */
+        ciph.init(Cipher.DECRYPT_MODE, priv);
+        tmp = ciph.update(Arrays.copyOfRange(ciphertextA, 0, 150));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(ciphertextA, 150, 200));
+        assertArrayEquals(tmp, null);
+        plaintextA = ciph.doFinal(Arrays.copyOfRange(ciphertextA, 200, 256));
+        assertArrayEquals(plaintextA, input);
+
+        /* PRIVATE DECRYPT */
+        /* doFinal should reset state, decrypt ciphertext B without init */
+        tmp = ciph.update(Arrays.copyOfRange(ciphertextB, 0, 150));
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(Arrays.copyOfRange(ciphertextB, 150, 200));
+        assertArrayEquals(tmp, null);
+        plaintextB = ciph.doFinal(Arrays.copyOfRange(ciphertextB, 200, 256));
+        assertArrayEquals(plaintextB, input);
+    }
+
+    /* test RSA with update, and too large of data */
+    @Test
+    public void testRSAECBPKCS1PaddingWithTooBigData()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        byte tmp[];
+        byte ciphertext[];
+        byte plaintext[];
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            /* bail out if RSA is not enabled */
+            return;
+        }
+
+        byte inputA[] = new byte[2048];
+        byte inputB[] = new byte[100];
+
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048, new SecureRandom());
+
+        KeyPair pair = keyGen.generateKeyPair();
+        PrivateKey priv = pair.getPrivate();
+        PublicKey  pub  = pair.getPublic();
+
+        Cipher ciph = Cipher.getInstance("RSA/ECB/PKCS1Padding", "wolfJCE");
+
+        /* PRIVATE ENCRYPT */
+        ciph.init(Cipher.ENCRYPT_MODE, priv);
+        tmp = ciph.update(inputA);
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(inputB);
+        assertArrayEquals(tmp, null);
+
+        try {
             ciphertext = ciph.doFinal();
+            fail("Cipher.doFinal should throw exception when data is larger " +
+                 "than RSA key size");
+        } catch (WolfCryptException e) {
+            assertEquals("RSA buffer error, output too small or input too big",
+                         e.getMessage());
+        }
 
-            /* PRIVATE DECRYPT, 100-byte chunks + 56 remaining for final */
-            ciph.init(Cipher.DECRYPT_MODE, priv);
-            tmp = ciph.update(Arrays.copyOfRange(ciphertext, 0, 100));
-            assertArrayEquals(tmp, null);
-            tmp = ciph.update(Arrays.copyOfRange(ciphertext, 100, 200));
-            assertArrayEquals(tmp, null);
-            plaintext = ciph.doFinal(Arrays.copyOfRange(ciphertext, 200, 256));
-            assertArrayEquals(plaintext, input);
+        /* PUBLIC DECRYPT */
+        ciph.init(Cipher.DECRYPT_MODE, pub);
+        tmp = ciph.update(inputA);
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(inputB);
+        assertArrayEquals(tmp, null);
+
+        try {
+            plaintext = ciph.doFinal();
+            fail("Cipher.doFinal should throw exception when data is larger " +
+                 "than RSA key size");
+        } catch (WolfCryptException e) {
+            assertEquals("Rsa Padding error", e.getMessage());
+        }
+
+        /* PUBLIC ENCRYPT */
+        ciph.init(Cipher.ENCRYPT_MODE, pub);
+        tmp = ciph.update(inputA);
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(inputB);
+        assertArrayEquals(tmp, null);
+
+        try {
+            ciphertext = ciph.doFinal();
+            fail("Cipher.doFinal should throw exception when data is larger " +
+                 "than RSA key size");
+        } catch (WolfCryptException e) {
+            assertEquals("RSA buffer error, output too small or input too big",
+                         e.getMessage());
+        }
+
+        /* PRIVATE DECRYPT */
+        ciph.init(Cipher.DECRYPT_MODE, priv);
+        tmp = ciph.update(inputA);
+        assertArrayEquals(tmp, null);
+        tmp = ciph.update(inputB);
+        assertArrayEquals(tmp, null);
+
+        try {
+            plaintext = ciph.doFinal();
+            fail("Cipher.doFinal should throw exception when data is larger " +
+                 "than RSA key size");
+        } catch (WolfCryptException e) {
+            assertEquals("Rsa Padding error", e.getMessage());
+        }
     }
 
     @Test

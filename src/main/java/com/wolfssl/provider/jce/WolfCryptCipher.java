@@ -104,7 +104,9 @@ public class WolfCryptCipher extends CipherSpi {
     private String algString;
     private String algMode;
 
-    /* stash IV here for easy lookup */
+    /* stash key and IV here for easy lookup */
+    private Key storedKey = null;
+    private AlgorithmParameterSpec storedSpec = null;
     private byte[] iv = null;
 
     /* buffered data from update calls */
@@ -275,6 +277,9 @@ public class WolfCryptCipher extends CipherSpi {
     private void wolfCryptSetIV(AlgorithmParameterSpec spec,
             SecureRandom random) throws InvalidAlgorithmParameterException {
 
+        /* store AlgorithmParameterSpec for class reset */
+        this.storedSpec = spec;
+
         /* RSA doesn't need an IV */
         if (this.cipherType == CipherType.WC_RSA)
             return;
@@ -324,6 +329,9 @@ public class WolfCryptCipher extends CipherSpi {
             throw new InvalidKeyException(
                 "Cipher key must be of type SecretKey");
         }
+
+        /* save key for class state resets */
+        this.storedKey = key;
 
         /* import key */
         encodedKey = key.getEncoded();
@@ -580,8 +588,23 @@ public class WolfCryptCipher extends CipherSpi {
                 throw new RuntimeException("Unsupported algorithm type");
         };
 
-        /* reset state, clear buffered */
-        buffered = new byte[0];
+        /* reset state, user doesn't need to call init again before use */
+        try {
+            buffered = new byte[0];
+            if (this.direction == OpMode.WC_ENCRYPT) {
+                wolfCryptSetDirection(Cipher.ENCRYPT_MODE);
+            } else {
+                wolfCryptSetDirection(Cipher.DECRYPT_MODE);
+            }
+
+            wolfCryptSetIV(storedSpec, null);
+            wolfCryptSetKey(storedKey);
+
+        } catch (InvalidKeyException e) {
+            throw new RuntimeException(e.getMessage());
+        } catch (InvalidAlgorithmParameterException e) {
+            throw new RuntimeException(e.getMessage());
+        }
 
         return tmpOut;
     }
@@ -736,6 +759,9 @@ public class WolfCryptCipher extends CipherSpi {
                 this.rng.releaseNativeStruct();
 
             zeroArray(this.iv);
+
+            this.storedKey = null;
+            this.storedSpec = null;
 
         } finally {
             super.finalize();
