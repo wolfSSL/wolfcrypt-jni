@@ -286,6 +286,7 @@ public class WolfCryptCipher extends CipherSpi {
 
         /* store IV, or generate random IV if not available */
         if (spec == null) {
+            this.iv = new byte[this.blockSize];
             if (random != null) {
                 random.nextBytes(this.iv);
             } else {
@@ -299,6 +300,14 @@ public class WolfCryptCipher extends CipherSpi {
             }
 
             IvParameterSpec ivSpec = (IvParameterSpec)spec;
+
+            /* IV should be of block size length */
+            if (ivSpec.getIV().length != this.blockSize) {
+                throw new InvalidAlgorithmParameterException(
+                        "Bad IV length (" + ivSpec.getIV().length +
+                        "), must be " + blockSize + " bytes long");
+            }
+
             this.iv = ivSpec.getIV();
         }
     }

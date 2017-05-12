@@ -651,7 +651,7 @@ public class WolfCryptCipherTest {
         };
 
         final byte key[] = "0123456789abcdeffedcba9876543210".getBytes();
-        final byte iv[]  = "1234567890abcdef   ".getBytes();
+        final byte iv[]  = "1234567890abcdef".getBytes();
 
         byte cipher[] = new byte[input.length];
         byte plain[]  = new byte[input.length];
@@ -697,10 +697,6 @@ public class WolfCryptCipherTest {
                 new byte[] {
                     (byte)0x12, (byte)0x34, (byte)0x56, (byte)0x78,
                     (byte)0x90, (byte)0xab, (byte)0xcd, (byte)0xef,
-                    (byte)0x01, (byte)0x01, (byte)0x01, (byte)0x01,
-                    (byte)0x01, (byte)0x01, (byte)0x01, (byte)0x01,
-                    (byte)0x11, (byte)0x21, (byte)0x31, (byte)0x41,
-                    (byte)0x51, (byte)0x61, (byte)0x71, (byte)0x81
                 },
                 new byte[] {
                     (byte)0x4e, (byte)0x6f, (byte)0x77, (byte)0x20,
@@ -763,10 +759,6 @@ public class WolfCryptCipherTest {
         byte iv[] = new byte[] {
             (byte)0x12, (byte)0x34, (byte)0x56, (byte)0x78,
             (byte)0x90, (byte)0xab, (byte)0xcd, (byte)0xef,
-            (byte)0x01, (byte)0x01, (byte)0x01, (byte)0x01,
-            (byte)0x01, (byte)0x01, (byte)0x01, (byte)0x01,
-            (byte)0x11, (byte)0x21, (byte)0x31, (byte)0x41,
-            (byte)0x51, (byte)0x61, (byte)0x71, (byte)0x81
         };
 
         byte input[] = new byte[] {
