@@ -113,19 +113,10 @@ public class WolfCryptSignature extends SignatureSpi {
         /* init asn object */
         asn = new Asn();
 
-        /* init key type */
-        switch (ktype) {
-            case WC_RSA:
-                this.rsa = new Rsa();
-                break;
-
-            case WC_ECDSA:
-                this.ecc = new Ecc();
-                break;
-
-            default:
-                throw new NoSuchAlgorithmException(
-                    "Signature algorithm key type must be RSA or ECC");
+        if ((ktype != KeyType.WC_RSA) &&
+            (ktype != KeyType.WC_ECDSA)) {
+            throw new NoSuchAlgorithmException(
+                "Signature algorithm key type must be RSA or ECC");
         }
 
         /* init hash type */
@@ -247,6 +238,20 @@ public class WolfCryptSignature extends SignatureSpi {
         if (encodedKey == null)
             throw new InvalidKeyException("Key does not support encoding");
 
+        /* initialize native struct */
+        switch (keyType) {
+            case WC_RSA:
+                if (this.rsa != null)
+                    this.rsa.releaseNativeStruct();
+                this.rsa = new Rsa();
+                break;
+            case WC_ECDSA:
+                if (this.ecc != null)
+                    this.ecc.releaseNativeStruct();
+                this.ecc = new Ecc();
+                break;
+        }
+
         wolfCryptInitPrivateKey(privateKey, encodedKey);
 
         /* init hash object */
@@ -297,6 +302,20 @@ public class WolfCryptSignature extends SignatureSpi {
         encodedKey = publicKey.getEncoded();
         if (encodedKey == null)
             throw new InvalidKeyException("Key does not support encoding");
+
+        /* initialize native struct */
+        switch (keyType) {
+            case WC_RSA:
+                if (this.rsa != null)
+                    this.rsa.releaseNativeStruct();
+                this.rsa = new Rsa();
+                break;
+            case WC_ECDSA:
+                if (this.ecc != null)
+                    this.ecc.releaseNativeStruct();
+                this.ecc = new Ecc();
+                break;
+        }
 
         wolfCryptInitPublicKey(publicKey, encodedKey);
 

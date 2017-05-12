@@ -135,6 +135,60 @@ public class WolfCryptSignatureTest {
     }
 
     @Test
+    public void testWolfSignInitMulti()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               SignatureException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        String toSign = "Hello World";
+        byte[] toSignBuf = toSign.getBytes();
+        byte[] signature = null;
+
+        for (int i = 0; i < wolfJCEAlgos.length; i++) {
+
+            Signature signer =
+                Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+            Signature verifier =
+                Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+
+            assertNotNull(signer);
+            assertNotNull(verifier);
+
+            SecureRandom rand =
+                SecureRandom.getInstance("HashDRBG", "wolfJCE");
+            assertNotNull(rand);
+
+            /* generate key pair */
+            KeyPair pair = generateKeyPair(wolfJCEAlgos[i], rand);
+            assertNotNull(pair);
+
+            PrivateKey priv = pair.getPrivate();
+            PublicKey  pub  = pair.getPublic();
+
+            /* test multiple inits on signer */
+            signer.initSign(priv);
+            signer.initSign(priv);
+
+            /* test multiple inits on verifier */
+            verifier.initVerify(pub);
+            verifier.initVerify(pub);
+
+            /* make sure sign/verify still work after multi init */
+            signer.update(toSignBuf, 0, toSignBuf.length);
+            signature = signer.sign();
+
+            verifier.update(toSignBuf, 0, toSignBuf.length);
+            boolean verified = verifier.verify(signature);
+
+            if (verified != true) {
+                fail("Signature verification failed when generating with " +
+                        "wolfJCE and verifying with system default JCE " +
+                        "provider");
+            }
+        }
+    }
+
+    @Test
     public void testWolfSignInteropVerify()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                SignatureException, InvalidKeyException,
