@@ -105,4 +105,57 @@ public class Sha512Test {
 			assertArrayEquals(expected, result);
 		}
 	}
+
+    @Test
+    public void releaseAndReInitObject() {
+
+        Sha512 sha = new Sha512();
+        byte[] data = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] expected = Util.h2b("B7B70A0B14D7FA213C6CCD3CBFFC8BB8" +
+                                   "F8E11A85F1113B0EB26A00208F2B9B3A" +
+                                   "1DD4AAF39962861E16AB062274342A1C" +
+                                   "E1F9DBA3654F36FC338245589F296C28");
+        byte[] result = null;
+
+        sha.update(data);
+        result = sha.digest();
+        assertArrayEquals(expected, result);
+        sha.releaseNativeStruct();
+
+        /* test re-initializing object */
+        sha = new Sha512();
+        result = null;
+        sha.update(data);
+        result = sha.digest();
+        sha.releaseNativeStruct();
+    }
+
+    @Test
+    public void reuseObject() {
+
+        Sha512 sha = new Sha512();
+        byte[] data  = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] data2 = new byte[] { 0x05, 0x06, 0x07, 0x08, 0x09 };
+        byte[] expected = Util.h2b("B7B70A0B14D7FA213C6CCD3CBFFC8BB8" +
+                                   "F8E11A85F1113B0EB26A00208F2B9B3A" +
+                                   "1DD4AAF39962861E16AB062274342A1C" +
+                                   "E1F9DBA3654F36FC338245589F296C28");
+        byte[] expected2 = Util.h2b("5D42B9D10118B3410DF5F36AEDE79C1C" +
+                                    "67F465CD95AF05D69D91CBDB7606E21A" +
+                                    "D8618E64380DEA45741D9D4AA3D42106" +
+                                    "EC5513BC01C61A14E5B027D05EB0CC56");
+        byte[] result = null;
+        byte[] result2 = null;
+
+        sha.update(data);
+        result = sha.digest();
+        assertArrayEquals(expected, result);
+
+        /* test reusing existing object after a call to digest() */
+        sha.update(data2);
+        result2 = sha.digest();
+        assertArrayEquals(expected2, result2);
+
+        sha.releaseNativeStruct();
+    }
 }

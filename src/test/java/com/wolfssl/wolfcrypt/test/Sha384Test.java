@@ -105,4 +105,54 @@ public class Sha384Test {
 			assertArrayEquals(expected, result);
 		}
 	}
+
+    @Test
+    public void releaseAndReInitObject() {
+
+        Sha384 sha = new Sha384();
+        byte[] data = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] expected = Util.h2b("561C16404A1B592406301780C0C2DF6A" +
+                                   "A0555F504F35BFBEAC810AE36A343B77" +
+                                   "6858C5E0DE56BB79607A34D2F67108F2");
+        byte[] result = null;
+
+        sha.update(data);
+        result = sha.digest();
+        assertArrayEquals(expected, result);
+        sha.releaseNativeStruct();
+
+        /* test re-initializing object */
+        sha = new Sha384();
+        result = null;
+        sha.update(data);
+        result = sha.digest();
+        sha.releaseNativeStruct();
+    }
+
+    @Test
+    public void reuseObject() {
+
+        Sha384 sha = new Sha384();
+        byte[] data  = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] data2 = new byte[] { 0x05, 0x06, 0x07, 0x08, 0x09 };
+        byte[] expected = Util.h2b("561C16404A1B592406301780C0C2DF6A" +
+                                   "A0555F504F35BFBEAC810AE36A343B77" +
+                                   "6858C5E0DE56BB79607A34D2F67108F2");
+        byte[] expected2 = Util.h2b("7EC3520B5D75D61F1F0586A0D00CDBF5" +
+                                    "D0BD67C1046F3A4DB37637792F7C683A" +
+                                    "83FB1A61A5562E28826686C14474CC2C");
+        byte[] result = null;
+        byte[] result2 = null;
+
+        sha.update(data);
+        result = sha.digest();
+        assertArrayEquals(expected, result);
+
+        /* test reusing existing object after a call to digest() */
+        sha.update(data2);
+        result2 = sha.digest();
+        assertArrayEquals(expected2, result2);
+
+        sha.releaseNativeStruct();
+    }
 }
