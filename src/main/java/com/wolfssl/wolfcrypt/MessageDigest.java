@@ -50,11 +50,11 @@ public abstract class MessageDigest extends NativeStruct {
 
 	public void init() {
 		native_init();
-		state = WolfCryptState.INITIALIZED;
+		state = WolfCryptState.READY;
 	}
 
 	public void update(ByteBuffer data, int length) {
-		if (state == WolfCryptState.INITIALIZED) {
+		if (state == WolfCryptState.READY) {
 			length = Math.min(length, data.remaining());
 
 			native_update(data, data.position(), length);
@@ -70,7 +70,7 @@ public abstract class MessageDigest extends NativeStruct {
 	}
 
 	public void update(byte[] data, int offset, int len) {
-		if (state == WolfCryptState.INITIALIZED) {
+		if (state == WolfCryptState.READY) {
 			if (offset >= data.length || offset < 0 || len < 0)
 				return;
 
@@ -93,7 +93,7 @@ public abstract class MessageDigest extends NativeStruct {
 	}
 
 	public void digest(ByteBuffer hash) throws ShortBufferException {
-		if (state == WolfCryptState.INITIALIZED) {
+		if (state == WolfCryptState.READY) {
 			if (hash.remaining() < digestSize())
 				throw new ShortBufferException(
 						"Input buffer is too small for digest size");
@@ -107,7 +107,7 @@ public abstract class MessageDigest extends NativeStruct {
 	}
 
 	public void digest(byte[] hash) throws ShortBufferException {
-		if (state == WolfCryptState.INITIALIZED) {
+		if (state == WolfCryptState.READY) {
 			if (hash.length < digestSize())
 				throw new ShortBufferException(
 						"Input buffer is too small for digest size");
@@ -120,7 +120,7 @@ public abstract class MessageDigest extends NativeStruct {
 	}
 
 	public byte[] digest() {
-		if (state == WolfCryptState.INITIALIZED) {
+		if (state == WolfCryptState.READY) {
 			byte[] hash = new byte[digestSize()];
 
 			native_final(hash);
