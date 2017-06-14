@@ -347,4 +347,75 @@ public class AesTest {
 				enc.update(input, 0, input.length, cipher, Aes.BLOCK_SIZE);
 		}
 	}
+
+    @Test
+    public void releaseAndReInitObject() {
+
+        byte[] key = Util.h2b("2b7e151628aed2a6abf7158809cf4f3c");
+        byte[] iv = Util.h2b("000102030405060708090A0B0C0D0E0F");
+        byte[] in = Util.h2b("6bc1bee22e409f96e93d7e117393172a");
+        byte[] expected = Util.h2b("7649abac8119b246cee98e9b12e9197d");
+
+        byte[] cipher = null;
+        byte[] plain = null;
+
+        Aes enc = new Aes(key, iv, Aes.ENCRYPT_MODE);
+        cipher = enc.update(in, 0, in.length);
+        assertArrayEquals(expected, cipher);
+
+        Aes dec = new Aes(key, iv, Aes.DECRYPT_MODE);
+        plain = dec.update(cipher, 0, cipher.length);
+        assertArrayEquals(in, plain);
+
+        /* free objects */
+        enc.releaseNativeStruct();
+        dec.releaseNativeStruct();
+
+        /* try to re-init and re-use them */
+        enc = new Aes(key, iv, Aes.ENCRYPT_MODE);
+        cipher = enc.update(in, 0, in.length);
+        assertArrayEquals(expected, cipher);
+
+        dec = new Aes(key, iv, Aes.DECRYPT_MODE);
+        plain = dec.update(cipher, 0, cipher.length);
+        assertArrayEquals(in, plain);
+
+        /* free again */
+        enc.releaseNativeStruct();
+        dec.releaseNativeStruct();
+    }
+
+    @Test
+    public void reuseObject() {
+
+        byte[] key = Util.h2b("2b7e151628aed2a6abf7158809cf4f3c");
+        byte[] iv = Util.h2b("000102030405060708090A0B0C0D0E0F");
+        byte[] in = Util.h2b("6bc1bee22e409f96e93d7e117393172a");
+        byte[] in2 = Util.h2b("ae2d8a571e03ac9c9eb76fac45af8e51");
+        byte[] expected = Util.h2b("7649abac8119b246cee98e9b12e9197d");
+        byte[] expected2 = Util.h2b("5086cb9b507219ee95db113a917678b2");
+
+        byte[] cipher = null;
+        byte[] plain = null;
+
+        Aes enc = new Aes(key, iv, Aes.ENCRYPT_MODE);
+        cipher = enc.update(in, 0, in.length);
+        assertArrayEquals(expected, cipher);
+
+        Aes dec = new Aes(key, iv, Aes.DECRYPT_MODE);
+        plain = dec.update(cipher, 0, cipher.length);
+        assertArrayEquals(in, plain);
+
+        /* now, try to reuse existing enc/dec objects */
+        cipher = enc.update(in2, 0, in2.length);
+        assertArrayEquals(expected2, cipher);
+
+        plain = dec.update(cipher, 0, cipher.length);
+        assertArrayEquals(in2, plain);
+
+        /* free again */
+        enc.releaseNativeStruct();
+        dec.releaseNativeStruct();
+    }
 }
+

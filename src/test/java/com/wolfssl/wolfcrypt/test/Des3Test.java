@@ -164,4 +164,77 @@ public class Des3Test {
 				enc.update(input, 0, input.length, cipher, Des3.BLOCK_SIZE);
 		}
 	}
+
+    @Test
+    public void releaseAndReInitObject() {
+
+        byte[] key = Util.h2b("e61a38548694f1fd8cef251c518" +
+                              "cc70bb613751c1ce52aa8");
+        byte[] iv = Util.h2b("48a8ceb8551fd4ad");
+        byte[] in = Util.h2b("e8fb0ceb4e912e16");
+        byte[] expected = Util.h2b("d2190e296a0bfc56");
+
+        byte[] cipher = null;
+        byte[] plain = null;
+
+        Des3 enc = new Des3(key, iv, Des3.ENCRYPT_MODE);
+        cipher = enc.update(in, 0, in.length);
+        assertArrayEquals(expected, cipher);
+
+        Des3 dec = new Des3(key, iv, Des3.DECRYPT_MODE);
+        plain = dec.update(cipher, 0, cipher.length);
+        assertArrayEquals(in, plain);
+
+        /* free objects */
+        enc.releaseNativeStruct();
+        dec.releaseNativeStruct();
+
+        /* try to re-init and re-use them */
+        enc = new Des3(key, iv, Des3.ENCRYPT_MODE);
+        cipher = enc.update(in, 0, in.length);
+        assertArrayEquals(expected, cipher);
+
+        dec = new Des3(key, iv, Des3.DECRYPT_MODE);
+        plain = dec.update(cipher, 0, cipher.length);
+        assertArrayEquals(in, plain);
+
+        /* free again */
+        enc.releaseNativeStruct();
+        dec.releaseNativeStruct();
+    }
+
+    @Test
+    public void reuseObject() {
+
+        byte[] key = Util.h2b("e61a38548694f1fd8cef251c518" +
+                              "cc70bb613751c1ce52aa8");
+        byte[] iv = Util.h2b("48a8ceb8551fd4ad");
+        byte[] in = Util.h2b("e8fb0ceb4e912e16");
+        byte[] in2 = Util.h2b("77340331c9c8e4f4");
+        byte[] expected = Util.h2b("d2190e296a0bfc56");
+        byte[] expected2 = Util.h2b("fa10d9e478fc63f0");
+
+        byte[] cipher = null;
+        byte[] plain = null;
+
+        Des3 enc = new Des3(key, iv, Des3.ENCRYPT_MODE);
+        cipher = enc.update(in, 0, in.length);
+        assertArrayEquals(expected, cipher);
+
+        Des3 dec = new Des3(key, iv, Des3.DECRYPT_MODE);
+        plain = dec.update(cipher, 0, cipher.length);
+        assertArrayEquals(in, plain);
+
+        /* now, try to reuse existing enc/dec objects */
+        cipher = enc.update(in2, 0, in2.length);
+        assertArrayEquals(expected2, cipher);
+
+        plain = dec.update(cipher, 0, cipher.length);
+        assertArrayEquals(in2, plain);
+
+        /* free objects */
+        enc.releaseNativeStruct();
+        dec.releaseNativeStruct();
+    }
 }
+
