@@ -102,4 +102,12 @@ public abstract class BlockCipher extends NativeStruct {
 
 		return ret;
 	}
+
+    @Override
+    public void releaseNativeStruct() {
+
+        /* reset state first, then free */
+        state = WolfCryptState.UNINITIALIZED;
+        setNativeStruct(NULL);
+    }
 }

@@ -97,4 +97,51 @@ public class Sha256Test {
 			assertArrayEquals(expected, result);
 		}
 	}
+
+    @Test
+    public void releaseAndReInitObject() {
+
+        Sha256 sha = new Sha256();
+        byte[] data = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] expected = Util.h2b("08BB5E5D6EAAC1049EDE0893D30ED022" +
+                                   "B1A4D9B5B48DB414871F51C9CB35283D");
+        byte[] result = null;
+
+        sha.update(data);
+        result = sha.digest();
+        assertArrayEquals(expected, result);
+        sha.releaseNativeStruct();
+
+        /* test re-initializing object */
+        sha = new Sha256();
+        result = null;
+        sha.update(data);
+        result = sha.digest();
+        sha.releaseNativeStruct();
+    }
+
+    @Test
+    public void reuseObject() {
+
+        Sha256 sha = new Sha256();
+        byte[] data  = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] data2 = new byte[] { 0x05, 0x06, 0x07, 0x08, 0x09 };
+        byte[] expected = Util.h2b("08BB5E5D6EAAC1049EDE0893D30ED022" +
+                                   "B1A4D9B5B48DB414871F51C9CB35283D");
+        byte[] expected2 = Util.h2b("761CA8FD7DD51248E00A7DC1C746BBDE" +
+                                    "94E51CB06AA67194843C495A863E0106");
+        byte[] result = null;
+        byte[] result2 = null;
+
+        sha.update(data);
+        result = sha.digest();
+        assertArrayEquals(expected, result);
+
+        /* test reusing existing object after a call to digest() */
+        sha.update(data2);
+        result2 = sha.digest();
+        assertArrayEquals(expected2, result2);
+
+        sha.releaseNativeStruct();
+    }
 }

@@ -99,4 +99,49 @@ public class ShaTest {
 			assertArrayEquals(expected, result);
 		}
 	}
+
+    @Test
+    public void releaseAndReInitObject() {
+
+        Sha sha = new Sha();
+        byte[] data = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] expected = Util.h2b("1CF251472D59F8FADEB3AB258E90999D8491BE19");
+        byte[] result = null;
+
+        sha.update(data);
+        result = sha.digest();
+        assertArrayEquals(expected, result);
+        sha.releaseNativeStruct();
+
+        /* test re-initializing object */
+        sha = new Sha();
+        result = null;
+        sha.update(data);
+        result = sha.digest();
+        sha.releaseNativeStruct();
+    }
+
+    @Test
+    public void reuseObject() {
+
+        Sha sha = new Sha();
+        byte[] data  = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] data2 = new byte[] { 0x05, 0x06, 0x07, 0x08, 0x09 };
+        byte[] expected = Util.h2b("1CF251472D59F8FADEB3AB258E90999D8491BE19");
+        byte[] expected2 = Util.h2b("BDB42CB7EB76E64EFE49B22369B404C67B0AF55A");
+        byte[] result = null;
+        byte[] result2 = null;
+
+        sha.update(data);
+        result = sha.digest();
+        assertArrayEquals(expected, result);
+
+        /* test reusing existing object after a call to digest() */
+        sha.update(data2);
+        result2 = sha.digest();
+        assertArrayEquals(expected2, result2);
+
+        sha.releaseNativeStruct();
+    }
 }
+
