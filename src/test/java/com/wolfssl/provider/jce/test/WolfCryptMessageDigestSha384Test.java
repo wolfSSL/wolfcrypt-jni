@@ -140,16 +140,6 @@ public class WolfCryptMessageDigestSha384Test {
             assertEquals(vectors[i].getOutput().length, output.length);
             assertArrayEquals(vectors[i].getOutput(), output);
         }
-
-        /*sha384.update(inputA.getBytes());
-        output = sha384.digest();
-        assertEquals(expectedA.length, output.length);
-        assertArrayEquals(expectedA, output);
-
-        sha384.update(inputB.getBytes());
-        output = sha384.digest();
-        assertEquals(expectedB.length, output.length);
-        assertArrayEquals(expectedB, output);*/
     }
 
     @Test

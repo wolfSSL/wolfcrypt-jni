@@ -260,12 +260,10 @@ public class WolfCryptCipher extends CipherSpi {
         switch (opmode) {
             case Cipher.ENCRYPT_MODE:
                 this.direction = OpMode.WC_ENCRYPT;
-
                 break;
 
             case Cipher.DECRYPT_MODE:
                 this.direction = OpMode.WC_DECRYPT;
-
                 break;
 
             default:
@@ -287,12 +285,14 @@ public class WolfCryptCipher extends CipherSpi {
         /* store IV, or generate random IV if not available */
         if (spec == null) {
             this.iv = new byte[this.blockSize];
+
             if (random != null) {
                 random.nextBytes(this.iv);
             } else {
                 SecureRandom rand = new SecureRandom();
                 rand.nextBytes(this.iv);
             }
+
         } else {
             if (!(spec instanceof IvParameterSpec)) {
                 throw new InvalidAlgorithmParameterException(
