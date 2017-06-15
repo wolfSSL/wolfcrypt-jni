@@ -111,7 +111,11 @@ public class WolfCryptMac extends MacSpi {
         byte[] out = this.hmac.doFinal();
 
         if (debug.DEBUG)
-            log("final digest generated, len: " + out.length);
+            if (out != null) {
+                log("final digest generated, len: " + out.length);
+            } else {
+                log("final digest was null");
+            }
 
         return out;
     }

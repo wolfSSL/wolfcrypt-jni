@@ -237,6 +237,10 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 }
 
                 tmp = this.dh.makeSharedSecret(this.dh);
+                if (tmp == null) {
+                    throw new RuntimeException("Error when creating DH " +
+                            "shared secret");
+                }
                 
                 if ((sharedSecret.length - offset) < tmp.length) {
                     zeroArray(tmp);
@@ -256,6 +260,10 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             case WC_ECDH:
 
                 tmp = this.ecPrivate.makeSharedSecret(this.ecPublic);
+                if (tmp == null) {
+                    throw new RuntimeException("Error when creating ECDH " +
+                            "shared secret");
+                }
 
                 if ((sharedSecret.length - offset) < tmp.length) {
                     zeroArray(tmp);

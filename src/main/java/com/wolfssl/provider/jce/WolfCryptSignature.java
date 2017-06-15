@@ -433,8 +433,13 @@ public class WolfCryptSignature extends SignatureSpi {
         rng.free();
         rng.releaseNativeStruct();
 
-        if (debug.DEBUG)
-            log("generated signature, len: " + signature.length);
+        if (debug.DEBUG) {
+            if (signature != null) {
+                log("generated signature, len: " + signature.length);
+            } else {
+                log("generated signature was null");
+            }
+        }
 
         return signature;
     }
@@ -560,9 +565,12 @@ public class WolfCryptSignature extends SignatureSpi {
                 break;
         }
 
-        if (debug.DEBUG)
-            log("finished verify of sig len: " + sigBytes.length +
-                ", verified: " + verified);
+        if (debug.DEBUG) {
+            if (sigBytes != null) {
+                log("finished verify of sig len: " + sigBytes.length +
+                    ", verified: " + verified);
+            }
+        }
 
         return verified;
     }
