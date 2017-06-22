@@ -4,78 +4,92 @@
          basedir="."
          xmlns:unless="ant:unless" >
 
-	<description>
-	    wolfCrypt JNI is a Java wrapper for the wolfCrypt lightweight crypto library.
+    <description>
+        wolfCrypt JNI is a Java wrapper for the wolfCrypt lightweight
+        crypto library. wolfJCE is a JCE provider that wraps the wolfCrypt
+        cryptography library.
 
-	    This build file requires JUnit for running provided JUnit tests. JUnit can
-	    be downloaded from: http:/www.junit.org/
+        This build file requires JUnit for running provided JUnit tests.
+        JUnit can be downloaded from: http:/www.junit.org/
 
-	    When running JUnit tests, this package will look for JUnit at:
-	    $JUNIT_HOME/junit.jar
+        When running JUnit tests, this package will look for JUnit at:
+        $JUNIT_HOME/junit.jar
     </description>
 
-	<!-- set properties for this build -->
+    <!-- set properties for this build -->
     <property name="src.dir" value="src/main/java/" />
-	<property name="jni.dir" value="jni/include/" />
-	<property name="lib.dir" value="lib/" />
-	<property name="build.dir" value="build" />
-	<property name="doc.dir" value="docs" />
+    <property name="jni.dir" value="jni/include/" />
+    <property name="lib.dir" value="lib/" />
+    <property name="build.dir" value="build" />
+    <property name="doc.dir" value="docs" />
     <property name="test.dir" value="src/test/java/" />
-	<property name="test.build.dir" value="build/test" />
-	<property name="reports.dir" value="build/reports" />
+    <property name="test.build.dir" value="build/test" />
+    <property name="reports.dir" value="build/reports" />
 
-	<property name="junit4" value="junit-4.12.jar" />
-	<property name="hamcrest-core" value="hamcrest-core-1.3.jar" />
-	<property name="ant-junit4" value="ant/ant-junit4.jar" />
+    <property name="junit4" value="junit-4.12.jar" />
+    <property name="hamcrest-core" value="hamcrest-core-1.3.jar" />
+    <property name="ant-junit4" value="ant/ant-junit4.jar" />
     <property name="jce.debug" value="false" />
 
-	<property environment="env" />
+    <property environment="env" />
 
-	<!-- classpath to compiled wolfcrypt-jni.jar, for running tests -->
-	<path id="classpath">
-		<fileset dir="${lib.dir}" includes="*.jar">
-			<include name="wolfcrypt-jni.jar" />
-		</fileset>
-		<fileset dir="${env.JUNIT_HOME}">
-			<include name="${junit4}" />
-		</fileset>
-	</path>
+    <!-- classpath to compiled wolfcrypt-jni.jar, for running tests -->
+    <path id="classpath">
+        <fileset dir="${lib.dir}" includes="*.jar">
+            <include name="wolfcrypt-jni.jar" />
+        </fileset>
+        <fileset dir="${env.JUNIT_HOME}">
+            <include name="${junit4}" />
+        </fileset>
+    </path>
 
-	<target name="clean">
-		<delete dir="${test.build.dir}" />
-		<delete dir="${build.dir}" />
-		<delete dir="${examples.build.dir}" />
-		<delete dir="${reports.dir}" />
-		<delete failonerror="false">
-			<fileset dir="${lib.dir}" includes="wolfcrypt-jni.jar" />
-		</delete>
-	</target>
+    <target name="clean">
+        <delete dir="${test.build.dir}" />
+        <delete dir="${build.dir}" />
+        <delete dir="${examples.build.dir}" />
+        <delete dir="${reports.dir}" />
+        <delete failonerror="false">
+            <fileset dir="${lib.dir}" includes="wolfcrypt-jni.jar" />
+        </delete>
+    </target>
 
-	<target name="default-javac-flags" description="Set the javac flags that will produce a debug jar
-            with no compiler optimisation and all debug symbols">
-		<property name="java.debug" value="true" />
-		<property name="java.debuglevel" value="source,lines,vars" />
-		<property name="java.deprecation" value="true" />
-		<property name="java.optimize" value="false" />
-		<property name="java.source" value="1.8" />
-		<property name="java.target" value="1.8" />
-	</target>
+    <target name="default-javac-flags"
+        description="Set the javac flags that will produce a debug jar
+                     with no compiler optimisation and all debug symbols">
+        <property name="java.debug" value="true" />
+        <property name="java.debuglevel" value="source,lines,vars" />
+        <property name="java.deprecation" value="true" />
+        <property name="java.optimize" value="false" />
+        <property name="java.source" value="1.8" />
+        <property name="java.target" value="1.8" />
+    </target>
 
-	<target name="init" depends="clean, default-javac-flags">
-		<mkdir dir="${build.dir}" />
-		<mkdir dir="${lib.dir}" />
-		<mkdir dir="${test.build.dir}" />
-		<mkdir dir="${reports.dir}" />
-	</target>
+    <target name="init" depends="clean, default-javac-flags">
+        <mkdir dir="${build.dir}" />
+        <mkdir dir="${lib.dir}" />
+        <mkdir dir="${test.build.dir}" />
+        <mkdir dir="${reports.dir}" />
+    </target>
 
-	<target name="compile" depends="init">
-		<javac srcdir="${src.dir}" destdir="${build.dir}" debug="${java.debug}" debuglevel="${java.debuglevel}" deprecation="${java.deprecation}" optimize="${java.optimize}" source="${java.source}" target="${java.target}" classpathref="classpath" includeantruntime="false">
-			<compilerarg value="-Xlint:-options" />
-		</javac>
-	</target>
+    <!-- compile all JNI and JCE source files -->
+    <target name="compile" depends="init">
+        <javac
+            srcdir="${src.dir}"
+            destdir="${build.dir}"
+            debug="${java.debug}"
+            debuglevel="${java.debuglevel}"
+            deprecation="${java.deprecation}"
+            optimize="${java.optimize}"
+            source="${java.source}"
+            target="${java.target}"
+            classpathref="classpath"
+            includeantruntime="false">
+            <compilerarg value="-Xlint:-options" />
+        </javac>
+    </target>
 
-	<target name="jar" depends="compile">
-		<jar jarfile="${lib.dir}/wolfcrypt-jni.jar" basedir="${build.dir}">
+    <target name="jar" depends="compile">
+        <jar jarfile="${lib.dir}/wolfcrypt-jni.jar" basedir="${build.dir}">
         </jar>
         <echo unless:set="sign.alias">WARNING: Skipping JAR signing, codeSigning.properties not found</echo>
     </target>
@@ -108,70 +122,54 @@
         </signjar>
     </target>
 
-	<target name="javah" depends="jar">
-		<javah destdir="${jni.dir}" force="yes" classpathref="classpath">
-			<class name="com.wolfssl.wolfcrypt.WolfCrypt" />
-			<class name="com.wolfssl.wolfcrypt.Fips" />
-			<class name="com.wolfssl.wolfcrypt.NativeStruct" />
-			<class name="com.wolfssl.wolfcrypt.Aes" />
-			<class name="com.wolfssl.wolfcrypt.Des3" />
-			<class name="com.wolfssl.wolfcrypt.Logging" />
-			<class name="com.wolfssl.wolfcrypt.Md5" />
-			<class name="com.wolfssl.wolfcrypt.Sha" />
-			<class name="com.wolfssl.wolfcrypt.Sha256" />
-			<class name="com.wolfssl.wolfcrypt.Sha384" />
-			<class name="com.wolfssl.wolfcrypt.Sha512" />
-			<class name="com.wolfssl.wolfcrypt.Hmac" />
-			<class name="com.wolfssl.wolfcrypt.Rng" />
-			<class name="com.wolfssl.wolfcrypt.Rsa" />
-			<class name="com.wolfssl.wolfcrypt.Dh" />
-			<class name="com.wolfssl.wolfcrypt.Ecc" />
-			<class name="com.wolfssl.wolfcrypt.WolfCryptError" />
-			<class name="com.wolfssl.wolfcrypt.Asn" />
-		</javah>
-	</target>
-
-	<target name="javadoc" description="generate documentation" depends="jar">
-		<javadoc sourcepath="${src.dir}" destdir="${doc.dir}" />
-	</target>
-
-	<target name="build-test" depends="jar, sign, sign-alt">
-		<javac srcdir="${test.dir}" destdir="${test.build.dir}" debug="${java.debug}" debuglevel="${java.debuglevel}" deprecation="${java.depreciation}" optimize="${java.optimize}" source="${java.source}" target="${java.target}" classpathref="classpath" includeantruntime="false">
-			<compilerarg value="-Xlint:-options" />
-		</javac>
-	</target>
-
-	<target name="test" depends="build-test">
-		<junit printsummary="yes" showoutput="yes" haltonfailure="yes" fork="true">
-			<classpath>
-                <pathelement location="${lib.dir}/wolfcrypt-jni.jar" />
-				<pathelement location="${test.build.dir}" />
-				<fileset dir="${env.JUNIT_HOME}">
-					<include name="${junit4}"/>
-					<include name="${hamcrest-core}"/>
-					<include name="${ant-junit4}"/>
-				</fileset>
-			</classpath>
-
-			<formatter type="plain" />
-			<formatter type="xml" />
-
-			<sysproperty key="sun.boot.library.path" value="$JAVA_HOME/bin:${lib.dir}" />
-            <sysproperty key="wolfjce.debug" value="${jce.debug}" />
-			<env key="LD_LIBRARY_PATH" path="$LD_LIBRARY_PATH:{lib.dir}:/usr/local/lib" />
-			<env key="CLASSPATH" path="$LD_LIBRARY_PATH:${env.JUNIT_HOME}/${junit4}" />
-
-			<batchtest fork="yes" todir="${reports.dir}">
-				<fileset dir="${test.dir}">
-					<include name="**/*TestSuite.java" />
-				</fileset>
-			</batchtest>
-
-		</junit>
+    <target name="javah" depends="jar">
+        <javah destdir="${jni.dir}" force="yes" classpathref="classpath">
+            <class name="com.wolfssl.wolfcrypt.WolfCrypt" />
+            <class name="com.wolfssl.wolfcrypt.Fips" />
+            <class name="com.wolfssl.wolfcrypt.NativeStruct" />
+            <class name="com.wolfssl.wolfcrypt.Aes" />
+            <class name="com.wolfssl.wolfcrypt.Des3" />
+            <class name="com.wolfssl.wolfcrypt.Logging" />
+            <class name="com.wolfssl.wolfcrypt.Md5" />
+            <class name="com.wolfssl.wolfcrypt.Sha" />
+            <class name="com.wolfssl.wolfcrypt.Sha256" />
+            <class name="com.wolfssl.wolfcrypt.Sha384" />
+            <class name="com.wolfssl.wolfcrypt.Sha512" />
+            <class name="com.wolfssl.wolfcrypt.Hmac" />
+            <class name="com.wolfssl.wolfcrypt.Rng" />
+            <class name="com.wolfssl.wolfcrypt.Rsa" />
+            <class name="com.wolfssl.wolfcrypt.Dh" />
+            <class name="com.wolfssl.wolfcrypt.Ecc" />
+            <class name="com.wolfssl.wolfcrypt.WolfCryptError" />
+            <class name="com.wolfssl.wolfcrypt.Asn" />
+        </javah>
     </target>
 
-    <target name="testonly">
-        <junit printsummary="yes" showoutput="yes" haltonfailure="yes" fork="true">
+    <target name="javadoc" description="generate documentation" depends="jar">
+        <javadoc sourcepath="${src.dir}" destdir="${doc.dir}" />
+    </target>
+
+    <target name="build-test" depends="jar, sign, sign-alt">
+        <javac
+            srcdir="${test.dir}"
+            destdir="${test.build.dir}"
+            debug="${java.debug}"
+            debuglevel="${java.debuglevel}"
+            deprecation="${java.depreciation}"
+            optimize="${java.optimize}"
+            source="${java.source}"
+            target="${java.target}"
+            classpathref="classpath"
+            includeantruntime="false">
+            <compilerarg value="-Xlint:-options" />
+        </javac>
+    </target>
+
+    <target name="test" depends="build-test">
+        <junit printsummary="yes"
+            showoutput="yes"
+            haltonfailure="yes"
+            fork="true">
             <classpath>
                 <pathelement location="${lib.dir}/wolfcrypt-jni.jar" />
                 <pathelement location="${test.build.dir}" />
@@ -199,6 +197,39 @@
         </junit>
     </target>
 
-	<target name="build" depends="jar, sign, sign-alt, javah, javadoc" />
+    <target name="testonly">
+        <junit printsummary="yes"
+            showoutput="yes"
+            haltonfailure="yes"
+            fork="true">
+            <classpath>
+                <pathelement location="${lib.dir}/wolfcrypt-jni.jar" />
+                <pathelement location="${test.build.dir}" />
+                <fileset dir="${env.JUNIT_HOME}">
+                    <include name="${junit4}"/>
+                    <include name="${hamcrest-core}"/>
+                    <include name="${ant-junit4}"/>
+                </fileset>
+            </classpath>
+
+            <formatter type="plain" />
+            <formatter type="xml" />
+
+            <sysproperty key="sun.boot.library.path" value="$JAVA_HOME/bin:${lib.dir}" />
+            <sysproperty key="wolfjce.debug" value="${jce.debug}" />
+            <env key="LD_LIBRARY_PATH" path="$LD_LIBRARY_PATH:{lib.dir}:/usr/local/lib" />
+            <env key="CLASSPATH" path="$LD_LIBRARY_PATH:${env.JUNIT_HOME}/${junit4}" />
+
+            <batchtest fork="yes" todir="${reports.dir}">
+                <fileset dir="${test.dir}">
+                    <include name="**/*TestSuite.java" />
+                </fileset>
+            </batchtest>
+
+        </junit>
+    </target>
+
+    <target name="build" depends="jar, sign, sign-alt, javah, javadoc" />
 
 </project>
+
