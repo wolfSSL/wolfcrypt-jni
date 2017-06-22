@@ -31,6 +31,9 @@
     <property name="ant-junit4" value="ant/ant-junit4.jar" />
     <property name="jce.debug" value="false" />
 
+    <!-- property file for code signing -->
+    <property file="codeSigning.properties" />
+
     <property environment="env" />
 
     <!-- classpath to compiled wolfcrypt-jni.jar, for running tests -->
@@ -53,9 +56,8 @@
         </delete>
     </target>
 
-    <target name="default-javac-flags"
-        description="Set the javac flags that will produce a debug jar
-                     with no compiler optimisation and all debug symbols">
+    <!-- set javac flags: debug jar, no optimization, all debug symbols -->
+    <target name="default-javac-flags">
         <property name="java.debug" value="true" />
         <property name="java.debuglevel" value="source,lines,vars" />
         <property name="java.deprecation" value="true" />
@@ -88,15 +90,24 @@
         </javac>
     </target>
 
-    <target name="jar" depends="compile">
+    <!-- create JAR with ONLY JNI classes, not to be used with JCE -->
+    <target name="jar-jni" depends="compile">
+        <jar jarfile="${lib.dir}/wolfcrypt-jni.jar">
+            <fileset dir="${build.dir}">
+                <include name="com/wolfssl/wolfcrypt/*.class"/>
+            </fileset>
+        </jar>
+    </target>
+
+    <!-- create JAR with JNI and JCE classes, use this when wanting JCE -->
+    <target name="jar-jce" depends="compile">
         <jar jarfile="${lib.dir}/wolfcrypt-jni.jar" basedir="${build.dir}">
         </jar>
         <echo unless:set="sign.alias">WARNING: Skipping JAR signing, codeSigning.properties not found</echo>
     </target>
 
-    <property file="codeSigning.properties" />
     <!-- sign jar, necessary for Oracle JDK -->
-    <target name="sign" if="sign.alias" depends="jar">
+    <target name="sign" if="sign.alias" depends="jar-jce">
         <echo>Signing JAR with PRIMARY signature</echo>
         <signjar
             alias="${sign.alias}"
@@ -108,8 +119,9 @@
             </path>
         </signjar>
     </target>
+
     <!-- allow 2nd alternate signature, for legacy JCE deployments -->
-    <target name="sign-alt" if="sign.alias2" depends="jar">
+    <target name="sign-alt" if="sign.alias2" depends="jar-jce">
         <echo>Signing JAR with SECONDARY signature</echo>
         <signjar
             alias="${sign.alias2}"
@@ -122,7 +134,15 @@
         </signjar>
     </target>
 
-    <target name="javah" depends="jar">
+    <!-- detect if JNI class files have been compiled yet, set property -->
+    <target name="jni-class-detect">
+        <available file="${build.dir}/com/wolfssl/wolfcrypt/WolfCrypt.class"
+                   property="jni.classes.present"/>
+    </target>
+
+    <!-- NOTE: depends on either jar-jni or jar-jce targets -->
+    <target name="javah" if="jni.classes.present" depends="jni-class-detect"
+        description="Generate javah headers">
         <javah destdir="${jni.dir}" force="yes" classpathref="classpath">
             <class name="com.wolfssl.wolfcrypt.WolfCrypt" />
             <class name="com.wolfssl.wolfcrypt.Fips" />
@@ -145,11 +165,13 @@
         </javah>
     </target>
 
-    <target name="javadoc" description="generate documentation" depends="jar">
+    <target name="javadoc" description="Generate Javadocs">
         <javadoc sourcepath="${src.dir}" destdir="${doc.dir}" />
     </target>
 
-    <target name="build-test" depends="jar, sign, sign-alt">
+    <!-- compile JNI/JCE test classes, depending on how 'ant build' was run -->
+    <target name="build-test" depends="default-javac-flags">
+
         <javac
             srcdir="${test.dir}"
             destdir="${test.build.dir}"
@@ -161,11 +183,32 @@
             target="${java.target}"
             classpathref="classpath"
             includeantruntime="false">
+            <exclude name="com/wolfssl/provider/jce/test/**" unless="jar.includes.jce"/>
             <compilerarg value="-Xlint:-options" />
         </javac>
+
     </target>
 
-    <target name="test" depends="build-test">
+    <target name="test" description="Compile and run JUnit tests">
+
+        <!-- detect if compiled JAR includes JCE or not -->
+        <whichresource property="jar.includes.jce"
+            class="com.wolfssl.provider.jce.WolfCryptProvider">
+            <classpath>
+                <path>
+                    <fileset dir="${lib.dir}" includes="*.jar">
+                        <include name="wolfcrypt-jni.jar" />
+                    </fileset>
+                </path>
+            </classpath>
+        </whichresource>
+
+        <!-- build classes of JUnit tests, if needed -->
+        <antcall target="build-test"/>
+
+        <echo unless:set="jar.includes.jce">NOTE: JCE classes not detected, only running JUnit tests for JNI</echo>
+
+        <!-- run JUnit tests -->
         <junit printsummary="yes"
             showoutput="yes"
             haltonfailure="yes"
@@ -190,46 +233,35 @@
 
             <batchtest fork="yes" todir="${reports.dir}">
                 <fileset dir="${test.dir}">
-                    <include name="**/*TestSuite.java" />
+                    <!--<include name="**/*TestSuite.java" />-->
+                    <include name="com/wolfssl/wolfcrypt/test/*TestSuite.java" />
+                    <include if="jar.includes.jce" name="com/wolfssl/provider/jce/test/*TestSuite.java" />
                 </fileset>
             </batchtest>
 
         </junit>
     </target>
 
-    <target name="testonly">
-        <junit printsummary="yes"
-            showoutput="yes"
-            haltonfailure="yes"
-            fork="true">
-            <classpath>
-                <pathelement location="${lib.dir}/wolfcrypt-jni.jar" />
-                <pathelement location="${test.build.dir}" />
-                <fileset dir="${env.JUNIT_HOME}">
-                    <include name="${junit4}"/>
-                    <include name="${hamcrest-core}"/>
-                    <include name="${ant-junit4}"/>
-                </fileset>
-            </classpath>
-
-            <formatter type="plain" />
-            <formatter type="xml" />
-
-            <sysproperty key="sun.boot.library.path" value="$JAVA_HOME/bin:${lib.dir}" />
-            <sysproperty key="wolfjce.debug" value="${jce.debug}" />
-            <env key="LD_LIBRARY_PATH" path="$LD_LIBRARY_PATH:{lib.dir}:/usr/local/lib" />
-            <env key="CLASSPATH" path="$LD_LIBRARY_PATH:${env.JUNIT_HOME}/${junit4}" />
-
-            <batchtest fork="yes" todir="${reports.dir}">
-                <fileset dir="${test.dir}">
-                    <include name="**/*TestSuite.java" />
-                </fileset>
-            </batchtest>
-
-        </junit>
+    <!--<target name="build" depends="jar-jce, sign, sign-alt, javah, javadoc"-->
+    <target name="build" description="Choice to build JNI or JCE">
+        <echo>wolfCrypt JNI and JCE</echo>
+        <echo>----------------------------------------------------------</echo>
+        <echo>USAGE:</echo>
+        <echo>Run one of the following targets with ant:</echo>
+        <echo>    build-jni - builds JAR with only wolfCrypt JNI classes</echo>
+        <echo>    build-jce - builds JAR with JNI and JCE classes</echo>
+        <echo>----------------------------------------------------------</echo>
     </target>
 
-    <target name="build" depends="jar, sign, sign-alt, javah, javadoc" />
+    <target name="build-jni" depends="jar-jni, javah, javadoc"
+        description="Build library JAR (JNI classes ONLY)">
+        <property name="env.WCJNIBUILDTYPE" value="JNI"/>
+    </target>
+
+    <target name="build-jce" depends="jar-jce, sign, sign-alt, javah, javadoc"
+        description="Build library JAR (JNI + JCE classes)">
+        <property name="env.WCJNIBUILDTYPE" value="JCE"/>
+    </target>
 
 </project>
 
