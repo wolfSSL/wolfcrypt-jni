@@ -57,16 +57,26 @@
     </target>
 
     <!-- set javac flags: debug jar, no optimization, all debug symbols -->
-    <target name="default-javac-flags">
+    <target name="debug-javac-flags" if="jni.build.type.debug">
         <property name="java.debug" value="true" />
         <property name="java.debuglevel" value="source,lines,vars" />
         <property name="java.deprecation" value="true" />
-        <property name="java.optimize" value="false" />
+        <property name="java.optimize" value="true" />
         <property name="java.source" value="1.8" />
         <property name="java.target" value="1.8" />
     </target>
 
-    <target name="init" depends="clean, default-javac-flags">
+    <!-- set javac flags: release, no debug, optimize -->
+    <target name="release-javac-flags" if="jni.build.type.release">
+        <property name="java.debug" value="false" />
+        <property name="java.debuglevel" value="none" />
+        <property name="java.deprecation" value="true" />
+        <property name="java.optimize" value="true" />
+        <property name="java.source" value="1.8" />
+        <property name="java.target" value="1.8" />
+    </target>
+
+    <target name="init" depends="clean, debug-javac-flags, release-javac-flags">
         <mkdir dir="${build.dir}" />
         <mkdir dir="${lib.dir}" />
         <mkdir dir="${test.build.dir}" />
@@ -170,7 +180,7 @@
     </target>
 
     <!-- compile JNI/JCE test classes, depending on how 'ant build' was run -->
-    <target name="build-test" depends="default-javac-flags">
+    <target name="build-test" depends="set-build-debug, debug-javac-flags">
 
         <javac
             srcdir="${test.dir}"
@@ -250,22 +260,41 @@
     <!--<target name="build" depends="jar-jce, sign, sign-alt, javah, javadoc"-->
     <target name="build" description="Choice to build JNI or JCE">
         <echo>wolfCrypt JNI and JCE</echo>
-        <echo>----------------------------------------------------------</echo>
+        <echo>----------------------------------------------------------------------------</echo>
         <echo>USAGE:</echo>
         <echo>Run one of the following targets with ant:</echo>
-        <echo>    build-jni - builds JAR with only wolfCrypt JNI classes</echo>
-        <echo>    build-jce - builds JAR with JNI and JCE classes</echo>
-        <echo>----------------------------------------------------------</echo>
+        <echo>    build-jni-debug    |  builds debug JAR with only wolfCrypt JNI classes</echo>
+        <echo>    build-jni-release  |  builds release JAR with only wolfCrypt JNI classes</echo>
+        <echo>    build-jce-debug    |  builds debug JAR with JNI and JCE classes</echo>
+        <echo>    build-jce-release  |  builds release JAR with JNI and JCE classes</echo>
+        <echo>----------------------------------------------------------------------------</echo>
+        <fail message="Please see usage instructions above."/>
     </target>
 
-    <target name="build-jni" depends="jar-jni, javah, javadoc"
+    <!-- set property to indicate DEBUG/RELEASE build -->
+    <target name="set-build-debug">
+        <property name="jni.build.type.debug" value="TRUE"/>
+    </target>
+
+    <target name="set-build-release">
+        <property name="jni.build.type.release" value="TRUE"/>
+    </target>
+
+    <!-- main build targets -->
+    <target name="build-jni-debug" depends="set-build-debug, jar-jni, javah, javadoc"
         description="Build library JAR (JNI classes ONLY)">
-        <property name="env.WCJNIBUILDTYPE" value="JNI"/>
     </target>
 
-    <target name="build-jce" depends="jar-jce, sign, sign-alt, javah, javadoc"
+    <target name="build-jni-release" depends="set-build-release, jar-jni, javah, javadoc"
+        description="Build library JAR (JNI classes ONLY)">
+    </target>
+
+    <target name="build-jce-debug" depends="set-build-debug, jar-jce, sign, sign-alt, javah, javadoc"
         description="Build library JAR (JNI + JCE classes)">
-        <property name="env.WCJNIBUILDTYPE" value="JCE"/>
+    </target>
+
+    <target name="build-jce-release" depends="set-build-release, jar-jce, sign, sign-alt, javah, javadoc"
+        description="Build library JAR (JNI + JCE classes)">
     </target>
 
 </project>
