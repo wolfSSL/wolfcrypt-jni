@@ -203,6 +203,11 @@
             </classpath>
         </whichresource>
 
+        <!-- delete and re-create test build directory -->
+        <delete dir="${test.build.dir}" />
+        <mkdir dir="${test.build.dir}" />
+        <mkdir dir="${reports.dir}" />
+
         <!-- build classes of JUnit tests, if needed -->
         <antcall target="build-test"/>
 
