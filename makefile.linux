@@ -20,6 +20,7 @@ $(TARGET): $(OBJS)
 	$(CC) $(CCFLAGS) $(LDFLAGS) -o $@ $^
 
 $(OUT_PATH)/%.o: $(SRC_PATH)/%.c
+	@mkdir -p $(OUT_PATH)
 	$(CC) $(CCFLAGS) -c -o $@ $<
 
 .PHONY: clean
