@@ -2,14 +2,35 @@
 ## wolfCrypt JNI
 
 This package provides a Java, JNI-based interface to the native wolfCrypt
-FIPS API.
+(and wolfCrypt FIPS API, if using with a FIPS version of wolfCrypt). It also
+includes a JCE provider for wolfCrypt.
+
+For instructions and notes on the JNI wrapper, please referene this README,
+or online documentation.
+
+For instructinos and notes on the JCE provider, please reference the
+README_JCE file, or online instructions.
 
 ### Compiling
 ---------
 
-To compile the wolfcrypt-jni wrapper:
+To compile the wolfCrypt JNI wrapper:
 
-1) Compile and install a wolfSSL FIPS release (wolfssl-x.x.x-commercial-fips):
+1) Compile and install a wolfSSL (wolfssl-x.x.x) or wolfSSL FIPS
+release (wolfssl-x.x.x-commercial-fips):
+
+In either case, you will need the "--enable-keygen" ./configure option.
+
+wolfSSL Standard Build:
+```
+$ cd wolfssl-x.x.x
+$ ./configure --enable-keygen
+$ make check
+$ sudo make install
+```
+
+wolfSSL FIPS Build:
+
 ```
 $ cd wolfssl-x.x.x-commercial-fips
 $ ./configure --enable-fips --enable-keygen
@@ -18,6 +39,7 @@ $ sudo make install
 ```
 
 2) Compile the native wolfCrypt JNI object files:
+
 ```
 $ cd wolfcrypt-jni
 $ make
@@ -25,9 +47,10 @@ $ make
 
 3) Compile the wolfCrypt JNI Java sources files, from the wolfcrypt-jni
    directory:
+
 ```
-$ ant
-$ ant test
+$ ant (shows possible build targets)
+$ ant <build-jni-debug|build-jni-release|build-jce-debug|build-jce-release>
 ```
 
 In order for the JUnit tests to be run correctly when executing "ant test",
@@ -45,6 +68,12 @@ b) Place these JAR files on your system and set JUNIT_HOME to point to
    that location:
 
     $ export JUNIT_HOME=/path/to/jar/files
+
+The JUnit tests can then be run with:
+
+```
+$ ant test
+```
 
 ### API Javadocs
 ---------
@@ -80,4 +109,8 @@ sign.keystore=<path to signing keystore>
 sign.storepass=<keystore password>
 sign.tsaurl=<timestamp server url>
 ```
+
+Signing the JAR is important especially if using the JCE Provider with a JDK
+that requires JCE provider JAR's to be authenticated.  Please see
+README_JCE for more details.
 
