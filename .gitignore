@@ -1,0 +1,11 @@
+
+# Build directories
+build/
+lib/
+
+# Generated Javadocs
+docs/
+
+# Code signing key/alias info file
+codeSigning.properties
+
