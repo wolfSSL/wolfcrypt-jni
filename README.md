@@ -114,3 +114,42 @@ Signing the JAR is important especially if using the JCE Provider with a JDK
 that requires JCE provider JAR's to be authenticated.  Please see
 README_JCE for more details.
 
+### Revision History
+---------
+
+********* wolfCrypt JNI Release 1.0.0 (7/10/2017)
+
+Release 1.0.0 of wolfCrypt JNI has bug fixes and new features including:
+
+- Bug fixes to JCE classes: Cipher, KeyAgreement (DH), Signature
+- JCE debug logging with wolfjce.debug system property
+- Additional unit tests for JCE provider
+- Conditional ant build for JNI and/or JCE
+- New ant targets with choice of debug or release builds
+
+********* wolfCrypt JNI Release 0.3 BETA
+
+Release 0.3 BETA of wolfCrypt JNI includes:
+
+- Support for ECC and DH key generation
+- Bug fixes regarding key import/export
+- Better argument sanitization at JNI level
+
+********* wolfCrypt JNI Release 0.2 BETA
+
+Release 0.2 BETA of wolfCrypt JNI includes:
+
+- Support for Android
+- Support for Oracle JDK/JVM
+- Support for code signing wolfcrypt-jni.jar file
+- Compatibility with non-FIPS wolfSSL and wolfCrypt builds
+- Bug fixes regarding releasing native resources
+- Test package changed to (com.wolfssl.provider.jce.test)
+
+********* wolfCrypt JNI Release 0.1 BETA
+
+Release 0.1 BETA of wolfCrypt JNI includes:
+
+- Initial JCE package
+- Support for OpenJDK
+

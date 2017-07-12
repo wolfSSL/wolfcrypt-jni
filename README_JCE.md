@@ -115,26 +115,3 @@ Please email support@wolfssl.com with any questions or feedback.
 The wolfJCE User Manual (PDF), available from the wolfSSL website contains
 additional details on using the wolfCrypt JCE provider.
 
-### Revision History
----------
-
-0.1 BETA
-
-- Initial JCE package
-- Support for OpenJDK
-
-0.2 BETA
-
-- Support for Android
-- Support for Oracle JDK/JVM
-- Support for code signing wolfcrypt-jni.jar file
-- Compatibility with non-FIPS wolfSSL and wolfCrypt builds
-- Bug fixes regarding releasing native resources
-- Test package changed to (com.wolfssl.provider.jce.test)
-
-0.3 BETA
-
-- Support for ECC and DH key generation
-- Bug fixes regarding key import/export
-- Better argument sanitization at JNI level
-

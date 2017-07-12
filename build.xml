@@ -16,6 +16,11 @@
         $JUNIT_HOME/junit.jar
     </description>
 
+    <!-- versioning/manifest properties -->
+    <property name="implementation.vendor"  value="wolfSSL Inc." />
+    <property name="implementation.title"   value="wolfCrypt JNI" />
+    <property name="implementation.version" value="1.0" />
+
     <!-- set properties for this build -->
     <property name="src.dir" value="src/main/java/" />
     <property name="jni.dir" value="jni/include/" />
@@ -103,6 +108,14 @@
     <!-- create JAR with ONLY JNI classes, not to be used with JCE -->
     <target name="jar-jni" depends="compile">
         <jar jarfile="${lib.dir}/wolfcrypt-jni.jar">
+            <manifest>
+                <attribute name="Implementation-Title"
+                           value="${implementation.title}" />
+                <attribute name="Implementation-Version"
+                           value="${implementation.version}" />
+                <attribute name="Implementation-Vendor"
+                           value="${implementation.vendor}" />
+            </manifest>
             <fileset dir="${build.dir}">
                 <include name="com/wolfssl/wolfcrypt/*.class"/>
             </fileset>
@@ -112,6 +125,14 @@
     <!-- create JAR with JNI and JCE classes, use this when wanting JCE -->
     <target name="jar-jce" depends="compile">
         <jar jarfile="${lib.dir}/wolfcrypt-jni.jar" basedir="${build.dir}">
+            <manifest>
+                <attribute name="Implementation-Title"
+                           value="${implementation.title}" />
+                <attribute name="Implementation-Version"
+                           value="${implementation.version}" />
+                <attribute name="Implementation-Vendor"
+                           value="${implementation.vendor}" />
+            </manifest>
         </jar>
         <echo unless:set="sign.alias">WARNING: Skipping JAR signing, codeSigning.properties not found</echo>
     </target>
