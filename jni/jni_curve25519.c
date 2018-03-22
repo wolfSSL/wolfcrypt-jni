@@ -178,6 +178,83 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
 #endif
 }
 
+    JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1import_1private_1only
+  (JNIEnv* env, jobject this, jbyteArray priv_object)
+{
+#if defined(HAVE_CURVE25519) && defined(HAVE_CURVE25519_KEY_IMPORT)
+    int ret = 0;
+    word32 idx = 0;
+    curve25519_key* curve25519 = NULL;
+    byte* priv   = NULL;
+    word32 privSz = 0;
+
+    curve25519 = (curve25519_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+    priv   = getByteArray(env, priv_object);
+    privSz = getByteArrayLength(env, priv_object);
+
+    /* pub may be null if only importing private key */
+    if (!curve25519 || !priv) {
+        ret = BAD_FUNC_ARG;
+    } else {
+        /* detect, and later skip, leading zero byte */
+        if (priv[0] == 0)
+            idx = 1;
+        ret = wc_curve25519_import_private(priv + idx, privSz - idx, curve25519);
+    }
+
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_curve25519_import_private_key(curve25519=%p) = %d\n", curve25519, ret);
+
+    releaseByteArray(env, priv_object, priv, JNI_ABORT);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+    
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1import_1public
+  (JNIEnv* env, jobject this, jbyteArray pub_object)
+{
+#if defined(HAVE_CURVE25519) && defined(HAVE_CURVE25519_KEY_IMPORT)
+    int ret = 0;
+    word32 idx = 0;
+    curve25519_key* curve25519 = NULL;
+    byte* pub   = NULL;
+    word32 pubSz = 0;
+
+    curve25519 = (curve25519_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+    pub   = getByteArray(env, pub_object);
+    pubSz = getByteArrayLength(env, pub_object);
+
+    if (!curve25519 || !pub) {
+        ret = BAD_FUNC_ARG;
+    } else {
+        /* detect, and later skip, leading zero byte */
+        if (pub[0] == 0)
+            idx = 1;
+        ret = wc_curve25519_import_public(pub + idx, pubSz - idx, curve25519);
+    }
+
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_curve25519_import_public(curve25519=%p) = %d\n", curve25519, ret);
+
+    releaseByteArray(env, pub_object, pub, JNI_ABORT);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 JNIEXPORT jbyteArray JNICALL
 Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1private(
     JNIEnv* env, jobject this)
@@ -221,7 +298,7 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1private(
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    LogStr("wc_curve25519_export_x963(curve25519, output=%p, outputSz) = %d\n", output, ret);
+    LogStr("wc_curve25519_export_private(curve25519, output=%p, outputSz) = %d\n", output, ret);
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
@@ -233,12 +310,60 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1private(
     return result;
 }
 
+JNIEXPORT jbyteArray JNICALL
+Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1public (
+    JNIEnv* env, jobject this)
+{
+    jbyteArray result = NULL;
 
+#ifdef HAVE_CURVE25519_KEY_EXPORT
+    int ret = 0;
+    curve25519_key* curve25519 = NULL;
+    byte* output = NULL;
+    word32 outputSz = 0;
 
+    curve25519 = (curve25519_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
 
+    outputSz = wc_curve25519_size(curve25519);
 
+    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (output == NULL) {
+        throwOutOfMemoryException(env, "Failed to allocate key buffer");
+        return result;
+    }
 
+    ret = (!curve25519)
+        ? BAD_FUNC_ARG
+        : wc_curve25519_export_public(curve25519, output, &outputSz);
 
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, outputSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                                                         (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env, "Failed to allocate key");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_curve25519_export_public(curve25519, output=%p, outputSz) = %d\n", output, ret);
+    LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
+    LogHex((byte*) output, 0, outputSz);
+
+    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
 
 JNIEXPORT jbyteArray JNICALL
 Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1shared_1secret(

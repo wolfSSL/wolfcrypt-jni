@@ -61,9 +61,14 @@ public class Curve25519 extends NativeStruct {
 
 	private native byte[] wc_curve25519_shared_secret(Curve25519 pubKey);
 
-	private native void wc_curve25519_import_private(byte[] privKey, byte[] x963Key);
+	private native void wc_curve25519_import_private(byte[] privKey, byte[] key);
+	private native void wc_curve25519_import_private_only(byte[] privKey);
+	private native void wc_curve25519_import_public(byte[] pubKey);
+
 
 	private native byte[] wc_curve25519_export_private();
+	private native byte[] wc_curve25519_export_public();
+
 
 	protected void init() {
 		if (state == WolfCryptState.UNINITIALIZED) {
@@ -105,13 +110,31 @@ public class Curve25519 extends NativeStruct {
 			wc_curve25519_check_key();
 		} else {
 			throw new IllegalStateException(
-					"No available key to perform the opperation.");
+					"No available key to perform the operation.");
 		}
 	}
 
-	public void importPrivate(byte[] privKey, byte[] x963Key) {
+	public void importPrivate(byte[] privKey, byte[] xKey) {
 		if (state == WolfCryptState.INITIALIZED) {
-			wc_curve25519_import_private(privKey, x963Key);
+			wc_curve25519_import_private(privKey, xKey);
+			state = WolfCryptState.READY;
+		} else {
+			throw new IllegalStateException("Object already has a key.");
+		}
+	}
+	
+    public void importPrivateOnly(byte[] privKey) {
+		if (state == WolfCryptState.INITIALIZED) {
+			wc_curve25519_import_private_only(privKey);
+			state = WolfCryptState.READY;
+		} else {
+			throw new IllegalStateException("Object already has a key.");
+		}
+	}
+	
+    public void importPublic(byte[] pubKey) {
+		if (state == WolfCryptState.INITIALIZED) {
+			wc_curve25519_import_public(pubKey);
 			state = WolfCryptState.READY;
 		} else {
 			throw new IllegalStateException("Object already has a key.");
@@ -123,7 +146,16 @@ public class Curve25519 extends NativeStruct {
 			return wc_curve25519_export_private();
 		} else {
 			throw new IllegalStateException(
-					"No available key to perform the opperation.");
+					"No available key to perform the operation.");
+		}
+	}
+	
+    public byte[] exportPublic() {
+		if (state == WolfCryptState.READY) {
+			return wc_curve25519_export_private();
+		} else {
+			throw new IllegalStateException(
+					"No available key to perform the operation.");
 		}
 	}
 
@@ -132,7 +164,7 @@ public class Curve25519 extends NativeStruct {
 			return wc_curve25519_shared_secret(pubKey);
 		} else {
 			throw new IllegalStateException(
-					"No available key to perform the opperation.");
+					"No available key to perform the operation.");
 		}
 	}
 

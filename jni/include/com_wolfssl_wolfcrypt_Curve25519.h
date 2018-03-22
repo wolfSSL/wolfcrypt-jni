@@ -75,10 +75,34 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Curve25519
+ * Method:    wc_curve25519_import_private_only
+ * Signature: ([B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1import_1private_1only
+  (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Curve25519
+ * Method:    wc_curve25519_import_public
+ * Signature: ([B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1import_1public
+  (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Curve25519
  * Method:    wc_curve25519_export_private
  * Signature: ()[B
  */
 JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1private
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Curve25519
+ * Method:    wc_curve25519_export_public
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1public
   (JNIEnv *, jobject);
 
 #ifdef __cplusplus
