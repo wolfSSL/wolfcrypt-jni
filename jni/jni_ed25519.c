@@ -187,7 +187,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1p
         /* detect, and later skip, leading zero byte */
         if (priv[0] == 0)
             idx = 1;
-        ret = wc_ed25519_import_private_key(priv + idx, privSz - idx, pub,
+        if (!pub)
+            ret = wc_ed25519_import_private_only(priv + idx, privSz - idx, ed25519);
+        else
+            ret = wc_ed25519_import_private_key(priv + idx, privSz - idx, pub,
                 pubSz, ed25519);
     }
 
@@ -203,8 +206,102 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1p
 #endif
 }
 
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1private_1only
+  (JNIEnv* env, jobject this, jbyteArray priv_object)
+{
+#if defined(HAVE_ED25519) && defined(HAVE_ED25519_KEY_IMPORT)
+    int ret = 0;
+    word32 idx = 0;
+    ed25519_key* ed25519 = NULL;
+    byte* priv   = NULL;
+    word32 privSz = 0;
+
+    ed25519 = (ed25519_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+    priv   = getByteArray(env, priv_object);
+    privSz = getByteArrayLength(env, priv_object);
+
+    /* pub may be null if only importing private key */
+    if (!ed25519 || !priv) {
+        ret = BAD_FUNC_ARG;
+    } else {
+        /* detect, and later skip, leading zero byte */
+        if (priv[0] == 0)
+            idx = 1;
+        ret = wc_ed25519_import_private_only(priv + idx, privSz - idx, ed25519);
+    }
+
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_ed25519_import_private_key(ed25519=%p) = %d\n", ed25519, ret);
+
+    releaseByteArray(env, priv_object, priv, JNI_ABORT);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 JNIEXPORT jbyteArray JNICALL
 Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private(
+    JNIEnv* env, jobject this)
+{
+    jbyteArray result = NULL;
+
+#ifdef HAVE_ED25519_KEY_EXPORT
+    int ret = 0;
+    ed25519_key* ed25519 = NULL;
+    byte* output = NULL;
+    word32 outputSz = 0;
+
+    ed25519 = (ed25519_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    outputSz = 2 * wc_ed25519_priv_size(ed25519); /* Export private + public */
+
+    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (output == NULL) {
+        throwOutOfMemoryException(env, "Failed to allocate key buffer");
+        return result;
+    }
+
+    ret = (!ed25519)
+        ? BAD_FUNC_ARG
+        : wc_ed25519_export_private(ed25519, output, &outputSz);
+
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, outputSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                                                         (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env, "Failed to allocate key");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_ed25519_export_x963(ed25519, output=%p, outputSz) = %d\n", output, ret);
+    LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
+    LogHex((byte*) output, 0, outputSz);
+
+    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private_1only(
     JNIEnv* env, jobject this)
 {
     jbyteArray result = NULL;
@@ -232,6 +329,61 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private(
     ret = (!ed25519)
         ? BAD_FUNC_ARG
         : wc_ed25519_export_private_only(ed25519, output, &outputSz);
+
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, outputSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                                                         (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env, "Failed to allocate key");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_ed25519_export_x963(ed25519, output=%p, outputSz) = %d\n", output, ret);
+    LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
+    LogHex((byte*) output, 0, outputSz);
+
+    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1public(
+    JNIEnv* env, jobject this)
+{
+    jbyteArray result = NULL;
+
+#ifdef HAVE_ED25519_KEY_EXPORT
+    int ret = 0;
+    ed25519_key* ed25519 = NULL;
+    byte* output = NULL;
+    word32 outputSz = 0;
+
+    ed25519 = (ed25519_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    outputSz = wc_ed25519_size(ed25519);
+
+    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (output == NULL) {
+        throwOutOfMemoryException(env, "Failed to allocate key buffer");
+        return result;
+    }
+
+    ret = (!ed25519)
+        ? BAD_FUNC_ARG
+        : wc_ed25519_export_public(ed25519, output, &outputSz);
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);

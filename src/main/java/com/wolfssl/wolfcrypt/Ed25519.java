@@ -55,11 +55,15 @@ public class Ed25519 extends NativeStruct {
 	private native void wc_ed25519_check_key();
 
 	private native void wc_ed25519_import_private(byte[] privKey, byte[] key);
-	
+	private native void wc_ed25519_import_private_only(byte[] privKey);
+	private native void wc_ed25519_import_public(byte[] privKey);
+
     private native byte[] wc_ed25519_sign_msg(byte[] msg);
 	private native boolean wc_ed25519_verify_msg(byte[] sig, byte[] msg);
 
 	private native byte[] wc_ed25519_export_private();
+	private native byte[] wc_ed25519_export_private_only();
+	private native byte[] wc_ed25519_export_public();
 
 	protected void init() {
 		if (state == WolfCryptState.UNINITIALIZED) {
@@ -92,11 +96,29 @@ public class Ed25519 extends NativeStruct {
 			wc_ed25519_check_key();
 		} else {
 			throw new IllegalStateException(
-					"No available key to perform the opperation.");
+					"No available key to perform the operation.");
 		}
 	}
 
 	public void importPrivate(byte[] privKey, byte[] Key) {
+		if (state == WolfCryptState.INITIALIZED) {
+			wc_ed25519_import_private(privKey, Key);
+			state = WolfCryptState.READY;
+		} else {
+			throw new IllegalStateException("Object already has a key.");
+		}
+	}
+
+    public void importPrivateOnly(byte[] privKey) {
+		if (state == WolfCryptState.INITIALIZED) {
+			wc_ed25519_import_private_only(privKey);
+			state = WolfCryptState.READY;
+		} else {
+			throw new IllegalStateException("Object already has a key.");
+		}
+	}
+
+    public void importPublic(byte[] privKey, byte[] Key) {
 		if (state == WolfCryptState.INITIALIZED) {
 			wc_ed25519_import_private(privKey, Key);
 			state = WolfCryptState.READY;
@@ -110,7 +132,25 @@ public class Ed25519 extends NativeStruct {
 			return wc_ed25519_export_private();
 		} else {
 			throw new IllegalStateException(
-					"No available key to perform the opperation.");
+					"No available key to perform the operation.");
+		}
+	}
+
+    public byte[] exportPrivateOnly() {
+		if (state == WolfCryptState.READY) {
+			return wc_ed25519_export_private_only();
+		} else {
+			throw new IllegalStateException(
+					"No available key to perform the operation.");
+		}
+	}
+
+    public byte[] exportPublic() {
+		if (state == WolfCryptState.READY) {
+			return wc_ed25519_export_public();
+		} else {
+			throw new IllegalStateException(
+					"No available key to perform the operation.");
 		}
 	}
 
@@ -121,7 +161,7 @@ public class Ed25519 extends NativeStruct {
 			msg_out = wc_ed25519_sign_msg(msg_in);
 		} else {
 			throw new IllegalStateException(
-					"No available key to perform the opperation.");
+					"No available key to perform the operation.");
 		}
 
 		return msg_out;
@@ -134,7 +174,7 @@ public class Ed25519 extends NativeStruct {
 			result = wc_ed25519_verify_msg(signature, msg);
 		} else {
 			throw new IllegalStateException(
-					"No available key to perform the opperation.");
+					"No available key to perform the operation.");
 		}
 
 		return result;
