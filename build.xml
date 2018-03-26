@@ -193,6 +193,7 @@
             <class name="com.wolfssl.wolfcrypt.Ecc" />
             <class name="com.wolfssl.wolfcrypt.Ed25519" />
             <class name="com.wolfssl.wolfcrypt.Curve25519" />
+            <class name="com.wolfssl.wolfcrypt.Chacha" />
             <class name="com.wolfssl.wolfcrypt.WolfCryptError" />
             <class name="com.wolfssl.wolfcrypt.Asn" />
         </javah>
