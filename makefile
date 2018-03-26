@@ -7,13 +7,13 @@ OBJ_LIST  = jni_fips.o jni_native_struct.o jni_aes.o jni_des3.o jni_md5.o \
 			jni_ed25519.o jni_curve25519.o jni_chacha.o jni_error.o jni_asn.o \
 			jni_logging.o
 OBJS      = $(patsubst %,$(OUT_PATH)/%,$(OBJ_LIST))
-TARGET    = $(OUT_PATH)/libwolfcryptjni.so
+TARGET    = $(OUT_PATH)/libwolfcryptjni.jnilib
 
-JAVA_HOME = $(shell readlink -f /usr/bin/javac | sed "s:/bin/javac::")
+JAVA_HOME = $(shell /usr/libexec/java_home)
 CC        = gcc
-CCFLAGS   = -Wall -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux \
-			-I$(INC_PATH) -fPIC
-LDFLAGS   = -Wl,--no-as-needed -lwolfssl -shared
+CCFLAGS   = -Wall -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/darwin \
+			-I$(INC_PATH)
+LDFLAGS   = -dynamiclib -framework JavaVM -lwolfssl
 
 all: $(TARGET)
 
