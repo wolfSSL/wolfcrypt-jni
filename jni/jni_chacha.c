@@ -90,7 +90,7 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1free(
     }
 
     if (chacha)
-        free(chacha);
+        XFREE(chacha, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 
     LogStr("Chacha_free(chacha=%p)\n", chacha);
 #else
