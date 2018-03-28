@@ -59,10 +59,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1che
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Curve25519
- * Method:    wc_curve25519_shared_secret
+ * Method:    wc_curve25519_make_shared_secret
  * Signature: (Lcom/wolfssl/wolfcrypt/Curve25519;)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1shared_1secret
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1make_1shared_1secret
   (JNIEnv *, jobject, jobject);
 
 /*

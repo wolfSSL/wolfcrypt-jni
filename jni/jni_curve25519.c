@@ -139,7 +139,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
 {
 #if defined(HAVE_CURVE25519) && defined(HAVE_CURVE25519_KEY_IMPORT)
     int ret = 0;
-    word32 idx = 0;
     curve25519_key* curve25519 = NULL;
     byte* priv   = NULL;
     byte* pub    = NULL;
@@ -160,9 +159,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
         ret = BAD_FUNC_ARG;
     } else {
         /* detect, and later skip, leading zero byte */
-        if (priv[0] == 0)
-            idx = 1;
-        ret = wc_curve25519_import_private_raw(priv + idx, privSz - idx, pub,
+        ret = wc_curve25519_import_private_raw(priv, privSz, pub,
                                                pubSz, curve25519);
     }
 
@@ -183,7 +180,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
 {
 #if defined(HAVE_CURVE25519) && defined(HAVE_CURVE25519_KEY_IMPORT)
     int ret = 0;
-    word32 idx = 0;
     curve25519_key* curve25519 = NULL;
     byte* priv   = NULL;
     word32 privSz = 0;
@@ -201,9 +197,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
         ret = BAD_FUNC_ARG;
     } else {
         /* detect, and later skip, leading zero byte */
-        if (priv[0] == 0)
-            idx = 1;
-        ret = wc_curve25519_import_private(priv + idx, privSz - idx, curve25519);
+        ret = wc_curve25519_import_private(priv, privSz, curve25519);
     }
 
     if (ret != 0)
@@ -222,13 +216,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
 {
 #if defined(HAVE_CURVE25519) && defined(HAVE_CURVE25519_KEY_IMPORT)
     int ret = 0;
-    word32 idx = 0;
     curve25519_key* curve25519 = NULL;
     byte* pub   = NULL;
     word32 pubSz = 0;
+    printf("in Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1import_1public\n");
 
     curve25519 = (curve25519_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
+        printf("Exception occurred in getNativeStruct\n");
         /* getNativeStruct may throw exception, prevent throwing another */
         return;
     }
@@ -236,13 +231,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
     pubSz = getByteArrayLength(env, pub_object);
 
     if (!curve25519 || !pub) {
+        printf("BAD: %p %p \n", curve25519, pub);
         ret = BAD_FUNC_ARG;
     } else {
         /* detect, and later skip, leading zero byte */
-        if (pub[0] == 0)
-            idx = 1;
-        ret = wc_curve25519_import_public(pub + idx, pubSz - idx, curve25519);
+        printf("Importing public key of size %d\n", pubSz);
+        ret = wc_curve25519_import_public(pub, pubSz, curve25519);
     }
+    printf("native function returned %d\n", ret);
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
@@ -366,12 +362,12 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1public (
 }
 
 JNIEXPORT jbyteArray JNICALL
-Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1shared_1secret(
+Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1make_1shared_1secret(
     JNIEnv* env, jobject this, jobject pub_object)
 {
     jbyteArray result = NULL;
 
-#ifdef HAVE_CURVE25519_DHE
+#ifdef HAVE_CURVE25519_SHARED_SECRET
     int ret = 0;
     curve25519_key* curve25519 = NULL;
     curve25519_key* pub = NULL;

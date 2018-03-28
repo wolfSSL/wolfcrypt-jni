@@ -164,7 +164,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1p
 {
 #if defined(HAVE_ED25519) && defined(HAVE_ED25519_KEY_IMPORT)
     int ret = 0;
-    word32 idx = 0;
     ed25519_key* ed25519 = NULL;
     byte* priv   = NULL;
     byte* pub    = NULL;
@@ -185,12 +184,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1p
         ret = BAD_FUNC_ARG;
     } else {
         /* detect, and later skip, leading zero byte */
-        if (priv[0] == 0)
-            idx = 1;
         if (!pub)
-            ret = wc_ed25519_import_private_only(priv + idx, privSz - idx, ed25519);
+            ret = wc_ed25519_import_private_only(priv, privSz, ed25519);
         else
-            ret = wc_ed25519_import_private_key(priv + idx, privSz - idx, pub,
+            ret = wc_ed25519_import_private_key(priv, privSz, pub,
                 pubSz, ed25519);
     }
 
@@ -211,7 +208,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1p
 {
 #if defined(HAVE_ED25519) && defined(HAVE_ED25519_KEY_IMPORT)
     int ret = 0;
-    word32 idx = 0;
     ed25519_key* ed25519 = NULL;
     byte* priv   = NULL;
     word32 privSz = 0;
@@ -229,9 +225,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1p
         ret = BAD_FUNC_ARG;
     } else {
         /* detect, and later skip, leading zero byte */
-        if (priv[0] == 0)
-            idx = 1;
-        ret = wc_ed25519_import_private_only(priv + idx, privSz - idx, ed25519);
+        ret = wc_ed25519_import_private_only(priv, privSz, ed25519);
     }
 
     if (ret != 0)
