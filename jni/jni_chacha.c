@@ -98,7 +98,7 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1free(
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1set_1IV
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setIV
   (JNIEnv* env, jobject this, jbyteArray iv_object)
 {
 #if defined(HAVE_CHACHA)
@@ -132,7 +132,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1set_1IV
 #endif
 }
     
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1set_1Key
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setKey
   (JNIEnv* env, jobject this, jbyteArray key_object)
 {
 #if defined(HAVE_CHACHA)
@@ -172,11 +172,11 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
 {
     jbyteArray result = NULL;
 
-#ifdef HAVE_CHACHA_KEY_EXPORT
+#ifdef HAVE_CHACHA
     int ret = 0;
     ChaCha* chacha = NULL;
     byte* input  = NULL;
-    inputSz = 0;
+    int inputSz = 0;
     byte* output = NULL;
 
     chacha = (ChaCha*) getNativeStruct(env, this);
@@ -185,8 +185,8 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
         return NULL;
     }
     
-    input = getByteArray(env, key_object);
-    inputSz = getByteArrayLength(env, key_object);
+    input = getByteArray(env, input_obj);
+    inputSz = getByteArrayLength(env, input_obj);
 
     if (input == NULL) {
         return NULL;
@@ -203,10 +203,10 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
         : wc_Chacha_Process(chacha, output, input, inputSz);
 
     if (ret == 0) {
-        result = (*env)->NewByteArray(env, outputSz);
+        result = (*env)->NewByteArray(env, inputSz);
 
         if (result) {
-            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+            (*env)->SetByteArrayRegion(env, result, 0, inputSz,
                                                          (const jbyte*) output);
         } else {
             throwWolfCryptException(env, "Failed to allocate memory for Chacha_process");
