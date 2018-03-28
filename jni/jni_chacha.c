@@ -137,7 +137,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1set_1Key
 {
 #if defined(HAVE_CHACHA)
     int ret = 0;
-    word32 idx = 0;
     ChaCha* chacha = NULL;
     byte* key   = NULL;
     word32 keySz = 0;
@@ -153,10 +152,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1set_1Key
     if (!chacha || !key) {
         ret = BAD_FUNC_ARG;
     } else {
-        /* detect, and later skip, leading zero byte */
-        if (key[0] == 0)
-            idx = 1;
-        ret = wc_Chacha_SetKey(chacha, key + idx, keySz - idx);
+        ret = wc_Chacha_SetKey(chacha, key, keySz);
     }
 
     if (ret != 0)
