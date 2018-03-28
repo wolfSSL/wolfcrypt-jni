@@ -59,7 +59,7 @@ public class Curve25519 extends NativeStruct {
 
 	private native void wc_curve25519_check_key();
 
-	private native byte[] wc_curve25519_shared_secret(Curve25519 pubKey);
+	private native byte[] wc_curve25519_make_shared_secret(Curve25519 pubKey);
 
 	private native void wc_curve25519_import_private(byte[] privKey, byte[] key);
 	private native void wc_curve25519_import_private_only(byte[] privKey);
@@ -161,7 +161,7 @@ public class Curve25519 extends NativeStruct {
 
 	public byte[] makeSharedSecret(Curve25519 pubKey) {
 		if (state == WolfCryptState.READY) {
-			return wc_curve25519_shared_secret(pubKey);
+			return wc_curve25519_make_shared_secret(pubKey);
 		} else {
 			throw new IllegalStateException(
 					"No available key to perform the operation.");
