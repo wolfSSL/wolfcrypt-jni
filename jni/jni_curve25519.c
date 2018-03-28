@@ -219,11 +219,9 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
     curve25519_key* curve25519 = NULL;
     byte* pub   = NULL;
     word32 pubSz = 0;
-    printf("in Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1import_1public\n");
 
     curve25519 = (curve25519_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
-        printf("Exception occurred in getNativeStruct\n");
         /* getNativeStruct may throw exception, prevent throwing another */
         return;
     }
@@ -231,14 +229,11 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
     pubSz = getByteArrayLength(env, pub_object);
 
     if (!curve25519 || !pub) {
-        printf("BAD: %p %p \n", curve25519, pub);
         ret = BAD_FUNC_ARG;
     } else {
         /* detect, and later skip, leading zero byte */
-        printf("Importing public key of size %d\n", pubSz);
         ret = wc_curve25519_import_public(pub, pubSz, curve25519);
     }
-    printf("native function returned %d\n", ret);
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
