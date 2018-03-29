@@ -118,9 +118,9 @@ public class Ed25519 extends NativeStruct {
 		}
 	}
 
-    public void importPublic(byte[] privKey, byte[] Key) {
+    public void importPublic(byte[] Key) {
 		if (state == WolfCryptState.INITIALIZED) {
-			wc_ed25519_import_private(privKey, Key);
+			wc_ed25519_import_public(Key);
 			state = WolfCryptState.READY;
 		} else {
 			throw new IllegalStateException("Object already has a key.");
