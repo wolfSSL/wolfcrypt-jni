@@ -203,6 +203,40 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1p
 #endif
 }
 
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1public
+  (JNIEnv* env, jobject this, jbyteArray pub_object)
+{
+#if defined(HAVE_ED25519) && defined(HAVE_ED25519_KEY_IMPORT)
+    int ret = 0;
+    ed25519_key* ed25519 = NULL;
+    byte* pub   = NULL;
+    word32 pubSz = 0;
+
+    ed25519 = (ed25519_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+    pub   = getByteArray(env, pub_object);
+    pubSz = getByteArrayLength(env, pub_object);
+
+    if (!ed25519 || !pub) {
+        ret = BAD_FUNC_ARG;
+    } else {
+        ret = wc_ed25519_import_public(pub, pubSz, ed25519);
+    }
+
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_ed25519_import_public(ed25519=%p) = %d\n", ed25519, ret);
+
+    releaseByteArray(env, pub_object, pub, JNI_ABORT);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1private_1only
   (JNIEnv* env, jobject this, jbyteArray priv_object)
 {
@@ -220,7 +254,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1p
     priv   = getByteArray(env, priv_object);
     privSz = getByteArrayLength(env, priv_object);
 
-    /* pub may be null if only importing private key */
     if (!ed25519 || !priv) {
         ret = BAD_FUNC_ARG;
     } else {
@@ -414,7 +447,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1sig
     word32 len = 0, outlen = ED25519_SIG_SIZE;
     ed25519_key* ed25519 = NULL;
     byte* msg   = NULL;
-    byte* msg_out = NULL;
+    byte* output = NULL;
 
     ed25519 = (ed25519_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -423,19 +456,30 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1sig
     }
     msg = getByteArray(env, msg_in);
     len = getByteArrayLength(env, msg_in);
-    result = (*env)->NewByteArray(env, ED25519_SIG_SIZE);
-    msg_out = getByteArray(env, result);
+    output = XMALLOC(outlen, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 
     if (!ed25519) {
         ret = BAD_FUNC_ARG;
     } else {
-        ret = wc_ed25519_sign_msg(msg, len, msg_out, &outlen, ed25519);
+        ret = wc_ed25519_sign_msg(msg, len, output, &outlen, ed25519);
     }
 
-    if (ret != 0)
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, outlen);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outlen,
+                                                         (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env, "Failed to allocate key");
+        }
+    } else {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_ed25519_sign_msg(ed25519=%p) = %d\n", ed25519, ret);
+    printf("wc_ed25519_sign_msg(ed25519=%p) = %d\n", ed25519, ret);
+    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 
     releaseByteArray(env, msg_in, msg, JNI_ABORT);
 #else

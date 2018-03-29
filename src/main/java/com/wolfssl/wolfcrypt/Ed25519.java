@@ -156,7 +156,7 @@ public class Ed25519 extends NativeStruct {
 
 	public byte[] sign_msg(byte[] msg_in) {
 
-		byte[] msg_out = new byte[0];
+		byte[] msg_out = null;
 		if (state == WolfCryptState.READY) {
 			msg_out = wc_ed25519_sign_msg(msg_in);
 		} else {
