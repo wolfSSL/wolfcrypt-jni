@@ -152,7 +152,7 @@ public class Curve25519 extends NativeStruct {
 	
     public byte[] exportPublic() {
 		if (state == WolfCryptState.READY) {
-			return wc_curve25519_export_private();
+			return wc_curve25519_export_public();
 		} else {
 			throw new IllegalStateException(
 					"No available key to perform the operation.");
