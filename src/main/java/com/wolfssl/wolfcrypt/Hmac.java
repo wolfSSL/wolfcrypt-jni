@@ -35,8 +35,8 @@ public class Hmac extends NativeStruct {
 	public static final int SHA = 4;
 	public static final int SHA224 = 5;
 	public static final int SHA256 = 6;
-	public static final int SHA384 = 12;
-	public static final int SHA512 = 13;
+	public static final int SHA384 = 7;
+	public static final int SHA512 = 8;
 	public static final int BLAKE2b = 14;
 
 	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
