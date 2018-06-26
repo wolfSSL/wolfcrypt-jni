@@ -1158,7 +1158,7 @@ public class WolfCryptCipherTest {
             fail("Cipher.doFinal should throw exception when data is larger " +
                  "than RSA key size");
         } catch (WolfCryptException e) {
-            assertEquals("Rsa Padding error", e.getMessage());
+            assertEquals("Ciphertext to decrypt is out of range", e.getMessage());
         }
     }
 
