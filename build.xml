@@ -134,7 +134,7 @@
                            value="${implementation.vendor}" />
             </manifest>
         </jar>
-        <echo unless:set="sign.alias">WARNING: Skipping JAR signing, codeSigning.properties not found</echo>
+        <echo unless:set="sign.alias">NOTICE: Skipping JAR signing, codeSigning.properties not found</echo>
     </target>
 
     <!-- sign jar, necessary for Oracle JDK -->
