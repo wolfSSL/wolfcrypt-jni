@@ -109,8 +109,9 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update___3BII(
     JNIEnv* env, jobject this, jbyteArray data_buffer, jint offset, jint len)
 {
 #ifndef NO_MD5
-    Md5*  md5  = NULL;
-    byte* data = NULL;
+    Md5*   md5   = NULL;
+    byte*  data  = NULL;
+    jsize  bufSz = (*env)->GetArrayLength(env, data_buffer);
 
     md5 = (Md5*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -120,7 +121,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update___3BII(
 
     data = getByteArray(env, data_buffer);
 
-    if (!md5 || !data || (offset > len)) {
+    if (!md5 || !data || (offset > bufSz)) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
     } else {
         wc_Md5Update(md5, data + offset, len);
