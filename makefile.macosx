@@ -10,9 +10,9 @@ TARGET    = $(OUT_PATH)/libwolfcryptjni.jnilib
 
 JAVA_HOME = $(shell /usr/libexec/java_home)
 CC        = gcc
-CCFLAGS   = -Wall -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/darwin \
+override CCFLAGS   += -Wall -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/darwin \
 			-I$(INC_PATH)
-LDFLAGS   = -dynamiclib -framework JavaVM -lwolfssl
+override LDFLAGS   += -dynamiclib -framework JavaVM -lwolfssl
 
 all: $(TARGET)
 
