@@ -31,13 +31,13 @@ import java.nio.ByteBuffer;
  */
 public class Hmac extends NativeStruct {
 
-	public static final int MD5 = 0;
-	public static final int SHA = 1;
-	public static final int SHA224 = 8;
-	public static final int SHA256 = 2;
-	public static final int SHA384 = 5;
-	public static final int SHA512 = 4;
-	public static final int BLAKE2b = 7;
+	public static final int MD5 = 3;
+	public static final int SHA = 4;
+	public static final int SHA224 = 5;
+	public static final int SHA256 = 6;
+	public static final int SHA384 = 7;
+	public static final int SHA512 = 8;
+	public static final int BLAKE2b = 14;
 
 	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 	private int type = -1;

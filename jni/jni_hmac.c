@@ -34,37 +34,37 @@
 /* copy from cyassl/hmac.c */
 static INLINE int GetHashSizeByType(int type)
 {
-    if (!(type == MD5 || type == SHA    || type == SHA256 || type == SHA384
-                      || type == SHA512 || type == BLAKE2B_ID))
+    if (!(type == WC_MD5 || type == WC_SHA    || type == WC_SHA256 || type == WC_SHA384
+                      || type == WC_SHA512 || type == BLAKE2B_ID))
         return BAD_FUNC_ARG;
 
     switch (type) {
         #ifndef NO_MD5
-        case MD5:
+        case WC_MD5:
             return MD5_DIGEST_SIZE;
         break;
         #endif
 
         #ifndef NO_SHA
-        case SHA:
+        case WC_SHA:
             return SHA_DIGEST_SIZE;
         break;
         #endif
         
         #ifndef NO_SHA256
-        case SHA256:
+        case WC_SHA256:
             return SHA256_DIGEST_SIZE;
         break;
         #endif
         
         #if defined(CYASSL_SHA384) || defined(WOLFSSL_SHA384)
-        case SHA384:
+        case WC_SHA384:
             return SHA384_DIGEST_SIZE;
         break;
         #endif
         
         #if defined(CYASSL_SHA512) || defined(WOLFSSL_SHA512)
-        case SHA512:
+        case WC_SHA512:
             return SHA512_DIGEST_SIZE;
         break;
         #endif
