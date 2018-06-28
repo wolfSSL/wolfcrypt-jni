@@ -31,147 +31,198 @@ import java.nio.ByteBuffer;
  */
 public class Hmac extends NativeStruct {
 
-	public static final int MD5 = 0;
-	public static final int SHA = 1;
-	public static final int SHA224 = 8;
-	public static final int SHA256 = 2;
-	public static final int SHA384 = 5;
-	public static final int SHA512 = 4;
-	public static final int BLAKE2b = 7;
+    private enum hashType {
+        MD5, SHA, SHA256, SHA384, SHA512, BLAKE2b;
+    }
 
-	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
-	private int type = -1;
-	private byte[] key;
+    public static final int MD5     = getHashCode(hashType.MD5);
+    public static final int SHA     = getHashCode(hashType.SHA);
+    public static final int SHA256  = getHashCode(hashType.SHA256);
+    public static final int SHA384  = getHashCode(hashType.SHA384);
+    public static final int SHA512  = getHashCode(hashType.SHA512);
+    public static final int BLAKE2b = getHashCode(hashType.BLAKE2b);
 
-	public Hmac() {
-	}
+    private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+    private int type = -1;
+    private byte[] key;
 
-	public Hmac(int type, byte[] key) {
-		setKey(type, key);
-	}
+    public Hmac() {
+    }
 
-	private native void wc_HmacSetKey(int type, byte[] key);
+    public Hmac(int type, byte[] key) {
+        setKey(type, key);
+    }
 
-	private native void wc_HmacUpdate(byte data);
+    private native void wc_HmacSetKey(int type, byte[] key);
 
-	private native void wc_HmacUpdate(byte[] data, int offset, int length);
+    private native void wc_HmacUpdate(byte data);
 
-	private native void wc_HmacUpdate(ByteBuffer data, int offset, int length);
+    private native void wc_HmacUpdate(byte[] data, int offset, int length);
 
-	private native byte[] wc_HmacFinal();
+    private native void wc_HmacUpdate(ByteBuffer data, int offset, int length);
 
-	private native int wc_HmacSizeByType(int type);
+    private native byte[] wc_HmacFinal();
 
-	protected native long mallocNativeStruct() throws OutOfMemoryError;
+    private native int wc_HmacSizeByType(int type);
 
-	public void setKey(int type, byte[] key) {
-		wc_HmacSetKey(type, key);
+    private native static int getCodeMd5();
 
-		this.type = type;
-		this.key = key;
+    private native static int getCodeSha();
 
-		state = WolfCryptState.READY;
-	}
+    private native static int getCodeSha256();
 
-	public void reset() {
-		if (state == WolfCryptState.READY) {
-			setKey(type, key);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
-	}
+    private native static int getCodeSha384();
 
-	public void update(byte data) {
-		if (state == WolfCryptState.READY) {
-			wc_HmacUpdate(data);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
-	}
+    private native static int getCodeSha512();
 
-	public void update(byte[] data) {
-		if (state == WolfCryptState.READY) {
-			wc_HmacUpdate(data, 0, data.length);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
-	}
+    private native static int getCodeBlake2b();
 
-	public void update(byte[] data, int offset, int length) {
-		if (state == WolfCryptState.READY) {
-			wc_HmacUpdate(data, offset, length);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
-	}
+    protected native long mallocNativeStruct() throws OutOfMemoryError;
 
-	public void update(ByteBuffer data) {
-		if (state == WolfCryptState.READY) {
-			int offset = data.position();
-			int length = data.remaining();
+    public void setKey(int type, byte[] key) {
+        wc_HmacSetKey(type, key);
+        this.type = type;
+        this.key = key;
 
-			wc_HmacUpdate(data, offset, length);
+        state = WolfCryptState.READY;
+    }
 
-			data.position(offset + length);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
-	}
+    public void reset() {
+        if (state == WolfCryptState.READY) {
+            setKey(type, key);
+        } else {
+            throw new IllegalStateException(
+                "No available key to perform the opperation.");
+        }
+    }
 
-	public byte[] doFinal() {
-		if (state == WolfCryptState.READY) {
-			return wc_HmacFinal();
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
-	}
+    public void update(byte data) {
+        if (state == WolfCryptState.READY) {
+            wc_HmacUpdate(data);
+        } else {
+            throw new IllegalStateException(
+                "No available key to perform the opperation.");
+        }
+    }
 
-	public byte[] doFinal(byte[] data) {
-		if (state == WolfCryptState.READY) {
-			update(data);
-			return wc_HmacFinal();
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
-	}
+    public void update(byte[] data) {
+        if (state == WolfCryptState.READY) {
+            wc_HmacUpdate(data, 0, data.length);
+        } else {
+            throw new IllegalStateException(
+                "No available key to perform the opperation.");
+        }
+    }
 
-	public String getAlgorithm() {
-		if (state == WolfCryptState.READY) {
-			switch (type) {
-				case MD5:
-					return "HmacMD5";
-				case SHA224:
-					return "HmacSHA224";
-				case SHA256:
-					return "HmacSHA256";
-				case SHA384:
-					return "HmacSHA384";
-				case SHA512:
-					return "HmacSHA512";
-				case BLAKE2b:
-					return "HmacBLAKE2b";
-			}
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
+    public void update(byte[] data, int offset, int length) {
+        if (state == WolfCryptState.READY) {
+            wc_HmacUpdate(data, offset, length);
+        } else {
+            throw new IllegalStateException(
+                    "No available key to perform the opperation.");
+        }
+    }
 
-		return "";
-	}
+    public void update(ByteBuffer data) {
+        if (state == WolfCryptState.READY) {
+            int offset = data.position();
+            int length = data.remaining();
 
-	public int getMacLength() {
-		if (state == WolfCryptState.READY) {
-			return wc_HmacSizeByType(type);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
-	}
+            wc_HmacUpdate(data, offset, length);
+
+            data.position(offset + length);
+        } else {
+            throw new IllegalStateException(
+                    "No available key to perform the opperation.");
+        }
+    }
+
+    public byte[] doFinal() {
+        if (state == WolfCryptState.READY) {
+            return wc_HmacFinal();
+        } else {
+            throw new IllegalStateException(
+                    "No available key to perform the opperation.");
+        }
+    }
+
+    public byte[] doFinal(byte[] data) {
+        if (state == WolfCryptState.READY) {
+            update(data);
+            return wc_HmacFinal();
+        } else {
+            throw new IllegalStateException(
+                    "No available key to perform the opperation.");
+        }
+    }
+
+    public String getAlgorithm() {
+        if (state == WolfCryptState.READY) {
+
+            if (type == MD5) {
+                return "HmacMD5";
+            } 
+            else if (type == SHA256) {
+                return "HmacSHA256";
+            }
+            else if (type == SHA384) {
+                return "HmacSHA384";
+            }
+            else if (type == SHA512) {
+                return "HmacSHA512";
+            }
+            else if (type == BLAKE2b) {
+                return "HmacBLAKE2b";
+            } else {
+                return "";
+            }
+
+        } else {
+            throw new IllegalStateException(
+                "No available key to perform the opperation.");
+        }
+    }
+
+    public int getMacLength() {
+        if (state == WolfCryptState.READY) {
+            return wc_HmacSizeByType(type);
+        } else {
+            throw new IllegalStateException(
+                "No available key to perform the opperation.");
+        }
+    }
+
+    private static int getHashCode(hashType hash) {
+        int ret = -1;
+        switch (hash) {
+            case MD5:
+                ret = getCodeMd5();
+                break;
+            case SHA:
+                ret = getCodeSha();
+                break;
+            case SHA256:
+                ret = getCodeSha256();
+                break;
+            case SHA384:
+                ret = getCodeSha384();
+                break;
+            case SHA512:
+                ret = getCodeSha512();
+                break;
+            case BLAKE2b:
+                ret = getCodeBlake2b();
+                break;
+            default:
+                throw new IllegalStateException(
+                        "Invalid hash type.");
+        }
+
+        if (ret < 0) {
+            throw new IllegalStateException(
+                    "Hash code not found.");
+        }
+
+        return ret;
+    }
 }

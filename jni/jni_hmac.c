@@ -299,3 +299,57 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSizeByType(
 
     return result;
 }
+
+JNIEXPORT jint JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_getCodeMd5(
+        JNIEnv* env, jobject this)
+{
+    jint result = WC_MD5;
+    LogStr("WC_MD5 = %d\n", result);
+    return result;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha(
+        JNIEnv* env, jobject this)
+{
+    jint result = WC_SHA;
+    LogStr("WC_SHA = %d\n", result);
+    return result;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha256(
+        JNIEnv* env, jobject this)
+{
+    jint result = WC_SHA256;
+    LogStr("WC_SHA256 = %d\n", result);
+    return result;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha384(
+        JNIEnv* env, jobject this)
+{
+    jint result = WC_SHA384;
+    LogStr("WC_SHA384 = %d\n", result);
+    return result;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha512(
+        JNIEnv* env, jobject this)
+{
+    jint result = WC_SHA512;
+    LogStr("WC_SHA512 = %d\n", result);
+    return result;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_getCodeBlake2b(
+        JNIEnv* env, jobject this)
+{
+    jint result = BLAKE2B_ID;
+    LogStr("BLAKE2B_ID = %d", result);
+    return result;
+}
