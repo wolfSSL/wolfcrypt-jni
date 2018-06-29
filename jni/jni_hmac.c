@@ -31,11 +31,15 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+#ifdef HAVE_FIPS
+#define WC_INLINE INLINE
+#endif
+
 /* copy from cyassl/hmac.c */
 static WC_INLINE int GetHashSizeByType(int type)
 {
-    if (!(type == WC_MD5 || type == WC_SHA    || type == WC_SHA256 || type == WC_SHA384
-                      || type == WC_SHA512 || type == BLAKE2B_ID))
+    if (!(type == WC_MD5 || type == WC_SHA || type == WC_SHA256
+            || type == WC_SHA384 || type == WC_SHA512 || type == BLAKE2B_ID))
         return BAD_FUNC_ARG;
 
     switch (type) {
