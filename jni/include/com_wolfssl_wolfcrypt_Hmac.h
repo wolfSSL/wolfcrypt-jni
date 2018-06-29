@@ -9,20 +9,6 @@ extern "C" {
 #endif
 #undef com_wolfssl_wolfcrypt_Hmac_NULL
 #define com_wolfssl_wolfcrypt_Hmac_NULL 0LL
-#undef com_wolfssl_wolfcrypt_Hmac_MD5
-#define com_wolfssl_wolfcrypt_Hmac_MD5 0L
-#undef com_wolfssl_wolfcrypt_Hmac_SHA
-#define com_wolfssl_wolfcrypt_Hmac_SHA 1L
-#undef com_wolfssl_wolfcrypt_Hmac_SHA224
-#define com_wolfssl_wolfcrypt_Hmac_SHA224 8L
-#undef com_wolfssl_wolfcrypt_Hmac_SHA256
-#define com_wolfssl_wolfcrypt_Hmac_SHA256 2L
-#undef com_wolfssl_wolfcrypt_Hmac_SHA384
-#define com_wolfssl_wolfcrypt_Hmac_SHA384 5L
-#undef com_wolfssl_wolfcrypt_Hmac_SHA512
-#define com_wolfssl_wolfcrypt_Hmac_SHA512 4L
-#undef com_wolfssl_wolfcrypt_Hmac_BLAKE2b
-#define com_wolfssl_wolfcrypt_Hmac_BLAKE2b 7L
 /*
  * Class:     com_wolfssl_wolfcrypt_Hmac
  * Method:    wc_HmacSetKey
@@ -70,6 +56,54 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal
  */
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSizeByType
   (JNIEnv *, jobject, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    getCodeMd5
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeMd5
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    getCodeSha
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    getCodeSha256
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha256
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    getCodeSha384
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha384
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    getCodeSha512
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha512
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    getCodeBlake2b
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeBlake2b
+  (JNIEnv *, jclass);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Hmac
