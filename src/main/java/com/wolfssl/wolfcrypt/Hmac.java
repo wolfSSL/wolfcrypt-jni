@@ -21,6 +21,7 @@
 
 package com.wolfssl.wolfcrypt;
 
+import com.wolfssl.wolfcrypt.WolfCrypt;
 import java.nio.ByteBuffer;
 
 /**
@@ -32,15 +33,15 @@ import java.nio.ByteBuffer;
 public class Hmac extends NativeStruct {
 
     private enum hashType {
-        MD5, SHA, SHA256, SHA384, SHA512, BLAKE2b;
+        typeMD5, typeSHA, typeSHA256, typeSHA384, typeSHA512, typeBLAKE2b;
     }
 
-    public static final int MD5     = getHashCode(hashType.MD5);
-    public static final int SHA     = getHashCode(hashType.SHA);
-    public static final int SHA256  = getHashCode(hashType.SHA256);
-    public static final int SHA384  = getHashCode(hashType.SHA384);
-    public static final int SHA512  = getHashCode(hashType.SHA512);
-    public static final int BLAKE2b = getHashCode(hashType.BLAKE2b);
+    public static final int MD5     = getHashCode(hashType.typeMD5);
+    public static final int SHA     = getHashCode(hashType.typeSHA);
+    public static final int SHA256  = getHashCode(hashType.typeSHA256);
+    public static final int SHA384  = getHashCode(hashType.typeSHA384);
+    public static final int SHA512  = getHashCode(hashType.typeSHA512);
+    public static final int BLAKE2b = getHashCode(hashType.typeBLAKE2b);
 
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
     private int type = -1;
@@ -193,36 +194,21 @@ public class Hmac extends NativeStruct {
     }
 
     private static int getHashCode(hashType hash) {
-        int ret = -1;
         switch (hash) {
-            case MD5:
-                ret = getCodeMd5();
-                break;
-            case SHA:
-                ret = getCodeSha();
-                break;
-            case SHA256:
-                ret = getCodeSha256();
-                break;
-            case SHA384:
-                ret = getCodeSha384();
-                break;
-            case SHA512:
-                ret = getCodeSha512();
-                break;
-            case BLAKE2b:
-                ret = getCodeBlake2b();
-                break;
+            case typeMD5:
+                return getCodeMd5();
+            case typeSHA:
+                return getCodeSha();
+            case typeSHA256:
+                return getCodeSha256();
+            case typeSHA384:
+                return getCodeSha384();
+            case typeSHA512:
+                return getCodeSha512();
+            case typeBLAKE2b:
+                return getCodeBlake2b();
             default:
-                throw new IllegalStateException(
-                        "Invalid hash type.");
+                return WolfCrypt.FAILURE;
         }
-
-        if (ret < 0) {
-            throw new IllegalStateException(
-                    "Hash code not found.");
-        }
-
-        return ret;
     }
 }
