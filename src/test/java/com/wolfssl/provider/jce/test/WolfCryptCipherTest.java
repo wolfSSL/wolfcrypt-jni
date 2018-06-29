@@ -48,6 +48,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
 import java.security.InvalidAlgorithmParameterException;
 
+import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 
@@ -1158,7 +1160,12 @@ public class WolfCryptCipherTest {
             fail("Cipher.doFinal should throw exception when data is larger " +
                  "than RSA key size");
         } catch (WolfCryptException e) {
-            assertEquals("Rsa Padding error", e.getMessage());
+            if (WolfCrypt.SUCCESS == Fips.wolfCrypt_GetStatus_fips()) {
+                assertEquals("Rsa Padding error", e.getMessage());
+            } else {
+                assertEquals("Ciphertext to decrypt is out of range",
+                        e.getMessage());
+            }
         }
     }
 
