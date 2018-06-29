@@ -30,6 +30,7 @@ package com.wolfssl.wolfcrypt;
 public class WolfCrypt extends WolfObject {
 
 	public static final int SUCCESS = 0;
+    public static final int FAILURE = -1;
 
 	public static final int SIZE_OF_128_BITS = 16;
 	public static final int SIZE_OF_160_BITS = 20;
