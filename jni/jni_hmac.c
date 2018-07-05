@@ -31,10 +31,6 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
-#ifdef HAVE_FIPS
-#define WC_INLINE INLINE
-#endif
-
 /* copy from cyassl/hmac.c */
 static WC_INLINE int GetHashSizeByType(int type)
 {
