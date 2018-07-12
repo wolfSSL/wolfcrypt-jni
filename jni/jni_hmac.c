@@ -31,6 +31,10 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+#if (HAVE_FIPS_VERSION >= 2)
+    #define MAX_DIGEST_SIZE WC_MAX_DIGEST_SIZE
+#endif
+
 /* copy from cyassl/hmac.c */
 static WC_INLINE int GetHashSizeByType(int type)
 {
