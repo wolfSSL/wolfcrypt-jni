@@ -122,6 +122,16 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Fips_enabled
     #endif
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_getFipsVersion
+(JNIEnv* env, jclass this)
+{
+    jint result = 0;
+    #if defined(HAVE_FIPS) && (HAVE_FIPS_VERSION > 0)
+        result = HAVE_FIPS_VERSION;
+    #endif
+    return result;
+}
+
 /*
  * ### FIPS Aprooved Security Methods ##########################################
  */

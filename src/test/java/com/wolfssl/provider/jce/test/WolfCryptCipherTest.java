@@ -1160,7 +1160,8 @@ public class WolfCryptCipherTest {
             fail("Cipher.doFinal should throw exception when data is larger " +
                  "than RSA key size");
         } catch (WolfCryptException e) {
-            if (WolfCrypt.SUCCESS == Fips.wolfCrypt_GetStatus_fips()) {
+            if (WolfCrypt.SUCCESS == Fips.wolfCrypt_GetStatus_fips()
+                    && Fips.fipsVersion < 2) {
                 assertEquals("Rsa Padding error", e.getMessage());
             } else {
                 assertEquals("Ciphertext to decrypt is out of range",
