@@ -33,6 +33,14 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Fips_enabled
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    getFipsVersion
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_getFipsVersion
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    AesSetKey_fips
  * Signature: (Lcom/wolfssl/wolfcrypt/Aes;Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;I)I
  */

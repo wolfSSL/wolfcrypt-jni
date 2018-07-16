@@ -35,6 +35,8 @@ public class Fips extends WolfObject {
 
     public static final boolean enabled = Fips.enabled();
 
+    public static final int fipsVersion = Fips.getFipsVersion();
+
 	private Fips() {
 	}
 
@@ -64,6 +66,8 @@ public class Fips extends WolfObject {
      *         otherwise false.
      */
     private static native boolean enabled();
+
+    private static native int getFipsVersion();
 
 	/*
 	 * ### FIPS Aprooved Security Methods ######################################
