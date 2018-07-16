@@ -122,6 +122,20 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Fips_enabled
     #endif
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_getFipsVersion
+(JNIEnv* env, jclass this)
+{
+    jint result = 0;
+    #if defined(HAVE_FIPS)
+        #ifdef HAVE_FIPS_VERSION
+            result = HAVE_FIPS_VERSION;
+        #else
+            result = 1;
+        #endif
+    #endif
+    return result;
+}
+
 /*
  * ### FIPS Aprooved Security Methods ##########################################
  */
@@ -1687,7 +1701,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateKeyDecode_1fips
         return BAD_FUNC_ARG;
     }
 
-    ret = 0; RsaPrivateKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
+    #if (HAVE_FIPS_VERSION >= 2)
+        ret = 0; RsaPrivateKeyDecode(input, (word32*) &tmpIdx, key, inSz);
+    #else
+        ret = 0; RsaPrivateKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
+    #endif
 
     (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
@@ -1727,9 +1745,15 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPrivateKeyDecode_1fips
         return BAD_FUNC_ARG;
     }
 
-    ret = (!input || !key)
-        ? BAD_FUNC_ARG
-        : RsaPrivateKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
+    #if (HAVE_FIPS_VERSION >= 2)
+        ret = (!input || !key)
+            ? BAD_FUNC_ARG
+            : RsaPrivateKeyDecode(input, (word32*) &tmpIdx, key, inSz);
+    #else
+        ret = (!input || !key)
+            ? BAD_FUNC_ARG
+            : RsaPrivateKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
+    #endif
 
     (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
@@ -1771,7 +1795,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicKeyDecode_1fips_
         return BAD_FUNC_ARG;
     }
 
-    ret = RsaPublicKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
+    #if (HAVE_FIPS_VERSION >= 2)
+        ret = RsaPublicKeyDecode(input, (word32*) &tmpIdx, key, inSz);
+    #else
+        ret = RsaPublicKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
+    #endif
 
     (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
@@ -1809,10 +1837,15 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaPublicKeyDecode_1fips_
         releaseByteArray(env, input_object, input, 1);
         return BAD_FUNC_ARG;
     }
-
-    ret = (!input)
-        ? BAD_FUNC_ARG
-        : RsaPublicKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
+    #if (HAVE_FIPS_VERSION >= 2)
+        ret = (!input)
+            ? BAD_FUNC_ARG
+            : RsaPublicKeyDecode(input, (word32*) &tmpIdx, key, inSz);
+    #else
+        ret = (!input)
+            ? BAD_FUNC_ARG
+            : RsaPublicKeyDecode_fips(input, (word32*) &tmpIdx, key, inSz);
+    #endif
 
     (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
