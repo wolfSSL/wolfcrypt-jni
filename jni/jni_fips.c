@@ -126,8 +126,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_getFipsVersion
 (JNIEnv* env, jclass this)
 {
     jint result = 0;
-    #if defined(HAVE_FIPS) && (HAVE_FIPS_VERSION > 0)
-        result = HAVE_FIPS_VERSION;
+    #if defined(HAVE_FIPS)
+        #ifdef HAVE_FIPS_VERSION
+            result = HAVE_FIPS_VERSION;
+        #else
+            result = 1;
+        #endif
     #endif
     return result;
 }
