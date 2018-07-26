@@ -105,7 +105,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setIV
     int ret = 0;
     ChaCha* chacha = NULL;
     byte* iv   = NULL;
-    word32 ivSz = 0;
 
     chacha = (ChaCha*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -113,12 +112,11 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setIV
         return;
     }
     iv   = getByteArray(env, iv_object);
-    ivSz = getByteArrayLength(env, iv_object);
 
     if (!chacha || !iv) {
         ret = BAD_FUNC_ARG;
     } else {
-        ret = wc_Chacha_SetIV(chacha, iv, ivSz);
+        ret = wc_Chacha_SetIV(chacha, iv, 0);
     }
 
     if (ret != 0)
