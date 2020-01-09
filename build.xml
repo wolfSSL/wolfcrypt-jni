@@ -176,6 +176,7 @@
         description="Generate javah headers">
         <javah destdir="${jni.dir}" force="yes" classpathref="classpath">
             <class name="com.wolfssl.wolfcrypt.WolfCrypt" />
+            <class name="com.wolfssl.wolfcrypt.FeatureDetect" />
             <class name="com.wolfssl.wolfcrypt.Fips" />
             <class name="com.wolfssl.wolfcrypt.NativeStruct" />
             <class name="com.wolfssl.wolfcrypt.Aes" />

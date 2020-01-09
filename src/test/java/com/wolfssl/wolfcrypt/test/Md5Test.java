@@ -24,11 +24,27 @@ package com.wolfssl.wolfcrypt.test;
 import static org.junit.Assert.*;
 
 import org.junit.Test;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 
 import com.wolfssl.wolfcrypt.Md5;
 import com.wolfssl.wolfcrypt.NativeStruct;
+import com.wolfssl.wolfcrypt.WolfCryptError;
+import com.wolfssl.wolfcrypt.WolfCryptException;
 
 public class Md5Test {
+
+    @BeforeClass
+    public static void checkMd5IsAvailable() {
+        try {
+            Md5 md5 = new Md5();
+        } catch (WolfCryptException e) {
+			if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+				System.out.println("MD5 skipped: " + e.getError());
+                Assume.assumeTrue(false);
+            }
+        }
+    }
 
 	@Test
 	public void constructorShouldInitializeNativeStruct() {

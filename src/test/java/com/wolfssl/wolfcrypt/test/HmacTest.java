@@ -54,7 +54,7 @@ public class HmacTest {
 
 	@Test
 	public void shaHmacShouldMatch() {
-		String[] keyVector = new String[] { 
+		String[] keyVector = new String[] {
 				"fd42f5044e3f70825102017f8521",
 				"7da600a31369689ae60b73e30bd9",
 				"c545cc0ef4adf1c98bd9e0e4ba04",
@@ -74,23 +74,32 @@ public class HmacTest {
 				"fb6788ccd29e16544e5b52c963279b6a9eb21537" };
 
 		for (int i = 0; i < dataVector.length; i++) {
-			Hmac hmac = new Hmac();
-			byte[] key = Util.h2b(keyVector[i]);
-			byte[] data = Util.h2b(dataVector[i]);
-			byte[] expected = Util.h2b(hashVector[i]);
+            try {
+                Hmac hmac = new Hmac();
+                byte[] key = Util.h2b(keyVector[i]);
+                byte[] data = Util.h2b(dataVector[i]);
+                byte[] expected = Util.h2b(hashVector[i]);
 
-			hmac.setKey(Hmac.SHA, key);
+                hmac.setKey(Hmac.SHA, key);
 
-			for (byte b : data)
-				hmac.update(b);
+                for (byte b : data)
+                    hmac.update(b);
 
-			assertArrayEquals(expected, hmac.doFinal());
+                assertArrayEquals(expected, hmac.doFinal());
 
-			hmac.reset();
+                hmac.reset();
 
-			assertArrayEquals(expected, hmac.doFinal(data));
-		}
-	}
+                assertArrayEquals(expected, hmac.doFinal(data));
+            } catch (WolfCryptException e) {
+                if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                    System.out.println("Hmac SHA1 test skipped: " +
+                                       e.getError());
+                } else {
+                    throw e;
+                }
+            }
+	    }
+    }
 
 	@Test
 	public void sha256HmacShouldMatch() {
@@ -115,23 +124,32 @@ public class HmacTest {
 				"e35457edf1dc47f70be1e7dfd4f2332b704a0febd0dbca26a6bb63d1c7bef647" };
 
 		for (int i = 0; i < dataVector.length; i++) {
-			Hmac hmac = new Hmac(Hmac.SHA256, Util.h2b(keyVector[i]));
-			byte[] data = Util.h2b(dataVector[i]);
-			byte[] expected = Util.h2b(hashVector[i]);
+            try {
+                Hmac hmac = new Hmac(Hmac.SHA256, Util.h2b(keyVector[i]));
+                byte[] data = Util.h2b(dataVector[i]);
+                byte[] expected = Util.h2b(hashVector[i]);
 
-			hmac.update(data);
+                hmac.update(data);
 
-			assertArrayEquals(expected, hmac.doFinal());
+                assertArrayEquals(expected, hmac.doFinal());
 
-			assertEquals(expected.length, hmac.getMacLength());
+                assertEquals(expected.length, hmac.getMacLength());
 
-			hmac.reset();
+                hmac.reset();
 
-			buffer.put(data).rewind();
-			hmac.update(buffer);
-			buffer.rewind();
+                buffer.put(data).rewind();
+                hmac.update(buffer);
+                buffer.rewind();
 
-			assertArrayEquals(expected, hmac.doFinal());
+                assertArrayEquals(expected, hmac.doFinal());
+            } catch (WolfCryptException e) {
+                if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                    System.out.println("Hmac SHA256 test skipped: " +
+                                       e.getError());
+                } else {
+                    throw e;
+                }
+            }
 		}
 	}
 
@@ -157,22 +175,32 @@ public class HmacTest {
 				"914551534846b871c2c70d5e30856021c2b1ff7490354e987423069db694de2f1e960ae84b341c2a0bf5301f7bc77ade" };
 
 		for (int i = 0; i < dataVector.length; i++) {
-			Hmac hmac = new Hmac();
-			byte[] key = Util.h2b(keyVector[i]);
-			byte[] data = Util.h2b(dataVector[i]);
-			byte[] expected = Util.h2b(hashVector[i]);
+            try {
+                Hmac hmac = new Hmac();
+                byte[] key = Util.h2b(keyVector[i]);
+                byte[] data = Util.h2b(dataVector[i]);
+                byte[] expected = Util.h2b(hashVector[i]);
 
-			hmac.setKey(Hmac.SHA384, key);
+                hmac.setKey(Hmac.SHA384, key);
 
-			/* first half */
-			hmac.update(data, 0, data.length / 2);
+                /* first half */
+                hmac.update(data, 0, data.length / 2);
 
-			/* second half */
-			hmac.update(data, data.length / 2, data.length / 2);
+                /* second half */
+                hmac.update(data, data.length / 2, data.length / 2);
 
-			assertArrayEquals(expected, hmac.doFinal());
+                assertArrayEquals(expected, hmac.doFinal());
 
-			assertEquals("HmacSHA384", hmac.getAlgorithm());
+                assertEquals("HmacSHA384", hmac.getAlgorithm());
+
+            } catch (WolfCryptException e) {
+                if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                    System.out.println("Hmac SHA384 test skipped: " +
+                                       e.getError());
+                } else {
+                    throw e;
+                }
+            }
 		}
 	}
 
@@ -198,22 +226,31 @@ public class HmacTest {
 				"74ec06a96c017463d3cbff306f45386b9b1c082592ee923206c3847dde7f11ff417cd9172a18c2040c877bbc58b5e057667f8136bdd39038addc1f0e8eabe3f0" };
 
 		for (int i = 0; i < dataVector.length; i++) {
-			Hmac hmac = new Hmac();
-			byte[] key = Util.h2b(keyVector[i]);
-			byte[] data = Util.h2b(dataVector[i]);
-			byte[] expected = Util.h2b(hashVector[i]);
+            try {
+                Hmac hmac = new Hmac();
+                byte[] key = Util.h2b(keyVector[i]);
+                byte[] data = Util.h2b(dataVector[i]);
+                byte[] expected = Util.h2b(hashVector[i]);
 
-			hmac.setKey(Hmac.SHA512, key);
-			hmac.update(data);
+                hmac.setKey(Hmac.SHA512, key);
+                hmac.update(data);
 
-			assertArrayEquals(expected, hmac.doFinal());
+                assertArrayEquals(expected, hmac.doFinal());
 
-			hmac.reset();
+                hmac.reset();
 
-			hmac.update(data);
+                hmac.update(data);
 
-			assertArrayEquals(expected, hmac.doFinal());
+                assertArrayEquals(expected, hmac.doFinal());
+
+            } catch (WolfCryptException e) {
+                if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                    System.out.println("Hmac SHA512 test skipped: " +
+                                       e.getError());
+                } else {
+                    throw e;
+                }
+            }
 		}
 	}
-
 }

@@ -23,6 +23,7 @@ package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
 import org.junit.Test;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 
 import java.security.Security;
@@ -32,24 +33,30 @@ import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 
 public class WolfCryptMessageDigestSha256Test {
 
     @BeforeClass
-    public static void testProviderInstallationAtRuntime() {
+    public static void testProviderInstallationAtRuntime()
+        throws NoSuchProviderException {
 
         /* install wolfJCE provider at runtime */
         Security.addProvider(new WolfCryptProvider());
 
         Provider p = Security.getProvider("wolfJCE");
         assertNotNull(p);
-    }
 
-    @Test
-    public void testGetMessageDigestFromProvider()
-        throws NoSuchProviderException, NoSuchAlgorithmException {
-
-        MessageDigest sha256 = MessageDigest.getInstance("SHA-256", "wolfJCE");
+        try {
+            MessageDigest sha256 = MessageDigest.getInstance("SHA-256",
+                                                             "wolfJCE");
+        } catch (NoSuchAlgorithmException e) {
+            /* if we also detect algo is compiled out, skip tests */
+            if (FeatureDetect.Sha256Enabled() == false) {
+				System.out.println("JSSE SHA-256 Test skipped");
+                Assume.assumeTrue(false);
+            }
+        }
     }
 
     @Test
