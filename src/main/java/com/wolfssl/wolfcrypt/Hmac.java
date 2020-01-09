@@ -22,6 +22,7 @@
 package com.wolfssl.wolfcrypt;
 
 import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.WolfCryptException;
 import java.nio.ByteBuffer;
 
 /**
@@ -33,15 +34,15 @@ import java.nio.ByteBuffer;
 public class Hmac extends NativeStruct {
 
     private enum hashType {
-        typeMD5, typeSHA, typeSHA256, typeSHA384, typeSHA512, typeBLAKE2b;
+        typeMD5, typeSHA, typeSHA256, typeSHA384, typeSHA512;
     }
 
+    /* types may be -1 if not compiled in at native level */
     public static final int MD5     = getHashCode(hashType.typeMD5);
     public static final int SHA     = getHashCode(hashType.typeSHA);
     public static final int SHA256  = getHashCode(hashType.typeSHA256);
     public static final int SHA384  = getHashCode(hashType.typeSHA384);
     public static final int SHA512  = getHashCode(hashType.typeSHA512);
-    public static final int BLAKE2b = getHashCode(hashType.typeBLAKE2b);
 
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
     private int type = -1;
@@ -80,7 +81,20 @@ public class Hmac extends NativeStruct {
 
     protected native long mallocNativeStruct() throws OutOfMemoryError;
 
+    /* check if type is -1, if so that type is not compiled in at native
+     * wolfSSL level. Throw exception if so. */
+    private void checkHashTypeCompiledIn(int type) throws WolfCryptException {
+        WolfCryptError notCompiledIn = WolfCryptError.NOT_COMPILED_IN;
+        if (type == -1) {
+            throw new WolfCryptException(notCompiledIn.getCode());
+        }
+    }
+
     public void setKey(int type, byte[] key) {
+
+        /* verify hash type is compiled in */
+        checkHashTypeCompiledIn(type);
+
         wc_HmacSetKey(type, key);
         this.type = type;
         this.key = key;
@@ -162,7 +176,7 @@ public class Hmac extends NativeStruct {
 
             if (type == MD5) {
                 return "HmacMD5";
-            } 
+            }
             else if (type == SHA256) {
                 return "HmacSHA256";
             }
@@ -172,9 +186,7 @@ public class Hmac extends NativeStruct {
             else if (type == SHA512) {
                 return "HmacSHA512";
             }
-            else if (type == BLAKE2b) {
-                return "HmacBLAKE2b";
-            } else {
+            else {
                 return "";
             }
 
@@ -205,8 +217,6 @@ public class Hmac extends NativeStruct {
                 return getCodeSha384();
             case typeSHA512:
                 return getCodeSha512();
-            case typeBLAKE2b:
-                return getCodeBlake2b();
             default:
                 return WolfCrypt.FAILURE;
         }

@@ -9,6 +9,8 @@ extern "C" {
 #endif
 #undef com_wolfssl_wolfcrypt_WolfCrypt_SUCCESS
 #define com_wolfssl_wolfcrypt_WolfCrypt_SUCCESS 0L
+#undef com_wolfssl_wolfcrypt_WolfCrypt_FAILURE
+#define com_wolfssl_wolfcrypt_WolfCrypt_FAILURE -1L
 #undef com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_128_BITS
 #define com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_128_BITS 16L
 #undef com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_160_BITS
