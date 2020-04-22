@@ -31,7 +31,7 @@
     <property name="test.build.dir" value="build/test" />
     <property name="reports.dir" value="build/reports" />
 
-    <property name="junit4" value="junit-4.12.jar" />
+    <property name="junit4" value="junit-4.13.jar" />
     <property name="hamcrest-core" value="hamcrest-core-1.3.jar" />
     <property name="ant-junit4" value="ant/ant-junit4.jar" />
     <property name="jce.debug" value="false" />
