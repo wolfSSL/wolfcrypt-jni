@@ -25,6 +25,9 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
+import java.util.Arrays;
+import java.util.ArrayList;
+
 import java.security.Security;
 import java.security.Provider;
 import java.security.SecureRandom;
@@ -45,7 +48,7 @@ import com.wolfssl.provider.jce.WolfCryptProvider;
 
 public class WolfCryptSignatureTest {
 
-    private String wolfJCEAlgos[] = {
+    private static String wolfJCEAlgos[] = {
         "SHA1withRSA",
         "SHA256withRSA",
         "SHA384withRSA",
@@ -56,14 +59,31 @@ public class WolfCryptSignatureTest {
         "SHA512withECDSA"
     };
 
+    private static ArrayList<String> enabledAlgos =
+        new ArrayList<String>();
+
     @BeforeClass
-    public static void testProviderInstallationAtRuntime() {
+    public static void testProviderInstallationAtRuntime()
+        throws NoSuchProviderException {
+
+        Signature sig;
 
         /* install wolfJCE provider at runtime */
         Security.addProvider(new WolfCryptProvider());
 
         Provider p = Security.getProvider("wolfJCE");
         assertNotNull(p);
+
+        /* populate enabledAlgos, some native features may be
+         * compiled out */
+        for (int i = 0; i < wolfJCEAlgos.length; i++) {
+            try {
+                sig = Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                enabledAlgos.add(wolfJCEAlgos[i]);
+            } catch (NoSuchAlgorithmException e) {
+                /* algo not compiled in */
+            }
+        }
     }
 
     @Test
@@ -73,8 +93,8 @@ public class WolfCryptSignatureTest {
         Signature sig;
 
         /* try to get all available options we expect to have */
-        for (int i = 0; i < wolfJCEAlgos.length; i++) {
-            sig = Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+        for (int i = 0; i < enabledAlgos.size(); i++) {
+            sig = Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
         }
 
         /* asking for a bad algo should throw an exception */
@@ -95,12 +115,12 @@ public class WolfCryptSignatureTest {
         byte[] toSignBuf = toSign.getBytes();
         byte[] signature = null;
 
-        for (int i = 0; i < wolfJCEAlgos.length; i++) {
+        for (int i = 0; i < enabledAlgos.size(); i++) {
 
             Signature signer =
-                Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
             Signature verifier =
-                Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
 
             assertNotNull(signer);
             assertNotNull(verifier);
@@ -110,7 +130,7 @@ public class WolfCryptSignatureTest {
             assertNotNull(rand);
 
             /* generate key pair */
-            KeyPair pair = generateKeyPair(wolfJCEAlgos[i], rand);
+            KeyPair pair = generateKeyPair(enabledAlgos.get(i), rand);
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();
@@ -144,12 +164,12 @@ public class WolfCryptSignatureTest {
         byte[] toSignBuf = toSign.getBytes();
         byte[] signature = null;
 
-        for (int i = 0; i < wolfJCEAlgos.length; i++) {
+        for (int i = 0; i < enabledAlgos.size(); i++) {
 
             Signature signer =
-                Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
             Signature verifier =
-                Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
 
             assertNotNull(signer);
             assertNotNull(verifier);
@@ -159,7 +179,7 @@ public class WolfCryptSignatureTest {
             assertNotNull(rand);
 
             /* generate key pair */
-            KeyPair pair = generateKeyPair(wolfJCEAlgos[i], rand);
+            KeyPair pair = generateKeyPair(enabledAlgos.get(i), rand);
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();
@@ -198,12 +218,12 @@ public class WolfCryptSignatureTest {
         byte[] toSignBuf = toSign.getBytes();
         byte[] signature;
 
-        for (int i = 0; i < wolfJCEAlgos.length; i++) {
+        for (int i = 0; i < enabledAlgos.size(); i++) {
 
             Signature signer =
-                Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
             Signature verifier =
-                Signature.getInstance(wolfJCEAlgos[i]);
+                Signature.getInstance(enabledAlgos.get(i));
 
             assertNotNull(signer);
             assertNotNull(verifier);
@@ -220,7 +240,7 @@ public class WolfCryptSignatureTest {
             assertNotNull(rand);
 
             /* generate key pair */
-            KeyPair pair = generateKeyPair(wolfJCEAlgos[i], rand);
+            KeyPair pair = generateKeyPair(enabledAlgos.get(i), rand);
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();
@@ -254,12 +274,12 @@ public class WolfCryptSignatureTest {
         byte[] toSignBuf = toSign.getBytes();
         byte[] signature;
 
-        for (int i = 0; i < wolfJCEAlgos.length; i++) {
+        for (int i = 0; i < enabledAlgos.size(); i++) {
 
             Signature signer =
-                Signature.getInstance(wolfJCEAlgos[i]);
+                Signature.getInstance(enabledAlgos.get(i));
             Signature verifier =
-                Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
 
             assertNotNull(signer);
             assertNotNull(verifier);
@@ -276,7 +296,7 @@ public class WolfCryptSignatureTest {
             assertNotNull(rand);
 
             /* generate key pair */
-            KeyPair pair = generateKeyPair(wolfJCEAlgos[i], rand);
+            KeyPair pair = generateKeyPair(enabledAlgos.get(i), rand);
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();

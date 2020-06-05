@@ -23,10 +23,14 @@ package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
 import org.junit.Test;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+
+import java.util.Arrays;
+import java.util.ArrayList;
 
 import java.security.Security;
 import java.security.Provider;
@@ -39,7 +43,7 @@ import com.wolfssl.provider.jce.WolfCryptProvider;
 
 public class WolfCryptMacTest {
 
-    private String wolfJCEAlgos[] = {
+    private static String wolfJCEAlgos[] = {
         "HmacMD5",
         "HmacSHA1",
         "HmacSHA256",
@@ -47,8 +51,11 @@ public class WolfCryptMacTest {
         "HmacSHA512"
     };
 
+    private static ArrayList<String> enabledAlgos =
+        new ArrayList<String>();
+
     /* expected digest sizes, order must match wolfJCEAlgos */
-    private int wolfJCEMacLengths[] = {
+    private static int wolfJCEMacLengths[] = {
         16,
         20,
         32,
@@ -56,14 +63,32 @@ public class WolfCryptMacTest {
         64
     };
 
+    private static ArrayList<Integer> enabledAlgoLengths =
+        new ArrayList<Integer>();
+
     @BeforeClass
-    public static void testProviderInstallationAtRuntime() {
+    public static void testProviderInstallationAtRuntime()
+        throws NoSuchProviderException {
+
+        Mac mac;
 
         /* install wolfJCE provider at runtime */
         Security.addProvider(new WolfCryptProvider());
 
         Provider p = Security.getProvider("wolfJCE");
         assertNotNull(p);
+
+        /* populate enabledAlgos, some native features may be
+         * compiled out */
+        for (int i = 0; i < wolfJCEAlgos.length; i++) {
+            try {
+                mac = Mac.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                enabledAlgos.add(wolfJCEAlgos[i]);
+                enabledAlgoLengths.add(wolfJCEMacLengths[i]);
+            } catch (NoSuchAlgorithmException e) {
+                /* algo not compiled in */
+            }
+        }
     }
 
     @Test
@@ -73,8 +98,8 @@ public class WolfCryptMacTest {
         Mac mac;
 
         /* try to get all available options we expect to have */
-        for (int i = 0; i < wolfJCEAlgos.length; i++) {
-            mac = Mac.getInstance(wolfJCEAlgos[i], "wolfJCE");
+        for (int i = 0; i < enabledAlgos.size(); i++) {
+            mac = Mac.getInstance(enabledAlgos.get(i), "wolfJCE");
         }
 
         /* getting a garbage algorithm should throw an exception */
@@ -93,12 +118,12 @@ public class WolfCryptMacTest {
 
         Mac mac;
 
-        for (int i = 0; i < wolfJCEAlgos.length; i++) {
-            mac = Mac.getInstance(wolfJCEAlgos[i], "wolfJCE");
+        for (int i = 0; i < enabledAlgos.size(); i++) {
+            mac = Mac.getInstance(enabledAlgos.get(i), "wolfJCE");
 
-            if (mac.getMacLength() != wolfJCEMacLengths[i])
+            if (mac.getMacLength() != enabledAlgoLengths.get(i))
                 fail("Expected MAC length did not match, " +
-                        "algo = " + wolfJCEAlgos[i]);
+                        "algo = " + enabledAlgos.get(i));
         }
     }
 
@@ -175,13 +200,20 @@ public class WolfCryptMacTest {
             SecretKeySpec keyspec =
                 new SecretKeySpec(vectors[i].getKey(), "MD5");
 
-            Mac mac = Mac.getInstance("HmacMD5", "wolfJCE");
-            mac.init(keyspec);
-            mac.update(vectors[i].getInput());
+            try {
+                Mac mac = Mac.getInstance("HmacMD5", "wolfJCE");
 
-            byte out[] = mac.doFinal();
+                mac.init(keyspec);
+                mac.update(vectors[i].getInput());
 
-            assertArrayEquals(out, vectors[i].getOutput());
+                byte out[] = mac.doFinal();
+
+                assertArrayEquals(out, vectors[i].getOutput());
+
+            } catch (NoSuchAlgorithmException e) {
+                /* skip test if not available */
+                Assume.assumeTrue(false);
+            }
         }
     }
 
@@ -263,13 +295,20 @@ public class WolfCryptMacTest {
             SecretKeySpec keyspec =
                 new SecretKeySpec(vectors[i].getKey(), "SHA1");
 
-            Mac mac = Mac.getInstance("HmacSHA1", "wolfJCE");
-            mac.init(keyspec);
-            mac.update(vectors[i].getInput());
+            try {
+                Mac mac = Mac.getInstance("HmacSHA1", "wolfJCE");
 
-            byte out[] = mac.doFinal();
+                mac.init(keyspec);
+                mac.update(vectors[i].getInput());
 
-            assertArrayEquals(out, vectors[i].getOutput());
+                byte out[] = mac.doFinal();
+
+                assertArrayEquals(out, vectors[i].getOutput());
+
+            } catch (NoSuchAlgorithmException e) {
+                /* skip test if not available */
+                Assume.assumeTrue(false);
+            }
         }
     }
 
@@ -360,13 +399,20 @@ public class WolfCryptMacTest {
             SecretKeySpec keyspec =
                 new SecretKeySpec(vectors[i].getKey(), "SHA256");
 
-            Mac mac = Mac.getInstance("HmacSHA256", "wolfJCE");
-            mac.init(keyspec);
-            mac.update(vectors[i].getInput());
+            try {
+                Mac mac = Mac.getInstance("HmacSHA256", "wolfJCE");
 
-            byte out[] = mac.doFinal();
+                mac.init(keyspec);
+                mac.update(vectors[i].getInput());
 
-            assertArrayEquals(out, vectors[i].getOutput());
+                byte out[] = mac.doFinal();
+
+                assertArrayEquals(out, vectors[i].getOutput());
+
+            } catch (NoSuchAlgorithmException e) {
+                /* skip test if not available */
+                Assume.assumeTrue(false);
+            }
         }
     }
 
@@ -469,13 +515,20 @@ public class WolfCryptMacTest {
             SecretKeySpec keyspec =
                 new SecretKeySpec(vectors[i].getKey(), "SHA384");
 
-            Mac mac = Mac.getInstance("HmacSHA384", "wolfJCE");
-            mac.init(keyspec);
-            mac.update(vectors[i].getInput());
+            try {
+                Mac mac = Mac.getInstance("HmacSHA384", "wolfJCE");
 
-            byte out[] = mac.doFinal();
+                mac.init(keyspec);
+                mac.update(vectors[i].getInput());
 
-            assertArrayEquals(out, vectors[i].getOutput());
+                byte out[] = mac.doFinal();
+
+                assertArrayEquals(out, vectors[i].getOutput());
+
+            } catch (NoSuchAlgorithmException e) {
+                /* skip test if not available */
+                Assume.assumeTrue(false);
+            }
         }
     }
 
@@ -590,13 +643,20 @@ public class WolfCryptMacTest {
             SecretKeySpec keyspec =
                 new SecretKeySpec(vectors[i].getKey(), "SHA512");
 
-            Mac mac = Mac.getInstance("HmacSHA512", "wolfJCE");
-            mac.init(keyspec);
-            mac.update(vectors[i].getInput());
+            try {
+                Mac mac = Mac.getInstance("HmacSHA512", "wolfJCE");
 
-            byte out[] = mac.doFinal();
+                mac.init(keyspec);
+                mac.update(vectors[i].getInput());
 
-            assertArrayEquals(out, vectors[i].getOutput());
+                byte out[] = mac.doFinal();
+
+                assertArrayEquals(out, vectors[i].getOutput());
+
+            } catch (NoSuchAlgorithmException e) {
+                /* skip test if not available */
+                Assume.assumeTrue(false);
+            }
         }
     }
 

@@ -22,6 +22,7 @@
 package com.wolfssl.provider.jce;
 
 import java.security.Provider;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 
 /**
  * wolfCrypt JCE Provider implementation
@@ -35,16 +36,26 @@ public final class WolfCryptProvider extends Provider {
         super("wolfJCE", 1.0, "wolfCrypt JCE Provider");
 
         /* MessageDigest */
-        put("MessageDigest.MD5",
-                "com.wolfssl.provider.jce.WolfCryptMessageDigestMd5");
-        put("MessageDigest.SHA-1",
-                "com.wolfssl.provider.jce.WolfCryptMessageDigestSha");
-        put("MessageDigest.SHA-256",
-                "com.wolfssl.provider.jce.WolfCryptMessageDigestSha256");
-        put("MessageDigest.SHA-384",
-                "com.wolfssl.provider.jce.WolfCryptMessageDigestSha384");
-        put("MessageDigest.SHA-512",
-                "com.wolfssl.provider.jce.WolfCryptMessageDigestSha512");
+        if (FeatureDetect.Md5Enabled()) {
+            put("MessageDigest.MD5",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestMd5");
+        }
+        if (FeatureDetect.ShaEnabled()) {
+            put("MessageDigest.SHA-1",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha");
+        }
+        if (FeatureDetect.Sha256Enabled()) {
+            put("MessageDigest.SHA-256",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha256");
+        }
+        if (FeatureDetect.Sha384Enabled()) {
+            put("MessageDigest.SHA-384",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha384");
+        }
+        if (FeatureDetect.Sha512Enabled()) {
+            put("MessageDigest.SHA-512",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha512");
+        }
 
         /* SecureRandom */
         /* TODO: May need to add "SHA1PRNG" alias, other JCA consumemrs may
@@ -53,37 +64,56 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptRandom");
 
         /* Signature */
-        put("Signature.MD5withRSA",
-                "com.wolfssl.provider.jce.WolfCryptSignature$wcMD5wRSA");
-        put("Signature.SHA1withRSA",
-                "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA1wRSA");
-        put("Signature.SHA256withRSA",
-                "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA256wRSA");
-        put("Signature.SHA384withRSA",
-                "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA384wRSA");
-        put("Signature.SHA512withRSA",
-                "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA512wRSA");
-
-        put("Signature.SHA1withECDSA",
-                "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA1wECDSA");
-        put("Signature.SHA256withECDSA",
-                "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA256wECDSA");
-        put("Signature.SHA384withECDSA",
-                "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA384wECDSA");
-        put("Signature.SHA512withECDSA",
-                "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA512wECDSA");
+        if (FeatureDetect.Md5Enabled()) {
+            put("Signature.MD5withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcMD5wRSA");
+        }
+        if (FeatureDetect.ShaEnabled()) {
+            put("Signature.SHA1withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA1wRSA");
+            put("Signature.SHA1withECDSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA1wECDSA");
+        }
+        if (FeatureDetect.Sha256Enabled()) {
+            put("Signature.SHA256withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA256wRSA");
+            put("Signature.SHA256withECDSA",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA256wECDSA");
+        }
+        if (FeatureDetect.Sha384Enabled()) {
+            put("Signature.SHA384withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA384wRSA");
+            put("Signature.SHA384withECDSA",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA384wECDSA");
+        }
+        if (FeatureDetect.Sha512Enabled()) {
+            put("Signature.SHA512withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA512wRSA");
+            put("Signature.SHA512withECDSA",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA512wECDSA");
+        }
 
         /* Mac */
-        put("Mac.HmacMD5",
-                "com.wolfssl.provider.jce.WolfCryptMac$wcHmacMD5");
-        put("Mac.HmacSHA1",
-                "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA1");
-        put("Mac.HmacSHA256",
-                "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA256");
-        put("Mac.HmacSHA384",
-                "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA384");
-        put("Mac.HmacSHA512",
-                "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA512");
+        if (FeatureDetect.Md5Enabled()) {
+            put("Mac.HmacMD5",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacMD5");
+        }
+        if (FeatureDetect.ShaEnabled()) {
+            put("Mac.HmacSHA1",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA1");
+        }
+        if (FeatureDetect.Sha256Enabled()) {
+            put("Mac.HmacSHA256",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA256");
+        }
+        if (FeatureDetect.Sha384Enabled()) {
+            put("Mac.HmacSHA384",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA384");
+        }
+        if (FeatureDetect.Sha512Enabled()) {
+            put("Mac.HmacSHA512",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA512");
+        }
 
         /* Cipher */
         put("Cipher.AES/CBC/NoPadding",
