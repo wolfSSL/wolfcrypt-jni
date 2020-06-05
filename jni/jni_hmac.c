@@ -39,7 +39,7 @@
 static WC_INLINE int GetHashSizeByType(int type)
 {
     if (!(type == WC_MD5 || type == WC_SHA || type == WC_SHA256
-            || type == WC_SHA384 || type == WC_SHA512 || type == BLAKE2B_ID))
+            || type == WC_SHA384 || type == WC_SHA512))
         return BAD_FUNC_ARG;
 
     switch (type) {
@@ -70,12 +70,6 @@ static WC_INLINE int GetHashSizeByType(int type)
         #if defined(CYASSL_SHA512) || defined(WOLFSSL_SHA512)
         case WC_SHA512:
             return SHA512_DIGEST_SIZE;
-        break;
-        #endif
-        
-        #ifdef HAVE_BLAKE2 
-        case BLAKE2B_ID:
-            return BLAKE2B_OUTBYTES;
         break;
         #endif
         
@@ -308,52 +302,69 @@ JNIEXPORT jint JNICALL
 Java_com_wolfssl_wolfcrypt_Hmac_getCodeMd5(
         JNIEnv* env, jobject this)
 {
+#ifndef NO_MD5
     jint result = WC_MD5;
     LogStr("WC_MD5 = %d\n", result);
     return result;
+#else
+    /* not compiled in */
+    return (jint) -1;
+#endif
 }
 
 JNIEXPORT jint JNICALL
 Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha(
         JNIEnv* env, jobject this)
 {
+#ifndef NO_SHA
     jint result = WC_SHA;
     LogStr("WC_SHA = %d\n", result);
     return result;
+#else
+    /* not compiled in */
+    return (jint) -1;
+#endif
 }
 
 JNIEXPORT jint JNICALL
 Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha256(
         JNIEnv* env, jobject this)
 {
+#ifndef NO_SHA256
     jint result = WC_SHA256;
     LogStr("WC_SHA256 = %d\n", result);
     return result;
+#else
+    /* not compiled in */
+    return (jint) -1;
+#endif
 }
 
 JNIEXPORT jint JNICALL
 Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha384(
         JNIEnv* env, jobject this)
 {
+#ifdef WOLFSSL_SHA384
     jint result = WC_SHA384;
     LogStr("WC_SHA384 = %d\n", result);
     return result;
+#else
+    /* not compiled in */
+    return (jint) -1;
+#endif
 }
 
 JNIEXPORT jint JNICALL
 Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha512(
         JNIEnv* env, jobject this)
 {
+#ifdef WOLFSSL_SHA512
     jint result = WC_SHA512;
     LogStr("WC_SHA512 = %d\n", result);
     return result;
+#else
+    /* not compiled in */
+    return (jint) -1;
+#endif
 }
 
-JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_getCodeBlake2b(
-        JNIEnv* env, jobject this)
-{
-    jint result = BLAKE2B_ID;
-    LogStr("BLAKE2B_ID = %d", result);
-    return result;
-}

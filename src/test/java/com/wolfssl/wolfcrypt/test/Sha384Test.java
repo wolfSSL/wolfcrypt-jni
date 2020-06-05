@@ -28,14 +28,30 @@ import java.nio.ByteBuffer;
 import javax.crypto.ShortBufferException;
 
 import org.junit.Test;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 
 import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.NativeStruct;
+import com.wolfssl.wolfcrypt.WolfCryptException;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 
 public class Sha384Test {
 	private ByteBuffer data = ByteBuffer.allocateDirect(32);
 	private ByteBuffer result = ByteBuffer.allocateDirect(Sha384.DIGEST_SIZE);
 	private ByteBuffer expected = ByteBuffer.allocateDirect(Sha384.DIGEST_SIZE);
+
+    @BeforeClass
+    public static void checkSha384IsAvailable() {
+        try {
+            Sha384 sha = new Sha384();
+        } catch (WolfCryptException e) {
+			if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+				System.out.println("Sha384Test skipped: " + e.getError());
+                Assume.assumeTrue(false);
+            }
+        }
+    }
 
 	@Test
 	public void constructorShouldInitializeNativeStruct() {
