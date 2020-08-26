@@ -641,6 +641,8 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
         XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         throwWolfCryptExceptionFromError(env, ret);
     }
+#else
+    (void)rng;
 #endif
 
     ret = (!ecc || !pub)
