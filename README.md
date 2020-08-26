@@ -135,9 +135,9 @@ README_JCE.md for more details.
 ### Revision History
 ---------
 
-********* wolfCrypt JNI Release X.X.X (TBD)
+********* wolfCrypt JNI Release 1.1.0 (08/26/2020)
 
-Release X.X.X of wolfCrypt JNI has bug fixes and new features including:
+Release 1.1.0 of wolfCrypt JNI has bug fixes and new features including:
 
 - New JNI-level wrappers for ChaCha, Curve25519, and Ed25519
 - Maven pom.xml build file
