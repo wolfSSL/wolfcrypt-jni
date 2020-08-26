@@ -41,6 +41,20 @@
 
     <property environment="env" />
 
+    <!-- check if javac nativeheaderdir is available -->
+    <condition property="have-nativeheaderdir">
+        <and>
+            <antversion atleast="1.9.8"/>
+            <not>
+                <or>
+                    <equals arg1="${ant.java.version}" arg2="1.5"/>
+                    <equals arg1="${ant.java.version}" arg2="1.6"/>
+                    <equals arg1="${ant.java.version}" arg2="1.7"/>
+                </or>
+            </not>
+        </and>
+    </condition>
+
     <!-- classpath to compiled wolfcrypt-jni.jar, for running tests -->
     <path id="classpath">
         <fileset dir="${lib.dir}" includes="*.jar">
@@ -89,7 +103,23 @@
     </target>
 
     <!-- compile all JNI and JCE source files -->
-    <target name="compile" depends="init">
+    <target name="compile-nativeheaderdir" if="have-nativeheaderdir" depends="init">
+        <javac
+            srcdir="${src.dir}"
+            destdir="${build.dir}"
+            nativeheaderdir="${jni.dir}"
+            debug="${java.debug}"
+            debuglevel="${java.debuglevel}"
+            deprecation="${java.deprecation}"
+            optimize="${java.optimize}"
+            source="${java.source}"
+            target="${java.target}"
+            classpathref="classpath"
+            includeantruntime="false">
+            <compilerarg value="-Xlint:-options" />
+        </javac>
+    </target>
+    <target name="compile-javah" unless="have-nativeheaderdir" depends="init">
         <javac
             srcdir="${src.dir}"
             destdir="${build.dir}"
@@ -106,7 +136,7 @@
     </target>
 
     <!-- create JAR with ONLY JNI classes, not to be used with JCE -->
-    <target name="jar-jni" depends="compile">
+    <target name="jar-jni" depends="compile-nativeheaderdir, compile-javah">
         <jar jarfile="${lib.dir}/wolfcrypt-jni.jar">
             <manifest>
                 <attribute name="Implementation-Title"
@@ -123,7 +153,7 @@
     </target>
 
     <!-- create JAR with JNI and JCE classes, use this when wanting JCE -->
-    <target name="jar-jce" depends="compile">
+    <target name="jar-jce" depends="compile-nativeheaderdir, compile-javah">
         <jar jarfile="${lib.dir}/wolfcrypt-jni.jar" basedir="${build.dir}">
             <manifest>
                 <attribute name="Implementation-Title"
@@ -172,7 +202,8 @@
     </target>
 
     <!-- NOTE: depends on either jar-jni or jar-jce targets -->
-    <target name="javah" if="jni.classes.present" depends="jni-class-detect"
+    <target name="javah" if="jni.classes.present" unless="have-nativeheaderdir"
+        depends="jni-class-detect"
         description="Generate javah headers">
         <javah destdir="${jni.dir}" force="yes" classpathref="classpath">
             <class name="com.wolfssl.wolfcrypt.WolfCrypt" />
