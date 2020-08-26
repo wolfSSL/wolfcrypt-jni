@@ -5,21 +5,21 @@ This package provides a Java, JNI-based interface to the native wolfCrypt
 (and wolfCrypt FIPS API, if using with a FIPS version of wolfCrypt). It also
 includes a JCE provider for wolfCrypt.
 
-For instructions and notes on the JNI wrapper, please referene this README,
-or online documentation.
+For instructions and notes on the JNI wrapper, please reference this README.md,
+or the wolfSSL online documentation.
 
-For instructinos and notes on the JCE provider, please reference the
-README_JCE file, or online instructions.
+For instructions and notes on the JCE provider, please reference the
+README_JCE.md file, or online instructions.
 
 ### Compiling
 ---------
 
 To compile the wolfCrypt JNI wrapper:
 
-1) Compile and install a wolfSSL (wolfssl-x.x.x) or wolfSSL FIPS
-release (wolfssl-x.x.x-commercial-fips):
+1) Compile and install a wolfSSL (wolfssl-x.x.x), wolfSSL FIPS
+release (wolfssl-x.x.x-commercial-fips), or wolfSSL FIPS Ready release:
 
-In either case, you will need the "--enable-keygen" ./configure option.
+In any of these cases, you will need the "--enable-keygen" ./configure option.
 
 wolfSSL Standard Build:
 ```
@@ -29,11 +29,29 @@ $ make check
 $ sudo make install
 ```
 
-wolfSSL FIPS Build:
+wolfSSL FIPSv1 Build:
 
 ```
 $ cd wolfssl-x.x.x-commercial-fips
 $ ./configure --enable-fips --enable-keygen
+$ make check
+$ sudo make install
+```
+
+wolfSSL FIPSv2 Build:
+
+```
+$ cd wolfssl-x.x.x-commercial-fips
+$ ./configure --enable-fips=v2 --enable-keygen
+$ make check
+$ sudo make install
+```
+
+wolfSSL FIPS Ready Build:
+
+```
+$ cd wolfssl-x.x.x-commercial-fips
+$ ./configure --enable-fips=ready --enable-keygen
 $ make check
 $ sudo make install
 ```
@@ -62,7 +80,7 @@ files to be on your JUNIT_HOME path.
 
 To install and set up JUnit:
 
-a) Download "junit-4.12.jar" and "hamcrest-core-1.3.jar" from junit.org
+a) Download "junit-4.12.jar" and "hamcrest-all-1.3.jar" from junit.org
 
 b) Place these JAR files on your system and set JUNIT_HOME to point to
    that location:
@@ -112,10 +130,27 @@ sign.tsaurl=<timestamp server url>
 
 Signing the JAR is important especially if using the JCE Provider with a JDK
 that requires JCE provider JAR's to be authenticated.  Please see
-README_JCE for more details.
+README_JCE.md for more details.
 
 ### Revision History
 ---------
+
+********* wolfCrypt JNI Release X.X.X (TBD)
+
+Release X.X.X of wolfCrypt JNI has bug fixes and new features including:
+
+- New JNI-level wrappers for ChaCha, Curve25519, and Ed25519
+- Maven pom.xml build file
+- Runtime detection of hash type enum values for broader wolfSSL support
+- Updated wolfSSL error codes to match native wolfSSL updates
+- Native HMAC wrapper fixes for building with wolfCrypt FIPSv2
+- Native wrapper to return HAVE_FIPS_VERSION value to Java
+- Remove Blake2b from HMAC types, to match native wolfSSL changes
+- Better native wolfSSL feature detection
+- Increase Junit version to 4.13
+- Use nativeheaderdir on supported platforms instead of javah
+- Use hamcrest-all-1.3.jar in build.xml
+- Add call to wc_ecc_set_rng() when needed
 
 ********* wolfCrypt JNI Release 1.0.0 (7/10/2017)
 

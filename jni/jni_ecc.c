@@ -595,18 +595,25 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyToDer(
 
 JNIEXPORT jbyteArray JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
-    JNIEnv* env, jobject this, jobject pub_object)
+    JNIEnv* env, jobject this, jobject pub_object, jobject rng_object)
 {
     jbyteArray result = NULL;
 
 #ifdef HAVE_ECC_DHE
     int ret = 0;
+    RNG* rng = NULL;
     ecc_key* ecc = NULL;
     ecc_key* pub = NULL;
     byte* output = NULL;
     word32 outputSz = 0;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
         return NULL;
@@ -625,6 +632,16 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
                                      "Failed to allocate shared secret buffer");
         return result;
     }
+
+#if defined(ECC_TIMING_RESISTANT) && (!defined(HAVE_FIPS) || \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION != 2))) && \
+    !defined(HAVE_SELFTEST)
+    ret = wc_ecc_set_rng(ecc, rng);
+    if (ret != 0) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+#endif
 
     ret = (!ecc || !pub)
         ? BAD_FUNC_ARG

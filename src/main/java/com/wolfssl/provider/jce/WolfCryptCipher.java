@@ -752,6 +752,7 @@ public class WolfCryptCipher extends CipherSpi {
         debug.print("[Cipher, " + algString + "-" + algMode + "] " + msg);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected void finalize() throws Throwable {
         try {

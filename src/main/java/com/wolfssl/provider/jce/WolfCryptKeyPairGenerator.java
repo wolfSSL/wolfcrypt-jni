@@ -304,6 +304,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         debug.print("[KeyPairGenerator, " + algString + "] " + msg);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected void finalize() throws Throwable {
         try {

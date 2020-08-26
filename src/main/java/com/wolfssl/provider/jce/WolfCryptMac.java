@@ -192,6 +192,7 @@ public class WolfCryptMac extends MacSpi {
         debug.print("[Mac, " + algString + "] " + msg);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected void finalize() throws Throwable {
         try {
