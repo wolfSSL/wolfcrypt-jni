@@ -4,7 +4,7 @@
 The wolfCrypt JCE Provider is currently set up to be compiled together into
 the same JAR file as the normal wolfcrypt-jni classes.
 
-The wolfCrypt JCE Provider is located in the following class:
+The wolfCrypt JCE Provider is located in the following package:
 
     com.wolfssl.wolfcrypt.jce.provider
 
