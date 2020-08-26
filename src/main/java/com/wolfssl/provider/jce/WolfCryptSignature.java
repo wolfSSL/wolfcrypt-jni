@@ -618,6 +618,7 @@ public class WolfCryptSignature extends SignatureSpi {
                     digestString + "] " + msg);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected void finalize() throws Throwable {
         try {
