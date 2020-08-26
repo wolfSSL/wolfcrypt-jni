@@ -60,10 +60,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1check_1key
 /*
  * Class:     com_wolfssl_wolfcrypt_Ecc
  * Method:    wc_ecc_shared_secret
- * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;)[B
+ * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;Lcom/wolfssl/wolfcrypt/Rng;)[B
  */
 JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret
-  (JNIEnv *, jobject, jobject);
+  (JNIEnv *, jobject, jobject, jobject);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Ecc

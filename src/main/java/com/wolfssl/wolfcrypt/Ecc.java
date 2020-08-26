@@ -26,6 +26,8 @@ import java.security.spec.EllipticCurve;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.ECFieldFp;
 
+import com.wolfssl.wolfcrypt.Rng;
+
 /**
  * Wrapper for the native WolfCrypt ecc implementation.
  *
@@ -35,6 +37,9 @@ import java.security.spec.ECFieldFp;
 public class Ecc extends NativeStruct {
 
 	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+
+    /* used with native wc_ecc_set_rng() */
+    private Rng rng = null;
 
 	public Ecc() {
 		init();
@@ -59,7 +64,7 @@ public class Ecc extends NativeStruct {
 
 	private native void wc_ecc_check_key();
 
-	private native byte[] wc_ecc_shared_secret(Ecc pubKey);
+	private native byte[] wc_ecc_shared_secret(Ecc pubKey, Rng rng);
 
 	private native void wc_ecc_import_private(byte[] privKey, byte[] x963Key,
                                               String curveName);
@@ -95,6 +100,13 @@ public class Ecc extends NativeStruct {
 	protected void init() {
 		if (state == WolfCryptState.UNINITIALIZED) {
 			wc_ecc_init();
+
+            /* used with native wc_ecc_set_rng() */
+            if (rng == null) {
+                rng = new Rng();
+                rng.init();
+            }
+
 			state = WolfCryptState.INITIALIZED;
 		} else {
 			throw new IllegalStateException(
@@ -105,6 +117,12 @@ public class Ecc extends NativeStruct {
 	protected void free() {
 		if (state != WolfCryptState.UNINITIALIZED) {
 			wc_ecc_free();
+
+            if (this.rng != null) {
+                rng.free();
+                rng.releaseNativeStruct();
+            }
+
 			state = WolfCryptState.UNINITIALIZED;
 		}
 	}
@@ -220,7 +238,7 @@ public class Ecc extends NativeStruct {
 
 	public byte[] makeSharedSecret(Ecc pubKey) {
 		if (state == WolfCryptState.READY) {
-			return wc_ecc_shared_secret(pubKey);
+			return wc_ecc_shared_secret(pubKey, this.rng);
 		} else {
 			throw new IllegalStateException(
 					"No available key to perform the opperation.");
