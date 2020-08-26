@@ -101,6 +101,7 @@ public final class WolfCryptMessageDigestMd5 extends MessageDigestSpi {
         debug.print("[MessageDigest, MD5] " + msg);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected void finalize() throws Throwable {
         try {

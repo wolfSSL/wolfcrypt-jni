@@ -541,6 +541,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         debug.print("[KeyAgreement, " + algString + "] " + msg);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected void finalize() throws Throwable {
         try {

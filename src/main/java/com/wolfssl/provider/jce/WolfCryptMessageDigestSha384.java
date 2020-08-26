@@ -101,6 +101,7 @@ public final class WolfCryptMessageDigestSha384 extends MessageDigestSpi {
         debug.print("[MessageDigest, SHA384] " + msg);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected void finalize() throws Throwable {
         try {
