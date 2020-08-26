@@ -8,7 +8,7 @@ includes a JCE provider for wolfCrypt.
 For instructions and notes on the JNI wrapper, please reference this README.md,
 or the wolfSSL online documentation.
 
-For instructinos and notes on the JCE provider, please reference the
+For instructions and notes on the JCE provider, please reference the
 README_JCE.md file, or online instructions.
 
 ### Compiling
@@ -134,6 +134,23 @@ README_JCE.md for more details.
 
 ### Revision History
 ---------
+
+********* wolfCrypt JNI Release X.X.X (TBD)
+
+Release X.X.X of wolfCrypt JNI has bug fixes and new features including:
+
+- New JNI-level wrappers for ChaCha, Curve25519, and Ed25519
+- Maven pom.xml build file
+- Runtime detection of hash type enum values for broader wolfSSL support
+- Updated wolfSSL error codes to match native wolfSSL updates
+- Native HMAC wrapper fixes for building with wolfCrypt FIPSv2
+- Native wrapper to return HAVE_FIPS_VERSION value to Java
+- Remove Blake2b from HMAC types, to match native wolfSSL changes
+- Better native wolfSSL feature detection
+- Increase Junit version to 4.13
+- Use nativeheaderdir on supported platforms instead of javah
+- Use hamcrest-all-1.3.jar in build.xml
+- Add call to wc_ecc_set_rng() when needed
 
 ********* wolfCrypt JNI Release 1.0.0 (7/10/2017)
 
