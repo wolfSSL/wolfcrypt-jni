@@ -27,6 +27,8 @@ extern "C" {
 
 #ifdef WOLFCRYPT_JNI_DEBUG_ON
 
+#include <wolfssl/wolfcrypt/types.h>
+
 #define LogStr printf
 
 static inline void LogHex(byte* data, word32 offset, word32 length)
