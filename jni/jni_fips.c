@@ -122,6 +122,52 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Fips_enabled
     #endif
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_setPrivateKeyReadEnable
+  (JNIEnv* jenv, jclass jcl, jint enable, jint keyType)
+{
+    int ret = 0;
+#if defined(HAVE_FIPS) && defined(HAVE_FIPS_VERSION) && (HAVE_FIPS_VERSION >= 5)
+    enum wc_KeyType type;
+
+    switch (keyType) {
+        case 0:
+            type = WC_KEYTYPE_ALL;
+            break;
+        default:
+            printf("Invalid key type enum");
+            ret = -1;
+            break;
+    }
+    if (ret == 0) {
+        ret = wolfCrypt_SetPrivateKeyReadEnable_fips(enable, type);
+    }
+#endif
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_getPrivateKeyReadEnable
+  (JNIEnv* jenv, jclass jcl, jint keyType)
+{
+    int ret = 0;
+#if defined(HAVE_FIPS) && defined(HAVE_FIPS_VERSION) && (HAVE_FIPS_VERSION >= 5)
+    enum wc_KeyType type;
+
+    switch (keyType) {
+        case 0:
+            type = WC_KEYTYPE_ALL;
+            break;
+        default:
+            printf("Invalid key type enum");
+            ret = -1;
+            break;
+    }
+    if (ret == 0) {
+        ret = wolfCrypt_GetPrivateKeyReadEnable_fips(type);
+    }
+#endif
+    return ret;
+}
+
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_getFipsVersion
 (JNIEnv* env, jclass this)
 {
@@ -1194,8 +1240,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacFinal_1fips__Lcom_wol
     ret = HmacFinal_fips(hmac, hash);
 
     LogStr("HmacFinal_fips(hmac=%p, hash) = %d\n", hmac, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)MD5_DIGEST_SIZE, hash);
-    LogHex(hash, 0, MD5_DIGEST_SIZE);
 
 #endif
 
@@ -1224,8 +1268,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_HmacFinal_1fips__Lcom_wol
                            : HmacFinal_fips(hmac, hash);
 
     LogStr("HmacFinal_fips(hmac=%p, hash) = %d\n", hmac, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)MD5_DIGEST_SIZE, hash);
-    LogHex(hash, 0, MD5_DIGEST_SIZE);
 
     releaseByteArray(env, hash_buffer, hash, ret);
 
