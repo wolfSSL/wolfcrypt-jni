@@ -30,11 +30,16 @@ package com.wolfssl.wolfcrypt;
  */
 public class WolfObject {
 
-	static {
-		System.loadLibrary("wolfcryptjni");
-	}
+    private static native int init();
 
-	protected WolfObject() {
-	}
+    static {
+        System.loadLibrary("wolfcryptjni");
 
+        /* initialize native wolfCrypt library */
+        init();
+    }
+
+    protected WolfObject() {
+    }
 }
+

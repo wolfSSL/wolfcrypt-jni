@@ -67,10 +67,35 @@ public class Fips extends WolfObject {
      */
     private static native boolean enabled();
 
+    /* Needs to match native WC_KEYTYPE_ALL in fips.h.
+     * Used with Fips.get/setPrivateKeyReadEnable() */
+    public static final int WC_KEYTYPE_ALL = 0;
+
+    /**
+     * Enable reading/export of private key from wolfCrypt FIPS module.
+     *
+     * @param enable enable/disable ability to read private keys from module
+     * @param keyType type of key to enable/disable. Currently only supports
+     *                Fips.WC_KEYTYPE_ALL
+     * @return 0 on success, negative on error
+     */
+    public static native int setPrivateKeyReadEnable(int enable, int keyType);
+
+    /**
+     * Get enable status for ability of application to read/export private key
+     * material from wolfCrypt FIPS library.
+     *
+     * @param keyType type of key to poll enable/disable status for. Currently
+     *                the only keyType supported is Fips.WC_KEYTYPE_ALL
+     *
+     * @return 1 if able to read private key material, otherwise 0
+     */
+    public static native int getPrivateKeyReadEnable(int keyType);
+
     private static native int getFipsVersion();
 
 	/*
-	 * ### FIPS Aprooved Security Methods ######################################
+	 * ### FIPS Approved Security Methods ######################################
 	 */
 
 	/*

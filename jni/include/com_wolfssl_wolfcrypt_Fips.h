@@ -7,6 +7,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#undef com_wolfssl_wolfcrypt_Fips_WC_KEYTYPE_ALL
+#define com_wolfssl_wolfcrypt_Fips_WC_KEYTYPE_ALL 0L
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    wolfCrypt_SetCb_fips
@@ -30,6 +32,22 @@ JNIEXPORT jstring JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1GetCoreHash
  */
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Fips_enabled
   (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    setPrivateKeyReadEnable
+ * Signature: (II)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_setPrivateKeyReadEnable
+  (JNIEnv *, jclass, jint, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    getPrivateKeyReadEnable
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_getPrivateKeyReadEnable
+  (JNIEnv *, jclass, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
