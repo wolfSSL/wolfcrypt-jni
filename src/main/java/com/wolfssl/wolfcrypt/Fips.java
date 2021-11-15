@@ -1,6 +1,6 @@
 /* Fips.java
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -27,9 +27,6 @@ import com.wolfssl.wolfcrypt.Aes;
 
 /**
  * Main wrapper for the native WolfCrypt implementation.
- *
- * @author Moisés Guimarães
- * @version 1.0, February 2015
  */
 public class Fips extends WolfObject {
 

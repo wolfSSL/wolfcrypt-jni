@@ -1,6 +1,6 @@
 /* MessageDigest.java
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -27,9 +27,6 @@ import javax.crypto.ShortBufferException;
 
 /**
  * Common API for Message Digests.
- *
- * @author Moisés Guimarães
- * @version 1.0, March 2017
  */
 public abstract class MessageDigest extends NativeStruct {
 

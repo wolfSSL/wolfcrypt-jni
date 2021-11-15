@@ -1,6 +1,6 @@
 /* WolfCryptCipher.java
  *
- * Copyright (C) 2006-2017 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -54,9 +54,6 @@ import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE Cipher (AES, 3DES) wrapper
- *
- * @author wolfSSL
- * @version 1.0, March 2017
  */
 public class WolfCryptCipher extends CipherSpi {
 

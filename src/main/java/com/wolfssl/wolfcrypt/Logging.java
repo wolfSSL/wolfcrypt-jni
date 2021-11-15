@@ -1,6 +1,6 @@
 /* Logging.java
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -23,9 +23,6 @@ package com.wolfssl.wolfcrypt;
 
 /**
  * Wrapper for the native WolfCrypt Logging implementation.
- *
- * @author Moisés Guimarães
- * @version 1.0, March 2016
  */
 public class Logging extends WolfObject {
 	
