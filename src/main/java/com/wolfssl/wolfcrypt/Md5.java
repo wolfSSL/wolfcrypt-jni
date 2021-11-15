@@ -1,6 +1,6 @@
 /* Md5.java
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -25,9 +25,6 @@ import java.nio.ByteBuffer;
 
 /**
  * Wrapper for the native WolfCrypt Md5 implementation.
- *
- * @author Moisés Guimarães
- * @version 2.0, March 2017
  */
 public class Md5 extends MessageDigest {
 

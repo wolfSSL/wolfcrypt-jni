@@ -1,5 +1,5 @@
 
-## wolfCrypt JNI
+## wolfCrypt JCE Provider and JNI Wrapper
 
 This package provides a Java, JNI-based interface to the native wolfCrypt
 (and wolfCrypt FIPS API, if using with a FIPS version of wolfCrypt). It also
@@ -9,7 +9,7 @@ For instructions and notes on the JNI wrapper, please reference this README.md,
 or the wolfSSL online documentation.
 
 For instructions and notes on the JCE provider, please reference the
-README_JCE.md file, or online instructions.
+[README_JCE.md](./README_JCE.md) file, or online instructions.
 
 ### Compiling
 ---------
@@ -19,9 +19,9 @@ To compile the wolfCrypt JNI wrapper:
 1) Compile and install a wolfSSL (wolfssl-x.x.x), wolfSSL FIPS
 release (wolfssl-x.x.x-commercial-fips), or wolfSSL FIPS Ready release:
 
-In any of these cases, you will need the "--enable-keygen" ./configure option.
+In any of these cases, you will need the `--enable-keygen` ./configure option.
 
-wolfSSL Standard Build:
+**wolfSSL Standard Build**:
 ```
 $ cd wolfssl-x.x.x
 $ ./configure --enable-keygen
@@ -29,7 +29,7 @@ $ make check
 $ sudo make install
 ```
 
-wolfSSL FIPSv1 Build:
+**wolfSSL FIPSv1 Build**:
 
 ```
 $ cd wolfssl-x.x.x-commercial-fips
@@ -38,7 +38,7 @@ $ make check
 $ sudo make install
 ```
 
-wolfSSL FIPSv2 Build:
+**wolfSSL FIPSv2 Build**:
 
 ```
 $ cd wolfssl-x.x.x-commercial-fips
@@ -47,7 +47,7 @@ $ make check
 $ sudo make install
 ```
 
-wolfSSL FIPS Ready Build:
+**wolfSSL FIPS Ready Build**:
 
 ```
 $ cd wolfssl-x.x.x-commercial-fips
@@ -56,7 +56,16 @@ $ make check
 $ sudo make install
 ```
 
-2) Compile the native wolfCrypt JNI object files:
+2) Compile the native wolfCrypt JNI object files. Two makefiles are distributed
+for Linux (`makefile.linux`) and Mac OSX (`makefile.macosx`). First copy
+the makefile for your platform to a file called `makefile`:
+
+```
+$ cd wolfcrypt-jni
+$ cp makefile.linux makefile
+```
+
+Then compile the native wolfCrypt JNI object files:
 
 ```
 $ cd wolfcrypt-jni
@@ -76,16 +85,18 @@ please follow these steps (for Linux/Mac):
 
 Running "ant test" will execute JUnit tests included in this package. These
 tests require JUnit to be available on your system and for the correct JAR
-files to be on your JUNIT_HOME path.
+files to be on your `JUNIT_HOME` path.
 
 To install and set up JUnit:
 
 a) Download "junit-4.13.jar" and "hamcrest-all-1.3.jar" from junit.org
 
-b) Place these JAR files on your system and set JUNIT_HOME to point to
+b) Place these JAR files on your system and set `JUNIT_HOME` to point to
    that location:
 
-    $ export JUNIT_HOME=/path/to/jar/files
+```
+$ export JUNIT_HOME=/path/to/jar/files
+```
 
 The JUnit tests can then be run with:
 
@@ -93,14 +104,20 @@ The JUnit tests can then be run with:
 $ ant test
 ```
 
+To clean the both Java JAR and native library:
+
+```
+$ ant clean
+$ make clean
+```
+
 ### API Javadocs
 ---------
 
-After the "ant" command has been executed, this will generate a set of
-Javadocs under the wolfcrypt-jni/docs directory.  To view the root document,
-open the following file in a web browser:
+Running `ant` will generate a set of Javadocs under the `wolfcrypt-jni/docs`
+directory.  To view the root document, open the following file in a web browser:
 
-wolfcrypt-jni/docs/index.html
+`wolfcrypt-jni/docs/index.html`
 
 ### Example / Test Code
 ---------
@@ -109,7 +126,7 @@ The JUnit test code can act as a good usage example of the wolfCrypt JNI
 API. This test code is run automatically when "ant test" is executed from
 the root wolfcrypt-jni directory.  The test source code is located at:
 
-wolfcrypt-jni/src/test/com/wolfssl/wolfcrypt
+`wolfcrypt-jni/src/test/com/wolfssl/wolfcrypt`
 
 ### JAR Code Signing
 ---------
@@ -130,12 +147,23 @@ sign.tsaurl=<timestamp server url>
 
 Signing the JAR is important especially if using the JCE Provider with a JDK
 that requires JCE provider JAR's to be authenticated.  Please see
-README_JCE.md for more details.
+[README_JCE.md](./README_JCE.md) for more details.
 
 ### Revision History
 ---------
 
-********* wolfCrypt JNI Release 1.1.0 (08/26/2020)
+#### wolfCrypt JNI Release 1.2.0 (11/15/2021)
+
+Release 1.2.0 of wolfCrypt JNI has bug fixes and new features including:
+
+- Add **FIPS 140-3** compatibility when using wolfCrypt FIPS or FIPS Ready
+- Increase junit version from 4.12 to 4.13 in pom.xml
+- Add local `./lib` directory to `java.library.path` in pom.xml
+- Fix builds with `WOLFCRYPT_JNI_DEBUG_ON` defined
+- Fix compatibility with wolfCrypt `NO_OLD_*` defines
+- Fix compatibility with wolfSSL `./configure --enable-all` and ECC tests
+
+#### wolfCrypt JNI Release 1.1.0 (08/26/2020)
 
 Release 1.1.0 of wolfCrypt JNI has bug fixes and new features including:
 
@@ -144,15 +172,15 @@ Release 1.1.0 of wolfCrypt JNI has bug fixes and new features including:
 - Runtime detection of hash type enum values for broader wolfSSL support
 - Updated wolfSSL error codes to match native wolfSSL updates
 - Native HMAC wrapper fixes for building with wolfCrypt FIPSv2
-- Native wrapper to return HAVE_FIPS_VERSION value to Java
+- Native wrapper to return `HAVE_FIPS_VERSION` value to Java
 - Remove Blake2b from HMAC types, to match native wolfSSL changes
 - Better native wolfSSL feature detection
 - Increase Junit version to 4.13
 - Use nativeheaderdir on supported platforms instead of javah
 - Use hamcrest-all-1.3.jar in build.xml
-- Add call to wc_ecc_set_rng() when needed
+- Add call to `wc_ecc_set_rng()` when needed
 
-********* wolfCrypt JNI Release 1.0.0 (7/10/2017)
+#### wolfCrypt JNI Release 1.0.0 (7/10/2017)
 
 Release 1.0.0 of wolfCrypt JNI has bug fixes and new features including:
 
@@ -162,7 +190,7 @@ Release 1.0.0 of wolfCrypt JNI has bug fixes and new features including:
 - Conditional ant build for JNI and/or JCE
 - New ant targets with choice of debug or release builds
 
-********* wolfCrypt JNI Release 0.3 BETA
+#### wolfCrypt JNI Release 0.3 BETA
 
 Release 0.3 BETA of wolfCrypt JNI includes:
 
@@ -170,7 +198,7 @@ Release 0.3 BETA of wolfCrypt JNI includes:
 - Bug fixes regarding key import/export
 - Better argument sanitization at JNI level
 
-********* wolfCrypt JNI Release 0.2 BETA
+#### wolfCrypt JNI Release 0.2 BETA
 
 Release 0.2 BETA of wolfCrypt JNI includes:
 
@@ -181,7 +209,7 @@ Release 0.2 BETA of wolfCrypt JNI includes:
 - Bug fixes regarding releasing native resources
 - Test package changed to (com.wolfssl.provider.jce.test)
 
-********* wolfCrypt JNI Release 0.1 BETA
+#### wolfCrypt JNI Release 0.1 BETA
 
 Release 0.1 BETA of wolfCrypt JNI includes:
 

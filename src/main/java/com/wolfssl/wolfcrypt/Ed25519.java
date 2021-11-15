@@ -1,6 +1,6 @@
 /* Ed25519.java
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -24,10 +24,7 @@ package com.wolfssl.wolfcrypt;
 import java.security.InvalidAlgorithmParameterException;
 
 /**
- * Wrapper for the native WolfCrypt ed25519 implementation.
- *
- * @author Daniele Lacamera
- * @version 1.0, March 2018
+ * Wrapper for the native WolfCrypt Ed25519 implementation.
  */
 public class Ed25519 extends NativeStruct {
 

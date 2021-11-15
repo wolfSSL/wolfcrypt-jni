@@ -1,6 +1,6 @@
 /* wolfCryptProvider.java
  *
- * Copyright (C) 2006-2017 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -23,12 +23,10 @@ package com.wolfssl.provider.jce;
 
 import java.security.Provider;
 import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.Fips;
 
 /**
  * wolfCrypt JCE Provider implementation
- *
- * @author wolfSSL
- * @version 1.0, March 2017
  */
 public final class WolfCryptProvider extends Provider {
 
@@ -138,6 +136,12 @@ public final class WolfCryptProvider extends Provider {
         put("KeyPairGenerator.DH",
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenDH");
         put("Alg.Alias.KeyPairGenerator.DiffieHellman", "DH");
+
+        /* If using a FIPS version of wolfCrypt, allow private key to be
+         * exported for use. Only applicable to FIPS 140-3 */
+        if (Fips.enabled) {
+            Fips.setPrivateKeyReadEnable(1, Fips.WC_KEYTYPE_ALL);
+        }
     }
 }
 
