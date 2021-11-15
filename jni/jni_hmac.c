@@ -35,6 +35,25 @@
     #define MAX_DIGEST_SIZE WC_MAX_DIGEST_SIZE
 #endif
 
+#ifdef NO_OLD_WC_NAMES
+    #ifndef NO_MD5
+        #define MD5_DIGEST_SIZE WC_MD5_DIGEST_SIZE
+    #endif
+    #ifndef NO_SHA
+        #define SHA_DIGEST_SIZE WC_SHA_DIGEST_SIZE
+    #endif
+    #ifndef NO_SHA256
+        #define SHA256_DIGEST_SIZE WC_SHA256_DIGEST_SIZE
+    #endif
+    #ifdef WOLFSSL_SHA384
+        #define SHA384_DIGEST_SIZE WC_SHA384_DIGEST_SIZE
+    #endif
+    #ifdef WOLFSSL_SHA512
+        #define SHA512_DIGEST_SIZE WC_SHA512_DIGEST_SIZE
+    #endif
+    #define MAX_DIGEST_SIZE WC_MAX_DIGEST_SIZE
+#endif
+
 /* copy from cyassl/hmac.c */
 static WC_INLINE int GetHashSizeByType(int type)
 {

@@ -31,6 +31,10 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+#if !defined(WC_NO_RNG) && defined(NO_OLD_RNGNAME)
+    #define RNG WC_RNG
+#endif
+
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Dh_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
