@@ -33,6 +33,16 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+#ifndef NO_OLD_MD5_NAME
+    #define MD5             WC_MD5
+#endif
+
+#ifdef NO_OLD_WC_NAMES
+    #define Md5             wc_Md5
+    #define MD5_BLOCK_SIZE  WC_MD5_BLOCK_SIZE
+    #define MD5_DIGEST_SIZE WC_MD5_DIGEST_SIZE
+#endif
+
 JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct(
     JNIEnv* env, jobject this)

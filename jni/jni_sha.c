@@ -34,6 +34,33 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+#ifdef NO_OLD_WC_NAMES
+    #ifndef NO_SHA
+        #define Sha             wc_Sha
+        #define SHA_BLOCK_SIZE  WC_SHA_BLOCK_SIZE
+        #define SHA_DIGEST_SIZE WC_SHA_DIGEST_SIZE
+        #define SHA_PAD_SIZE    WC_SHA_PAD_SIZE
+    #endif
+    #ifndef NO_SHA256
+        #define Sha256             wc_Sha256
+        #define SHA256_BLOCK_SIZE  WC_SHA256_BLOCK_SIZE
+        #define SHA256_DIGEST_SIZE WC_SHA256_DIGEST_SIZE
+        #define SHA256_PAD_SIZE    WC_SHA256_PAD_SIZE
+    #endif
+    #ifdef WOLFSSL_SHA384
+        #define Sha384             wc_Sha384
+        #define SHA384_BLOCK_SIZE  WC_SHA384_BLOCK_SIZE
+        #define SHA384_DIGEST_SIZE WC_SHA384_DIGEST_SIZE
+        #define SHA384_PAD_SIZE    WC_SHA384_PAD_SIZE
+    #endif
+    #ifdef WOLFSSL_SHA512
+        #define Sha512             wc_Sha512
+        #define SHA512_BLOCK_SIZE  WC_SHA512_BLOCK_SIZE
+        #define SHA512_DIGEST_SIZE WC_SHA512_DIGEST_SIZE
+        #define SHA512_PAD_SIZE    WC_SHA512_PAD_SIZE
+    #endif
+#endif
+
 JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Sha_mallocNativeStruct(
     JNIEnv* env, jobject this)

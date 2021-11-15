@@ -34,6 +34,10 @@
 
 #define MAX_CURVE25519_PRIVATE_DER_SZ 128
 
+#if !defined(WC_NO_RNG) && defined(NO_OLD_RNGNAME)
+    #define RNG WC_RNG
+#endif
+
 JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Curve25519_mallocNativeStruct(
     JNIEnv* env, jobject this)
