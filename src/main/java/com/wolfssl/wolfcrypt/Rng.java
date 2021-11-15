@@ -1,6 +1,6 @@
 /* Rng.java
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -24,10 +24,7 @@ package com.wolfssl.wolfcrypt;
 import java.nio.ByteBuffer;
 
 /**
- * Wrapper for the native WolfCrypt Rng implementation.
- *
- * @author Moisés Guimarães
- * @version 1.0, March 2015
+ * Wrapper for the native WolfCrypt RNG implementation.
  */
 public class Rng extends NativeStruct {
 

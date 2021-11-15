@@ -1,6 +1,6 @@
 /* Sha512.java
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -24,10 +24,7 @@ package com.wolfssl.wolfcrypt;
 import java.nio.ByteBuffer;
 
 /**
- * Wrapper for the native WolfCrypt Sha512 implementation.
- *
- * @author Moisés Guimarães
- * @version 2.0, March 2017
+ * Wrapper for the native WolfCrypt SHA2-512 implementation.
  */
 public class Sha512 extends MessageDigest {
 

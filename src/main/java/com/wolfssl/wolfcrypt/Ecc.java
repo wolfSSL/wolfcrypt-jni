@@ -1,6 +1,6 @@
 /* Ecc.java
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -30,9 +30,6 @@ import com.wolfssl.wolfcrypt.Rng;
 
 /**
  * Wrapper for the native WolfCrypt ecc implementation.
- *
- * @author Moisés Guimarães
- * @version 2.0, February 2017
  */
 public class Ecc extends NativeStruct {
 

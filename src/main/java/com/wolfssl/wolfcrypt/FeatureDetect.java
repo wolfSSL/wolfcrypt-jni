@@ -1,6 +1,6 @@
 /* FeatureDetect.java
  *
- * Copyright (C) 2006-2020 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -24,9 +24,6 @@ package com.wolfssl.wolfcrypt;
 /**
  * Native feature detection class
  * Used to expose native preprocessor values to Java
- *
- * @author wolfSSL
- * @version 1.0, January 2020
  */
 public class FeatureDetect {
 
