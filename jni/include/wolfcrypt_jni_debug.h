@@ -1,6 +1,6 @@
 /* wolfcrypt_jni_debug.h
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfCrypt.
  *
@@ -26,6 +26,8 @@ extern "C" {
 #endif
 
 #ifdef WOLFCRYPT_JNI_DEBUG_ON
+
+#include <wolfssl/wolfcrypt/types.h>
 
 #define LogStr printf
 

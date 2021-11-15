@@ -1,6 +1,6 @@
 /* Dh.java
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -23,9 +23,6 @@ package com.wolfssl.wolfcrypt;
 
 /**
  * Wrapper for the native WolfCrypt DH implementation.
- *
- * @author Moisés Guimarães
- * @version 2.0, March 2017
  */
 public class Dh extends NativeStruct {
 

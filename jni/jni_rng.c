@@ -1,6 +1,6 @@
 /* jni_rng.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -32,6 +32,10 @@
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
+
+#if !defined(WC_NO_RNG) && defined(NO_OLD_RNGNAME)
+    #define RNG WC_RNG
+#endif
 
 JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Rng_mallocNativeStruct(
@@ -128,7 +132,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_ni
 
     LogStr("wc_RNG_GenerateBlock(rng=%p, buffer, size) = %d\n", rng, ret);
     LogStr("output[%u]: [%p]\n", (word32)size, buffer);
-    LogHex(buf, 0, size);
+    LogHex(buffer, 0, size);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -158,7 +162,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_RNG_GenerateBlock(rng=%p, buffer, length) = %d\n", rng, ret);
-    LogStr("output[%u]: [%p]\n", (word32)length, buf);
+    LogStr("output[%u]: [%p]\n", (word32)length, buffer);
     LogHex(buffer, 0, length);
 
     releaseByteArray(env, buffer_buffer, buffer, ret);

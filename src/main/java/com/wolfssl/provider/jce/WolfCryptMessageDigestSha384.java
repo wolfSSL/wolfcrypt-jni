@@ -1,6 +1,6 @@
 /* WolfCryptMessageDigestSha384.java
  *
- * Copyright (C) 2006-2017 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -29,10 +29,7 @@ import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
- * wolfCrypt JCE SHA-384 MessageDigest wrapper
- *
- * @author wolfSSL
- * @version 1.0, March 2017
+ * wolfCrypt JCE SHA2-384 MessageDigest wrapper
  */
 public final class WolfCryptMessageDigestSha384 extends MessageDigestSpi {
 

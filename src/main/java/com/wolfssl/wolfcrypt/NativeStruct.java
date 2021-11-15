@@ -1,6 +1,6 @@
 /* NativeStruct.java
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -23,9 +23,6 @@ package com.wolfssl.wolfcrypt;
 
 /**
  * Wrapper for the native WolfCrypt structs.
- *
- * @author Moisés Guimarães
- * @version 1.0, February 2015
  */
 public abstract class NativeStruct extends WolfObject {
 

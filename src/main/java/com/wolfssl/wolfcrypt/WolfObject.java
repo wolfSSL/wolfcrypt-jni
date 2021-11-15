@@ -1,6 +1,6 @@
 /* WolfObject.java
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -24,17 +24,19 @@ package com.wolfssl.wolfcrypt;
 /**
  * Loader for the native WolfCrypt implementation.
  * All classes in this package must inherit from it.
- *
- * @author Moisés Guimarães
- * @version 1.0, March 2015
  */
 public class WolfObject {
 
-	static {
-		System.loadLibrary("wolfcryptjni");
-	}
+    private static native int init();
 
-	protected WolfObject() {
-	}
+    static {
+        System.loadLibrary("wolfcryptjni");
 
+        /* initialize native wolfCrypt library */
+        init();
+    }
+
+    protected WolfObject() {
+    }
 }
+

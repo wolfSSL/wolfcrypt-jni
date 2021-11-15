@@ -1,6 +1,6 @@
 /* DhTest.java
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -31,6 +31,7 @@ import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
+import com.wolfssl.wolfcrypt.Fips;
 
 public class DhTest {
 	private static Rng rng = new Rng();
@@ -38,6 +39,10 @@ public class DhTest {
 	@BeforeClass
 	public static void setUpRng() {
 		rng.init();
+
+        if (Fips.enabled) {
+            Fips.setPrivateKeyReadEnable(1, Fips.WC_KEYTYPE_ALL);
+        }
 	}
 
 	@BeforeClass

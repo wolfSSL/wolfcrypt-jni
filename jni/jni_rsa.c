@@ -1,6 +1,6 @@
 /* jni_rsa.c
  *
- * Copyright (C) 2006-2016 wolfSSL Inc.
+ * Copyright (C) 2006-2021 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -32,6 +32,10 @@
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
+
+#if !defined(WC_NO_RNG) && defined(NO_OLD_RNGNAME)
+    #define RNG WC_RNG
+#endif
 
 JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Rsa_mallocNativeStruct(
