@@ -152,7 +152,7 @@ that requires JCE provider JAR's to be authenticated.  Please see
 ### Revision History
 ---------
 
-#### wolfCrypt JNI Release 1.2.0 (11/15/2021)
+#### wolfCrypt JNI Release 1.2.0 (11/16/2021)
 
 Release 1.2.0 of wolfCrypt JNI has bug fixes and new features including:
 
