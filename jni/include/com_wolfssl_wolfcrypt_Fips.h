@@ -139,6 +139,22 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmSetKey_1fips__Lcom_
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    AesGcmSetExtIV_fips
+ * Signature: (Lcom/wolfssl/wolfcrypt/Aes;Ljava/nio/ByteBuffer;J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmSetExtIV_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2J
+  (JNIEnv *, jclass, jobject, jobject, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    AesGcmSetExtIV_fips
+ * Signature: (Lcom/wolfssl/wolfcrypt/Aes;[BJ)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmSetExtIV_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3BJ
+  (JNIEnv *, jclass, jobject, jbyteArray, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    AesGcmEncrypt_fips
  * Signature: (Lcom/wolfssl/wolfcrypt/Aes;Ljava/nio/ByteBuffer;Ljava/nio/ByteBuffer;JLjava/nio/ByteBuffer;JLjava/nio/ByteBuffer;JLjava/nio/ByteBuffer;J)I
  */

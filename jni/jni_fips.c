@@ -269,6 +269,76 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetKey_1fips__Lcom_wol
     return ret;
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmSetExtIV_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2J
+  (JNIEnv* env, jclass class, jobject aes_object, jobject iv_buffer, jlong size)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && (defined(HAVE_FIPS_VERSION) && \
+    (HAVE_FIPS_VERSION >= 2)) && !defined(NO_AES) && defined(HAVE_AESGCM)
+
+    Aes* aes = NULL;
+    byte* iv = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    iv = getDirectBufferAddress(env, iv_buffer);
+
+    if (aes == NULL || iv == NULL || size < 0) {
+        return BAD_FUNC_ARG;
+    }
+
+    ret = AesGcmSetExtIV_fips(aes, iv, (word32)size);
+
+    LogStr("AesGcmSetExtIV_fips(aes=%p, iv) = %d\n", aes, ret);
+    LogStr("iv[%u]: [%p]\n", (word32)size, iv);
+    LogHex(iv, 0, size);
+
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmSetExtIV_1fips__Lcom_wolfssl_wolfcrypt_Aes_2_3BJ
+  (JNIEnv* env, jclass class, jobject aes_object, jbyteArray iv_buffer, jlong size)
+{
+    jint ret = NOT_COMPILED_IN;
+
+#if defined(HAVE_FIPS) && (defined(HAVE_FIPS_VERSION) && \
+    (HAVE_FIPS_VERSION >= 1)) && !defined(NO_AES) && defined(HAVE_AESGCM)
+
+    Aes* aes = NULL;
+    byte* iv = NULL;
+
+    aes = (Aes*) getNativeStruct(env, aes_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* prevent additional JNI calls with pending exception */
+        return BAD_FUNC_ARG;
+    }
+
+    iv = getByteArray(env, iv_buffer);
+
+    if (aes == NULL || iv == NULL || size < 0) {
+        return BAD_FUNC_ARG;
+    }
+
+    ret = AesGcmSetExtIV_fips(aes, iv, (word32)size);
+
+    LogStr("AesGcmSetExtIV_fips(aes=%p, iv) = %d\n", aes, ret);
+    LogStr("iv[%u]: [%p]\n", (word32)size, iv);
+    LogHex(iv, 0, size);
+
+    releaseByteArray(env, iv_buffer, iv, 1);
+
+#endif
+
+    return ret;
+}
+
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesSetIV_1fips__Lcom_wolfssl_wolfcrypt_Aes_2Ljava_nio_ByteBuffer_2(
     JNIEnv* env, jclass class, jobject aes_object, jobject iv_buffer)
 {
@@ -581,8 +651,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmEncrypt_1fips__Lcom
     authIn  = getDirectBufferAddress(env, authIn_buffer);
 
     if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz)
-        || (!authIn && authInSz))
+        || (!authIn && authInSz)) {
         return BAD_FUNC_ARG;
+    }
 
     ret = AesGcmEncrypt_fips(aes, out, in, (word32) size, iv, (word32) ivSz,
         authTag, (word32) authTagSz, authIn, (word32) authInSz);
@@ -636,11 +707,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_AesGcmEncrypt_1fips__Lcom
     authIn  = getByteArray(env, authIn_buffer);
 
     if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz)
-        || (!authIn && authInSz))
+        || (!authIn && authInSz)) {
         ret = BAD_FUNC_ARG;
-    else
+
+    }
+    else {
         ret = AesGcmEncrypt_fips(aes, out, in, (word32) size, iv, (word32) ivSz,
             authTag, (word32) authTagSz, authIn, (word32) authInSz);
+    }
 
     LogStr(
         "AesGcmEncrypt_fips(aes=%p, out, in, iv, authTag, authIn) = %d\n",
@@ -1577,9 +1651,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaSSL_1Sign_1fips___3BJ_
     byte* out   = NULL;
     RsaKey* key = NULL;
     RNG* rng    = NULL;
+    word32 inSz = 0;
+    word32 outSz = 0;
 
     key = (RsaKey*) getNativeStruct(env, rsa_object);
-    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+    if (key == NULL || (*env)->ExceptionOccurred(env)) {
         /* prevent additional JNI calls with pending exception */
         return BAD_FUNC_ARG;
     }
@@ -1590,16 +1666,23 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaSSL_1Sign_1fips___3BJ_
         return BAD_FUNC_ARG;
     }
 
-    in  = getByteArray(env, in_object);
-    out = getByteArray(env, out_object);
+    in    = getByteArray(env, in_object);
+    inSz  = getByteArrayLength(env, in_object);
+    out   = getByteArray(env, out_object);
+    outSz = getByteArrayLength(env, out_object);
 
-    /**
-     * Providing an rng is optional. RNG_GenerateBlock will return BAD_FUNC_ARG
-     * on a NULL rng if an RNG is needed by RsaPad.
-     */
-    ret = (!in || !out)
-        ? BAD_FUNC_ARG
-        : RsaSSL_Sign_fips(in, inLen, out, outLen, key, rng);
+    /* sanity check on array pointers and sizes */
+    if (in == NULL || out == NULL ||
+        (inSz < (word32)inLen) || (outSz < outLen)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        /**
+         * Providing an rng is optional. RNG_GenerateBlock will return
+         * BAD_FUNC_ARG on a NULL rng if an RNG is needed by RsaPad.
+         */
+        ret = RsaSSL_Sign_fips(in, inLen, out, outLen, key, rng);
+    }
 
     LogStr("RsaSSL_Sign_fips(in, inLen, out, outLen, key=%p, rng=%p) = %d\n",
         key, rng, ret);
@@ -1609,8 +1692,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaSSL_1Sign_1fips___3BJ_
     LogHex((byte*) out, 0, outLen);
 
     releaseByteArray(env, in_object, in, 1);
-    releaseByteArray(env, out_object, out, ret);
-
+    if (ret < 0) {
+        /* JNI_ABORT, free local array, don't copy back */
+        releaseByteArray(env, out_object, out, 1);
+    }
+    else {
+        /* free local array, copy data back to src */
+        releaseByteArray(env, out_object, out, 0);
+    }
 #endif
 
     return ret;
@@ -1665,26 +1754,35 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_RsaSSL_1Verify_1fips___3B
     byte* in    = NULL;
     byte* out   = NULL;
     RsaKey* key = NULL;
+    word32 inSz = 0;
+    word32 outSz = 0;
 
     key = (RsaKey*) getNativeStruct(env, rsa_object);
-    if ((!key) || ((*env)->ExceptionOccurred(env))) {
+    if (key == NULL || (*env)->ExceptionOccurred(env)) {
         /* prevent additional JNI calls with pending exception */
         return BAD_FUNC_ARG;
     }
 
-    in  = getByteArray(env, in_object);
-    out = getByteArray(env, out_object);
+    in    = getByteArray(env, in_object);
+    inSz  = getByteArrayLength(env, in_object);
+    out   = getByteArray(env, out_object);
+    outSz = getByteArrayLength(env, out_object);
 
-    ret = (!in || !out)
-        ? BAD_FUNC_ARG
-        : RsaSSL_Verify_fips(in, inLen, out, outLen, key);
+    /* sanity check on array pointers and sizes */
+    if (in == NULL || out == NULL ||
+        (inSz < (word32)inLen) || (outSz < outLen)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = RsaSSL_Verify_fips(in, inLen, out, outLen, key);
 
-    LogStr("RsaSSL_Verify_fips(in, inLen, out, outLen, key=%p) = %d\n", key,
-        ret);
-    LogStr("in[%u]: [%p]\n", (word32)inLen, in);
-    LogHex((byte*) in, 0, inLen);
-    LogStr("out[%u]: [%p]\n", (word32)outLen, out);
-    LogHex((byte*) out, 0, outLen);
+        LogStr("RsaSSL_Verify_fips(in, inLen, out, outLen, key=%p) = %d\n",
+               key, ret);
+        LogStr("in[%u]: [%p]\n", (word32)inLen, in);
+        LogHex((byte*) in, 0, inLen);
+        LogStr("out[%u]: [%p]\n", (word32)outLen, out);
+        LogHex((byte*) out, 0, outLen);
+    }
 
     releaseByteArray(env, in_object, in, 1);
     releaseByteArray(env, out_object, out, ret < 0);
