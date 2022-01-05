@@ -306,6 +306,7 @@
                 <fileset dir="${test.dir}">
                     <!--<include name="**/*TestSuite.java" />-->
                     <include name="com/wolfssl/wolfcrypt/test/*TestSuite.java" />
+                    <include name="com/wolfssl/wolfcrypt/test/fips/*TestSuite.java" />
                     <include if="jar.includes.jce" name="com/wolfssl/provider/jce/test/*TestSuite.java" />
                 </fileset>
             </batchtest>
