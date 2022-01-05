@@ -262,6 +262,32 @@ public class Fips extends WolfObject {
 			long keylen);
 
 	/**
+	 * Initializes Aes object with external IV for AES-GCM.
+	 *
+	 * @param aes
+	 *            the Aes object.
+	 * @param iv
+	 *            the initialization vector.
+	 *
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+    public static native int AesGcmSetExtIV_fips(Aes aes, ByteBuffer iv,
+            long ivlen);
+
+	/**
+	 * Initializes Aes object with external IV for AES-GCM.
+	 *
+	 * @param aes
+	 *            the Aes object.
+	 * @param iv
+	 *            the initialization vector.
+	 *
+	 * @return 0 on success, {@literal <} 0 on error.
+	 */
+    public static native int AesGcmSetExtIV_fips(Aes aes, byte[] iv,
+            long ivlen);
+
+	/**
 	 * Performs aes GCM Encryption.
 	 * 
 	 * @param aes

@@ -25,6 +25,8 @@ import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.wolfssl.wolfcrypt.Des3;
@@ -32,6 +34,8 @@ import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Fips;
 
 import com.wolfssl.wolfcrypt.test.Util;
+import com.wolfssl.wolfcrypt.WolfCryptError;
+import com.wolfssl.wolfcrypt.WolfCryptException;
 
 public class Des3FipsTest extends FipsTest {
 	private ByteBuffer vector = ByteBuffer.allocateDirect(Des3.BLOCK_SIZE);
@@ -40,6 +44,18 @@ public class Des3FipsTest extends FipsTest {
 	private ByteBuffer plain = ByteBuffer.allocateDirect(Des3.BLOCK_SIZE);
 	private ByteBuffer key = ByteBuffer.allocateDirect(Des3.KEY_SIZE);
 	private ByteBuffer iv = ByteBuffer.allocateDirect(Des3.BLOCK_SIZE);
+
+    @BeforeClass
+    public static void checkAvailability() {
+        try {
+            new Des3();
+        } catch (WolfCryptException e) {
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                System.out.println("Des3 test skipped: " + e.getError());
+            }
+            Assume.assumeNoException(e);
+        }
+    }
 
 	@Test
 	public void setKeyWithNullIVShouldReturnZeroUsingByteBuffer() {

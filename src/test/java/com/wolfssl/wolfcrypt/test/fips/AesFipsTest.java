@@ -475,6 +475,11 @@ public class AesFipsTest extends FipsTest {
 			assertEquals(WolfCrypt.SUCCESS,
 					Fips.AesGcmSetKey_fips(enc, key, keys[i].length() / 2));
 
+            if (Fips.fipsVersion >= 2) {
+            assertEquals(WolfCrypt.SUCCESS,
+                    Fips.AesGcmSetExtIV_fips(enc, iv, ivs[i].length() / 2));
+            }
+
 			assertEquals(WolfCrypt.SUCCESS, Fips.AesGcmEncrypt_fips(enc,
 					cipher, input, inputs[i].length() / 2, iv,
 					ivs[i].length() / 2, tag, tags[i].length() / 2, aad,
@@ -608,15 +613,19 @@ public class AesFipsTest extends FipsTest {
 			byte[] expected = Util.h2b(tags[i]);
 
 			assertEquals(WolfCrypt.SUCCESS,
-					Fips.AesGcmSetKey_fips(enc, key, keys[i].length() / 2));
+					Fips.AesGcmSetKey_fips(enc, key, key.length));
 
-			assertEquals(WolfCrypt.SUCCESS, Fips.AesGcmEncrypt_fips(enc,
-					cipher, input, inputs[i].length() / 2, iv,
-					ivs[i].length() / 2, tag, tags[i].length() / 2, aad,
-					aads[i].length() / 2));
+            if (Fips.fipsVersion >= 2) {
+                assertEquals(WolfCrypt.SUCCESS,
+                        Fips.AesGcmSetExtIV_fips(enc, iv, iv.length));
+            }
 
-			assertArrayEquals(expected, tag);
-			assertArrayEquals(output, cipher);
+            assertEquals(WolfCrypt.SUCCESS, Fips.AesGcmEncrypt_fips(enc,
+                cipher, input, input.length, iv, iv.length, tag, tag.length,
+                aad, aad.length));
+
+            assertArrayEquals(expected, tag);
+            assertArrayEquals(output, cipher);
 		}
 	}
 }
