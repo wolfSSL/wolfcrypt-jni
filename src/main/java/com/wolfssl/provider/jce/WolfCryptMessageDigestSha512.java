@@ -97,6 +97,11 @@ public final class WolfCryptMessageDigestSha512 extends MessageDigestSpi {
             log("update, offset: " + offset + ", len: " + len);
     }
 
+    @Override
+    protected int engineGetDigestLength() {
+        return this.sha.digestSize();
+    }
+
     private void log(String msg) {
         debug.print("[MessageDigest, SHA512] " + msg);
     }
