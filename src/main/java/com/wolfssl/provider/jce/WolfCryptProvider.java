@@ -30,6 +30,9 @@ import com.wolfssl.wolfcrypt.Fips;
  */
 public final class WolfCryptProvider extends Provider {
 
+    /**
+     * Create new WolfCryptProvider object
+     */
     public WolfCryptProvider() {
         super("wolfJCE", 1.0, "wolfCrypt JCE Provider");
 

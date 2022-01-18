@@ -324,15 +324,27 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         }
     }
 
+    /**
+     * wolfCrypt ECC key pair generator class
+     */
     public static final class wcKeyPairGenECC
             extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenECC object
+         */
         public wcKeyPairGenECC() {
             super(KeyType.WC_ECC);
         }
     }
 
+    /**
+     * wolfCrypt DH key pair generator class
+     */
     public static final class wcKeyPairGenDH
             extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenDH object
+         */
         public wcKeyPairGenDH() {
             super(KeyType.WC_DH);
         }

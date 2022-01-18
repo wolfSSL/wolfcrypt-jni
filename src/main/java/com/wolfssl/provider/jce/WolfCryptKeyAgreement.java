@@ -563,13 +563,25 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         }
     }
 
+    /**
+     * wolfJCE DH class
+     */
     public static final class wcDH extends WolfCryptKeyAgreement {
+        /**
+         * Create new wcDH object
+         */
         public wcDH() {
             super(KeyAgreeType.WC_DH);
         }
     }
 
+    /**
+     * wolfJCE ECDH class
+     */
     public static final class wcECDH extends WolfCryptKeyAgreement {
+        /**
+         * Create new wcECDH object
+         */
         public wcECDH() {
             super(KeyAgreeType.WC_ECDH);
         }

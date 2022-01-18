@@ -26,30 +26,83 @@ import java.nio.ByteBuffer;
 import javax.crypto.ShortBufferException;
 
 /**
- * Common API for Message Digests.
+ * Common API for Message Digests
  */
 public abstract class MessageDigest extends NativeStruct {
 
 	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
+    /**
+     * Initialize native structure
+     */
 	protected abstract void native_init();
 
+    /**
+     * Native update
+     *
+     * @param data input data
+     * @param offset offset into input data
+     * @param length length of input data
+     *
+     * @throws WolfCryptException if native operation fails
+     */
 	protected abstract void native_update(ByteBuffer data, int offset,
 			int length);
 
+    /**
+     * Native update
+     *
+     * @param data input data
+     * @param offset offset into input data
+     * @param length length of input data
+     *
+     * @throws WolfCryptException if native operation fails
+     */
 	protected abstract void native_update(byte[] data, int offset, int length);
 
+    /**
+     * Native final - calculate final digest
+     *
+     * @param hash output buffer to place digest
+     * @param offset offset into output buffer to write digest
+     *
+     * @throws WolfCryptException if native operation fails
+     */
 	protected abstract void native_final(ByteBuffer hash, int offset);
 
+    /**
+     * Native final - calculate final digest
+     *
+     * @param hash output buffer to place digest
+     *
+     * @throws WolfCryptException if native operation fails
+     */
 	protected abstract void native_final(byte[] hash);
 
+    /**
+     * Get digest size
+     *
+     * @return digest size
+     */
 	public abstract int digestSize();
 
+    /**
+     * Initialize object
+     */
 	public void init() {
 		native_init();
 		state = WolfCryptState.READY;
 	}
 
+    /**
+     * Message digest update
+     *
+     * @param data input data
+     * @param length length of input data
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException object not initialized
+     */
 	public void update(ByteBuffer data, int length) {
 		if (state == WolfCryptState.READY) {
 			length = Math.min(length, data.remaining());
@@ -62,10 +115,28 @@ public abstract class MessageDigest extends NativeStruct {
 		}
 	}
 
+    /**
+     * Message digest update
+     *
+     * @param data input data, use all data.remaining()
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException object not initialized
+     */
 	public void update(ByteBuffer data) {
 		update(data, data.remaining());
 	}
 
+    /**
+     * Message digest update
+     *
+     * @param data input data
+     * @param offset offset into input data
+     * @param len length of input data
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException object not initialized
+     */
 	public void update(byte[] data, int offset, int len) {
 		if (state == WolfCryptState.READY) {
 			if (offset >= data.length || offset < 0 || len < 0)
@@ -81,14 +152,40 @@ public abstract class MessageDigest extends NativeStruct {
 		}
 	}
 
+    /**
+     * Message digest update
+     *
+     * @param data input data
+     * @param len length of input data
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException object not initialized
+     */
 	public void update(byte[] data, int len) {
 		update(data, 0, len);
 	}
 
+    /**
+     * Message digest update
+     *
+     * @param data input data, use all data.length
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException object not initialized
+     */
 	public void update(byte[] data) {
 		update(data, 0, data.length);
 	}
 
+    /**
+     * Calculate message digest
+     *
+     * @param hash output message digest
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws ShortBufferException if input buffer is too small
+     * @throws IllegalStateException object not initialized
+     */
 	public void digest(ByteBuffer hash) throws ShortBufferException {
 		if (state == WolfCryptState.READY) {
 			if (hash.remaining() < digestSize())
@@ -103,6 +200,15 @@ public abstract class MessageDigest extends NativeStruct {
 		}
 	}
 
+    /**
+     * Calculate message digest
+     *
+     * @param hash output message digest
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws ShortBufferException if input buffer is too small
+     * @throws IllegalStateException object not initialized
+     */
 	public void digest(byte[] hash) throws ShortBufferException {
 		if (state == WolfCryptState.READY) {
 			if (hash.length < digestSize())
@@ -116,6 +222,14 @@ public abstract class MessageDigest extends NativeStruct {
 		}
 	}
 
+    /**
+     * Calculate message digest
+     *
+     * @return resulting message digest
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException object not initialized
+     */
 	public byte[] digest() {
 		if (state == WolfCryptState.READY) {
 			byte[] hash = new byte[digestSize()];
@@ -137,3 +251,4 @@ public abstract class MessageDigest extends NativeStruct {
         setNativeStruct(NULL);
     }
 }
+

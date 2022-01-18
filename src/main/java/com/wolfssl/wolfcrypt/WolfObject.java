@@ -36,6 +36,9 @@ public class WolfObject {
         init();
     }
 
+    /**
+     * Create new WolfObject object
+     */
     protected WolfObject() {
     }
 }

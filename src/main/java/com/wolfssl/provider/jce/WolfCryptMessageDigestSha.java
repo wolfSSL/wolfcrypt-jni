@@ -39,6 +39,9 @@ public final class WolfCryptMessageDigestSha extends MessageDigestSpi {
     /* for debug logging */
     private WolfCryptDebug debug;
 
+    /**
+     * Create new WolfCryptMessageDigestSha object
+     */
     public WolfCryptMessageDigestSha() {
 
         sha = new Sha();

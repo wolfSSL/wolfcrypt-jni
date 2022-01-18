@@ -34,14 +34,52 @@ public abstract class BlockCipher extends NativeStruct {
 
 	private int opmode;
 
+    /**
+     * Set block cipher key, IV, and mode
+     *
+     * @param key block cipher key array
+     * @param iv block cipher initialization vector (IV) array
+     * @param opmode block cipher operation mode, dependent on subclass type
+     */
 	protected abstract void native_set_key(byte[] key, byte[] iv, int opmode);
 
+    /**
+     * Native block cipher encrypt/decrypt update operation
+     *
+     * @param opmode operation mode, depends on subclass type
+     * @param input input data
+     * @param offset offset into input array
+     * @param length length of data in input to update
+     * @param output output array
+     * @param outputOffset offset into output array to write data
+     *
+     * @return number of bytes stored in output
+     */
 	protected abstract int native_update(int opmode, byte[] input, int offset,
 			int length, byte[] output, int outputOffset);
 
+    /**
+     * Native block cipher encrypt/decrypt update operation
+     *
+     * @param opmode operation mode, depends on subclass type
+     * @param input input data
+     * @param offset offset into input array
+     * @param length length of data in input to update
+     * @param output output buffer
+     * @param outputOffset offset into output buffer to write data
+     *
+     * @return number of bytes stored in output
+     */
 	protected abstract int native_update(int opmode, ByteBuffer input,
 			int offset, int length, ByteBuffer output, int outputOffset);
 
+    /**
+     * Set block cipher key, IV, and mode
+     *
+     * @param key block cipher key array
+     * @param iv block cipher initialization vector (IV) array
+     * @param opmode block cipher operation mode, dependent on subclass type
+     */
 	public void setKey(byte[] key, byte[] iv, int opmode) {
 		native_set_key(key, iv, opmode);
 
@@ -49,16 +87,37 @@ public abstract class BlockCipher extends NativeStruct {
 		state = WolfCryptState.READY;
 	}
 
+    /**
+     * Throws IllegalStateException if key not usable
+     *
+     * @throws IllegalStateException if algorithm or key not usable
+     */
 	public void willUseKey() {
 		if (state != WolfCryptState.READY)
 			throw new IllegalStateException(
 					"No available key to perform the opperation.");
 	}
 
+    /**
+     * Block cipher update operation
+     *
+     * @param input input data for update
+     *
+     * @return output data array from update operation
+     */
 	public byte[] update(byte[] input) {
 		return update(input, 0, input.length);
 	}
 
+    /**
+     * Block cipher update operation
+     *
+     * @param input input data for update
+     * @param offset offset into input data to begin operation
+     * @param length length of data to process
+     *
+     * @return output data array from update operation
+     */
 	public byte[] update(byte[] input, int offset, int length) {
 		willUseKey();
 
@@ -69,6 +128,19 @@ public abstract class BlockCipher extends NativeStruct {
 		return output;
 	}
 
+    /**
+     * Block cipher update operation
+     *
+     * @param input input data for update
+     * @param offset offset into input data to begin operation
+     * @param length length of data to process
+     * @param output output array to place data
+     * @param outputOffset offset into output array to write data
+     *
+     * @return number of bytes written to output
+     *
+     * @throws ShortBufferException if output buffer is too small
+     */
 	public int update(byte[] input, int offset, int length, byte[] output,
 			int outputOffset) throws ShortBufferException {
 		willUseKey();
@@ -81,6 +153,16 @@ public abstract class BlockCipher extends NativeStruct {
 				outputOffset);
 	}
 
+    /**
+     * Block cipher update operation
+     *
+     * @param input input data buffer for update
+     * @param output output buffer to place data
+     *
+     * @return number of bytes written to output
+     *
+     * @throws ShortBufferException if output buffer is not large enough
+     */
 	public int update(ByteBuffer input, ByteBuffer output)
 			throws ShortBufferException {
 		willUseKey();

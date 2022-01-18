@@ -31,12 +31,15 @@ import com.wolfssl.provider.jce.WolfCryptDebug;
  */
 public final class WolfCryptRandom extends SecureRandomSpi {
 
-    /* internal reference to wolfCrypt JNI RNG object */
+    /** internal reference to wolfCrypt JNI RNG object */
     private Rng rng;
 
-    /* for debug logging */
+    /** for debug logging */
     private WolfCryptDebug debug;
 
+    /**
+     * Create new WolfCryptRandom object
+     */
     public WolfCryptRandom() {
         this.rng = new Rng();
         this.rng.init();

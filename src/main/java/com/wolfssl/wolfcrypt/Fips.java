@@ -26,31 +26,43 @@ import java.nio.ByteBuffer;
 import com.wolfssl.wolfcrypt.Aes;
 
 /**
- * Main wrapper for the native WolfCrypt implementation.
+ * Main wrapper for the native WolfCrypt FIPS 140-2/3 implementation
  */
 public class Fips extends WolfObject {
 
+    /** Is FIPS enabled at native wolfCrypt level */
     public static final boolean enabled = Fips.enabled();
 
+    /** Native wolfCrypt FIPS version (HAVE_FIPS_VERSION) */
     public static final int fipsVersion = Fips.getFipsVersion();
 
 	private Fips() {
 	}
 
+    /** wolfCrypt FIPS error callback interface */
 	public interface ErrorCallback {
+        /**
+         * wolfCrypt FIPS error callback definition
+         *
+         * @param ok 1 if wolfCrypt verification passed, otherwise 0
+         * @param err wolfCrypt FIPS error code
+         * @param hash wolfCrypt FIPS verifyCore hash value
+         */
 		public void errorCallback(int ok, int err, String hash);
 	}
 
 	/**
-	 * Sets an callback class for handling fips errors.
+	 * Sets a callback class for handling FIPS errors.
 	 * 
-	 * @param callback
-	 *            the callback class.
+	 * @param callback the wolfCrypt FIPS callback class.
 	 */
 	public static native void wolfCrypt_SetCb_fips(ErrorCallback callback);
 
 	/**
-	 * The current inCore hash of the wolfCrypt fips code.
+	 * The current inCore hash of the wolfCrypt FIPS code.
+     *
+     * This value should be used to update the value stored in 'verifyCore':
+     * native_wolfssl/wolfcrypt/src/fips_test.c
 	 * 
 	 * @return current inCore hash.
 	 */
@@ -64,8 +76,10 @@ public class Fips extends WolfObject {
      */
     private static native boolean enabled();
 
-    /* Needs to match native WC_KEYTYPE_ALL in fips.h.
-     * Used with Fips.get/setPrivateKeyReadEnable() */
+    /**
+     * Needs to match native WC_KEYTYPE_ALL in fips.h.
+     * Used with Fips.get/setPrivateKeyReadEnable()
+     */
     public static final int WC_KEYTYPE_ALL = 0;
 
     /**
@@ -268,6 +282,8 @@ public class Fips extends WolfObject {
 	 *            the Aes object.
 	 * @param iv
 	 *            the initialization vector.
+     * @param ivlen
+     *            length of IV
 	 *
 	 * @return 0 on success, {@literal <} 0 on error.
 	 */
@@ -281,6 +297,8 @@ public class Fips extends WolfObject {
 	 *            the Aes object.
 	 * @param iv
 	 *            the initialization vector.
+     * @param ivlen
+     *            length of IV
 	 *
 	 * @return 0 on success, {@literal <} 0 on error.
 	 */

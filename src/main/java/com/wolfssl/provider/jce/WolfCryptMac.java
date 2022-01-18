@@ -200,31 +200,76 @@ public class WolfCryptMac extends MacSpi {
         }
     }
 
+    /**
+     * wolfJCE HMAC-MD5 class
+     */
     public static final class wcHmacMD5 extends WolfCryptMac {
+        /**
+         * Create new wcHmacMD5 object
+         *
+         * @throws NoSuchAlgorithmException if HMAC-MD5 is not available at
+         *         native wolfCrypt level.
+         */
         public wcHmacMD5() throws NoSuchAlgorithmException {
             super(HmacType.WC_HMAC_MD5);
         }
     }
 
+    /**
+     * wolfJCE HMAC-SHA-1 class
+     */
     public static final class wcHmacSHA1 extends WolfCryptMac {
+        /**
+         * Create new wcHmacSHA1 object
+         *
+         * @throws NoSuchAlgorithmException if HMAC-SHA-1 is not available at
+         *         native wolfCrypt level.
+         */
         public wcHmacSHA1() throws NoSuchAlgorithmException {
             super(HmacType.WC_HMAC_SHA);
         }
     }
 
+    /**
+     * wolfJCE HMAC-SHA2-256 class
+     */
     public static final class wcHmacSHA256 extends WolfCryptMac {
+        /**
+         * Create new wcHmacSHA256 object
+         *
+         * @throws NoSuchAlgorithmException if HMAC-SHA2-256 is not available at
+         *         native wolfCrypt level.
+         */
         public wcHmacSHA256() throws NoSuchAlgorithmException {
             super(HmacType.WC_HMAC_SHA256);
         }
     }
 
+    /**
+     * wolfJCE HMAC-SHA2-384 class
+     */
     public static final class wcHmacSHA384 extends WolfCryptMac {
+        /**
+         * Create new wcHmacSHA384 object
+         *
+         * @throws NoSuchAlgorithmException if HMAC-SHA2-384 is not available at
+         *         native wolfCrypt level.
+         */
         public wcHmacSHA384() throws NoSuchAlgorithmException {
             super(HmacType.WC_HMAC_SHA384);
         }
     }
 
+    /**
+     * wolfJCE HMAC-SHA2-512 class
+     */
     public static final class wcHmacSHA512 extends WolfCryptMac {
+        /**
+         * Create new wcHmacSHA512 object
+         *
+         * @throws NoSuchAlgorithmException if HMAC-SHA2-512 is not available at
+         *         native wolfCrypt level.
+         */
         public wcHmacSHA512() throws NoSuchAlgorithmException {
             super(HmacType.WC_HMAC_SHA512);
         }
