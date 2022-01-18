@@ -73,25 +73,25 @@ static WC_INLINE int GetHashSizeByType(int type)
             return SHA_DIGEST_SIZE;
         break;
         #endif
-        
+
         #ifndef NO_SHA256
         case WC_SHA256:
             return SHA256_DIGEST_SIZE;
         break;
         #endif
-        
+
         #if defined(CYASSL_SHA384) || defined(WOLFSSL_SHA384)
         case WC_SHA384:
             return SHA384_DIGEST_SIZE;
         break;
         #endif
-        
+
         #if defined(CYASSL_SHA512) || defined(WOLFSSL_SHA512)
         case WC_SHA512:
             return SHA512_DIGEST_SIZE;
         break;
         #endif
-        
+
         default:
             return BAD_FUNC_ARG;
         break;

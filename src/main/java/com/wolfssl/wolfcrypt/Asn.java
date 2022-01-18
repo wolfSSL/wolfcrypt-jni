@@ -31,7 +31,7 @@ import java.nio.ByteBuffer;
 public class Asn extends WolfObject {
 
     /** Maximum encoded signature size */
-	public static final int MAX_ENCODED_SIG_SIZE = 512;
+    public static final int MAX_ENCODED_SIG_SIZE = 512;
 
     /** ASN.1 encode message digest, before it is signed
      *
@@ -40,8 +40,8 @@ public class Asn extends WolfObject {
      * @param hashSize size of hash, bytes
      * @param hashOID hash algorithm OID
      */
-	public static native void encodeSignature(ByteBuffer encoded,
-			ByteBuffer hash, long hashSize, int hashOID);
+    public static native void encodeSignature(ByteBuffer encoded,
+            ByteBuffer hash, long hashSize, int hashOID);
 
     /** ASN.1 encode message digest, before it is signed
      *
@@ -52,8 +52,8 @@ public class Asn extends WolfObject {
      *
      * @return number of bytes written to encoded array
      */
-	public static native long encodeSignature(byte[] encoded,
-			byte[] hash, long hashSize, int hashOID);
+    public static native long encodeSignature(byte[] encoded,
+            byte[] hash, long hashSize, int hashOID);
 
     /**
      * Get hash algorithm OID from algorithm type
@@ -63,6 +63,6 @@ public class Asn extends WolfObject {
      *
      * @return hash algorithm OID, for use with encodeSignature()
      */
-	public static native int getCTC_HashOID(int type);
+    public static native int getCTC_HashOID(int type);
 }
 

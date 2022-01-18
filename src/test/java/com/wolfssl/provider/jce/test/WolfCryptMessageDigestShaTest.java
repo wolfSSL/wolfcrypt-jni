@@ -53,7 +53,7 @@ public class WolfCryptMessageDigestShaTest {
         } catch (NoSuchAlgorithmException e) {
             /* if we also detect algo is compiled out, skip tests */
             if (FeatureDetect.ShaEnabled() == false) {
-				System.out.println("JSSE SHA-1 Test skipped");
+                System.out.println("JSSE SHA-1 Test skipped");
                 Assume.assumeTrue(false);
             }
         }

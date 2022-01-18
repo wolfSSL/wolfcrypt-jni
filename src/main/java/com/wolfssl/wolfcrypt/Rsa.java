@@ -28,9 +28,9 @@ import java.nio.ByteBuffer;
  */
 public class Rsa extends NativeStruct {
 
-	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
-	private boolean hasPrivateKey = false;
-	private Rng rng;
+    private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+    private boolean hasPrivateKey = false;
+    private Rng rng;
 
     /**
      * Malloc native JNI Rsa structure
@@ -39,7 +39,7 @@ public class Rsa extends NativeStruct {
      *
      * @throws OutOfMemoryError when malloc fails with memory error
      */
-	protected native long mallocNativeStruct() throws OutOfMemoryError;
+    protected native long mallocNativeStruct() throws OutOfMemoryError;
 
     /**
      * Decode/import raw RSA public key
@@ -51,32 +51,32 @@ public class Rsa extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-	private native void wc_RsaPublicKeyDecodeRaw(ByteBuffer n, long nSize,
-			ByteBuffer e, long eSize);
-	private native void wc_RsaPublicKeyDecodeRaw(byte[] n, long nSize, byte[] e,
-			long eSize);
-	private native void RsaFlattenPublicKey(ByteBuffer n, ByteBuffer e);
-	private native void RsaFlattenPublicKey(byte[] n, long[] nSize, byte[] e,
-			long[] eSize);
-	private native void MakeRsaKey(int size, long e, Rng rng);
-	private native void wc_InitRsaKey();
-	private native void wc_FreeRsaKey();
-	private native boolean wc_RsaSetRNG(Rng rng);
-	private native void wc_RsaPrivateKeyDecode(byte[] key);
-	private native void wc_RsaPrivateKeyDecodePKCS8(byte[] key);
-	private native void wc_RsaPublicKeyDecode(byte[] key);
-	private native int wc_RsaEncryptSize();
-	private native byte[] wc_RsaPublicEncrypt(byte[] data, Rng rng);
-	private native byte[] wc_RsaPrivateDecrypt(byte[] data);
-	private native byte[] wc_RsaSSL_Sign(byte[] data, Rng rng);
-	private native byte[] wc_RsaSSL_Verify(byte[] data);
+    private native void wc_RsaPublicKeyDecodeRaw(ByteBuffer n, long nSize,
+            ByteBuffer e, long eSize);
+    private native void wc_RsaPublicKeyDecodeRaw(byte[] n, long nSize, byte[] e,
+            long eSize);
+    private native void RsaFlattenPublicKey(ByteBuffer n, ByteBuffer e);
+    private native void RsaFlattenPublicKey(byte[] n, long[] nSize, byte[] e,
+            long[] eSize);
+    private native void MakeRsaKey(int size, long e, Rng rng);
+    private native void wc_InitRsaKey();
+    private native void wc_FreeRsaKey();
+    private native boolean wc_RsaSetRNG(Rng rng);
+    private native void wc_RsaPrivateKeyDecode(byte[] key);
+    private native void wc_RsaPrivateKeyDecodePKCS8(byte[] key);
+    private native void wc_RsaPublicKeyDecode(byte[] key);
+    private native int wc_RsaEncryptSize();
+    private native byte[] wc_RsaPublicEncrypt(byte[] data, Rng rng);
+    private native byte[] wc_RsaPrivateDecrypt(byte[] data);
+    private native byte[] wc_RsaSSL_Sign(byte[] data, Rng rng);
+    private native byte[] wc_RsaSSL_Verify(byte[] data);
 
     /**
      * Create new Rsa object
      */
-	public Rsa() {
-		/* Lazy init for Fips compatibility */
-	}
+    public Rsa() {
+        /* Lazy init for Fips compatibility */
+    }
 
     /**
      * Create new Rsa object from private key
@@ -85,9 +85,9 @@ public class Rsa extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-	public Rsa(byte[] key) {
-		decodePrivateKey(key);
-	}
+    public Rsa(byte[] key) {
+        decodePrivateKey(key);
+    }
 
     /**
      * Create new Rsa object from public key
@@ -97,9 +97,9 @@ public class Rsa extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-	public Rsa(byte[] n, byte[] e) {
-		decodeRawPublicKey(n, e);
-	}
+    public Rsa(byte[] n, byte[] e) {
+        decodeRawPublicKey(n, e);
+    }
 
     /**
      * Set Rng for Rsa object
@@ -108,41 +108,41 @@ public class Rsa extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-	public void setRng(Rng rng) {
-		init();
+    public void setRng(Rng rng) {
+        init();
 
-		if (wc_RsaSetRNG(rng))
-			this.rng = rng;
-	}
+        if (wc_RsaSetRNG(rng))
+            this.rng = rng;
+    }
 
-	@Override
-	public void releaseNativeStruct() {
-		free();
+    @Override
+    public void releaseNativeStruct() {
+        free();
 
-		super.releaseNativeStruct();
-	}
+        super.releaseNativeStruct();
+    }
 
     /**
      * Initialize Rsa object
      */
-	protected void init() {
-		if (state == WolfCryptState.UNINITIALIZED) {
-			wc_InitRsaKey();
-			state = WolfCryptState.INITIALIZED;
-		}
-	}
+    protected void init() {
+        if (state == WolfCryptState.UNINITIALIZED) {
+            wc_InitRsaKey();
+            state = WolfCryptState.INITIALIZED;
+        }
+    }
 
     /**
      * Initialize native RsaKey struct, check if object already has key
      *
      * @throws IllegalStateException if object already has key
      */
-	protected void willSetKey() throws IllegalStateException {
-		init();
+    protected void willSetKey() throws IllegalStateException {
+        init();
 
-		if (state != WolfCryptState.INITIALIZED)
-			throw new IllegalStateException("Object already has a key.");
-	}
+        if (state != WolfCryptState.INITIALIZED)
+            throw new IllegalStateException("Object already has a key.");
+    }
 
     /**
      * Check that RsaKey struct has correct key configured.
@@ -152,25 +152,25 @@ public class Rsa extends NativeStruct {
      * @throws IllegalStateException if no private key available, but needed
      * @throws IllegalStateException if object has no public key
      */
-	protected void willUseKey(boolean priv) throws IllegalStateException {
-		if (priv && !hasPrivateKey)
-			throw new IllegalStateException(
-					"No available private key to perform the opperation.");
+    protected void willUseKey(boolean priv) throws IllegalStateException {
+        if (priv && !hasPrivateKey)
+            throw new IllegalStateException(
+                    "No available private key to perform the opperation.");
 
-		if (state != WolfCryptState.READY)
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-	}
+        if (state != WolfCryptState.READY)
+            throw new IllegalStateException(
+                    "No available key to perform the opperation.");
+    }
 
     /**
      * Free Rsa object
      */
-	protected void free() {
-		if (state != WolfCryptState.UNINITIALIZED) {
-			wc_FreeRsaKey();
-			state = WolfCryptState.UNINITIALIZED;
-		}
-	}
+    protected void free() {
+        if (state != WolfCryptState.UNINITIALIZED) {
+            wc_FreeRsaKey();
+            state = WolfCryptState.UNINITIALIZED;
+        }
+    }
 
     /**
      * Generate RSA key
@@ -182,14 +182,14 @@ public class Rsa extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object is already initialized
      */
-	public void makeKey(int size, long e, Rng rng) {
-		willSetKey();
+    public void makeKey(int size, long e, Rng rng) {
+        willSetKey();
 
-		MakeRsaKey(size, e, rng);
+        MakeRsaKey(size, e, rng);
 
-		state = WolfCryptState.READY;
-		hasPrivateKey = true;
-	}
+        state = WolfCryptState.READY;
+        hasPrivateKey = true;
+    }
 
     /**
      * Decode/import public RSA key
@@ -199,12 +199,12 @@ public class Rsa extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object is already initialized
      */
-	public void decodePublicKey(byte[] key) {
-		willSetKey();
+    public void decodePublicKey(byte[] key) {
+        willSetKey();
 
-		wc_RsaPublicKeyDecode(key);
-		state = WolfCryptState.READY;
-	}
+        wc_RsaPublicKeyDecode(key);
+        state = WolfCryptState.READY;
+    }
 
     /**
      * Decode/import private RSA key
@@ -214,13 +214,13 @@ public class Rsa extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object is already initialized
      */
-	public void decodePrivateKey(byte[] key) {
-		willSetKey();
+    public void decodePrivateKey(byte[] key) {
+        willSetKey();
 
-		wc_RsaPrivateKeyDecode(key);
-		state = WolfCryptState.READY;
-		hasPrivateKey = true;
-	}
+        wc_RsaPrivateKeyDecode(key);
+        state = WolfCryptState.READY;
+        hasPrivateKey = true;
+    }
 
     /**
      * Decode/import private RSA key from PKCS#8 format
@@ -230,14 +230,14 @@ public class Rsa extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object is already initialized
      */
-	public void decodePrivateKeyPKCS8(byte[] key) {
-		willSetKey();
+    public void decodePrivateKeyPKCS8(byte[] key) {
+        willSetKey();
 
-		wc_RsaPrivateKeyDecodePKCS8(key);
+        wc_RsaPrivateKeyDecodePKCS8(key);
 
-		state = WolfCryptState.READY;
-		hasPrivateKey = true;
-	}
+        state = WolfCryptState.READY;
+        hasPrivateKey = true;
+    }
 
     /**
      * Decode/import public RSA key
@@ -248,9 +248,9 @@ public class Rsa extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object is already initialized
      */
-	public void decodeRawPublicKey(byte[] n, byte[] e) {
-		decodeRawPublicKey(n, n.length, e, e.length);
-	}
+    public void decodeRawPublicKey(byte[] n, byte[] e) {
+        decodeRawPublicKey(n, n.length, e, e.length);
+    }
 
     /**
      * Decode/import raw public RSA key
@@ -263,12 +263,12 @@ public class Rsa extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object is already initialized
      */
-	public void decodeRawPublicKey(byte[] n, long nSize, byte[] e, long eSize) {
-		willSetKey();
+    public void decodeRawPublicKey(byte[] n, long nSize, byte[] e, long eSize) {
+        willSetKey();
 
-		wc_RsaPublicKeyDecodeRaw(n, nSize, e, eSize);
-		state = WolfCryptState.READY;
-	}
+        wc_RsaPublicKeyDecodeRaw(n, nSize, e, eSize);
+        state = WolfCryptState.READY;
+    }
 
     /**
      * Decode/import raw public RSA key
@@ -279,9 +279,9 @@ public class Rsa extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object is already initialized
      */
-	public void decodeRawPublicKey(ByteBuffer n, ByteBuffer e) {
-		decodeRawPublicKey(n, n.limit(), e, e.limit());
-	}
+    public void decodeRawPublicKey(ByteBuffer n, ByteBuffer e) {
+        decodeRawPublicKey(n, n.limit(), e, e.limit());
+    }
 
     /**
      * Decode/import raw public RSA key
@@ -294,13 +294,13 @@ public class Rsa extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object is already initialized
      */
-	public void decodeRawPublicKey(ByteBuffer n, long nSz, ByteBuffer e,
-			long eSz) {
-		willSetKey();
+    public void decodeRawPublicKey(ByteBuffer n, long nSz, ByteBuffer e,
+            long eSz) {
+        willSetKey();
 
-		wc_RsaPublicKeyDecodeRaw(n, nSz, e, eSz);
-		state = WolfCryptState.READY;
-	}
+        wc_RsaPublicKeyDecodeRaw(n, nSz, e, eSz);
+        state = WolfCryptState.READY;
+    }
 
     /**
      * Export raw RSA public key
@@ -314,11 +314,11 @@ public class Rsa extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-	public void exportRawPublicKey(byte[] n, long[] nSz, byte[] e, long[] eSz) {
-		willUseKey(false);
+    public void exportRawPublicKey(byte[] n, long[] nSz, byte[] e, long[] eSz) {
+        willUseKey(false);
 
-		RsaFlattenPublicKey(n, nSz, e, eSz);
-	}
+        RsaFlattenPublicKey(n, nSz, e, eSz);
+    }
 
     /**
      * Export raw RSA public key
@@ -328,11 +328,11 @@ public class Rsa extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-	public void exportRawPublicKey(ByteBuffer n, ByteBuffer e) {
-		willUseKey(false);
+    public void exportRawPublicKey(ByteBuffer n, ByteBuffer e) {
+        willUseKey(false);
 
-		RsaFlattenPublicKey(n, e);
-	}
+        RsaFlattenPublicKey(n, e);
+    }
 
     /**
      * Get RSA encrypt size
@@ -341,11 +341,11 @@ public class Rsa extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-	public int getEncryptSize() {
-		willUseKey(false);
+    public int getEncryptSize() {
+        willUseKey(false);
 
-		return wc_RsaEncryptSize();
-	}
+        return wc_RsaEncryptSize();
+    }
 
     /**
      * Encrypt data with RSA
@@ -357,11 +357,11 @@ public class Rsa extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-	public byte[] encrypt(byte[] plain, Rng rng) {
-		willUseKey(false);
+    public byte[] encrypt(byte[] plain, Rng rng) {
+        willUseKey(false);
 
-		return wc_RsaPublicEncrypt(plain, rng);
-	}
+        return wc_RsaPublicEncrypt(plain, rng);
+    }
 
     /**
      * Decrypt data with RSA
@@ -372,11 +372,11 @@ public class Rsa extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-	public byte[] decrypt(byte[] ciphertext) {
-		willUseKey(true);
+    public byte[] decrypt(byte[] ciphertext) {
+        willUseKey(true);
 
-		return wc_RsaPrivateDecrypt(ciphertext);
-	}
+        return wc_RsaPrivateDecrypt(ciphertext);
+    }
 
     /**
      * Sign data with RSA
@@ -389,11 +389,11 @@ public class Rsa extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object does not have key
      */
-	public byte[] sign(byte[] data, Rng rng) {
-		willUseKey(true);
+    public byte[] sign(byte[] data, Rng rng) {
+        willUseKey(true);
 
-		return wc_RsaSSL_Sign(data, rng);
-	}
+        return wc_RsaSSL_Sign(data, rng);
+    }
 
     /**
      * Verify data with RSA
@@ -404,10 +404,10 @@ public class Rsa extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-	public byte[] verify(byte[] signature) {
-		willUseKey(false);
+    public byte[] verify(byte[] signature) {
+        willUseKey(false);
 
-		return wc_RsaSSL_Verify(signature);
-	}
+        return wc_RsaSSL_Verify(signature);
+    }
 }
 

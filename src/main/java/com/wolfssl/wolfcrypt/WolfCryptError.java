@@ -352,35 +352,35 @@ public enum WolfCryptError {
     private static final Map<Integer, WolfCryptError> intToErrMap =
         new HashMap<Integer, WolfCryptError>();
 
-	static {
-		for (WolfCryptError err : WolfCryptError.values()) {
-			intToErrMap.put(err.code, err);
-		}
-	}
+    static {
+        for (WolfCryptError err : WolfCryptError.values()) {
+            intToErrMap.put(err.code, err);
+        }
+    }
 
-	private WolfCryptError(int code) {
-		this.code = code;
-	}
+    private WolfCryptError(int code) {
+        this.code = code;
+    }
 
     /**
      * Get wolfCrypt error code
      *
      * @return current wolfCrypt error code
      */
-	public int getCode() {
-		return this.code;
-	}
+    public int getCode() {
+        return this.code;
+    }
 
     /**
      * Get wolfCrypt description of current error
      *
      * @return String description of current error
      */
-	public String getDescription() {
-		if (this == WolfCryptError.NO_ERROR_FOUND)
-			return "No error code found in JNI WolfCryptError enum";
-		return wc_GetErrorString(this.code);
-	}
+    public String getDescription() {
+        if (this == WolfCryptError.NO_ERROR_FOUND)
+            return "No error code found in JNI WolfCryptError enum";
+        return wc_GetErrorString(this.code);
+    }
 
     /**
      * Get WolfCryptError from error code int value
@@ -389,19 +389,19 @@ public enum WolfCryptError {
      *
      * @return WolfCryptError object matching error code
      */
-	public static WolfCryptError fromInt(int code) {
-		WolfCryptError err = intToErrMap.get(Integer.valueOf(code));
+    public static WolfCryptError fromInt(int code) {
+        WolfCryptError err = intToErrMap.get(Integer.valueOf(code));
 
-		if (err == null)
-			return WolfCryptError.NO_ERROR_FOUND;
+        if (err == null)
+            return WolfCryptError.NO_ERROR_FOUND;
 
-		return err;
-	}
+        return err;
+    }
 
-	private static native String wc_GetErrorString(int error);
+    private static native String wc_GetErrorString(int error);
 
-	@Override
-	public String toString() {
-		return "(" + code + ") " + this.getDescription();
-	}
+    @Override
+    public String toString() {
+        return "(" + code + ") " + this.getDescription();
+    }
 }

@@ -30,9 +30,9 @@ import com.wolfssl.wolfcrypt.NativeStruct;
 
 public class RngTest {
 
-	@Test
-	public void constructorShouldInitializeNativeStruct() {
-		assertNotEquals(NativeStruct.NULL, new Rng().getNativeStruct());
-	}
+    @Test
+    public void constructorShouldInitializeNativeStruct() {
+        assertNotEquals(NativeStruct.NULL, new Rng().getNativeStruct());
+    }
 
 }

@@ -26,17 +26,17 @@ package com.wolfssl.wolfcrypt;
  */
 public class Dh extends NativeStruct {
 
-	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
-	private byte[] privateKey = null;
-	private byte[] publicKey = null;
+    private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+    private byte[] privateKey = null;
+    private byte[] publicKey = null;
     private int pSize = 0;
 
     /**
      * Create new Dh object
      */
-	public Dh() {
-		init();
-	}
+    public Dh() {
+        init();
+    }
 
     /**
      * Create new Dh object
@@ -44,17 +44,17 @@ public class Dh extends NativeStruct {
      * @param p DH p parameter
      * @param g DH g parameter
      */
-	public Dh(byte[] p, byte[] g) {
-		init();
-		setParams(p, g);
-	}
+    public Dh(byte[] p, byte[] g) {
+        init();
+        setParams(p, g);
+    }
 
-	@Override
-	public void releaseNativeStruct() {
-		free();
+    @Override
+    public void releaseNativeStruct() {
+        free();
 
-		super.releaseNativeStruct();
-	}
+        super.releaseNativeStruct();
+    }
 
     /**
      * Malloc native JNI DH structure
@@ -63,36 +63,36 @@ public class Dh extends NativeStruct {
      *
      * @throws OutOfMemoryError when malloc fails with memory error
      */
-	protected native long mallocNativeStruct() throws OutOfMemoryError;
+    protected native long mallocNativeStruct() throws OutOfMemoryError;
 
-	private native void wc_InitDhKey();
-	private native void wc_FreeDhKey();
-	private native void wc_DhSetKey(byte[] p, byte[] g);
-	private native void wc_DhGenerateKeyPair(Rng rng, int pSize);
-	private native byte[] wc_DhAgree(byte[] priv, byte[] pub);
+    private native void wc_InitDhKey();
+    private native void wc_FreeDhKey();
+    private native void wc_DhSetKey(byte[] p, byte[] g);
+    private native void wc_DhGenerateKeyPair(Rng rng, int pSize);
+    private native byte[] wc_DhAgree(byte[] priv, byte[] pub);
 
     /** Initialize Dh object */
-	protected void init() {
-		if (state == WolfCryptState.UNINITIALIZED) {
-			wc_InitDhKey();
-			state = WolfCryptState.INITIALIZED;
-		} else {
-			throw new IllegalStateException(
-					"Native resources already initialized.");
-		}
-	}
+    protected void init() {
+        if (state == WolfCryptState.UNINITIALIZED) {
+            wc_InitDhKey();
+            state = WolfCryptState.INITIALIZED;
+        } else {
+            throw new IllegalStateException(
+                    "Native resources already initialized.");
+        }
+    }
 
     /** Free Dh object */
-	protected void free() {
-		if (state != WolfCryptState.UNINITIALIZED) {
-			wc_FreeDhKey();
+    protected void free() {
+        if (state != WolfCryptState.UNINITIALIZED) {
+            wc_FreeDhKey();
 
-			setPrivateKey(new byte[0]);
-			setPublicKey(new byte[0]);
+            setPrivateKey(new byte[0]);
+            setPublicKey(new byte[0]);
 
-			state = WolfCryptState.UNINITIALIZED;
-		}
-	}
+            state = WolfCryptState.UNINITIALIZED;
+        }
+    }
 
     /**
      * Set private key
@@ -101,18 +101,18 @@ public class Dh extends NativeStruct {
      *
      * @throws IllegalStateException if object uninitialized
      */
-	public void setPrivateKey(byte[] priv) {
-		if (state != WolfCryptState.UNINITIALIZED) {
-			if (privateKey != null)
-				for (int i = 0; i < privateKey.length; i++)
-					privateKey[i] = 0;
+    public void setPrivateKey(byte[] priv) {
+        if (state != WolfCryptState.UNINITIALIZED) {
+            if (privateKey != null)
+                for (int i = 0; i < privateKey.length; i++)
+                    privateKey[i] = 0;
 
-			privateKey = priv.clone();
-		} else {
-			throw new IllegalStateException(
-					"No available parameters to perform opetarion.");
-		}
-	}
+            privateKey = priv.clone();
+        } else {
+            throw new IllegalStateException(
+                    "No available parameters to perform opetarion.");
+        }
+    }
 
     /**
      * Set public key
@@ -121,27 +121,27 @@ public class Dh extends NativeStruct {
      *
      * @throws IllegalStateException if object uninitialized
      */
-	public void setPublicKey(byte[] pub) {
-		if (state != WolfCryptState.UNINITIALIZED) {
-			if (publicKey != null)
-				for (int i = 0; i < publicKey.length; i++)
-					publicKey[i] = 0;
+    public void setPublicKey(byte[] pub) {
+        if (state != WolfCryptState.UNINITIALIZED) {
+            if (publicKey != null)
+                for (int i = 0; i < publicKey.length; i++)
+                    publicKey[i] = 0;
 
-			publicKey = pub.clone();
-		} else {
-			throw new IllegalStateException(
-					"No available parameters to perform opetarion.");
-		}
-	}
+            publicKey = pub.clone();
+        } else {
+            throw new IllegalStateException(
+                    "No available parameters to perform opetarion.");
+        }
+    }
 
     /**
      * Get public key
      *
      * @return public key as byte array
      */
-	public byte[] getPublicKey() {
-		return publicKey;
-	}
+    public byte[] getPublicKey() {
+        return publicKey;
+    }
 
     /**
      * Get private key
@@ -161,15 +161,15 @@ public class Dh extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object already initialized
      */
-	public void setParams(byte[] p, byte[] g) {
-		if (state == WolfCryptState.INITIALIZED) {
-			wc_DhSetKey(p, g);
+    public void setParams(byte[] p, byte[] g) {
+        if (state == WolfCryptState.INITIALIZED) {
+            wc_DhSetKey(p, g);
             this.pSize = p.length;
-			state = WolfCryptState.READY;
-		} else {
-			throw new IllegalStateException("Object already has parameters.");
-		}
-	}
+            state = WolfCryptState.READY;
+        } else {
+            throw new IllegalStateException("Object already has parameters.");
+        }
+    }
 
     /**
      * Generate DH key inside object
@@ -179,14 +179,14 @@ public class Dh extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object already has a key
      */
-	public void makeKey(Rng rng) {
-		if (privateKey == null) {
+    public void makeKey(Rng rng) {
+        if (privateKey == null) {
             /* use size of P to allocate key buffer size */
-			wc_DhGenerateKeyPair(rng, this.pSize);
-		} else {
-			throw new IllegalStateException("Object already has a key.");
-		}
-	}
+            wc_DhGenerateKeyPair(rng, this.pSize);
+        } else {
+            throw new IllegalStateException("Object already has a key.");
+        }
+    }
 
     /**
      * Generate DH shared secret
@@ -198,15 +198,15 @@ public class Dh extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object has no key
      */
-	public byte[] makeSharedSecret(Dh pubKey) {
-		byte[] publicKey = pubKey.getPublicKey();
+    public byte[] makeSharedSecret(Dh pubKey) {
+        byte[] publicKey = pubKey.getPublicKey();
 
-		if (privateKey != null || publicKey != null) {
-			return wc_DhAgree(privateKey, publicKey);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-		}
-	}
+        if (privateKey != null || publicKey != null) {
+            return wc_DhAgree(privateKey, publicKey);
+        } else {
+            throw new IllegalStateException(
+                    "No available key to perform the opperation.");
+        }
+    }
 }
 

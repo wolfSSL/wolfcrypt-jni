@@ -39,16 +39,16 @@ public class Md5Test {
         try {
             Md5 md5 = new Md5();
         } catch (WolfCryptException e) {
-			if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
-				System.out.println("MD5 skipped: " + e.getError());
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                System.out.println("MD5 skipped: " + e.getError());
                 Assume.assumeTrue(false);
             }
         }
     }
 
-	@Test
-	public void constructorShouldInitializeNativeStruct() {
-		assertNotEquals(NativeStruct.NULL, new Md5().getNativeStruct());
-	}
+    @Test
+    public void constructorShouldInitializeNativeStruct() {
+        assertNotEquals(NativeStruct.NULL, new Md5().getNativeStruct());
+    }
 
 }

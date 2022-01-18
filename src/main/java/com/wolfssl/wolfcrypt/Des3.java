@@ -29,16 +29,16 @@ import java.nio.ByteBuffer;
 public class Des3 extends BlockCipher {
 
     /** 3DES key size */
-	public static final int KEY_SIZE = 24;
+    public static final int KEY_SIZE = 24;
     /** 3DES block size */
-	public static final int BLOCK_SIZE = 8;
+    public static final int BLOCK_SIZE = 8;
     /** 3DES encrypt mode */
-	public static final int ENCRYPT_MODE = 0;
+    public static final int ENCRYPT_MODE = 0;
     /** 3DES decrypt mode */
-	public static final int DECRYPT_MODE = 1;
+    public static final int DECRYPT_MODE = 1;
 
-	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
-	private int opmode;
+    private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+    private int opmode;
 
     /**
      * Malloc native JNI Des3 structure
@@ -47,7 +47,7 @@ public class Des3 extends BlockCipher {
      *
      * @throws OutOfMemoryError when malloc fails with memory error
      */
-	protected native long mallocNativeStruct() throws OutOfMemoryError;
+    protected native long mallocNativeStruct() throws OutOfMemoryError;
 
     /**
      * Set native Des3 key
@@ -57,7 +57,7 @@ public class Des3 extends BlockCipher {
      * @param opmode 3DES mode, either Des3.ENCRYPT_MODE or
      *        Des3.DECRYPT_MODE
      */
-	protected native void native_set_key(byte[] key, byte[] iv, int opmode);
+    protected native void native_set_key(byte[] key, byte[] iv, int opmode);
 
     /**
      * Native Des3 encrypt/decrypt update operation
@@ -72,8 +72,8 @@ public class Des3 extends BlockCipher {
      *
      * @return number of bytes stored in output
      */
-	protected native int native_update(int opmode, byte[] input, int offset,
-			int length, byte[] output, int outputOffset);
+    protected native int native_update(int opmode, byte[] input, int offset,
+            int length, byte[] output, int outputOffset);
 
     /**
      * Native Des3 encrypt/decrypt update operation
@@ -88,14 +88,14 @@ public class Des3 extends BlockCipher {
      *
      * @return number of bytes stored in output
      */
-	protected native int native_update(int opmode, ByteBuffer input,
-			int offset, int length, ByteBuffer output, int outputOffset);
+    protected native int native_update(int opmode, ByteBuffer input,
+            int offset, int length, ByteBuffer output, int outputOffset);
 
     /**
      * Create new Des3 object
      */
-	public Des3() {
-	}
+    public Des3() {
+    }
 
     /**
      * Create new Des3 object
@@ -104,8 +104,8 @@ public class Des3 extends BlockCipher {
      * @param iv 3DES initialization vector (IV)
      * @param opmode 3DES mode: Des3.ENCRYPT_MODE or Des3.DECRYPT_MODE
      */
-	public Des3(byte[] key, byte[] iv, int opmode) {
-		setKey(key, iv, opmode);
-	}
+    public Des3(byte[] key, byte[] iv, int opmode) {
+        setKey(key, iv, opmode);
+    }
 }
 

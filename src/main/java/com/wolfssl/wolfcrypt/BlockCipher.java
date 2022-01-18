@@ -30,9 +30,9 @@ import javax.crypto.ShortBufferException;
  */
 public abstract class BlockCipher extends NativeStruct {
 
-	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+    private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
-	private int opmode;
+    private int opmode;
 
     /**
      * Set block cipher key, IV, and mode
@@ -41,7 +41,7 @@ public abstract class BlockCipher extends NativeStruct {
      * @param iv block cipher initialization vector (IV) array
      * @param opmode block cipher operation mode, dependent on subclass type
      */
-	protected abstract void native_set_key(byte[] key, byte[] iv, int opmode);
+    protected abstract void native_set_key(byte[] key, byte[] iv, int opmode);
 
     /**
      * Native block cipher encrypt/decrypt update operation
@@ -55,8 +55,8 @@ public abstract class BlockCipher extends NativeStruct {
      *
      * @return number of bytes stored in output
      */
-	protected abstract int native_update(int opmode, byte[] input, int offset,
-			int length, byte[] output, int outputOffset);
+    protected abstract int native_update(int opmode, byte[] input, int offset,
+            int length, byte[] output, int outputOffset);
 
     /**
      * Native block cipher encrypt/decrypt update operation
@@ -70,8 +70,8 @@ public abstract class BlockCipher extends NativeStruct {
      *
      * @return number of bytes stored in output
      */
-	protected abstract int native_update(int opmode, ByteBuffer input,
-			int offset, int length, ByteBuffer output, int outputOffset);
+    protected abstract int native_update(int opmode, ByteBuffer input,
+            int offset, int length, ByteBuffer output, int outputOffset);
 
     /**
      * Set block cipher key, IV, and mode
@@ -80,23 +80,23 @@ public abstract class BlockCipher extends NativeStruct {
      * @param iv block cipher initialization vector (IV) array
      * @param opmode block cipher operation mode, dependent on subclass type
      */
-	public void setKey(byte[] key, byte[] iv, int opmode) {
-		native_set_key(key, iv, opmode);
+    public void setKey(byte[] key, byte[] iv, int opmode) {
+        native_set_key(key, iv, opmode);
 
-		this.opmode = opmode;
-		state = WolfCryptState.READY;
-	}
+        this.opmode = opmode;
+        state = WolfCryptState.READY;
+    }
 
     /**
      * Throws IllegalStateException if key not usable
      *
      * @throws IllegalStateException if algorithm or key not usable
      */
-	public void willUseKey() {
-		if (state != WolfCryptState.READY)
-			throw new IllegalStateException(
-					"No available key to perform the opperation.");
-	}
+    public void willUseKey() {
+        if (state != WolfCryptState.READY)
+            throw new IllegalStateException(
+                    "No available key to perform the opperation.");
+    }
 
     /**
      * Block cipher update operation
@@ -105,9 +105,9 @@ public abstract class BlockCipher extends NativeStruct {
      *
      * @return output data array from update operation
      */
-	public byte[] update(byte[] input) {
-		return update(input, 0, input.length);
-	}
+    public byte[] update(byte[] input) {
+        return update(input, 0, input.length);
+    }
 
     /**
      * Block cipher update operation
@@ -118,15 +118,15 @@ public abstract class BlockCipher extends NativeStruct {
      *
      * @return output data array from update operation
      */
-	public byte[] update(byte[] input, int offset, int length) {
-		willUseKey();
+    public byte[] update(byte[] input, int offset, int length) {
+        willUseKey();
 
-		byte[] output = new byte[input.length];
+        byte[] output = new byte[input.length];
 
-		native_update(opmode, input, offset, length, output, 0);
+        native_update(opmode, input, offset, length, output, 0);
 
-		return output;
-	}
+        return output;
+    }
 
     /**
      * Block cipher update operation
@@ -141,17 +141,17 @@ public abstract class BlockCipher extends NativeStruct {
      *
      * @throws ShortBufferException if output buffer is too small
      */
-	public int update(byte[] input, int offset, int length, byte[] output,
-			int outputOffset) throws ShortBufferException {
-		willUseKey();
+    public int update(byte[] input, int offset, int length, byte[] output,
+            int outputOffset) throws ShortBufferException {
+        willUseKey();
 
-		if (outputOffset + length > output.length)
-			throw new ShortBufferException(
-					"output buffer is too small to hold the result.");
+        if (outputOffset + length > output.length)
+            throw new ShortBufferException(
+                    "output buffer is too small to hold the result.");
 
-		return native_update(opmode, input, offset, length, output,
-				outputOffset);
-	}
+        return native_update(opmode, input, offset, length, output,
+                outputOffset);
+    }
 
     /**
      * Block cipher update operation
@@ -163,24 +163,24 @@ public abstract class BlockCipher extends NativeStruct {
      *
      * @throws ShortBufferException if output buffer is not large enough
      */
-	public int update(ByteBuffer input, ByteBuffer output)
-			throws ShortBufferException {
-		willUseKey();
+    public int update(ByteBuffer input, ByteBuffer output)
+            throws ShortBufferException {
+        willUseKey();
 
-		int ret = 0;
+        int ret = 0;
 
-		if (output.remaining() < input.remaining())
-			throw new ShortBufferException(
-					"output buffer is too small to hold the result.");
+        if (output.remaining() < input.remaining())
+            throw new ShortBufferException(
+                    "output buffer is too small to hold the result.");
 
-		ret = native_update(opmode, input, input.position(), input.remaining(),
-				output, output.position());
+        ret = native_update(opmode, input, input.position(), input.remaining(),
+                output, output.position());
 
-		input.position(input.position() + ret);
-		output.position(output.position() + ret);
+        input.position(input.position() + ret);
+        output.position(output.position() + ret);
 
-		return ret;
-	}
+        return ret;
+    }
 
     @Override
     public void releaseNativeStruct() {

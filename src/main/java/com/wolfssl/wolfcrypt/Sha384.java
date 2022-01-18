@@ -29,9 +29,9 @@ import java.nio.ByteBuffer;
 public class Sha384 extends MessageDigest {
 
     /** SHA2-384 hash type */
-	public static final int TYPE = 5; /* hash type unique */
+    public static final int TYPE = 5; /* hash type unique */
     /** SHA2-384 digest size */
-	public static final int DIGEST_SIZE = 48;
+    public static final int DIGEST_SIZE = 48;
 
     /**
      * Malloc native JNI Sha384 structure
@@ -40,12 +40,12 @@ public class Sha384 extends MessageDigest {
      *
      * @throws OutOfMemoryError when malloc fails with memory error
      */
-	protected native long mallocNativeStruct() throws OutOfMemoryError;
+    protected native long mallocNativeStruct() throws OutOfMemoryError;
 
     /**
      * Initialize Sha384 object
      */
-	protected native void native_init();
+    protected native void native_init();
 
     /**
      * Native SHA2-384 update
@@ -56,7 +56,7 @@ public class Sha384 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_update(ByteBuffer data, int offset, int len);
+    protected native void native_update(ByteBuffer data, int offset, int len);
 
     /**
      * Native SHA2-384 update
@@ -67,7 +67,7 @@ public class Sha384 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_update(byte[] data, int offset, int len);
+    protected native void native_update(byte[] data, int offset, int len);
 
     /**
      * Native SHA2-384 final, calculate final digest
@@ -77,7 +77,7 @@ public class Sha384 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_final(ByteBuffer hash, int offset);
+    protected native void native_final(ByteBuffer hash, int offset);
 
     /**
      * Native SHA2-384 final, calculate final digest
@@ -86,32 +86,32 @@ public class Sha384 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_final(byte[] hash);
+    protected native void native_final(byte[] hash);
 
     /**
      * Create new SHA2-384 object
      */
-	public Sha384() {
-		init();
-	}
+    public Sha384() {
+        init();
+    }
 
     /**
      * Create new SHA2-384 object
      *
      * @param data input data to hash
      */
-	public Sha384(byte[] data) {
-		init();
-		update(data);
-	}
+    public Sha384(byte[] data) {
+        init();
+        update(data);
+    }
 
     /**
      * Get SHA2-384 digest size
      *
      * @return SHA2-384 digest size
      */
-	public int digestSize() {
-		return DIGEST_SIZE;
-	}
+    public int digestSize() {
+        return DIGEST_SIZE;
+    }
 }
 
