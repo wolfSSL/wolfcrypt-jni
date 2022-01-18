@@ -26,8 +26,12 @@ package com.wolfssl.wolfcrypt;
  */
 public abstract class NativeStruct extends WolfObject {
 
+    /** Logical mapping of NULL to 0 */
 	public static final long NULL = 0;
 
+    /**
+     * Create new NativeStruct object
+     */
 	protected NativeStruct() {
 		setNativeStruct(mallocNativeStruct());
 	}
@@ -35,10 +39,23 @@ public abstract class NativeStruct extends WolfObject {
 	/* points to the internal native structure */
 	private long pointer;
 
+    /**
+     * Get pointer to wrapped native structure
+     *
+     * @return pointer to native structure
+     */
 	public long getNativeStruct() {
 		return this.pointer;
 	}
 
+    /**
+     * Set pointer to native structure
+     *
+     * If NativeStruct already holds pointer, old pointer will be free()'d
+     * before resetting to new pointer.
+     *
+     * @param nativeStruct pointer to initialized native structure
+     */
 	protected void setNativeStruct(long nativeStruct) {
 		if (this.pointer != NULL)
 			xfree(this.pointer);
@@ -58,6 +75,13 @@ public abstract class NativeStruct extends WolfObject {
 		setNativeStruct(NULL);
 	}
 
+    /**
+     * Malloc native structure pointer
+     *
+     * @return allocated pointer to native structure
+     *
+     * @throws OutOfMemoryError if native malloc fails with memory error
+     */
 	protected abstract long mallocNativeStruct() throws OutOfMemoryError;
 
 	private native void xfree(long pointer);
@@ -70,3 +94,4 @@ public abstract class NativeStruct extends WolfObject {
 		super.finalize();
 	}
 }
+

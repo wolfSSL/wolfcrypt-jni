@@ -39,6 +39,9 @@ public final class WolfCryptMessageDigestMd5 extends MessageDigestSpi {
     /* for debug logging */
     private WolfCryptDebug debug;
 
+    /**
+     * Create new WolfCryptMessageDigestMd5 object
+     */
     public WolfCryptMessageDigestMd5() {
 
         md5 = new Md5();

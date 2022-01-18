@@ -21,8 +21,14 @@
 
 package com.wolfssl.wolfcrypt;
 
+/**
+ * wolfCrypt state enum
+ */
 public enum WolfCryptState {
+    /** Object uninitialized */
 	UNINITIALIZED,
+    /** Object initialized */
 	INITIALIZED,
+    /** Object ready for use */
 	READY;
 }

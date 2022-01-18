@@ -31,10 +31,19 @@ public class Dh extends NativeStruct {
 	private byte[] publicKey = null;
     private int pSize = 0;
 
+    /**
+     * Create new Dh object
+     */
 	public Dh() {
 		init();
 	}
 
+    /**
+     * Create new Dh object
+     *
+     * @param p DH p parameter
+     * @param g DH g parameter
+     */
 	public Dh(byte[] p, byte[] g) {
 		init();
 		setParams(p, g);
@@ -47,18 +56,22 @@ public class Dh extends NativeStruct {
 		super.releaseNativeStruct();
 	}
 
+    /**
+     * Malloc native JNI DH structure
+     *
+     * @return native allocated pointer
+     *
+     * @throws OutOfMemoryError when malloc fails with memory error
+     */
 	protected native long mallocNativeStruct() throws OutOfMemoryError;
 
 	private native void wc_InitDhKey();
-
 	private native void wc_FreeDhKey();
-
 	private native void wc_DhSetKey(byte[] p, byte[] g);
-
 	private native void wc_DhGenerateKeyPair(Rng rng, int pSize);
-
 	private native byte[] wc_DhAgree(byte[] priv, byte[] pub);
 
+    /** Initialize Dh object */
 	protected void init() {
 		if (state == WolfCryptState.UNINITIALIZED) {
 			wc_InitDhKey();
@@ -69,6 +82,7 @@ public class Dh extends NativeStruct {
 		}
 	}
 
+    /** Free Dh object */
 	protected void free() {
 		if (state != WolfCryptState.UNINITIALIZED) {
 			wc_FreeDhKey();
@@ -80,6 +94,13 @@ public class Dh extends NativeStruct {
 		}
 	}
 
+    /**
+     * Set private key
+     *
+     * @param priv private key array
+     *
+     * @throws IllegalStateException if object uninitialized
+     */
 	public void setPrivateKey(byte[] priv) {
 		if (state != WolfCryptState.UNINITIALIZED) {
 			if (privateKey != null)
@@ -93,6 +114,13 @@ public class Dh extends NativeStruct {
 		}
 	}
 
+    /**
+     * Set public key
+     *
+     * @param pub public key array
+     *
+     * @throws IllegalStateException if object uninitialized
+     */
 	public void setPublicKey(byte[] pub) {
 		if (state != WolfCryptState.UNINITIALIZED) {
 			if (publicKey != null)
@@ -106,14 +134,33 @@ public class Dh extends NativeStruct {
 		}
 	}
 
+    /**
+     * Get public key
+     *
+     * @return public key as byte array
+     */
 	public byte[] getPublicKey() {
 		return publicKey;
 	}
 
+    /**
+     * Get private key
+     *
+     * @return private key as byte array
+     */
     public byte[] getPrivateKey() {
         return privateKey;
     }
 
+    /**
+     * Set DH parameters
+     *
+     * @param p DH p parameter
+     * @param g DH g parameter
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object already initialized
+     */
 	public void setParams(byte[] p, byte[] g) {
 		if (state == WolfCryptState.INITIALIZED) {
 			wc_DhSetKey(p, g);
@@ -124,6 +171,14 @@ public class Dh extends NativeStruct {
 		}
 	}
 
+    /**
+     * Generate DH key inside object
+     *
+     * @param rng initialized Rng object
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object already has a key
+     */
 	public void makeKey(Rng rng) {
 		if (privateKey == null) {
             /* use size of P to allocate key buffer size */
@@ -133,6 +188,16 @@ public class Dh extends NativeStruct {
 		}
 	}
 
+    /**
+     * Generate DH shared secret
+     *
+     * @param pubKey public key to use for secret generation
+     *
+     * @return shared secret as byte array
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object has no key
+     */
 	public byte[] makeSharedSecret(Dh pubKey) {
 		byte[] publicKey = pubKey.getPublicKey();
 

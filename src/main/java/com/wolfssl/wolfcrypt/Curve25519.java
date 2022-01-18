@@ -33,6 +33,9 @@ public class Curve25519 extends NativeStruct {
 
 	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
+    /**
+     * Create new Curve25519 object
+     */
 	public Curve25519() {
 		init();
 	}
@@ -44,6 +47,13 @@ public class Curve25519 extends NativeStruct {
 		super.releaseNativeStruct();
 	}
 
+    /**
+     * Malloc native JNI Curve25519 structure
+     *
+     * @return native allocated pointer
+     *
+     * @throws OutOfMemoryError when malloc fails with memory error
+     */
 	protected native long mallocNativeStruct() throws OutOfMemoryError;
 
 	private native void wc_curve25519_init();
@@ -62,11 +72,12 @@ public class Curve25519 extends NativeStruct {
 	private native void wc_curve25519_import_private_only(byte[] privKey);
 	private native void wc_curve25519_import_public(byte[] pubKey);
 
-
 	private native byte[] wc_curve25519_export_private();
 	private native byte[] wc_curve25519_export_public();
 
-
+    /**
+     * Initialize Curve25519 object
+     */
 	protected void init() {
 		if (state == WolfCryptState.UNINITIALIZED) {
 			wc_curve25519_init();
@@ -77,6 +88,9 @@ public class Curve25519 extends NativeStruct {
 		}
 	}
 
+    /**
+     * Free Curve25519 object
+     */
 	protected void free() {
 		if (state != WolfCryptState.UNINITIALIZED) {
 			wc_curve25519_free();
@@ -84,6 +98,12 @@ public class Curve25519 extends NativeStruct {
 		}
 	}
 
+    /**
+     * Generate new Curve25519 key
+     *
+     * @param rng Initialized Rng object to use for randomness
+     * @param size size of key to generate
+     */
 	public void makeKey(Rng rng, int size) {
 		if (state == WolfCryptState.INITIALIZED) {
 			wc_curve25519_make_key(rng, size);
@@ -93,6 +113,13 @@ public class Curve25519 extends NativeStruct {
 		}
 	}
 
+    /**
+     * Generate new Curve25519 key with specified endianness
+     *
+     * @param rng initialized Rng object to use for randomness
+     * @param size size of key to generate
+     * @param endian endianness of key
+     */
     public void makeKeyWithEndian(Rng rng, int size, int endian) {
         if (state == WolfCryptState.INITIALIZED) {
             wc_curve25519_make_key_ex(rng, size, endian);
@@ -102,6 +129,12 @@ public class Curve25519 extends NativeStruct {
         }
     }
 
+    /**
+     * Check Curve25519 key for correctness
+     *
+     * @throws WolfCryptException if key is not correct
+     * @throws IllegalStateException if no key available
+     */
 	public void checkKey() {
 		if (state == WolfCryptState.READY) {
 			wc_curve25519_check_key();
@@ -111,6 +144,15 @@ public class Curve25519 extends NativeStruct {
 		}
 	}
 
+    /**
+     * Import private and public key
+     *
+     * @param privKey private Curve25519 key array
+     * @param xKey public Curve25519 key array
+     *
+     * @throws WolfCryptException if error occurs during key import
+     * @throws IllegalArgumentException if object is already initialized
+     */
 	public void importPrivate(byte[] privKey, byte[] xKey) {
 		if (state == WolfCryptState.INITIALIZED) {
 			wc_curve25519_import_private(privKey, xKey);
@@ -120,6 +162,14 @@ public class Curve25519 extends NativeStruct {
 		}
 	}
 	
+    /**
+     * Import private key
+     *
+     * @param privKey private Curve25519 key array
+     *
+     * @throws WolfCryptException if error occurs during key import
+     * @throws IllegalArgumentException if object is already initialized
+     */
     public void importPrivateOnly(byte[] privKey) {
 		if (state == WolfCryptState.INITIALIZED) {
 			wc_curve25519_import_private_only(privKey);
@@ -129,6 +179,14 @@ public class Curve25519 extends NativeStruct {
 		}
 	}
 	
+    /**
+     * Import public key
+     *
+     * @param pubKey public Curve25519 key array
+     *
+     * @throws WolfCryptException if error occurs during key import
+     * @throws IllegalArgumentException if object is already initialized
+     */
     public void importPublic(byte[] pubKey) {
 		if (state == WolfCryptState.INITIALIZED) {
 			wc_curve25519_import_public(pubKey);
@@ -138,6 +196,14 @@ public class Curve25519 extends NativeStruct {
 		}
 	}
 
+    /**
+     * Export private key
+     *
+     * @return byte array of private Curve25519 key
+     *
+     * @throws WolfCryptException if error occurs during key export
+     * @throws IllegalArgumentException if object has no key to export
+     */
 	public byte[] exportPrivate() {
 		if (state == WolfCryptState.READY) {
 			return wc_curve25519_export_private();
@@ -147,6 +213,14 @@ public class Curve25519 extends NativeStruct {
 		}
 	}
 	
+    /**
+     * Export public key
+     *
+     * @return byte array of public Curve25519 key
+     *
+     * @throws WolfCryptException if error occurs during key export
+     * @throws IllegalArgumentException if object has no key to export
+     */
     public byte[] exportPublic() {
 		if (state == WolfCryptState.READY) {
 			return wc_curve25519_export_public();
@@ -156,6 +230,16 @@ public class Curve25519 extends NativeStruct {
 		}
 	}
 
+    /**
+     * Generate shared secret between this object and specified public key
+     *
+     * @param pubKey public key to use for secret generation
+     *
+     * @return shared secret as byte array
+     *
+     * @throws WolfCryptException if error occurs during secret generation
+     * @throws IllegalArgumentException if object has no key
+     */
 	public byte[] makeSharedSecret(Curve25519 pubKey) {
 		if (state == WolfCryptState.READY) {
 			return wc_curve25519_make_shared_secret(pubKey);

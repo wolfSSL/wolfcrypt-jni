@@ -24,20 +24,45 @@ package com.wolfssl.wolfcrypt;
 import java.nio.ByteBuffer;
 
 /**
- * Wrapper for the native WolfCrypt Asn implementation.
+ * Wrapper for the native WolfCrypt ASN.1 implementation.
  *
- * @author Moisés Guimarães
- * @version 1.0, March 2015
+ * @author wolfSSL Inc.
  */
 public class Asn extends WolfObject {
 
+    /** Maximum encoded signature size */
 	public static final int MAX_ENCODED_SIG_SIZE = 512;
 
+    /** ASN.1 encode message digest, before it is signed
+     *
+     * @param encoded output buffer to place encoded data
+     * @param hash input hash to encode
+     * @param hashSize size of hash, bytes
+     * @param hashOID hash algorithm OID
+     */
 	public static native void encodeSignature(ByteBuffer encoded,
 			ByteBuffer hash, long hashSize, int hashOID);
 
+    /** ASN.1 encode message digest, before it is signed
+     *
+     * @param encoded output array to place encoded data
+     * @param hash input hash to encode
+     * @param hashSize size of hash, bytes
+     * @param hashOID hash algorithm OID
+     *
+     * @return number of bytes written to encoded array
+     */
 	public static native long encodeSignature(byte[] encoded,
 			byte[] hash, long hashSize, int hashOID);
 
+    /**
+     * Get hash algorithm OID from algorithm type
+     *
+     * @param type algorithm type. Comes from each algorithm class, for example:
+     *        Sha.TYPE, Sha256.TYPE
+     *
+     * @return hash algorithm OID, for use with encodeSignature()
+     */
 	public static native int getCTC_HashOID(int type);
 }
+

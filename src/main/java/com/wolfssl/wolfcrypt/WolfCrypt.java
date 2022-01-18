@@ -22,20 +22,30 @@
 package com.wolfssl.wolfcrypt;
 
 /**
- * Main wrapper for the native WolfCrypt implementation.
+ * Main wrapper for the native WolfCrypt implementation
  */
 public class WolfCrypt extends WolfObject {
 
+    /** wolfCrypt SUCCESS code */
     public static final int SUCCESS = 0;
+    /** wolfCrypt FAILURE code */
     public static final int FAILURE = -1;
 
+    /** Size of 128 bits in bytes */
     public static final int SIZE_OF_128_BITS = 16;
+    /** Size of 160 bits in bytes */
     public static final int SIZE_OF_160_BITS = 20;
+    /** Size of 192 bits in bytes */
     public static final int SIZE_OF_192_BITS = 24;
+    /** Size of 256 bits in bytes */
     public static final int SIZE_OF_256_BITS = 32;
+    /** Size of 384 bits in bytes */
     public static final int SIZE_OF_384_BITS = 48;
+    /** Size of 512 bits in bytes */
     public static final int SIZE_OF_512_BITS = 64;
+    /** Size of 1024 bits in bytes */
     public static final int SIZE_OF_1024_BITS = 128;
+    /** Size of 2048 bits in bytes */
     public static final int SIZE_OF_2048_BITS = 256;
 
     private WolfCrypt() {

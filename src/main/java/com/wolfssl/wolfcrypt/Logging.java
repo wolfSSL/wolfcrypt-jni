@@ -22,11 +22,20 @@
 package com.wolfssl.wolfcrypt;
 
 /**
- * Wrapper for the native WolfCrypt Logging implementation.
+ * Wrapper for the native WolfCrypt Logging implementation
  */
 public class Logging extends WolfObject {
-	
+
+    /**
+     * Turn on native wolfSSL debug logging
+     *
+     * @return 0 on success, negative on error
+     */
 	public static native int wolfSSL_Debugging_ON();
+
+    /**
+     * Turn off native wolfSSL debug logging
+     */
 	public static native void wolfSSL_Debugging_OFF();
-	
 }
+

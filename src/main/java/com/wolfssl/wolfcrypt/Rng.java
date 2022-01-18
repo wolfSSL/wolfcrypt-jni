@@ -24,22 +24,26 @@ package com.wolfssl.wolfcrypt;
 import java.nio.ByteBuffer;
 
 /**
- * Wrapper for the native WolfCrypt RNG implementation.
+ * Wrapper for the native WolfCrypt RNG implementation
  */
 public class Rng extends NativeStruct {
 
+    /**
+     * Malloc native JNI Rng structure
+     *
+     * @return native allocated pointer
+     *
+     * @throws OutOfMemoryError when malloc fails with memory error
+     */
 	protected native long mallocNativeStruct() throws OutOfMemoryError;
 
 	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
 	/* native wrappers called by public functions below */
 	private native void initRng();
-
 	private native void freeRng();
-
 	private native void rngGenerateBlock(ByteBuffer buffer, int offset,
 			int length);
-
 	private native void rngGenerateBlock(byte[] buffer, int offset, int length);
 
 	@Override
@@ -49,6 +53,9 @@ public class Rng extends NativeStruct {
 		super.releaseNativeStruct();
 	}
 
+    /**
+     * Initialize Rng object
+     */
 	public void init() {
 		if (state == WolfCryptState.UNINITIALIZED) {
 			initRng();
@@ -56,6 +63,9 @@ public class Rng extends NativeStruct {
 		}
 	}
 
+    /**
+     * Free Rng object
+     */
 	public void free() {
 		if (state == WolfCryptState.INITIALIZED) {
 			freeRng();
@@ -63,6 +73,15 @@ public class Rng extends NativeStruct {
 		}
 	}
 
+    /**
+     * Generate random block of data
+     *
+     * Data size will be buffer.remaining() - buffer.position()
+     *
+     * @param buffer output buffer to place random data
+     *
+     * @throws WolfCryptException if native operation fails
+     */
 	public void generateBlock(ByteBuffer buffer) {
 		init();
 
@@ -70,16 +89,43 @@ public class Rng extends NativeStruct {
 		buffer.position(buffer.position() + buffer.remaining());
 	}
 	
+    /**
+     * Generate random block of data
+     *
+     * @param buffer output buffer to place random data
+     * @param offset input into buffer to start writing
+     * @param length length of random data to generate
+     *
+     * @throws WolfCryptException if native operation fails
+     */
 	public void generateBlock(byte[] buffer, int offset, int length) {
 		init();
 		
 		rngGenerateBlock(buffer, offset, length);
 	}
 
+    /**
+     * Generate random block of data
+     *
+     * Data size will be buffer.length
+     *
+     * @param buffer output buffer to place random data
+     *
+     * @throws WolfCryptException if native operation fails
+     */
 	public void generateBlock(byte[] buffer) {
 		generateBlock(buffer, 0, buffer.length);
 	}
 
+    /**
+     * Generate random block of data
+     *
+     * @param length length of random data to generate
+     *
+     * @return byte array of random data
+     *
+     * @throws WolfCryptException if native operation fails
+     */
 	public byte[] generateBlock(int length) {
 		byte[] buffer = new byte[length];
 
@@ -88,3 +134,4 @@ public class Rng extends NativeStruct {
 		return buffer;
 	}
 }
+
