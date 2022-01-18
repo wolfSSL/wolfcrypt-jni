@@ -53,7 +53,7 @@ public class WolfCryptMessageDigestMd5Test {
         } catch (NoSuchAlgorithmException e) {
             /* if we also detect algo is compiled out, skip tests */
             if (FeatureDetect.Md5Enabled() == false) {
-				System.out.println("JSSE MD5 Test skipped");
+                System.out.println("JSSE MD5 Test skipped");
                 Assume.assumeTrue(false);
             }
         }

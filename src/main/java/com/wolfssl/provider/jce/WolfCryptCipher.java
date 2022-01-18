@@ -205,7 +205,7 @@ public class WolfCryptCipher extends CipherSpi {
                     log("set padding to PKCS1Padding");
             }
         }
-        
+
         if (supported == 0) {
             throw new NoSuchPaddingException(
                 "Unsupported padding type for active algorithm choice");
@@ -623,7 +623,7 @@ public class WolfCryptCipher extends CipherSpi {
         if (debug.DEBUG)
             log("update (offset: " + inputOffset + ", len: " +
                 inputLen + ")");
-        
+
         output = wolfCryptUpdate(input, inputOffset, inputLen);
 
         return output;

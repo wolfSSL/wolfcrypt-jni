@@ -31,21 +31,21 @@ import java.nio.ByteBuffer;
 public class Aes extends BlockCipher {
 
     /** AES-128 key size */
-	public static final int KEY_SIZE_128 = 16;
+    public static final int KEY_SIZE_128 = 16;
     /** AES-192 key size */
-	public static final int KEY_SIZE_192 = 24;
+    public static final int KEY_SIZE_192 = 24;
     /** AES-256 key size */
-	public static final int KEY_SIZE_256 = 32;
+    public static final int KEY_SIZE_256 = 32;
     /** AES block size */
-	public static final int BLOCK_SIZE = 16;
+    public static final int BLOCK_SIZE = 16;
     /** AES encrypt mode */
-	public static final int ENCRYPT_MODE = 0;
+    public static final int ENCRYPT_MODE = 0;
     /** AES decrypt mode */
-	public static final int DECRYPT_MODE = 1;
+    public static final int DECRYPT_MODE = 1;
 
-	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+    private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
-	private int opmode;
+    private int opmode;
 
     /**
      * Malloc native JNI AES structure
@@ -54,7 +54,7 @@ public class Aes extends BlockCipher {
      *
      * @throws OutOfMemoryError when malloc fails with memory error
      */
-	protected native long mallocNativeStruct() throws OutOfMemoryError;
+    protected native long mallocNativeStruct() throws OutOfMemoryError;
 
     /**
      * Set native AES key
@@ -64,7 +64,7 @@ public class Aes extends BlockCipher {
      * @param opmode AES mode, either Aes.ENCRYPT_MODE or
      *        Aes.DECRYPT_MODE
      */
-	protected native void native_set_key(byte[] key, byte[] iv, int opmode);
+    protected native void native_set_key(byte[] key, byte[] iv, int opmode);
 
     /**
      * Native AES encrypt/decrypt update operation
@@ -79,8 +79,8 @@ public class Aes extends BlockCipher {
      *
      * @return number of bytes stored in output
      */
-	protected native int native_update(int opmode, byte[] input, int offset,
-			int length, byte[] output, int outputOffset);
+    protected native int native_update(int opmode, byte[] input, int offset,
+            int length, byte[] output, int outputOffset);
 
     /**
      * Native AES encrypt/decrypt update operation
@@ -95,14 +95,14 @@ public class Aes extends BlockCipher {
      *
      * @return number of bytes stored in output
      */
-	protected native int native_update(int opmode, ByteBuffer input,
-			int offset, int length, ByteBuffer output, int outputOffset);
+    protected native int native_update(int opmode, ByteBuffer input,
+            int offset, int length, ByteBuffer output, int outputOffset);
 
     /**
      * Create new Aes object
      */
-	public Aes() {
-	}
+    public Aes() {
+    }
 
     /**
      * Create new Aes object
@@ -111,8 +111,8 @@ public class Aes extends BlockCipher {
      * @param iv AES initialization vector (IV)
      * @param opmode AES mode: Aes.ENCRYPT_MODE or Aes.DECRYPT_MODE
      */
-	public Aes(byte[] key, byte[] iv, int opmode) {
-		setKey(key, iv, opmode);
-	}
+    public Aes(byte[] key, byte[] iv, int opmode) {
+        setKey(key, iv, opmode);
+    }
 }
 

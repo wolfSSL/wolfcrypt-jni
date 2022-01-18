@@ -238,7 +238,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                     throw new RuntimeException("Error when creating DH " +
                             "shared secret");
                 }
-                
+
                 if ((sharedSecret.length - offset) < tmp.length) {
                     zeroArray(tmp);
                     throw new ShortBufferException(

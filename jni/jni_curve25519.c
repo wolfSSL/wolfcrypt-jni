@@ -214,7 +214,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
     throwNotCompiledInException(env);
 #endif
 }
-    
+
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1import_1public
   (JNIEnv* env, jobject this, jbyteArray pub_object)
 {

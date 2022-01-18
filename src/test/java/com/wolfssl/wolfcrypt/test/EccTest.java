@@ -42,95 +42,95 @@ import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 
 public class EccTest {
-	private static Rng rng = new Rng();
+    private static Rng rng = new Rng();
 
-	@BeforeClass
-	public static void setUpRng() {
-		rng.init();
-	}
+    @BeforeClass
+    public static void setUpRng() {
+        rng.init();
+    }
 
-	@BeforeClass
-	public static void checkAvailability() {
-		try {
-			new Ecc();
-		} catch (WolfCryptException e) {
-			if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
-				System.out.println("Ecc test skipped: " + e.getError());
-			Assume.assumeNoException(e);
-		}
-	}
+    @BeforeClass
+    public static void checkAvailability() {
+        try {
+            new Ecc();
+        } catch (WolfCryptException e) {
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
+                System.out.println("Ecc test skipped: " + e.getError());
+            Assume.assumeNoException(e);
+        }
+    }
 
-	@Test
-	public void constructorShouldInitializeNativeStruct() {
-		assertNotEquals(NativeStruct.NULL, new Ecc().getNativeStruct());
-	}
+    @Test
+    public void constructorShouldInitializeNativeStruct() {
+        assertNotEquals(NativeStruct.NULL, new Ecc().getNativeStruct());
+    }
 
-	@Test
-	public void sharedSecretShouldMatch() {
-		Ecc alice = new Ecc();
-		Ecc bob = new Ecc();
-		Ecc aliceX963 = new Ecc();
+    @Test
+    public void sharedSecretShouldMatch() {
+        Ecc alice = new Ecc();
+        Ecc bob = new Ecc();
+        Ecc aliceX963 = new Ecc();
 
-		alice.makeKey(rng, 66);
-		bob.makeKey(rng, 66);
-		aliceX963.importX963(alice.exportX963());
+        alice.makeKey(rng, 66);
+        bob.makeKey(rng, 66);
+        aliceX963.importX963(alice.exportX963());
 
-		byte[] sharedSecretA = alice.makeSharedSecret(bob);
-		byte[] sharedSecretB = bob.makeSharedSecret(aliceX963);
+        byte[] sharedSecretA = alice.makeSharedSecret(bob);
+        byte[] sharedSecretB = bob.makeSharedSecret(aliceX963);
 
-		assertArrayEquals(sharedSecretA, sharedSecretB);
+        assertArrayEquals(sharedSecretA, sharedSecretB);
 
-		Ecc alice2 = new Ecc();
+        Ecc alice2 = new Ecc();
 
-		alice2.importPrivate(alice.exportPrivate(), alice.exportX963());
+        alice2.importPrivate(alice.exportPrivate(), alice.exportX963());
 
-		assertArrayEquals(sharedSecretA, alice2.makeSharedSecret(bob));
-	}
+        assertArrayEquals(sharedSecretA, alice2.makeSharedSecret(bob));
+    }
 
-	@Test
-	public void signatureShouldMatchDecodingKeys() {
-		Ecc alice = new Ecc();
-		Ecc bob = new Ecc();
-		Ecc aliceX963 = new Ecc();
+    @Test
+    public void signatureShouldMatchDecodingKeys() {
+        Ecc alice = new Ecc();
+        Ecc bob = new Ecc();
+        Ecc aliceX963 = new Ecc();
 
-		byte[] prvKey = Util.h2b("30770201010420F8CF92"
-				+ "6BBD1E28F1A8ABA1234F3274188850AD7EC7EC92"
-				+ "F88F974DAF568965C7A00A06082A8648CE3D0301"
-				+ "07A1440342000455BFF40F44509A3DCE9BB7F0C5"
-				+ "4DF5707BD4EC248E1980EC5A4CA22403622C9BDA"
-				+ "EFA2351243847616C6569506CC01A9BDF6751A42"
-				+ "F7BDA9B236225FC75D7FB4");
+        byte[] prvKey = Util.h2b("30770201010420F8CF92"
+                + "6BBD1E28F1A8ABA1234F3274188850AD7EC7EC92"
+                + "F88F974DAF568965C7A00A06082A8648CE3D0301"
+                + "07A1440342000455BFF40F44509A3DCE9BB7F0C5"
+                + "4DF5707BD4EC248E1980EC5A4CA22403622C9BDA"
+                + "EFA2351243847616C6569506CC01A9BDF6751A42"
+                + "F7BDA9B236225FC75D7FB4");
 
-		byte[] pubKey = Util.h2b("3059301306072A8648CE"
-				+ "3D020106082A8648CE3D0301070342000455BFF4"
-				+ "0F44509A3DCE9BB7F0C54DF5707BD4EC248E1980"
-				+ "EC5A4CA22403622C9BDAEFA2351243847616C656"
-				+ "9506CC01A9BDF6751A42F7BDA9B236225FC75D7FB4");
+        byte[] pubKey = Util.h2b("3059301306072A8648CE"
+                + "3D020106082A8648CE3D0301070342000455BFF4"
+                + "0F44509A3DCE9BB7F0C54DF5707BD4EC248E1980"
+                + "EC5A4CA22403622C9BDAEFA2351243847616C656"
+                + "9506CC01A9BDF6751A42F7BDA9B236225FC75D7FB4");
 
-		alice.privateKeyDecode(prvKey);
-		bob.publicKeyDecode(pubKey);
+        alice.privateKeyDecode(prvKey);
+        bob.publicKeyDecode(pubKey);
 
-		byte[] hash = "Everyone gets Friday off. ecc p".getBytes();
+        byte[] hash = "Everyone gets Friday off. ecc p".getBytes();
 
-		byte[] signature = alice.sign(hash, rng);
+        byte[] signature = alice.sign(hash, rng);
 
-		assertTrue(bob.verify(hash, signature));
+        assertTrue(bob.verify(hash, signature));
 
-		aliceX963.importX963(alice.exportX963());
+        aliceX963.importX963(alice.exportX963());
 
-		assertTrue(aliceX963.verify(hash, signature));
+        assertTrue(aliceX963.verify(hash, signature));
 
-		assertArrayEquals(prvKey, alice.privateKeyEncode());
-		assertArrayEquals(pubKey, alice.publicKeyEncode());
-		assertArrayEquals(pubKey, bob.publicKeyEncode());
-		assertArrayEquals(pubKey, aliceX963.publicKeyEncode());
+        assertArrayEquals(prvKey, alice.privateKeyEncode());
+        assertArrayEquals(pubKey, alice.publicKeyEncode());
+        assertArrayEquals(pubKey, bob.publicKeyEncode());
+        assertArrayEquals(pubKey, aliceX963.publicKeyEncode());
 
-		Ecc alice2 = new Ecc();
+        Ecc alice2 = new Ecc();
 
-		alice2.importPrivate(alice.exportPrivate(), alice.exportX963());
+        alice2.importPrivate(alice.exportPrivate(), alice.exportX963());
 
-		assertTrue(alice2.verify(hash, signature));
-	}
+        assertTrue(alice2.verify(hash, signature));
+    }
 
     @Test
     public void eccCurveSizeFromName() {
@@ -188,7 +188,7 @@ public class EccTest {
                 + "74188850AD7EC7EC92F88F974DAF568965C7A00A"
                 + "06082A8648CE3D030107");
 
-		alice.privateKeyDecode(prvKey);
+        alice.privateKeyDecode(prvKey);
 
         pkcs8 = alice.privateKeyEncodePKCS8();
         assertArrayEquals(pkcs8, expectedPkcs8);

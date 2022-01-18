@@ -29,9 +29,9 @@ import java.nio.ByteBuffer;
 public class Sha512 extends MessageDigest {
 
     /** SHA2-512 hash type */
-	public static final int TYPE = 4; /* hash type unique */
+    public static final int TYPE = 4; /* hash type unique */
     /** SHA2-512 digest size */
-	public static final int DIGEST_SIZE = 64;
+    public static final int DIGEST_SIZE = 64;
 
     /**
      * Malloc native JNI Sha512 structure
@@ -40,12 +40,12 @@ public class Sha512 extends MessageDigest {
      *
      * @throws OutOfMemoryError when malloc fails with memory error
      */
-	protected native long mallocNativeStruct() throws OutOfMemoryError;
+    protected native long mallocNativeStruct() throws OutOfMemoryError;
 
     /**
      * Initialize Sha512 object
      */
-	protected native void native_init();
+    protected native void native_init();
 
     /**
      * Native SHA2-512 update
@@ -56,7 +56,7 @@ public class Sha512 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_update(ByteBuffer data, int offset, int len);
+    protected native void native_update(ByteBuffer data, int offset, int len);
 
     /**
      * Native SHA2-512 update
@@ -67,7 +67,7 @@ public class Sha512 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_update(byte[] data, int offset, int len);
+    protected native void native_update(byte[] data, int offset, int len);
 
     /**
      * Native SHA2-512 final, calculate final digest
@@ -77,7 +77,7 @@ public class Sha512 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_final(ByteBuffer hash, int offset);
+    protected native void native_final(ByteBuffer hash, int offset);
 
     /**
      * Native SHA2-512 final, calculate final digest
@@ -86,32 +86,32 @@ public class Sha512 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_final(byte[] hash);
+    protected native void native_final(byte[] hash);
 
     /**
      * Create new SHA2-512 object
      */
-	public Sha512() {
-		init();
-	}
+    public Sha512() {
+        init();
+    }
 
     /**
      * Create new SHA2-512 object
      *
      * @param data input data to hash
      */
-	public Sha512(byte[] data) {
-		init();
-		update(data);
-	}
+    public Sha512(byte[] data) {
+        init();
+        update(data);
+    }
 
     /**
      * Get SHA2-512 digest size
      *
      * @return SHA2-512 digest size
      */
-	public int digestSize() {
-		return DIGEST_SIZE;
-	}
+    public int digestSize() {
+        return DIGEST_SIZE;
+    }
 }
 

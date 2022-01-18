@@ -27,8 +27,8 @@ import org.junit.BeforeClass;
 import com.wolfssl.wolfcrypt.Fips;
 
 public class FipsTest {
-	@BeforeClass
-	public static void checkAvailability() {
-		Assume.assumeTrue(Fips.enabled);
-	}
+    @BeforeClass
+    public static void checkAvailability() {
+        Assume.assumeTrue(Fips.enabled);
+    }
 }

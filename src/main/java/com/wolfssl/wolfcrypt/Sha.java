@@ -29,9 +29,9 @@ import java.nio.ByteBuffer;
 public class Sha extends MessageDigest {
 
     /** SHA-1 hash type */
-	public static final int TYPE = 1; /* hash type unique */
+    public static final int TYPE = 1; /* hash type unique */
     /** SHA-1 digest size */
-	public static final int DIGEST_SIZE = 20;
+    public static final int DIGEST_SIZE = 20;
 
     /**
      * Malloc native JNI Sha structure
@@ -40,12 +40,12 @@ public class Sha extends MessageDigest {
      *
      * @throws OutOfMemoryError when malloc fails with memory error
      */
-	protected native long mallocNativeStruct() throws OutOfMemoryError;
+    protected native long mallocNativeStruct() throws OutOfMemoryError;
 
     /**
      * Initialize Sha object
      */
-	protected native void native_init();
+    protected native void native_init();
 
     /**
      * Native SHA-1 update
@@ -56,7 +56,7 @@ public class Sha extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_update(ByteBuffer data, int offset, int len);
+    protected native void native_update(ByteBuffer data, int offset, int len);
 
     /**
      * Native SHA-1 update
@@ -67,7 +67,7 @@ public class Sha extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_update(byte[] data, int offset, int len);
+    protected native void native_update(byte[] data, int offset, int len);
 
     /**
      * Native SHA-1 final, calculate final digest
@@ -77,7 +77,7 @@ public class Sha extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_final(ByteBuffer hash, int offset);
+    protected native void native_final(ByteBuffer hash, int offset);
 
     /**
      * Native SHA-1 final, calculate final digest
@@ -86,32 +86,32 @@ public class Sha extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_final(byte[] hash);
+    protected native void native_final(byte[] hash);
 
     /**
      * Create new SHA-1 object
      */
-	public Sha() {
-		init();
-	}
+    public Sha() {
+        init();
+    }
 
     /**
      * Create new SHA-1 object
      *
      * @param data input data to hash
      */
-	public Sha(byte[] data) {
-		init();
-		update(data);
-	}
+    public Sha(byte[] data) {
+        init();
+        update(data);
+    }
 
     /**
      * Get SHA-1 digest size
      *
      * @return SHA-1 digest size
      */
-	public int digestSize() {
-		return DIGEST_SIZE;
-	}
+    public int digestSize() {
+        return DIGEST_SIZE;
+    }
 }
 

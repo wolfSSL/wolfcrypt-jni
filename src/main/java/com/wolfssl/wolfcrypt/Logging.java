@@ -31,11 +31,11 @@ public class Logging extends WolfObject {
      *
      * @return 0 on success, negative on error
      */
-	public static native int wolfSSL_Debugging_ON();
+    public static native int wolfSSL_Debugging_ON();
 
     /**
      * Turn off native wolfSSL debug logging
      */
-	public static native void wolfSSL_Debugging_OFF();
+    public static native void wolfSSL_Debugging_OFF();
 }
 

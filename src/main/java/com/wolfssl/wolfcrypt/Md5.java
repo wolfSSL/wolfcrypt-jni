@@ -29,9 +29,9 @@ import java.nio.ByteBuffer;
 public class Md5 extends MessageDigest {
 
     /** MD5 hash type */
-	public static final int TYPE = 0; /* hash type unique */
+    public static final int TYPE = 0; /* hash type unique */
     /** MD5 digest size */
-	public static final int DIGEST_SIZE = 16;
+    public static final int DIGEST_SIZE = 16;
 
     /**
      * Malloc native JNI Md5 structure
@@ -40,12 +40,12 @@ public class Md5 extends MessageDigest {
      *
      * @throws OutOfMemoryError when malloc fails with memory error
      */
-	protected native long mallocNativeStruct() throws OutOfMemoryError;
+    protected native long mallocNativeStruct() throws OutOfMemoryError;
 
     /**
      * Initialize Md5 object
      */
-	protected native void native_init();
+    protected native void native_init();
 
     /**
      * Native Md5 update
@@ -56,7 +56,7 @@ public class Md5 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_update(ByteBuffer data, int offset, int len);
+    protected native void native_update(ByteBuffer data, int offset, int len);
 
     /**
      * Native Md5 update
@@ -67,7 +67,7 @@ public class Md5 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_update(byte[] data, int offset, int len);
+    protected native void native_update(byte[] data, int offset, int len);
 
     /**
      * Native Md5 final, calculate final digest
@@ -77,7 +77,7 @@ public class Md5 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_final(ByteBuffer hash, int offset);
+    protected native void native_final(ByteBuffer hash, int offset);
 
     /**
      * Native Md5 final, calculate final digest
@@ -86,32 +86,32 @@ public class Md5 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-	protected native void native_final(byte[] hash);
+    protected native void native_final(byte[] hash);
 
     /**
      * Create new Md5 object
      */
-	public Md5() {
-		init();
-	}
+    public Md5() {
+        init();
+    }
 
     /**
      * Create new Md5 object
      *
      * @param data input data to hash
      */
-	public Md5(byte[] data) {
-		init();
-		update(data);
-	}
+    public Md5(byte[] data) {
+        init();
+        update(data);
+    }
 
     /**
      * Get MD5 digest size
      *
      * @return MD5 digest size
      */
-	public int digestSize() {
-		return DIGEST_SIZE;
-	}
+    public int digestSize() {
+        return DIGEST_SIZE;
+    }
 }
 

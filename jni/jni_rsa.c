@@ -117,7 +117,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw__Ljava_nio_ByteBuffer_2
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
-    
+
     LogStr("wc_RsaPublicKeyDecodeRaw(n, nSz, e, eSz) = %d\n", ret);
     LogStr("n[%u]: [%p]\n", (word32)nSize, n);
     LogHex((byte*) n, 0, nSize);
@@ -439,7 +439,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecodePKC
         ret = BAD_FUNC_ARG;
     } else {
         length = wc_GetPkcs8TraditionalOffset(k, &offset, kSz);
-        
+
         ret = (length < 0)
             ? length
             : wc_RsaPrivateKeyDecode(k, &offset, key, kSz);

@@ -28,7 +28,7 @@ import com.wolfssl.wolfcrypt.WolfCryptError;
  */
 public class WolfCryptException extends RuntimeException {
 
-	private static final long serialVersionUID = 142053665132156225L;
+    private static final long serialVersionUID = 142053665132156225L;
     /** wolfCrypt error for this exception */
     private WolfCryptError error;
     /** wolfCrypt error code for this exception */
@@ -39,7 +39,7 @@ public class WolfCryptException extends RuntimeException {
      *
      * @param reason error reason String
      */
-	public WolfCryptException(String reason) {
+    public WolfCryptException(String reason) {
         super(reason);
     }
 
@@ -48,11 +48,11 @@ public class WolfCryptException extends RuntimeException {
      *
      * @param code wolfCrypt error code
      */
-	public WolfCryptException(int code) {
-		super(WolfCryptError.fromInt(code).getDescription());
-        
-		this.error = WolfCryptError.fromInt(code);
-		this.code = code;
+    public WolfCryptException(int code) {
+        super(WolfCryptError.fromInt(code).getDescription());
+
+        this.error = WolfCryptError.fromInt(code);
+        this.code = code;
     }
 
     /**
@@ -89,7 +89,7 @@ public class WolfCryptException extends RuntimeException {
      * @return wolfCrypt error code
      */
     public int getCode() {
-    	return this.code;
+        return this.code;
     }
 }
 
