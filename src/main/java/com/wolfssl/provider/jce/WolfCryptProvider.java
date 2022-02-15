@@ -1,6 +1,6 @@
 /* wolfCryptProvider.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -30,6 +30,9 @@ import com.wolfssl.wolfcrypt.Fips;
  */
 public final class WolfCryptProvider extends Provider {
 
+    /**
+     * Create new WolfCryptProvider object
+     */
     public WolfCryptProvider() {
         super("wolfJCE", 1.0, "wolfCrypt JCE Provider");
 

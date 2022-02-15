@@ -1,6 +1,6 @@
 /* WolfCryptState.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -21,8 +21,14 @@
 
 package com.wolfssl.wolfcrypt;
 
+/**
+ * wolfCrypt state enum
+ */
 public enum WolfCryptState {
-	UNINITIALIZED,
-	INITIALIZED,
-	READY;
+    /** Object uninitialized */
+    UNINITIALIZED,
+    /** Object initialized */
+    INITIALIZED,
+    /** Object ready for use */
+    READY;
 }

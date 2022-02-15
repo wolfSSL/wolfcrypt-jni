@@ -1,6 +1,6 @@
 /* wolfCryptMessageDigestSha512Test.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -38,7 +38,7 @@ import com.wolfssl.wolfcrypt.FeatureDetect;
 public class WolfCryptMessageDigestSha512Test {
 
     @BeforeClass
-    public static void testProviderInstallationAtRuntime() 
+    public static void testProviderInstallationAtRuntime()
         throws NoSuchProviderException {
 
         /* install wolfJCE provider at runtime */
@@ -53,7 +53,7 @@ public class WolfCryptMessageDigestSha512Test {
         } catch (NoSuchAlgorithmException e) {
             /* if we also detect algo is compiled out, skip tests */
             if (FeatureDetect.Sha512Enabled() == false) {
-				System.out.println("JSSE SHA-512 Test skipped");
+                System.out.println("JSSE SHA-512 Test skipped");
                 Assume.assumeTrue(false);
             }
         }

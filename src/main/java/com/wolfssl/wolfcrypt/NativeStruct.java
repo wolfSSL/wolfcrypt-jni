@@ -1,6 +1,6 @@
 /* NativeStruct.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -26,47 +26,72 @@ package com.wolfssl.wolfcrypt;
  */
 public abstract class NativeStruct extends WolfObject {
 
-	public static final long NULL = 0;
+    /** Logical mapping of NULL to 0 */
+    public static final long NULL = 0;
 
-	protected NativeStruct() {
-		setNativeStruct(mallocNativeStruct());
-	}
+    /**
+     * Create new NativeStruct object
+     */
+    protected NativeStruct() {
+        setNativeStruct(mallocNativeStruct());
+    }
 
-	/* points to the internal native structure */
-	private long pointer;
+    /* points to the internal native structure */
+    private long pointer;
 
-	public long getNativeStruct() {
-		return this.pointer;
-	}
+    /**
+     * Get pointer to wrapped native structure
+     *
+     * @return pointer to native structure
+     */
+    public long getNativeStruct() {
+        return this.pointer;
+    }
 
-	protected void setNativeStruct(long nativeStruct) {
-		if (this.pointer != NULL)
-			xfree(this.pointer);
+    /**
+     * Set pointer to native structure
+     *
+     * If NativeStruct already holds pointer, old pointer will be free()'d
+     * before resetting to new pointer.
+     *
+     * @param nativeStruct pointer to initialized native structure
+     */
+    protected void setNativeStruct(long nativeStruct) {
+        if (this.pointer != NULL)
+            xfree(this.pointer);
 
-		this.pointer = nativeStruct;
-	}
+        this.pointer = nativeStruct;
+    }
 
-	/**
-	 * Releases the host data stored in a NativeStruct.
-	 *
-	 * This method provides a way to release host data without depending on the
-	 * garbage collector to get around to releasing it. Derived objects whose
-	 * native data structures have their own free functions, should be override
-	 * this method to call that function.
-	 */
-	public void releaseNativeStruct() {
-		setNativeStruct(NULL);
-	}
+    /**
+     * Releases the host data stored in a NativeStruct.
+     *
+     * This method provides a way to release host data without depending on the
+     * garbage collector to get around to releasing it. Derived objects whose
+     * native data structures have their own free functions, should be override
+     * this method to call that function.
+     */
+    public void releaseNativeStruct() {
+        setNativeStruct(NULL);
+    }
 
-	protected abstract long mallocNativeStruct() throws OutOfMemoryError;
+    /**
+     * Malloc native structure pointer
+     *
+     * @return allocated pointer to native structure
+     *
+     * @throws OutOfMemoryError if native malloc fails with memory error
+     */
+    protected abstract long mallocNativeStruct() throws OutOfMemoryError;
 
-	private native void xfree(long pointer);
+    private native void xfree(long pointer);
 
     @SuppressWarnings("deprecation")
-	@Override
-	protected void finalize() throws Throwable {
-		releaseNativeStruct();
+    @Override
+    protected void finalize() throws Throwable {
+        releaseNativeStruct();
 
-		super.finalize();
-	}
+        super.finalize();
+    }
 }
+

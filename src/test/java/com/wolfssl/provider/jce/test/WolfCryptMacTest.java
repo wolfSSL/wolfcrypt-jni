@@ -1,6 +1,6 @@
 /* wolfCryptMacTest.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -187,7 +187,7 @@ public class WolfCryptMacTest {
                     (byte)0xdb, (byte)0xb8, (byte)0xc7, (byte)0x33,
                     (byte)0xf0, (byte)0xe8, (byte)0xb3, (byte)0xf6
                 }
-            ) 
+            )
         };
 
         for (int i = 0; i < vectors.length; i++) {
@@ -282,7 +282,7 @@ public class WolfCryptMacTest {
                     (byte)0x8a, (byte)0xa1, (byte)0x7b, (byte)0x4f,
                     (byte)0x63, (byte)0xf1, (byte)0x75, (byte)0xd3
                 }
-            ) 
+            )
         };
 
         for (int i = 0; i < vectors.length; i++) {
@@ -386,7 +386,7 @@ public class WolfCryptMacTest {
                     (byte)0xd9, (byte)0x63, (byte)0x55, (byte)0x14,
                     (byte)0xce, (byte)0xd5, (byte)0x65, (byte)0xfe
                 }
-            ) 
+            )
         };
 
         for (int i = 0; i < vectors.length; i++) {
@@ -502,7 +502,7 @@ public class WolfCryptMacTest {
                     (byte)0x4e, (byte)0x3a, (byte)0xb6, (byte)0xe1,
                     (byte)0x01, (byte)0xa3, (byte)0x4f, (byte)0x27
                 }
-            ) 
+            )
         };
 
         for (int i = 0; i < vectors.length; i++) {
@@ -630,7 +630,7 @@ public class WolfCryptMacTest {
                     (byte)0x74, (byte)0x27, (byte)0x88, (byte)0x59,
                     (byte)0xe1, (byte)0x32, (byte)0x92, (byte)0xfb
                 }
-            ) 
+            )
         };
 
         for (int i = 0; i < vectors.length; i++) {

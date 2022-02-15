@@ -1,6 +1,6 @@
 /* FipsTest.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -27,8 +27,8 @@ import org.junit.BeforeClass;
 import com.wolfssl.wolfcrypt.Fips;
 
 public class FipsTest {
-	@BeforeClass
-	public static void checkAvailability() {
-		Assume.assumeTrue(Fips.enabled);
-	}
+    @BeforeClass
+    public static void checkAvailability() {
+        Assume.assumeTrue(Fips.enabled);
+    }
 }

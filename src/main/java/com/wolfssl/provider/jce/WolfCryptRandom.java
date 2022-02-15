@@ -1,6 +1,6 @@
 /* WolfCryptRandom.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -31,12 +31,15 @@ import com.wolfssl.provider.jce.WolfCryptDebug;
  */
 public final class WolfCryptRandom extends SecureRandomSpi {
 
-    /* internal reference to wolfCrypt JNI RNG object */
+    /** internal reference to wolfCrypt JNI RNG object */
     private Rng rng;
 
-    /* for debug logging */
+    /** for debug logging */
     private WolfCryptDebug debug;
 
+    /**
+     * Create new WolfCryptRandom object
+     */
     public WolfCryptRandom() {
         this.rng = new Rng();
         this.rng.init();

@@ -1,6 +1,6 @@
 /* FipsStatusTest.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -34,47 +34,47 @@ import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.Fips.ErrorCallback;
 
 public class FipsStatusTest extends FipsTest {
-	@Test
-	public void wolfCrypt_GetStatus_fipsShouldReturnZero() {
-		assertEquals(WolfCrypt.SUCCESS, Fips.wolfCrypt_GetStatus_fips());
-	}
+    @Test
+    public void wolfCrypt_GetStatus_fipsShouldReturnZero() {
+        assertEquals(WolfCrypt.SUCCESS, Fips.wolfCrypt_GetStatus_fips());
+    }
 
-	@Test
-	public void wolfCrypt_SetStatus_fipsShouldReturnZero() {
-		assertEquals(WolfCryptError.NOT_COMPILED_IN.getCode(),
-				Fips.wolfCrypt_SetStatus_fips(
-						WolfCryptError.DRBG_CONT_FIPS_E.getCode()));
-	}
+    @Test
+    public void wolfCrypt_SetStatus_fipsShouldReturnZero() {
+        assertEquals(WolfCryptError.NOT_COMPILED_IN.getCode(),
+                Fips.wolfCrypt_SetStatus_fips(
+                        WolfCryptError.DRBG_CONT_FIPS_E.getCode()));
+    }
 
-	public class MyCallback implements ErrorCallback {
-		public void errorCallback(int ok, int err, String hash) {
-			System.out.println(
-					"in my Fips callback, ok =" + ok + " err = " + err);
-			System.out.println("hash = " + hash);
+    public class MyCallback implements ErrorCallback {
+        public void errorCallback(int ok, int err, String hash) {
+            System.out.println(
+                    "in my Fips callback, ok =" + ok + " err = " + err);
+            System.out.println("hash = " + hash);
 
-			if (err == -203) {
-				System.out.println(
-						"In core integrity hash check failure, copy above hash");
-				System.out.println(
-						"into verifyCore[] in fips_test.c and rebuild");
-			}
-		}
+            if (err == -203) {
+                System.out.println(
+                        "In core integrity hash check failure, copy above hash");
+                System.out.println(
+                        "into verifyCore[] in fips_test.c and rebuild");
+            }
+        }
 
-	}
+    }
 
-	@Test
-	public void setErrorCallbackShouldNotRaise() {
-		MyCallback callback = new MyCallback();
+    @Test
+    public void setErrorCallbackShouldNotRaise() {
+        MyCallback callback = new MyCallback();
 
-		Fips.wolfCrypt_SetCb_fips(callback);
+        Fips.wolfCrypt_SetCb_fips(callback);
 
-		Fips.AesSetKey_fips(new Aes(),
-				ByteBuffer.allocateDirect(Aes.KEY_SIZE_256), Aes.KEY_SIZE_128,
-				null, Aes.ENCRYPT_MODE);
-	}
+        Fips.AesSetKey_fips(new Aes(),
+                ByteBuffer.allocateDirect(Aes.KEY_SIZE_256), Aes.KEY_SIZE_128,
+                null, Aes.ENCRYPT_MODE);
+    }
 
-	@Test
-	public void getCoreHashShouldNotRaise() {
-		System.out.println(Fips.wolfCrypt_GetCoreHash_fips());
-	}
+    @Test
+    public void getCoreHashShouldNotRaise() {
+        System.out.println(Fips.wolfCrypt_GetCoreHash_fips());
+    }
 }

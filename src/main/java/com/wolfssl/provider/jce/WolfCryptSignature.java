@@ -1,6 +1,6 @@
 /* WolfCryptSignature.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -647,55 +647,136 @@ public class WolfCryptSignature extends SignatureSpi {
         }
     }
 
+    /**
+     * wolfJCE MD5wRSA signature class
+     */
     public static final class wcMD5wRSA extends WolfCryptSignature {
+        /**
+         * Create new wcMD5wRSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
         public wcMD5wRSA() throws NoSuchAlgorithmException {
             super(KeyType.WC_RSA, DigestType.WC_MD5);
         }
     }
 
+    /**
+     * wolfJCE SHA1wRSA signature class
+     */
     public static final class wcSHA1wRSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA1wRSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
         public wcSHA1wRSA() throws NoSuchAlgorithmException {
             super(KeyType.WC_RSA, DigestType.WC_SHA1);
         }
     }
 
+    /**
+     * wolfJCE SHA256wRSA signature class
+     */
     public static final class wcSHA256wRSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA256wRSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
         public wcSHA256wRSA() throws NoSuchAlgorithmException {
             super(KeyType.WC_RSA, DigestType.WC_SHA256);
         }
     }
 
+    /**
+     * wolfJCE SHA384wRSA signature class
+     */
     public static final class wcSHA384wRSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA384wRSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
         public wcSHA384wRSA() throws NoSuchAlgorithmException {
             super(KeyType.WC_RSA, DigestType.WC_SHA384);
         }
     }
 
+    /**
+     * wolfJCE SHA512wRSA signature class
+     */
     public static final class wcSHA512wRSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA512wRSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
         public wcSHA512wRSA() throws NoSuchAlgorithmException {
             super(KeyType.WC_RSA, DigestType.WC_SHA512);
         }
     }
 
+    /**
+     * wolfJCE SHA1wECDSA signature class
+     */
     public static final class wcSHA1wECDSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA1wECDSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
         public wcSHA1wECDSA() throws NoSuchAlgorithmException {
             super(KeyType.WC_ECDSA, DigestType.WC_SHA1);
         }
     }
 
+    /**
+     * wolfJCE SHA256wECDSA signature class
+     */
     public static final class wcSHA256wECDSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA256wECDSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
         public wcSHA256wECDSA() throws NoSuchAlgorithmException {
             super(KeyType.WC_ECDSA, DigestType.WC_SHA256);
         }
     }
 
+    /**
+     * wolfJCE SHA384wECDSA signature class
+     */
     public static final class wcSHA384wECDSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA384wECDSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
         public wcSHA384wECDSA() throws NoSuchAlgorithmException {
             super(KeyType.WC_ECDSA, DigestType.WC_SHA384);
         }
     }
 
+    /**
+     * wolfJCE SHA512wECDSA signature class
+     */
     public static final class wcSHA512wECDSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA512wECDSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
         public wcSHA512wECDSA() throws NoSuchAlgorithmException {
             super(KeyType.WC_ECDSA, DigestType.WC_SHA512);
         }

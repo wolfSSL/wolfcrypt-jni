@@ -1,6 +1,6 @@
 /* wolfCryptMessageDigestShaTest.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -53,7 +53,7 @@ public class WolfCryptMessageDigestShaTest {
         } catch (NoSuchAlgorithmException e) {
             /* if we also detect algo is compiled out, skip tests */
             if (FeatureDetect.ShaEnabled() == false) {
-				System.out.println("JSSE SHA-1 Test skipped");
+                System.out.println("JSSE SHA-1 Test skipped");
                 Assume.assumeTrue(false);
             }
         }
