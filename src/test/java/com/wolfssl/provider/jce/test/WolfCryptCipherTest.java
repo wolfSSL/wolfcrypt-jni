@@ -1,6 +1,6 @@
 /* wolfCryptCipherTest.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -138,7 +138,7 @@ public class WolfCryptCipherTest {
     }
 
     @Test
-    public void testAesCbcNoPadding() 
+    public void testAesCbcNoPadding()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
                IllegalBlockSizeException, InvalidAlgorithmParameterException,
@@ -546,7 +546,7 @@ public class WolfCryptCipherTest {
     }
 
     @Test
-    public void testAesCbcNoPaddingBigMessage() 
+    public void testAesCbcNoPaddingBigMessage()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
                IllegalBlockSizeException, InvalidAlgorithmParameterException,
@@ -679,7 +679,7 @@ public class WolfCryptCipherTest {
     }
 
     @Test
-    public void testDESedeCbcNoPadding() 
+    public void testDESedeCbcNoPadding()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
                IllegalBlockSizeException, InvalidAlgorithmParameterException,
@@ -817,7 +817,7 @@ public class WolfCryptCipherTest {
     }
 
     @Test
-    public void testRSAECBPKCS1Padding() 
+    public void testRSAECBPKCS1Padding()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
                IllegalBlockSizeException, InvalidAlgorithmParameterException,
@@ -1171,7 +1171,7 @@ public class WolfCryptCipherTest {
     }
 
     @Test
-    public void testRSAECBPKCS1PaddingInterop() 
+    public void testRSAECBPKCS1PaddingInterop()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
                IllegalBlockSizeException, InvalidAlgorithmParameterException,
@@ -1212,7 +1212,7 @@ public class WolfCryptCipherTest {
 
         Cipher ciphA = Cipher.getInstance("RSA/ECB/PKCS1Padding", "wolfJCE");
         Cipher ciphB = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        
+
         Provider prov = ciphB.getProvider();
         if (prov.equals("wolfJCE")) {
             /* return, no other provider installed to interop against */

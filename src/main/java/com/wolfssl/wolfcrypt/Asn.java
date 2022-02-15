@@ -1,6 +1,6 @@
 /* Asn.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -24,20 +24,45 @@ package com.wolfssl.wolfcrypt;
 import java.nio.ByteBuffer;
 
 /**
- * Wrapper for the native WolfCrypt Asn implementation.
+ * Wrapper for the native WolfCrypt ASN.1 implementation.
  *
- * @author Moisés Guimarães
- * @version 1.0, March 2015
+ * @author wolfSSL Inc.
  */
 public class Asn extends WolfObject {
 
-	public static final int MAX_ENCODED_SIG_SIZE = 512;
+    /** Maximum encoded signature size */
+    public static final int MAX_ENCODED_SIG_SIZE = 512;
 
-	public static native void encodeSignature(ByteBuffer encoded,
-			ByteBuffer hash, long hashSize, int hashOID);
+    /** ASN.1 encode message digest, before it is signed
+     *
+     * @param encoded output buffer to place encoded data
+     * @param hash input hash to encode
+     * @param hashSize size of hash, bytes
+     * @param hashOID hash algorithm OID
+     */
+    public static native void encodeSignature(ByteBuffer encoded,
+            ByteBuffer hash, long hashSize, int hashOID);
 
-	public static native long encodeSignature(byte[] encoded,
-			byte[] hash, long hashSize, int hashOID);
+    /** ASN.1 encode message digest, before it is signed
+     *
+     * @param encoded output array to place encoded data
+     * @param hash input hash to encode
+     * @param hashSize size of hash, bytes
+     * @param hashOID hash algorithm OID
+     *
+     * @return number of bytes written to encoded array
+     */
+    public static native long encodeSignature(byte[] encoded,
+            byte[] hash, long hashSize, int hashOID);
 
-	public static native int getCTC_HashOID(int type);
+    /**
+     * Get hash algorithm OID from algorithm type
+     *
+     * @param type algorithm type. Comes from each algorithm class, for example:
+     *        Sha.TYPE, Sha256.TYPE
+     *
+     * @return hash algorithm OID, for use with encodeSignature()
+     */
+    public static native int getCTC_HashOID(int type);
 }
+

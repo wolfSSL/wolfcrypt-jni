@@ -1,6 +1,6 @@
 /* WolfCryptTestSuite.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -27,8 +27,8 @@ import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
 @SuiteClasses({ AesTest.class, Des3Test.class, Md5Test.class, ShaTest.class,
-		Sha256Test.class, Sha384Test.class, Sha512Test.class, HmacTest.class,
-		RngTest.class, RsaTest.class, DhTest.class, EccTest.class })
+        Sha256Test.class, Sha384Test.class, Sha512Test.class, HmacTest.class,
+        RngTest.class, RsaTest.class, DhTest.class, EccTest.class })
 public class WolfCryptTestSuite {
 
 }

@@ -1,6 +1,6 @@
 /* Chacha.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -28,71 +28,101 @@ import java.security.InvalidAlgorithmParameterException;
  */
 public class Chacha extends NativeStruct {
 
-	private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+    private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
-	public Chacha() {
-		init();
-	}
+    /**
+     * Create new Chacha object
+     */
+    public Chacha() {
+        init();
+    }
 
-	@Override
-	public void releaseNativeStruct() {
-		free();
+    @Override
+    public void releaseNativeStruct() {
+        free();
 
-		super.releaseNativeStruct();
-	}
+        super.releaseNativeStruct();
+    }
 
-	protected native long mallocNativeStruct() throws OutOfMemoryError;
+    /**
+     * Malloc native JNI ChaCha structure
+     *
+     * @return native allocated pointer
+     *
+     * @throws OutOfMemoryError when malloc fails with memory error
+     */
+    protected native long mallocNativeStruct() throws OutOfMemoryError;
 
-	private native void wc_Chacha_init();
+    private native void wc_Chacha_init();
 
-	private native void wc_Chacha_free();
+    private native void wc_Chacha_free();
 
-	private native byte[] wc_Chacha_process(byte in[]);
+    private native byte[] wc_Chacha_process(byte in[]);
 
-	private native void wc_Chacha_setKey(byte[] Key);
+    private native void wc_Chacha_setKey(byte[] Key);
 
-	private native void wc_Chacha_setIV(byte[] IV);
+    private native void wc_Chacha_setIV(byte[] IV);
 
+    /**
+     * Initialize Chacha object
+     */
+    protected void init() {
+        if (state == WolfCryptState.UNINITIALIZED) {
+            wc_Chacha_init();
+            state = WolfCryptState.INITIALIZED;
+        } else {
+            throw new IllegalStateException(
+                    "Native resources already initialized.");
+        }
+    }
 
+    /**
+     * Free Chacha object
+     */
+    protected void free() {
+        if (state != WolfCryptState.UNINITIALIZED) {
+            wc_Chacha_free();
+            state = WolfCryptState.UNINITIALIZED;
+        }
+    }
 
+    /**
+     * Set ChaCha key
+     *
+     * @param Key ChaCha key array
+     */
+    public void setKey(byte[] Key) {
+        if (state == WolfCryptState.INITIALIZED) {
+            wc_Chacha_setKey(Key);
+            state = WolfCryptState.READY;
+        } else {
+            throw new IllegalStateException("Object already has a key.");
+        }
+    }
 
-	protected void init() {
-		if (state == WolfCryptState.UNINITIALIZED) {
-			wc_Chacha_init();
-			state = WolfCryptState.INITIALIZED;
-		} else {
-			throw new IllegalStateException(
-					"Native resources already initialized.");
-		}
-	}
-
-	protected void free() {
-		if (state != WolfCryptState.UNINITIALIZED) {
-			wc_Chacha_free();
-			state = WolfCryptState.UNINITIALIZED;
-		}
-	}
-
-	public void setKey(byte[] Key) {
-		if (state == WolfCryptState.INITIALIZED) {
-			wc_Chacha_setKey(Key);
-			state = WolfCryptState.READY;
-		} else {
-			throw new IllegalStateException("Object already has a key.");
-		}
-	}
-	
+    /**
+     * Set ChaCha initialization vector
+     *
+     * @param IV ChaCha IV array
+     */
     public void setIV(byte[] IV) {
         wc_Chacha_setIV(IV);
-	}
+    }
 
+    /**
+     * Process data with ChaCha
+     *
+     * @param in input data to process
+     *
+     * @return resulting byte array
+     */
     public byte[] process(byte[] in) {
-		if (state == WolfCryptState.READY) {
-			return wc_Chacha_process(in);
-		} else {
-			throw new IllegalStateException(
-					"No available key to perform the operation.");
-		}
-	}
+        if (state == WolfCryptState.READY) {
+            return wc_Chacha_process(in);
+        } else {
+            throw new IllegalStateException(
+                    "No available key to perform the operation.");
+        }
+    }
 }
 

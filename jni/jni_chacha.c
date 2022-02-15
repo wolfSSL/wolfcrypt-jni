@@ -1,6 +1,6 @@
 /* jni_Chacha.c
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -129,7 +129,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setIV
     throwNotCompiledInException(env);
 #endif
 }
-    
+
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setKey
   (JNIEnv* env, jobject this, jbyteArray key_object)
 {
@@ -182,7 +182,7 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
         /* getNativeStruct may throw exception, prevent throwing another */
         return NULL;
     }
-    
+
     input = getByteArray(env, input_obj);
     inputSz = getByteArrayLength(env, input_obj);
 

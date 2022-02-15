@@ -1,6 +1,6 @@
 /* DhTest.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -34,57 +34,57 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.Fips;
 
 public class DhTest {
-	private static Rng rng = new Rng();
+    private static Rng rng = new Rng();
 
-	@BeforeClass
-	public static void setUpRng() {
-		rng.init();
+    @BeforeClass
+    public static void setUpRng() {
+        rng.init();
 
         if (Fips.enabled) {
             Fips.setPrivateKeyReadEnable(1, Fips.WC_KEYTYPE_ALL);
         }
-	}
+    }
 
-	@BeforeClass
-	public static void checkAvailability() {
-		try {
-			new Dh();
-		} catch (WolfCryptException e) {
-			if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
-				System.out.println("Dh test skipped: " + e.getError());
-			Assume.assumeNoException(e);
-		}
-	}
+    @BeforeClass
+    public static void checkAvailability() {
+        try {
+            new Dh();
+        } catch (WolfCryptException e) {
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
+                System.out.println("Dh test skipped: " + e.getError());
+            Assume.assumeNoException(e);
+        }
+    }
 
-	@Test
-	public void sharedSecretShouldMatch() {
-		byte[] p = Util.h2b("E6969D3D495BE32C7CF180C3BDD4798E91B7818251BB055E"
-				+ "2A2064904A79A770FA15A259CBD523A6A6EF09C43048D5A22F971F3C20"
-				+ "129B48000E6EDD061CBC053E371D794E5327DF611EBBBE1BAC9B5C6044"
-				+ "CF023D76E05EEA9BAD991B13A63C974E9EF1839EB5DB125136F7262E56"
-				+ "A8871538DFD823C6505085E21F0DD5C86B");
-		
-		byte[] g = Util.h2b("02");
+    @Test
+    public void sharedSecretShouldMatch() {
+        byte[] p = Util.h2b("E6969D3D495BE32C7CF180C3BDD4798E91B7818251BB055E"
+                + "2A2064904A79A770FA15A259CBD523A6A6EF09C43048D5A22F971F3C20"
+                + "129B48000E6EDD061CBC053E371D794E5327DF611EBBBE1BAC9B5C6044"
+                + "CF023D76E05EEA9BAD991B13A63C974E9EF1839EB5DB125136F7262E56"
+                + "A8871538DFD823C6505085E21F0DD5C86B");
 
-		Dh alice = new Dh(p, g);
-		Dh bob = new Dh();
+        byte[] g = Util.h2b("02");
 
-		bob.setParams(p, g);
+        Dh alice = new Dh(p, g);
+        Dh bob = new Dh();
 
-		assertNull(alice.getPublicKey());
-		assertNull(bob.getPublicKey());
-		
-		alice.makeKey(rng);
-		bob.makeKey(rng);
+        bob.setParams(p, g);
 
-		assertNotNull(alice.getPublicKey());
-		assertNotNull(bob.getPublicKey());
+        assertNull(alice.getPublicKey());
+        assertNull(bob.getPublicKey());
 
-		byte[] sharedSecretA = alice.makeSharedSecret(bob);
-		byte[] sharedSecretB = bob.makeSharedSecret(alice);
+        alice.makeKey(rng);
+        bob.makeKey(rng);
 
-		assertNotNull(sharedSecretA);
-		assertNotNull(sharedSecretB);
-		assertArrayEquals(sharedSecretA, sharedSecretB);
-	}
+        assertNotNull(alice.getPublicKey());
+        assertNotNull(bob.getPublicKey());
+
+        byte[] sharedSecretA = alice.makeSharedSecret(bob);
+        byte[] sharedSecretB = bob.makeSharedSecret(alice);
+
+        assertNotNull(sharedSecretA);
+        assertNotNull(sharedSecretB);
+        assertArrayEquals(sharedSecretA, sharedSecretB);
+    }
 }

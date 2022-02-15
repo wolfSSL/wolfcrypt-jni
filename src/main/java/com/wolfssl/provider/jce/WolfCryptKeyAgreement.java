@@ -1,6 +1,6 @@
 /* WolfCryptKeyAgreement.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -238,7 +238,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                     throw new RuntimeException("Error when creating DH " +
                             "shared secret");
                 }
-                
+
                 if ((sharedSecret.length - offset) < tmp.length) {
                     zeroArray(tmp);
                     throw new ShortBufferException(
@@ -563,13 +563,25 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         }
     }
 
+    /**
+     * wolfJCE DH class
+     */
     public static final class wcDH extends WolfCryptKeyAgreement {
+        /**
+         * Create new wcDH object
+         */
         public wcDH() {
             super(KeyAgreeType.WC_DH);
         }
     }
 
+    /**
+     * wolfJCE ECDH class
+     */
     public static final class wcECDH extends WolfCryptKeyAgreement {
+        /**
+         * Create new wcECDH object
+         */
         public wcECDH() {
             super(KeyAgreeType.WC_ECDH);
         }

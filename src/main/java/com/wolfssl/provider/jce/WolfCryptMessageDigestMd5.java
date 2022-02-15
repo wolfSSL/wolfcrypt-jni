@@ -1,6 +1,6 @@
 /* WolfCryptMessageDigestMd5.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -39,6 +39,9 @@ public final class WolfCryptMessageDigestMd5 extends MessageDigestSpi {
     /* for debug logging */
     private WolfCryptDebug debug;
 
+    /**
+     * Create new WolfCryptMessageDigestMd5 object
+     */
     public WolfCryptMessageDigestMd5() {
 
         md5 = new Md5();

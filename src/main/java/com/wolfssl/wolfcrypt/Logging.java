@@ -1,6 +1,6 @@
 /* Logging.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -22,11 +22,20 @@
 package com.wolfssl.wolfcrypt;
 
 /**
- * Wrapper for the native WolfCrypt Logging implementation.
+ * Wrapper for the native WolfCrypt Logging implementation
  */
 public class Logging extends WolfObject {
-	
-	public static native int wolfSSL_Debugging_ON();
-	public static native void wolfSSL_Debugging_OFF();
-	
+
+    /**
+     * Turn on native wolfSSL debug logging
+     *
+     * @return 0 on success, negative on error
+     */
+    public static native int wolfSSL_Debugging_ON();
+
+    /**
+     * Turn off native wolfSSL debug logging
+     */
+    public static native void wolfSSL_Debugging_OFF();
 }
+

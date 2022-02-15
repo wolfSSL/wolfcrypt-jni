@@ -1,6 +1,6 @@
 /* WolfCryptCipher.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -205,7 +205,7 @@ public class WolfCryptCipher extends CipherSpi {
                     log("set padding to PKCS1Padding");
             }
         }
-        
+
         if (supported == 0) {
             throw new NoSuchPaddingException(
                 "Unsupported padding type for active algorithm choice");
@@ -623,7 +623,7 @@ public class WolfCryptCipher extends CipherSpi {
         if (debug.DEBUG)
             log("update (offset: " + inputOffset + ", len: " +
                 inputLen + ")");
-        
+
         output = wolfCryptUpdate(input, inputOffset, inputLen);
 
         return output;
@@ -775,17 +775,35 @@ public class WolfCryptCipher extends CipherSpi {
         }
     }
 
+    /**
+     * Class for AES-CBC with no padding
+     */
     public static final class wcAESCBCNoPadding extends WolfCryptCipher {
+        /**
+         * Create new wcAESCBCNoPadding object
+         */
         public wcAESCBCNoPadding() {
             super(CipherType.WC_AES, CipherMode.WC_CBC, PaddingType.WC_NONE);
         }
     }
+    /**
+     * Class for DES-EDE-CBC with no padding
+     */
     public static final class wcDESedeCBCNoPadding extends WolfCryptCipher {
+        /**
+         * Create new wcDESedeCBCNoPadding object
+         */
         public wcDESedeCBCNoPadding() {
             super(CipherType.WC_DES3, CipherMode.WC_CBC, PaddingType.WC_NONE);
         }
     }
+    /**
+     * Class for RSA-ECB with PKCS1 padding
+     */
     public static final class wcRSAECBPKCS1Padding extends WolfCryptCipher {
+        /**
+         * Create new wcRSAECBPKCS1Padding object
+         */
         public wcRSAECBPKCS1Padding() {
             super(CipherType.WC_RSA, CipherMode.WC_ECB, PaddingType.WC_PKCS1);
         }

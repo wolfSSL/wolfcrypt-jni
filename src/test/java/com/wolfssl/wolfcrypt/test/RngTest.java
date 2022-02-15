@@ -1,6 +1,6 @@
 /* RngTest.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -30,9 +30,9 @@ import com.wolfssl.wolfcrypt.NativeStruct;
 
 public class RngTest {
 
-	@Test
-	public void constructorShouldInitializeNativeStruct() {
-		assertNotEquals(NativeStruct.NULL, new Rng().getNativeStruct());
-	}
+    @Test
+    public void constructorShouldInitializeNativeStruct() {
+        assertNotEquals(NativeStruct.NULL, new Rng().getNativeStruct());
+    }
 
 }

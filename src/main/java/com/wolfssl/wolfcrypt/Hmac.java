@@ -1,6 +1,6 @@
 /* Hmac.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -26,7 +26,7 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
 import java.nio.ByteBuffer;
 
 /**
- * Wrapper for the native WolfCrypt Hmac implementation.
+ * Wrapper for the native WolfCrypt HMAC implementation.
  */
 public class Hmac extends NativeStruct {
 
@@ -35,47 +35,57 @@ public class Hmac extends NativeStruct {
     }
 
     /* types may be -1 if not compiled in at native level */
+    /** HMAC-MD5 type */
     public static final int MD5     = getHashCode(hashType.typeMD5);
+    /** HMAC-SHA-1 type */
     public static final int SHA     = getHashCode(hashType.typeSHA);
+    /** HMAC-SHA2-256 type */
     public static final int SHA256  = getHashCode(hashType.typeSHA256);
+    /** HMAC-SHA2-384 type */
     public static final int SHA384  = getHashCode(hashType.typeSHA384);
+    /** HMAC-SHA2-512 type */
     public static final int SHA512  = getHashCode(hashType.typeSHA512);
 
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
     private int type = -1;
     private byte[] key;
 
+    /**
+     * Create new Hmac object
+     */
     public Hmac() {
     }
 
+    /**
+     * Create new Hmac object
+     *
+     * @param type HMAC type (Hmac.SHA, Hmac.SHA256, etc)
+     * @param key HMAC key
+     */
     public Hmac(int type, byte[] key) {
         setKey(type, key);
     }
 
     private native void wc_HmacSetKey(int type, byte[] key);
-
     private native void wc_HmacUpdate(byte data);
-
     private native void wc_HmacUpdate(byte[] data, int offset, int length);
-
     private native void wc_HmacUpdate(ByteBuffer data, int offset, int length);
-
     private native byte[] wc_HmacFinal();
-
     private native int wc_HmacSizeByType(int type);
-
     private native static int getCodeMd5();
-
     private native static int getCodeSha();
-
     private native static int getCodeSha256();
-
     private native static int getCodeSha384();
-
     private native static int getCodeSha512();
-
     private native static int getCodeBlake2b();
 
+    /**
+     * Malloc native JNI Hmac structure
+     *
+     * @return native allocated pointer
+     *
+     * @throws OutOfMemoryError when malloc fails with memory error
+     */
     protected native long mallocNativeStruct() throws OutOfMemoryError;
 
     /* check if type is -1, if so that type is not compiled in at native
@@ -87,6 +97,14 @@ public class Hmac extends NativeStruct {
         }
     }
 
+    /**
+     * Set HMAC key
+     *
+     * @param type HMAC type (Hmac.SHA, Hmac.SHA256, etc)
+     * @param key HMAC key
+     *
+     * @throws WolfCryptException if native operation fails
+     */
     public void setKey(int type, byte[] key) {
 
         /* verify hash type is compiled in */
@@ -99,42 +117,82 @@ public class Hmac extends NativeStruct {
         state = WolfCryptState.READY;
     }
 
+    /**
+     * Reset Hmac object state with key and type that have been set
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object has no key
+     */
     public void reset() {
         if (state == WolfCryptState.READY) {
             setKey(type, key);
         } else {
             throw new IllegalStateException(
-                "No available key to perform the opperation.");
+                "No available key to perform the operation.");
         }
     }
 
+    /**
+     * Perform HMAC update operation
+     *
+     * @param data single input data byte to update HMAC with
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object has no key
+     */
     public void update(byte data) {
         if (state == WolfCryptState.READY) {
             wc_HmacUpdate(data);
         } else {
             throw new IllegalStateException(
-                "No available key to perform the opperation.");
+                "No available key to perform the operation.");
         }
     }
 
+    /**
+     * Perform HMAC update operation
+     *
+     * @param data input data to update HMAC with
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object has no key
+     */
     public void update(byte[] data) {
         if (state == WolfCryptState.READY) {
             wc_HmacUpdate(data, 0, data.length);
         } else {
             throw new IllegalStateException(
-                "No available key to perform the opperation.");
+                "No available key to perform the operation.");
         }
     }
 
+    /**
+     * Perform HMAC update operation
+     *
+     * @param data input data to update HMAC with
+     * @param offset offset into input data to begin reading
+     * @param length length of input data to read
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object has no key
+     */
     public void update(byte[] data, int offset, int length) {
         if (state == WolfCryptState.READY) {
             wc_HmacUpdate(data, offset, length);
         } else {
             throw new IllegalStateException(
-                    "No available key to perform the opperation.");
+                    "No available key to perform the operation.");
         }
     }
 
+    /**
+     * Perform HMAC update operation
+     *
+     * @param data input data to update HMAC with
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object has no key
+     */
     public void update(ByteBuffer data) {
         if (state == WolfCryptState.READY) {
             int offset = data.position();
@@ -145,29 +203,54 @@ public class Hmac extends NativeStruct {
             data.position(offset + length);
         } else {
             throw new IllegalStateException(
-                    "No available key to perform the opperation.");
+                    "No available key to perform the operation.");
         }
     }
 
+    /**
+     * Calculate final HMAC
+     *
+     * @return HMAC result as byte array
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object has no key
+     */
     public byte[] doFinal() {
         if (state == WolfCryptState.READY) {
             return wc_HmacFinal();
         } else {
             throw new IllegalStateException(
-                    "No available key to perform the opperation.");
+                    "No available key to perform the operation.");
         }
     }
 
+    /**
+     * Calculate final HMAC after processing additional supplied data
+     *
+     * @param data input data to update HMAC with
+     *
+     * @return HMAC result as byte array
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object has no key
+     */
     public byte[] doFinal(byte[] data) {
         if (state == WolfCryptState.READY) {
             update(data);
             return wc_HmacFinal();
         } else {
             throw new IllegalStateException(
-                    "No available key to perform the opperation.");
+                    "No available key to perform the operation.");
         }
     }
 
+    /**
+     * Get HMAC algorithm type
+     *
+     * @return HMAC algorithm
+     *
+     * @throws IllegalStateException if object has no key
+     */
     public String getAlgorithm() {
         if (state == WolfCryptState.READY) {
 
@@ -189,19 +272,35 @@ public class Hmac extends NativeStruct {
 
         } else {
             throw new IllegalStateException(
-                "No available key to perform the opperation.");
+                "No available key to perform the operation.");
         }
     }
 
+    /**
+     * Get HMAC output length
+     *
+     * @return HMAC length
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object has no key
+     */
     public int getMacLength() {
         if (state == WolfCryptState.READY) {
             return wc_HmacSizeByType(type);
         } else {
             throw new IllegalStateException(
-                "No available key to perform the opperation.");
+                "No available key to perform the operation.");
         }
     }
 
+    /**
+     * Get HMAC hash code
+     *
+     * @param hash HMAC hash type
+     *
+     * @return HMAC hash code, or WolfCrypt.FAILURE if hashType is not
+     *         supported.
+     */
     private static int getHashCode(hashType hash) {
         switch (hash) {
             case typeMD5:
@@ -219,3 +318,4 @@ public class Hmac extends NativeStruct {
         }
     }
 }
+

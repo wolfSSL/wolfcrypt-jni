@@ -1,6 +1,6 @@
 /* Sha384Test.java
  *
- * Copyright (C) 2006-2021 wolfSSL Inc.
+ * Copyright (C) 2006-2022 wolfSSL Inc.
  *
  * This file is part of wolfSSL. (formerly known as CyaSSL)
  *
@@ -37,90 +37,90 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 
 public class Sha384Test {
-	private ByteBuffer data = ByteBuffer.allocateDirect(32);
-	private ByteBuffer result = ByteBuffer.allocateDirect(Sha384.DIGEST_SIZE);
-	private ByteBuffer expected = ByteBuffer.allocateDirect(Sha384.DIGEST_SIZE);
+    private ByteBuffer data = ByteBuffer.allocateDirect(32);
+    private ByteBuffer result = ByteBuffer.allocateDirect(Sha384.DIGEST_SIZE);
+    private ByteBuffer expected = ByteBuffer.allocateDirect(Sha384.DIGEST_SIZE);
 
     @BeforeClass
     public static void checkSha384IsAvailable() {
         try {
             Sha384 sha = new Sha384();
         } catch (WolfCryptException e) {
-			if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
-				System.out.println("Sha384Test skipped: " + e.getError());
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                System.out.println("Sha384Test skipped: " + e.getError());
                 Assume.assumeTrue(false);
             }
         }
     }
 
-	@Test
-	public void constructorShouldInitializeNativeStruct() {
-		assertNotEquals(NativeStruct.NULL, new Sha384().getNativeStruct());
-	}
+    @Test
+    public void constructorShouldInitializeNativeStruct() {
+        assertNotEquals(NativeStruct.NULL, new Sha384().getNativeStruct());
+    }
 
-	@Test
-	public void hashShouldMatchUsingByteBuffer() throws ShortBufferException {
-		String[] dataVector = new String[] { "", "c2edba56a6b82cc3",
-				"2b1632b74a1c34b58af23274599a3aa1",
-				"4a4c09366fb6772637d9e696f1d0d0a98005ca33bc01062a",
-				"50b9952a9da3a1e704d22c414b4055a7b0866513dafd5f481023d958a9400b68" };
-		String[] hashVector = new String[] {
-				"38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc"
-						+ "7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b",
-				"03ca8e9a0da972814137eb37c5b8a59a7a0166c62f5d7eb643147"
-						+ "2f79a33412cd3fa6c483da48e758fbc70027d132edf",
-				"419a34764a30d5becda0d5eb33c67719b0d030fb2596b12d6207b"
-						+ "329d45718cebd2c965b52ab538fbe68c90fab2878d7",
-				"5388214cfa96289ac37b365226accf8b4022e5b931095ddfc4f59"
-						+ "c47cb45e8a8fbd0c77f52eeacd2afaa61d653b40351",
-				"7bcd20725ece37b040aa497832f3138e179da1a673714321fcba9"
-						+ "7169a47199586dcb6599cf3f7d7497b85349f6f7b88" };
+    @Test
+    public void hashShouldMatchUsingByteBuffer() throws ShortBufferException {
+        String[] dataVector = new String[] { "", "c2edba56a6b82cc3",
+                "2b1632b74a1c34b58af23274599a3aa1",
+                "4a4c09366fb6772637d9e696f1d0d0a98005ca33bc01062a",
+                "50b9952a9da3a1e704d22c414b4055a7b0866513dafd5f481023d958a9400b68" };
+        String[] hashVector = new String[] {
+                "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc"
+                        + "7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b",
+                "03ca8e9a0da972814137eb37c5b8a59a7a0166c62f5d7eb643147"
+                        + "2f79a33412cd3fa6c483da48e758fbc70027d132edf",
+                "419a34764a30d5becda0d5eb33c67719b0d030fb2596b12d6207b"
+                        + "329d45718cebd2c965b52ab538fbe68c90fab2878d7",
+                "5388214cfa96289ac37b365226accf8b4022e5b931095ddfc4f59"
+                        + "c47cb45e8a8fbd0c77f52eeacd2afaa61d653b40351",
+                "7bcd20725ece37b040aa497832f3138e179da1a673714321fcba9"
+                        + "7169a47199586dcb6599cf3f7d7497b85349f6f7b88" };
 
-		for (int i = 0; i < dataVector.length; i++) {
-			Sha384 sha = new Sha384();
+        for (int i = 0; i < dataVector.length; i++) {
+            Sha384 sha = new Sha384();
 
-			data.put(Util.h2b(dataVector[i])).rewind();
-			expected.put(Util.h2b(hashVector[i])).rewind();
+            data.put(Util.h2b(dataVector[i])).rewind();
+            expected.put(Util.h2b(hashVector[i])).rewind();
 
-			sha.update(data, dataVector[i].length() / 2);
-			sha.digest(result);
-			data.rewind();
-			result.rewind();
+            sha.update(data, dataVector[i].length() / 2);
+            sha.digest(result);
+            data.rewind();
+            result.rewind();
 
-			assertEquals(expected, result);
-		}
-	}
+            assertEquals(expected, result);
+        }
+    }
 
-	@Test
-	public void hashShouldMatchUsingByteArray() {
-		String[] dataVector = new String[] { "", "c2edba56a6b82cc3",
-				"2b1632b74a1c34b58af23274599a3aa1",
-				"4a4c09366fb6772637d9e696f1d0d0a98005ca33bc01062a",
-				"50b9952a9da3a1e704d22c414b4055a7b0866513dafd5f481023d958a9400b68" };
-		String[] hashVector = new String[] {
-				"38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc"
-						+ "7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b",
-				"03ca8e9a0da972814137eb37c5b8a59a7a0166c62f5d7eb643147"
-						+ "2f79a33412cd3fa6c483da48e758fbc70027d132edf",
-				"419a34764a30d5becda0d5eb33c67719b0d030fb2596b12d6207b"
-						+ "329d45718cebd2c965b52ab538fbe68c90fab2878d7",
-				"5388214cfa96289ac37b365226accf8b4022e5b931095ddfc4f59"
-						+ "c47cb45e8a8fbd0c77f52eeacd2afaa61d653b40351",
-				"7bcd20725ece37b040aa497832f3138e179da1a673714321fcba9"
-						+ "7169a47199586dcb6599cf3f7d7497b85349f6f7b88" };
+    @Test
+    public void hashShouldMatchUsingByteArray() {
+        String[] dataVector = new String[] { "", "c2edba56a6b82cc3",
+                "2b1632b74a1c34b58af23274599a3aa1",
+                "4a4c09366fb6772637d9e696f1d0d0a98005ca33bc01062a",
+                "50b9952a9da3a1e704d22c414b4055a7b0866513dafd5f481023d958a9400b68" };
+        String[] hashVector = new String[] {
+                "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc"
+                        + "7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b",
+                "03ca8e9a0da972814137eb37c5b8a59a7a0166c62f5d7eb643147"
+                        + "2f79a33412cd3fa6c483da48e758fbc70027d132edf",
+                "419a34764a30d5becda0d5eb33c67719b0d030fb2596b12d6207b"
+                        + "329d45718cebd2c965b52ab538fbe68c90fab2878d7",
+                "5388214cfa96289ac37b365226accf8b4022e5b931095ddfc4f59"
+                        + "c47cb45e8a8fbd0c77f52eeacd2afaa61d653b40351",
+                "7bcd20725ece37b040aa497832f3138e179da1a673714321fcba9"
+                        + "7169a47199586dcb6599cf3f7d7497b85349f6f7b88" };
 
-		for (int i = 0; i < dataVector.length; i++) {
-			Sha384 sha = new Sha384();
+        for (int i = 0; i < dataVector.length; i++) {
+            Sha384 sha = new Sha384();
 
-			byte[] data = Util.h2b(dataVector[i]);
-			byte[] expected = Util.h2b(hashVector[i]);
+            byte[] data = Util.h2b(dataVector[i]);
+            byte[] expected = Util.h2b(hashVector[i]);
 
-			sha.update(data);
-			byte[] result = sha.digest();
-			
-			assertArrayEquals(expected, result);
-		}
-	}
+            sha.update(data);
+            byte[] result = sha.digest();
+
+            assertArrayEquals(expected, result);
+        }
+    }
 
     @Test
     public void releaseAndReInitObject() {
