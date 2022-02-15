@@ -47,6 +47,11 @@ public class Des3FipsTest extends FipsTest {
 
     @BeforeClass
     public static void checkAvailability() {
+
+        /* Most test classes pick this up from FipsTest checkAvailability(),
+         * but not when method is overridden here */
+        Assume.assumeTrue(Fips.enabled);
+
         try {
             new Des3();
         } catch (WolfCryptException e) {
