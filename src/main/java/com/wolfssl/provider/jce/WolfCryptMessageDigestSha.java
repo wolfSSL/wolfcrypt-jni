@@ -101,6 +101,11 @@ public final class WolfCryptMessageDigestSha extends MessageDigestSpi {
         debug.print("[MessageDigest, SHA] " + msg);
     }
 
+    @Override
+    protected int engineGetDigestLength() {
+        return this.sha.digestSize();
+    }
+
     @SuppressWarnings("deprecation")
     @Override
     protected void finalize() throws Throwable {
