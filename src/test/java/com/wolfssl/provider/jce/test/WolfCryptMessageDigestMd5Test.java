@@ -32,6 +32,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
 
+import com.wolfssl.wolfcrypt.Md5;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 
@@ -227,6 +228,14 @@ public class WolfCryptMessageDigestMd5Test {
 
             assertArrayEquals(wolfOutput, interopOutput);
         }
+    }
+
+    @Test
+    public void testMd5GetDigestLength()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        MessageDigest md5 = MessageDigest.getInstance("MD5", "wolfJCE");
+        assertEquals(Md5.DIGEST_SIZE, md5.getDigestLength());
     }
 }
 

@@ -32,6 +32,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
 
+import com.wolfssl.wolfcrypt.Sha512;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 
@@ -289,6 +290,14 @@ public class WolfCryptMessageDigestSha512Test {
             assertArrayEquals(wolfOutput, interopOutput);
         }
 
+    }
+
+    @Test
+    public void testSha512GetDigestLength()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        MessageDigest sha512 = MessageDigest.getInstance("SHA-512", "wolfJCE");
+        assertEquals(Sha512.DIGEST_SIZE, sha512.getDigestLength());
     }
 }
 
