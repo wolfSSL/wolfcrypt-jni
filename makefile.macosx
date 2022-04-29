@@ -13,7 +13,7 @@ JAVA_HOME ?= $(shell /usr/libexec/java_home)
 CC        = gcc
 override CCFLAGS   += -Wall -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/darwin \
 			-I$(INC_PATH)
-override LDFLAGS   += -dynamiclib -framework JavaVM -lwolfssl
+override LDFLAGS   += -dynamiclib -lwolfssl
 
 all: $(TARGET)
 
