@@ -1224,9 +1224,10 @@ public class Fips extends WolfObject {
      */
 
     /**
-     * @return The current status of the module. A return code of 0 means the
-     *         module is in a state without errors. Any other return code is the
-     *         specific error state of the module.
+     * Returns the current status of the wolfCrypt FIPS module.
+     * @return A return code of 0 means the module is in a state without
+     *         errors. Any other return code is the specific error state of
+     *         the module.
      */
     public static native int wolfCrypt_GetStatus_fips();
 

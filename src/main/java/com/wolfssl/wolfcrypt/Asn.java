@@ -33,6 +33,9 @@ public class Asn extends WolfObject {
     /** Maximum encoded signature size */
     public static final int MAX_ENCODED_SIG_SIZE = 512;
 
+    /** Default Asn constructor */
+    public Asn() { }
+
     /** ASN.1 encode message digest, before it is signed
      *
      * @param encoded output buffer to place encoded data
