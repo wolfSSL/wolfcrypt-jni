@@ -32,6 +32,9 @@ public abstract class MessageDigest extends NativeStruct {
 
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
+    /** Default MessageDigest constructor */
+    public MessageDigest() { }
+
     /**
      * Initialize native structure
      */
