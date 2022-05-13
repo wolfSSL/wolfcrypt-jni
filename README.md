@@ -152,6 +152,19 @@ that requires JCE provider JAR's to be authenticated.  Please see
 ### Revision History
 ---------
 
+#### wolfCrypt JNI Release 1.3.0 (05/13/2022)
+
+Release 1.3.0 of wolfCrypt JNI has bug fixes and new features including:
+
+- Run FIPS tests on `ant test` when linked against a wolfCrypt FIPS library (PR 24)
+- Wrap native AesGcmSetExtIV\_fips() API (PR 24)
+- Fix releaseByteArray() usage in Fips.RsaSSL\_Sign() (PR 24)
+- Fix AES-GCM FIPS test cases (PR 24)
+- Keep existing JAVA\_HOME in makefiles if already set (PR 25)
+- Add JCE support for MessageDigestSpi.engineGetDigestLength() (PR 27)
+- Update junit to 4.13.2 (PR 28)
+- Update missing Javadocs, fixes warnings on newer Java versions (PR 29)
+
 #### wolfCrypt JNI Release 1.2.0 (11/16/2021)
 
 Release 1.2.0 of wolfCrypt JNI has bug fixes and new features including:
