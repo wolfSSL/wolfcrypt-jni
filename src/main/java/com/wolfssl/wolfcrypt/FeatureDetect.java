@@ -65,5 +65,8 @@ public class FeatureDetect {
     static {
         System.loadLibrary("wolfcryptjni");
     }
+
+    /** Default FeatureDetect constructor */
+    public FeatureDetect() { }
 }
 

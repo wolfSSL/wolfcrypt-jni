@@ -135,8 +135,8 @@ public class WolfCryptKeyPairGeneratorTest {
             if (size > 0) {
                 enabledCurves.add(supportedCurves[i]);
 
-                if (!enabledKeySizes.contains(new Integer(size))) {
-                    enabledKeySizes.add(new Integer(size));
+                if (!enabledKeySizes.contains(Integer.valueOf(size))) {
+                    enabledKeySizes.add(Integer.valueOf(size));
                 }
             }
         }

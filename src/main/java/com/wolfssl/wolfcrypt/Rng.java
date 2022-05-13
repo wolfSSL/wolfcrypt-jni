@@ -46,6 +46,9 @@ public class Rng extends NativeStruct {
             int length);
     private native void rngGenerateBlock(byte[] buffer, int offset, int length);
 
+    /** Default Rng constructor */
+    public Rng() { }
+
     @Override
     public void releaseNativeStruct() {
         free();
