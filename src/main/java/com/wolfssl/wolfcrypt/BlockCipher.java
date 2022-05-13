@@ -34,6 +34,9 @@ public abstract class BlockCipher extends NativeStruct {
 
     private int opmode;
 
+    /** Default BlockCipher constructor */
+    public BlockCipher() { }
+
     /**
      * Set block cipher key, IV, and mode
      *

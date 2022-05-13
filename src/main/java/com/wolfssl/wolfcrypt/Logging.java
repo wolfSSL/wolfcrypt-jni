@@ -37,5 +37,8 @@ public class Logging extends WolfObject {
      * Turn off native wolfSSL debug logging
      */
     public static native void wolfSSL_Debugging_OFF();
+
+    /** Default Logging constructor */
+    public Logging() { }
 }
 
