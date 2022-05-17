@@ -71,9 +71,31 @@ The JCE provider currently supports the following algorithms:
 ### Example / Test Code
 ---------
 
-Example code will be added in the near future. JUnit test code is located
-under the "./src/test/java/com/wolfssl/provider/jce/test/" directory for
-each wolfJCE engine class.
+JUnit test code can act as a good usage reference, and is located under the
+`./src/test/java/com/wolfssl/provider/jce/test/` directory for each wolfJCE
+engine class.
+
+There are some JCE examples located under the `examples/provider` directory,
+including:
+
+**ProviderTest**
+
+This is an example that prints out all Security providers that are registered
+in the system. It then programatically registers wolfJCE as the highest-level
+provider and prints out the list again.
+
+This example will be built when using the following ant targets:
+
+```
+$ ant build-jce-debug
+$ ant build-jce-release
+```
+
+The example can then be run using:
+
+```
+$ ./examples/provider/ProviderTest.sh
+```
 
 ### JAR Code Signing
 ---------
