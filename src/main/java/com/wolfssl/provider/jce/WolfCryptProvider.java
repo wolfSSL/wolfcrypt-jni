@@ -34,7 +34,7 @@ public final class WolfCryptProvider extends Provider {
      * Create new WolfCryptProvider object
      */
     public WolfCryptProvider() {
-        super("wolfJCE", 1.0, "wolfCrypt JCE Provider");
+        super("wolfJCE", 1.3, "wolfCrypt JCE Provider");
 
         /* MessageDigest */
         if (FeatureDetect.Md5Enabled()) {

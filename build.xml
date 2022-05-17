@@ -30,6 +30,9 @@
     <property name="test.dir" value="src/test/java/" />
     <property name="test.build.dir" value="build/test" />
     <property name="reports.dir" value="build/reports" />
+    <property name="examples.build.dir" value="examples/build" />
+    <property name="examples.provider.dir" value="examples/provider" />
+    <property name="examples.provider.build.dir" value="examples/build/provider" />
 
     <property name="junit4" value="junit-4.13.2.jar" />
     <property name="hamcrest-core" value="hamcrest-all-1.3.jar" />
@@ -68,6 +71,7 @@
     <target name="clean">
         <delete dir="${test.build.dir}" />
         <delete dir="${build.dir}" />
+        <delete dir="${examples.provider.build.dir}" />
         <delete dir="${examples.build.dir}" />
         <delete dir="${reports.dir}" />
         <delete failonerror="false">
@@ -100,6 +104,7 @@
         <mkdir dir="${lib.dir}" />
         <mkdir dir="${test.build.dir}" />
         <mkdir dir="${reports.dir}" />
+        <mkdir dir="${examples.provider.build.dir}" />
     </target>
 
     <!-- compile all JNI and JCE source files -->
@@ -235,6 +240,22 @@
         <javadoc sourcepath="${src.dir}" destdir="${doc.dir}" />
     </target>
 
+    <target name="examples-jce" description="Build JCE Examples">
+        <javac
+            srcdir="${examples.provider.dir}"
+            destdir="${examples.provider.build.dir}"
+            debug="${java.debug}"
+            debuglevel="${java.debuglevel}"
+            deprecation="${java.deprecation}"
+            optimize="${java.optimize}"
+            source="${java.source}"
+            target="${java.target}"
+            classpathref="classpath"
+            includeantruntime="false">
+            <compilerarg value="-Xlint:-options"/>
+        </javac>
+    </target>
+
     <!-- compile JNI/JCE test classes, depending on how 'ant build' was run -->
     <target name="build-test" depends="set-build-debug, debug-javac-flags">
 
@@ -346,11 +367,11 @@
         description="Build library JAR (JNI classes ONLY)">
     </target>
 
-    <target name="build-jce-debug" depends="set-build-debug, jar-jce, sign, sign-alt, javah, javadoc"
+    <target name="build-jce-debug" depends="set-build-debug, jar-jce, sign, sign-alt, javah, javadoc, examples-jce"
         description="Build library JAR (JNI + JCE classes)">
     </target>
 
-    <target name="build-jce-release" depends="set-build-release, jar-jce, sign, sign-alt, javah, javadoc"
+    <target name="build-jce-release" depends="set-build-release, jar-jce, sign, sign-alt, javah, javadoc, examples-jce"
         description="Build library JAR (JNI + JCE classes)">
     </target>
 
