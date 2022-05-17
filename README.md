@@ -128,6 +128,13 @@ the root wolfcrypt-jni directory.  The test source code is located at:
 
 `wolfcrypt-jni/src/test/com/wolfssl/wolfcrypt`
 
+JCE-specific examples can be found in the `examples/provider` sub-directory.
+These examples will only be compiled with either `ant build-jce-debug` or
+`ant build-jce-release` are used. Since these are JCE/provider-only examples,
+they are not built for JNI-only builds (`ant build-jni-debug/release`).
+
+For more details, see the [README_JCE.md](./README_JCE.md).
+
 ### JAR Code Signing
 ---------
 
