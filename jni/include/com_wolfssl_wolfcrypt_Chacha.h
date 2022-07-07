@@ -19,22 +19,6 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Chacha_mallocNativeStruct
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Chacha
- * Method:    wc_Chacha_init
- * Signature: ()V
- */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1init
-  (JNIEnv *, jobject);
-
-/*
- * Class:     com_wolfssl_wolfcrypt_Chacha
- * Method:    wc_Chacha_free
- * Signature: ()V
- */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1free
-  (JNIEnv *, jobject);
-
-/*
- * Class:     com_wolfssl_wolfcrypt_Chacha
  * Method:    wc_Chacha_process
  * Signature: ([B)[B
  */

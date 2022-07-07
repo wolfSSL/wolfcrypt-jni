@@ -19,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
 #ifndef __ANDROID__
     #include <wolfssl/options.h>
 #endif
@@ -40,62 +41,18 @@ Java_com_wolfssl_wolfcrypt_Chacha_mallocNativeStruct(
     void* ret = 0;
 
 #ifdef HAVE_CHACHA
-    ret = XMALLOC(sizeof(ChaCha), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    ret = (void*)XMALLOC(sizeof(ChaCha), NULL, DYNAMIC_TYPE_TMP_BUFFER);
 
     if (ret == NULL)
         throwOutOfMemoryException(env, "Failed to allocate ChaCha object");
 
-    LogStr("new ChaCha() = %p\n", (void*)ret);
+    XMEMSET(ret, 0, sizeof(ChaCha));
+    LogStr("new ChaCha object allocated = %p\n", ret);
 #else
     throwNotCompiledInException(env);
 #endif
 
-    return (jlong) ret;
-}
-
-JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1init(
-    JNIEnv* env, jobject this)
-{
-#ifdef HAVE_CHACHA
-    int ret = 0;
-    ChaCha* chacha = (ChaCha*) getNativeStruct(env, this);
-    if ((*env)->ExceptionOccurred(env)) {
-        /* getNativeStruct may throw exception, prevent throwing another */
-        return;
-    }
-
-    ret = (!chacha)
-        ? BAD_FUNC_ARG
-        : 0;
-
-    if (ret != 0)
-        throwWolfCryptExceptionFromError(env, ret);
-
-    LogStr("Chacha_init(ChaCha=%p) = %d\n", chacha, ret);
-#else
-    throwNotCompiledInException(env);
-#endif
-}
-
-JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1free(
-    JNIEnv* env, jobject this)
-{
-#ifdef HAVE_CHACHA
-    ChaCha* chacha = (ChaCha*) getNativeStruct(env, this);
-    if ((*env)->ExceptionOccurred(env)) {
-        /* getNativeStruct may throw exception */
-        return;
-    }
-
-    if (chacha)
-        XFREE(chacha, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-
-    LogStr("Chacha_free(chacha=%p)\n", chacha);
-#else
-    throwNotCompiledInException(env);
-#endif
+    return (jlong)(uintptr_t)ret;
 }
 
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setIV
@@ -106,16 +63,18 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setIV
     ChaCha* chacha = NULL;
     byte* iv   = NULL;
 
-    chacha = (ChaCha*) getNativeStruct(env, this);
+    chacha = (ChaCha*)(uintptr_t)getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
         return;
     }
-    iv   = getByteArray(env, iv_object);
+    iv = getByteArray(env, iv_object);
 
-    if (!chacha || !iv) {
+    if (chacha == NULL || iv == NULL) {
         ret = BAD_FUNC_ARG;
-    } else {
+    }
+
+    if (ret == 0) {
         ret = wc_Chacha_SetIV(chacha, iv, 0);
     }
 
@@ -139,7 +98,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setKey
     byte* key   = NULL;
     word32 keySz = 0;
 
-    chacha = (ChaCha*) getNativeStruct(env, this);
+    chacha = (ChaCha*)(uintptr_t)getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
         return;
@@ -147,9 +106,11 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setKey
     key   = getByteArray(env, key_object);
     keySz = getByteArrayLength(env, key_object);
 
-    if (!chacha || !key) {
+    if (chacha == NULL || key == NULL) {
         ret = BAD_FUNC_ARG;
-    } else {
+    }
+
+    if (ret == 0) {
         ret = wc_Chacha_SetKey(chacha, key, keySz);
     }
 
@@ -177,7 +138,7 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
     int inputSz = 0;
     byte* output = NULL;
 
-    chacha = (ChaCha*) getNativeStruct(env, this);
+    chacha = (ChaCha*)(uintptr_t)getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
         return NULL;
@@ -190,30 +151,35 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
         return NULL;
     }
 
-    output = XMALLOC(inputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    output = (byte*)XMALLOC(inputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate key buffer");
         return result;
     }
 
-    ret = (!chacha)
-        ? BAD_FUNC_ARG
-        : wc_Chacha_Process(chacha, output, input, inputSz);
+    if (chacha == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        ret = wc_Chacha_Process(chacha, output, input, inputSz);
+    }
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, inputSz);
 
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, inputSz,
-                                                         (const jbyte*) output);
+                                       (const jbyte*) output);
         } else {
-            throwWolfCryptException(env, "Failed to allocate memory for Chacha_process");
+            throwWolfCryptException(env,
+                "Failed to allocate memory for Chacha_process");
         }
     } else {
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    LogStr("wc_Chacha_Process() = %d\n", output, ret);
+    LogStr("wc_Chacha_Process(): output = %p, ret = %d\n", output, ret);
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
     throwNotCompiledInException(env);
