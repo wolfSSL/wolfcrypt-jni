@@ -39,9 +39,11 @@ public class Chacha extends NativeStruct {
 
     @Override
     public void releaseNativeStruct() {
-        free();
+        if (state != WolfCryptState.UNINITIALIZED) {
+            super.releaseNativeStruct();
+            state = WolfCryptState.UNINITIALIZED;
+        }
 
-        super.releaseNativeStruct();
     }
 
     /**
@@ -52,10 +54,6 @@ public class Chacha extends NativeStruct {
      * @throws OutOfMemoryError when malloc fails with memory error
      */
     protected native long mallocNativeStruct() throws OutOfMemoryError;
-
-    private native void wc_Chacha_init();
-
-    private native void wc_Chacha_free();
 
     private native byte[] wc_Chacha_process(byte in[]);
 
@@ -68,21 +66,10 @@ public class Chacha extends NativeStruct {
      */
     protected void init() {
         if (state == WolfCryptState.UNINITIALIZED) {
-            wc_Chacha_init();
             state = WolfCryptState.INITIALIZED;
         } else {
             throw new IllegalStateException(
-                    "Native resources already initialized.");
-        }
-    }
-
-    /**
-     * Free Chacha object
-     */
-    protected void free() {
-        if (state != WolfCryptState.UNINITIALIZED) {
-            wc_Chacha_free();
-            state = WolfCryptState.UNINITIALIZED;
+                    "ChaCha object already initialized.");
         }
     }
 
