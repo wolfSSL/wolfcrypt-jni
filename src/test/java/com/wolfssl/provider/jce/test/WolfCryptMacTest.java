@@ -190,6 +190,11 @@ public class WolfCryptMacTest {
             )
         };
 
+        /* FIPS>v2 does not support HMAC-MD5 in CAST, skip test */
+        if (Fips.fipsVersion > 2) {
+            Assume.assumeTrue(false);
+        }
+
         for (int i = 0; i < vectors.length; i++) {
 
             if ((i == 1) && Fips.enabled) {
