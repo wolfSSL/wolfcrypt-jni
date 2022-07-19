@@ -2014,7 +2014,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitSha_1fips(
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA)
 
-    Sha* sha = (Sha*) getNativeStruct(env, sha_object);
+    wc_Sha* sha = (wc_Sha*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2034,10 +2034,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaUpdate_1fips__Lcom_wol
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA)
 
-    Sha*  sha = NULL;
+    wc_Sha* sha = NULL;
     byte* data = NULL;
 
-    sha = (Sha*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2065,10 +2065,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaUpdate_1fips__Lcom_wol
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA)
 
-    Sha*  sha = NULL;
+    wc_Sha* sha = NULL;
     byte* data = NULL;
 
-    sha = (Sha*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2096,10 +2096,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaFinal_1fips__Lcom_wolf
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA)
 
-    Sha*  sha = NULL;
+    wc_Sha* sha = NULL;
     byte* hash = NULL;
 
-    sha = (Sha*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2126,10 +2126,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_ShaFinal_1fips__Lcom_wolf
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA)
 
-    Sha*  sha = NULL;
+    wc_Sha* sha = NULL;
     byte* hash = NULL;
 
-    sha = (Sha*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2159,7 +2159,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitSha256_1fips(
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA256)
 
-    Sha256* sha = (Sha256*) getNativeStruct(env, sha_object);
+    wc_Sha256* sha = (wc_Sha256*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2179,10 +2179,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Update_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA256)
 
-    Sha256* sha = NULL;
-    byte*  data = NULL;
+    wc_Sha256* sha = NULL;
+    byte* data = NULL;
 
-    sha = (Sha256*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha256*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2210,10 +2210,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Update_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA256)
 
-    Sha256* sha = NULL;
-    byte*  data = NULL;
+    wc_Sha256* sha = NULL;
+    byte* data = NULL;
 
-    sha = (Sha256*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha256*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2241,10 +2241,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Final_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA256)
 
-    Sha256* sha = NULL;
-    byte*  hash = NULL;
+    wc_Sha256* sha = NULL;
+    byte* hash = NULL;
 
-    sha = (Sha256*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha256*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2271,10 +2271,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha256Final_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && !defined(NO_SHA256)
 
-    Sha256* sha = NULL;
-    byte*  hash = NULL;
+    wc_Sha256* sha = NULL;
+    byte* hash = NULL;
 
-    sha = (Sha256*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha256*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2303,7 +2303,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitSha384_1fips(
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha384* sha = (Sha384*) getNativeStruct(env, sha_object);
+    wc_Sha384* sha = (wc_Sha384*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2323,10 +2323,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Update_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha384* sha = NULL;
-    byte*  data = NULL;
+    wc_Sha384* sha = NULL;
+    byte* data = NULL;
 
-    sha = (Sha384*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha384*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2354,10 +2354,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Update_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha384* sha = NULL;
-    byte*  data = NULL;
+    wc_Sha384* sha = NULL;
+    byte* data = NULL;
 
-    sha = (Sha384*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha384*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2384,10 +2384,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Final_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha384* sha = NULL;
-    byte*  hash = NULL;
+    wc_Sha384* sha = NULL;
+    byte* hash = NULL;
 
-    sha = (Sha384*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha384*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2414,10 +2414,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha384Final_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha384* sha = NULL;
-    byte*  hash = NULL;
+    wc_Sha384* sha = NULL;
+    byte* hash = NULL;
 
-    sha = (Sha384*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha384*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2446,7 +2446,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitSha512_1fips(
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha512* sha = (Sha512*) getNativeStruct(env, sha_object);
+    wc_Sha512* sha = (wc_Sha512*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2466,10 +2466,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Update_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha512* sha = NULL;
-    byte*  data = NULL;
+    wc_Sha512* sha = NULL;
+    byte* data = NULL;
 
-    sha = (Sha512*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha512*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2497,10 +2497,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Update_1fips__Lcom_
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha512* sha = NULL;
-    byte*  data = NULL;
+    wc_Sha512* sha = NULL;
+    byte* data = NULL;
 
-    sha = (Sha512*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha512*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2527,10 +2527,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Final_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha512* sha = NULL;
-    byte*  hash = NULL;
+    wc_Sha512* sha = NULL;
+    byte* hash = NULL;
 
-    sha = (Sha512*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha512*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2557,10 +2557,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Sha512Final_1fips__Lcom_w
 
 #if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
 
-    Sha512* sha = NULL;
-    byte*  hash = NULL;
+    wc_Sha512* sha = NULL;
+    byte* hash = NULL;
 
-    sha = (Sha512*) getNativeStruct(env, sha_object);
+    sha = (wc_Sha512*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2797,7 +2797,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_InitMd5_1fips(
 
 #if defined(HAVE_FIPS) && !defined(NO_MD5)
 
-    Md5* md5 = (Md5*) getNativeStruct(env, md5_object);
+    wc_Md5* md5 = (wc_Md5*) getNativeStruct(env, md5_object);
     if ((!md5) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2818,10 +2818,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Update__Lcom_wolfssl_w
 
 #if defined(HAVE_FIPS) && !defined(NO_MD5)
 
-    Md5*  md5 = NULL;
+    wc_Md5* md5 = NULL;
     byte* data = NULL;
 
-    md5 = (Md5*) getNativeStruct(env, md5_object);
+    md5 = (wc_Md5*) getNativeStruct(env, md5_object);
     if ((!md5) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2850,10 +2850,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Update__Lcom_wolfssl_w
 
 #if defined(HAVE_FIPS) && !defined(NO_MD5)
 
-    Md5*  md5 = NULL;
+    wc_Md5* md5 = NULL;
     byte* data = NULL;
 
-    md5 = (Md5*) getNativeStruct(env, md5_object);
+    md5 = (wc_Md5*) getNativeStruct(env, md5_object);
     if ((!md5) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2884,10 +2884,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Final__Lcom_wolfssl_wo
 
 #if defined(HAVE_FIPS) && !defined(NO_MD5)
 
-    Md5*  md5 = NULL;
+    wc_Md5* md5 = NULL;
     byte* hash = NULL;
 
-    md5 = (Md5*) getNativeStruct(env, md5_object);
+    md5 = (wc_Md5*) getNativeStruct(env, md5_object);
     if ((!md5) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
@@ -2915,10 +2915,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Md5Final__Lcom_wolfssl_wo
 
 #if defined(HAVE_FIPS) && !defined(NO_MD5)
 
-    Md5*  md5 = NULL;
+    wc_Md5* md5 = NULL;
     byte* hash = NULL;
 
-    md5 = (Md5*) getNativeStruct(env, md5_object);
+    md5 = (wc_Md5*) getNativeStruct(env, md5_object);
     if ((!md5) || ((*env)->ExceptionOccurred(env))) {
         return BAD_FUNC_ARG;
     }
