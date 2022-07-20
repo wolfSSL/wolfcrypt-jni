@@ -112,7 +112,7 @@ ant build system, please see the main README.md included in this package.
 
 ### Using a Pre-Signed JAR File
 
-wolfSSL (company) has it’s own set of code signing certificates from Oracle
+wolfSSL (company) has it's own set of code signing certificates from Oracle
 that allow wolfJCE to be authenticated in the Oracle JDK.  With each release
 of wolfJCE, wolfSSL ships a couple pre-signed versions of the
 ‘wolfcrypt-jni.jar”, located at:
