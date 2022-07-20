@@ -1462,7 +1462,7 @@ public class Fips extends WolfObject {
 
     /**
      * Creates the agreement agree of size agreeSz using Dh key private priv of
-     * size privSz and peer’s public key otherPub of size pubSz.
+     * size privSz and peer's public key otherPub of size pubSz.
      *
      * @param key
      *            the Dh object.
@@ -1486,7 +1486,7 @@ public class Fips extends WolfObject {
 
     /**
      * Creates the agreement agree of size agreeSz using Dh key private priv of
-     * size privSz and peer’s public key otherPub of size pubSz.
+     * size privSz and peer's public key otherPub of size pubSz.
      *
      * @param key
      *            the Dh object.
@@ -1661,7 +1661,7 @@ public class Fips extends WolfObject {
 
     /**
      * Creates the shared secret out of size outlen using ecc private_key and
-     * the peer’s ecc public_key.
+     * the peer's ecc public_key.
      *
      * @param private_key
      *            the Ecc object for the private key.
@@ -1679,7 +1679,7 @@ public class Fips extends WolfObject {
 
     /**
      * Creates the shared secret out of size outlen using ecc private_key and
-     * the peer’s ecc public_key.
+     * the peer's ecc public_key.
      *
      * @param private_key
      *            the Ecc object for the private key.
