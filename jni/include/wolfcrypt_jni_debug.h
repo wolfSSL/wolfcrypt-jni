@@ -27,50 +27,68 @@ extern "C" {
 
 #ifdef WOLFCRYPT_JNI_DEBUG_ON
 
-#include <wolfssl/wolfcrypt/types.h>
+    #include <wolfssl/wolfcrypt/types.h>
 
-#define LogStr printf
+    #ifdef __ANDROID__
+        #include <android/log.h>
 
-static inline void LogHex(byte* data, word32 offset, word32 length)
-{
-    #define LINE_LEN 16
+        #ifndef WOLFCRYPTJNI_MAX_LOG_WIDTH
+            #define WOLFCRYPTJNI_MAX_LOG_WIDTH 120
+        #endif
 
-    word32 i;
+        static void ANDROID_LOG(const char* fmt, ...)
+        {
+            va_list vlist;
+            char msgStr[WOLFCRYPTJNI_MAX_LOG_WIDTH];
 
-    printf("\t");
+            va_start(vlist, fmt);
+            XVSNPRINTF(msgStr, sizeof(msgStr), fmt, vlist);
+            __android_log_print(ANDROID_LOG_VERBOSE, "[wolfCrypt JNI]",
+                                "%s", msgStr);
+            va_end(vlist);
+        }
+        #define LogStr ANDROID_LOG
+    #else
+        #define LogStr printf
+    #endif
 
-    if (!data) {
-        printf("NULL\n");
-        return;
+    static inline void LogHex(byte* data, word32 offset, word32 length)
+    {
+        #define LINE_LEN 16
+
+        word32 i;
+
+        printf("\t");
+
+        if (!data) {
+            printf("NULL\n");
+            return;
+        }
+
+        data += offset;
+
+        for (i = 0; i < LINE_LEN; i++) {
+            if (i < length)
+                printf("%02x ", data[i]);
+            else
+                printf("   ");
+        }
+
+        printf("| ");
+
+        for (i = 0; i < LINE_LEN; i++)
+            if (i < length)
+                printf("%c", 31 < data[i] && data[i] < 127 ? data[i] : '.');
+
+        printf("\n");
+
+        if (length > LINE_LEN)
+            LogHex(data, LINE_LEN, length - LINE_LEN);
     }
-
-    data += offset;
-
-    for (i = 0; i < LINE_LEN; i++) {
-        if (i < length)
-            printf("%02x ", data[i]);
-        else
-            printf("   ");
-    }
-
-    printf("| ");
-
-    for (i = 0; i < LINE_LEN; i++)
-        if (i < length)
-            printf("%c", 31 < data[i] && data[i] < 127 ? data[i] : '.');
-
-    printf("\n");
-
-    if (length > LINE_LEN)
-        LogHex(data, LINE_LEN, length - LINE_LEN);
-}
 
 #else
-
-#define LogStr(...)
-
-#define LogHex(...)
-
+    #define LogStr(...)
+    #define LogHex(...)
 #endif
 
 #ifdef __cplusplus

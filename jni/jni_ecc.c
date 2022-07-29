@@ -787,8 +787,8 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     }
 
     LogStr(
-        "wc_ecc_verify_hash(sig, sigSz, hash, hashSz, &status, ecc); = %lu\n",
-        ret);
+        "wc_ecc_verify_hash(sig, sigSz, hash, hashSz, &status, ecc); = %d\n",
+        (int)ret);
 
     releaseByteArray(env, hash_object, hash, JNI_ABORT);
     releaseByteArray(env, signature_object, signature, JNI_ABORT);
