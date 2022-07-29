@@ -19,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
 #ifndef __ANDROID__
     #include <wolfssl/options.h>
 #endif
@@ -46,9 +47,9 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_NativeStruct_xfree(
     JNIEnv* env, jobject this, jlong ptr)
 {
-    LogStr("Freeing (%p)\n", (void*)ptr);
+    LogStr("NativeStruct.xfree(), Freeing (%p)\n", (void*)ptr);
 
-    XFREE((void*)ptr, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    XFREE((void*)(uintptr_t)ptr, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 }
 
 /*
@@ -76,7 +77,7 @@ void* getNativeStruct(JNIEnv* env, jobject this)
         if (!nativeStruct)
             throwWolfCryptException(env, "Failed to retrieve native struct");
 
-        return (void*) nativeStruct;
+        return (void*)(uintptr_t)nativeStruct;
     }
 
     return NULL;
