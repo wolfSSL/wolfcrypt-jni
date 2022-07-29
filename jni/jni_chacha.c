@@ -147,18 +147,16 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
     input = getByteArray(env, input_obj);
     inputSz = getByteArrayLength(env, input_obj);
 
-    if (input == NULL) {
-        return NULL;
-    }
-
-    output = (byte*)XMALLOC(inputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (output == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate key buffer");
-        return result;
-    }
-
-    if (chacha == NULL) {
+    if (chacha == NULL || input == NULL) {
         ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        output = (byte*)XMALLOC(inputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            throwOutOfMemoryException(env, "Failed to allocate key buffer");
+            return result;
+        }
     }
 
     if (ret == 0) {
