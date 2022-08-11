@@ -159,6 +159,17 @@ that requires JCE provider JAR's to be authenticated.  Please see
 ### Revision History
 ---------
 
+#### wolfCrypt JNI Release 1.4.0 (08/11/2022)
+
+Release 1.4.0 of wolfCrypt JNI has bug fixes and new features including:
+
+- Add example directory with one simple ProviderTest example (PR 32)
+- Fix double free of ChaCha pointer (PR 34)
+- Add test cases for ChaCha.java (PR 34)
+- Skip WolfCryptMacTest for HMAC-MD5 when using wolfCrypt FIPS 140-3 (PR 35)
+- Use new hash struct names (wc\_Md5/wc\_Sha/etc) in native code (PR 35)
+- Fix potential build error with non-ASCII apostrophes in Fips.java (PR 36)
+
 #### wolfCrypt JNI Release 1.3.0 (05/13/2022)
 
 Release 1.3.0 of wolfCrypt JNI has bug fixes and new features including:
