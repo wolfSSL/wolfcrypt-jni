@@ -222,7 +222,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     pair = new KeyPair(eccPub, eccPriv);
 
                 } catch (Exception e) {
-                    throw new RuntimeException(e.getMessage());
+                    throw new RuntimeException(e);
                 }
 
                 if (debug.DEBUG)
