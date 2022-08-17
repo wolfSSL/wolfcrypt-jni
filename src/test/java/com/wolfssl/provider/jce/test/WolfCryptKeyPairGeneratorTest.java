@@ -217,7 +217,15 @@ public class WolfCryptKeyPairGeneratorTest {
                 new ECGenParameterSpec(enabledCurves.get(i));
             kpg.initialize(ecSpec);
 
-            KeyPair kp = kpg.generateKeyPair();
+            try {
+                KeyPair kp = kpg.generateKeyPair();
+            } catch (Exception e) {
+                /* Some JDK versions' ECKeyFactory may not support all
+                 * wolfCrypt's ECC curves */
+                if (!e.toString().contains("Unknown named curve")) {
+                    throw e;
+                }
+            }
         }
     }
 
