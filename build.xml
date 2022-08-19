@@ -39,6 +39,10 @@
     <property name="ant-junit4" value="ant/ant-junit4.jar" />
     <property name="jce.debug" value="false" />
 
+    <!-- compatible defaults -->
+    <property name="java.source" value="1.7" />
+    <property name="java.target" value="1.7" />
+
     <!-- property file for code signing -->
     <property file="codeSigning.properties" />
 
@@ -85,8 +89,8 @@
         <property name="java.debuglevel" value="source,lines,vars" />
         <property name="java.deprecation" value="true" />
         <property name="java.optimize" value="true" />
-        <property name="java.source" value="1.8" />
-        <property name="java.target" value="1.8" />
+        <property name="java.source" value="${java.source}" />
+        <property name="java.target" value="${java.target}" />
     </target>
 
     <!-- set javac flags: release, no debug, optimize -->
@@ -95,8 +99,8 @@
         <property name="java.debuglevel" value="none" />
         <property name="java.deprecation" value="true" />
         <property name="java.optimize" value="true" />
-        <property name="java.source" value="1.8" />
-        <property name="java.target" value="1.8" />
+        <property name="java.source" value="${java.source}" />
+        <property name="java.target" value="${java.target}" />
     </target>
 
     <target name="init" depends="clean, debug-javac-flags, release-javac-flags">
