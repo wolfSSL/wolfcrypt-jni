@@ -2,6 +2,26 @@ OUT_PATH  = lib
 SRC_PATH  = jni
 INC_PATH  = $(SRC_PATH)/include
 
+NAME = wolfcrypt-jni
+VERSION = $(shell grep 'name="implementation.version"' build.xml | sed -re 's/.*value="(.+)".*/\1/')
+
+ifneq ($(PREFIX),)
+    INSTALL_DIR = $(DESTDIR)$(PREFIX)
+else
+    INSTALL_DIR = $(DESTDIR)/usr/local
+endif
+
+ifeq ($(LIBDIR),)
+    LIBDIR=lib
+endif
+
+ifeq ($(INSTALL),)
+    INSTALL=install
+endif
+
+DIST_FILES = AUTHORS build.xml COPYING examples jni LICENSING makefile makefile.linux makefile.macosx \
+	     pom.xml README_JCE.md README.md rpm src
+
 OBJ_LIST  = jni_fips.o jni_native_struct.o jni_aes.o jni_des3.o jni_md5.o \
 			jni_sha.o jni_hmac.o jni_rng.o jni_rsa.o jni_dh.o jni_ecc.o \
 			jni_ed25519.o jni_curve25519.o jni_chacha.o jni_error.o jni_asn.o \
@@ -23,6 +43,37 @@ $(TARGET): $(OBJS)
 $(OUT_PATH)/%.o: $(SRC_PATH)/%.c
 	@mkdir -p $(OUT_PATH)
 	$(CC) $(CCFLAGS) -c -o $@ $<
+
+dist:
+	mkdir -p "$(NAME)-$(VERSION)"
+	cp -pr $(DIST_FILES) "$(NAME)-$(VERSION)"
+	tar -zcf "$(NAME)-$(VERSION).tar.gz" "$(NAME)-$(VERSION)"
+	rm -rf "$(NAME)-$(VERSION)"
+
+rpm: dist
+	@env
+	@rm -f *.rpm
+	rpmdev-setuptree
+	find ~/rpmbuild/RPMS ~/rpmbuild/SRPMS -name "$(PACKAGE)-$(VERSION)*.rpm" | xargs rm -f
+	@cp "$(NAME)-$(VERSION).tar.gz" ~/rpmbuild/SOURCES/
+	@cp rpm/spec.in rpm/spec
+	@sed -i rpm/spec -e "s/@NAME@/$(NAME)/g"
+	@sed -i rpm/spec -e "s/@VERSION@/$(VERSION)/g"
+	JUNIT_HOME=lib rpmbuild -ba --clean rpm/spec
+	@cp ~/rpmbuild/RPMS/*/$(NAME)-$(VERSION)*.rpm .
+	@cp ~/rpmbuild/SRPMS/$(NAME)-$(VERSION)*.rpm .
+
+lib/wolfcrypt-jni.jar:
+	ant build-jni-release
+
+install: all lib/wolfcrypt-jni.jar
+	$(INSTALL) -d $(INSTALL_DIR)/$(LIBDIR)
+	$(INSTALL) lib/libwolfcryptjni.so $(INSTALL_DIR)/$(LIBDIR)
+	$(INSTALL) lib/wolfcrypt-jni.jar $(INSTALL_DIR)/$(LIBDIR)
+
+uninstall:
+	rm -f $(INSTALL_DIR)/$(LIBDIR)/libwolfcryptjni.so
+	rm -f $(INSTALL_DIR)/$(LIBDIR)/wolfcrypt-jni.jar
 
 .PHONY: clean
 
