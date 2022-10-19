@@ -9,3 +9,7 @@ docs/
 # Code signing key/alias info file
 codeSigning.properties
 
+# rpm package files
+rpm/spec
+*.rpm
+wolfcrypt*.tar.gz
