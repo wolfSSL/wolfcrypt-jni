@@ -68,6 +68,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1init(
     JNIEnv* env, jobject this)
 {
 #ifndef NO_MD5
+    int ret = 0;
     Md5* md5 = (Md5*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
@@ -77,7 +78,43 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1init(
     if (!md5) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
     } else {
-        wc_InitMd5(md5);
+        ret = wc_InitMd5(md5);
+        if (ret != 0) {
+            throwWolfCryptExceptionFromError(env, ret);
+        }
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1copy
+  (JNIEnv* env, jobject this, jobject toBeCopied)
+{
+#ifndef NO_MD5
+    int ret = 0;
+    Md5* md5 = NULL;
+    Md5* tbc = NULL; /* tbc = to be copied */
+
+    if (this == NULL || toBeCopied == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+    }
+
+    md5 = (Md5*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    tbc = (Md5*) getNativeStruct(env, toBeCopied);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    ret = wc_Md5Copy(tbc, md5);
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
     }
 #else
     throwNotCompiledInException(env);
@@ -89,6 +126,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update__Ljava_nio_ByteBuffer_2II(
     JNIEnv* env, jobject this, jobject data_buffer, jint position, jint len)
 {
 #ifndef NO_MD5
+    int ret = 0;
     Md5*  md5  = NULL;
     byte* data = NULL;
 
@@ -103,7 +141,10 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update__Ljava_nio_ByteBuffer_2II(
     if (!md5 || !data) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
     } else {
-        wc_Md5Update(md5, data + position, len);
+        ret = wc_Md5Update(md5, data + position, len);
+        if (ret != 0) {
+            throwWolfCryptExceptionFromError(env, ret);
+        }
     }
 
     LogStr("wc_Md5Update(md5=%p, data, len)\n", md5);
@@ -119,9 +160,10 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update___3BII(
     JNIEnv* env, jobject this, jbyteArray data_buffer, jint offset, jint len)
 {
 #ifndef NO_MD5
+    int ret = 0;
     Md5*   md5   = NULL;
     byte*  data  = NULL;
-    jsize  bufSz = (*env)->GetArrayLength(env, data_buffer);
+    word32 dataSz = 0;
 
     md5 = (Md5*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -129,12 +171,16 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update___3BII(
         return;
     }
 
-    data = getByteArray(env, data_buffer);
+    data   = getByteArray(env, data_buffer);
+    dataSz = getByteArrayLength(env, data_buffer);
 
-    if (!md5 || !data || (offset > bufSz)) {
+    if (!md5 || !data || (offset + len > dataSz)) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
     } else {
-        wc_Md5Update(md5, data + offset, len);
+        ret = wc_Md5Update(md5, data + offset, len);
+        if (ret != 0) {
+            throwWolfCryptExceptionFromError(env, ret);
+        }
     }
 
     LogStr("wc_Md5Update(md5=%p, data, len)\n", md5);
@@ -152,6 +198,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final__Ljava_nio_ByteBuffer_2I(
     JNIEnv* env, jobject this, jobject hash_buffer, jint position)
 {
 #ifndef NO_MD5
+    int ret = 0;
     Md5*  md5  = NULL;
     byte* hash = NULL;
 
@@ -166,7 +213,10 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final__Ljava_nio_ByteBuffer_2I(
     if (!md5 || !hash) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
     } else {
-        wc_Md5Final(md5, hash + position);
+        ret = wc_Md5Final(md5, hash + position);
+        if (ret != 0) {
+            throwWolfCryptExceptionFromError(env, ret);
+        }
     }
 
     LogStr("wc_Md5Final(md5=%p, hash)\n", md5);
@@ -182,6 +232,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final___3B(
     JNIEnv* env, jobject this, jbyteArray hash_buffer)
 {
 #ifndef NO_MD5
+    int ret = 0;
     Md5*  md5  = NULL;
     byte* hash = NULL;
 
@@ -196,7 +247,10 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final___3B(
     if (!md5 || !hash) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
     } else {
-        wc_Md5Final(md5, hash);
+        ret = wc_Md5Final(md5, hash);
+        if (ret != 0) {
+            throwWolfCryptExceptionFromError(env, ret);
+        }
     }
 
     LogStr("wc_Md5Final(md5=%p, hash)\n", md5);

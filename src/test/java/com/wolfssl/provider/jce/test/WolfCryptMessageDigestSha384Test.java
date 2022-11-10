@@ -184,6 +184,89 @@ public class WolfCryptMessageDigestSha384Test {
     }
 
     @Test
+    public void testSha384Reset()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        String input = "Hello World";
+        byte[] inArray = input.getBytes();
+        final byte expected[] = new byte[] {
+            (byte)0x99, (byte)0x51, (byte)0x43, (byte)0x29,
+            (byte)0x18, (byte)0x6b, (byte)0x2f, (byte)0x6a,
+            (byte)0xe4, (byte)0xa1, (byte)0x32, (byte)0x9e,
+            (byte)0x7e, (byte)0xe6, (byte)0xc6, (byte)0x10,
+            (byte)0xa7, (byte)0x29, (byte)0x63, (byte)0x63,
+            (byte)0x35, (byte)0x17, (byte)0x4a, (byte)0xc6,
+            (byte)0xb7, (byte)0x40, (byte)0xf9, (byte)0x02,
+            (byte)0x83, (byte)0x96, (byte)0xfc, (byte)0xc8,
+            (byte)0x03, (byte)0xd0, (byte)0xe9, (byte)0x38,
+            (byte)0x63, (byte)0xa7, (byte)0xc3, (byte)0xd9,
+            (byte)0x0f, (byte)0x86, (byte)0xbe, (byte)0xee,
+            (byte)0x78, (byte)0x2f, (byte)0x4f, (byte)0x3f
+        };
+
+        byte[] output;
+
+        MessageDigest sha384 = MessageDigest.getInstance("SHA-384", "wolfJCE");
+
+        for (int i = 0; i < inArray.length; i++) {
+            sha384.update(inArray[i]);
+        }
+
+        sha384.reset();
+
+        for (int i = 0; i < inArray.length; i++) {
+            sha384.update(inArray[i]);
+        }
+        output = sha384.digest();
+        assertEquals(expected.length, output.length);
+        assertArrayEquals(expected, output);
+    }
+
+    @Test
+    public void testSha384Clone()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               CloneNotSupportedException {
+
+        String input = "Hello World";
+        byte[] inArray = input.getBytes();
+        final byte expected[] = new byte[] {
+            (byte)0x99, (byte)0x51, (byte)0x43, (byte)0x29,
+            (byte)0x18, (byte)0x6b, (byte)0x2f, (byte)0x6a,
+            (byte)0xe4, (byte)0xa1, (byte)0x32, (byte)0x9e,
+            (byte)0x7e, (byte)0xe6, (byte)0xc6, (byte)0x10,
+            (byte)0xa7, (byte)0x29, (byte)0x63, (byte)0x63,
+            (byte)0x35, (byte)0x17, (byte)0x4a, (byte)0xc6,
+            (byte)0xb7, (byte)0x40, (byte)0xf9, (byte)0x02,
+            (byte)0x83, (byte)0x96, (byte)0xfc, (byte)0xc8,
+            (byte)0x03, (byte)0xd0, (byte)0xe9, (byte)0x38,
+            (byte)0x63, (byte)0xa7, (byte)0xc3, (byte)0xd9,
+            (byte)0x0f, (byte)0x86, (byte)0xbe, (byte)0xee,
+            (byte)0x78, (byte)0x2f, (byte)0x4f, (byte)0x3f
+        };
+
+        byte[] output;
+        byte[] output2;
+
+        MessageDigest sha384 = MessageDigest.getInstance("SHA-384", "wolfJCE");
+
+        for (int i = 0; i < inArray.length; i++) {
+            sha384.update(inArray[i]);
+        }
+
+        /* Try to clone existing MessageDigest, should copy over same state */
+        MessageDigest sha384Copy = (MessageDigest)sha384.clone();
+
+        output = sha384.digest();
+        output2 = sha384Copy.digest();
+
+        assertEquals(expected.length, output.length);
+        assertEquals(expected.length, output2.length);
+
+        assertArrayEquals(expected, output);
+        assertArrayEquals(expected, output2);
+    }
+
+    @Test
     public void testSha384Interop()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 

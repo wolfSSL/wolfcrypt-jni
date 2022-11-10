@@ -31,6 +31,7 @@ import java.security.Provider;
 import java.security.MessageDigest;
 import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
+import java.lang.CloneNotSupportedException;
 
 import com.wolfssl.wolfcrypt.Sha;
 import com.wolfssl.provider.jce.WolfCryptProvider;
@@ -184,6 +185,43 @@ public class WolfCryptMessageDigestShaTest {
         output = sha.digest();
         assertEquals(expected.length, output.length);
         assertArrayEquals(expected, output);
+    }
+
+    @Test
+    public void testShaClone()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               CloneNotSupportedException {
+
+        String input = "Hello World";
+        byte[] inArray = input.getBytes();
+        final byte expected[] = new byte[] {
+            (byte)0x0a, (byte)0x4d, (byte)0x55, (byte)0xa8,
+            (byte)0xd7, (byte)0x78, (byte)0xe5, (byte)0x02,
+            (byte)0x2f, (byte)0xab, (byte)0x70, (byte)0x19,
+            (byte)0x77, (byte)0xc5, (byte)0xd8, (byte)0x40,
+            (byte)0xbb, (byte)0xc4, (byte)0x86, (byte)0xd0
+        };
+
+        byte[] output;
+        byte[] output2;
+
+        MessageDigest sha = MessageDigest.getInstance("SHA-1", "wolfJCE");
+
+        for (int i = 0; i < inArray.length; i++) {
+            sha.update(inArray[i]);
+        }
+
+        /* Try to clone existing MessageDigest, should copy over same state */
+        MessageDigest shaCopy = (MessageDigest)sha.clone();
+
+        output = sha.digest();
+        output2 = shaCopy.digest();
+
+        assertEquals(expected.length, output.length);
+        assertEquals(expected.length, output2.length);
+
+        assertArrayEquals(expected, output);
+        assertArrayEquals(expected, output2);
     }
 
     @Test

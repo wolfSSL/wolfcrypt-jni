@@ -31,7 +31,8 @@ import com.wolfssl.provider.jce.WolfCryptDebug;
 /**
  * wolfCrypt JCE SHA2-512 MessageDigest wrapper
  */
-public final class WolfCryptMessageDigestSha512 extends MessageDigestSpi {
+public final class WolfCryptMessageDigestSha512
+    extends MessageDigestSpi implements Cloneable {
 
     /* internal reference to wolfCrypt JNI Sha object */
     private Sha512 sha;
@@ -46,6 +47,16 @@ public final class WolfCryptMessageDigestSha512 extends MessageDigestSpi {
 
         sha = new Sha512();
         sha.init();
+    }
+
+    /**
+     * Create new WolfCryptMessageDigestSha512 based on existing Sha512 object.
+     * Existing object should already be initialized.
+     *
+     * @param sha initialized Sha512 object to be used with this MessageDigest
+     */
+    private WolfCryptMessageDigestSha512(Sha512 sha) {
+        this.sha = sha;
     }
 
     @Override
@@ -104,6 +115,12 @@ public final class WolfCryptMessageDigestSha512 extends MessageDigestSpi {
 
     private void log(String msg) {
         debug.print("[MessageDigest, SHA512] " + msg);
+    }
+
+    @Override
+    public Object clone() {
+        Sha512 shaCopy = new Sha512(this.sha);
+        return new WolfCryptMessageDigestSha512(shaCopy);
     }
 
     @SuppressWarnings("deprecation")

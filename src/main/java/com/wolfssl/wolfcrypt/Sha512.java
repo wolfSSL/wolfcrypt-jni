@@ -48,6 +48,16 @@ public class Sha512 extends MessageDigest {
     protected native void native_init();
 
     /**
+     * Copy existing native WC_SHA512 struct (Sha512 object) into this one.
+     * Copies structure state using wc_Sha512Copy().
+     *
+     * @param toBeCopied initialized Sha512 object to be copied.
+     *
+     * @throws WolfCryptException if native operation fails
+     */
+    protected native void native_copy(Sha512 toBeCopied);
+
+    /**
      * Native SHA2-512 update
      *
      * @param data input data
@@ -93,6 +103,18 @@ public class Sha512 extends MessageDigest {
      */
     public Sha512() {
         init();
+    }
+
+    /**
+     * Create new SHA2-512 object by making a copy of the one given.
+     *
+     * @param sha512 Initialized/created Sha512 object to be copied
+     *
+     * @throws WolfCryptException if native operation fails
+     */
+    public Sha512(Sha512 sha512) {
+        init();
+        native_copy(sha512);
     }
 
     /**
