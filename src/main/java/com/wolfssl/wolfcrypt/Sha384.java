@@ -48,6 +48,16 @@ public class Sha384 extends MessageDigest {
     protected native void native_init();
 
     /**
+     * Copy existing native WC_SHA384 struct (Sha384 object) into this one.
+     * Copies structure state using wc_Sha384Copy().
+     *
+     * @param toBeCopied initialized Sha384 object to be copied.
+     *
+     * @throws WolfCryptException if native operation fails
+     */
+    protected native void native_copy(Sha384 toBeCopied);
+
+    /**
      * Native SHA2-384 update
      *
      * @param data input data
@@ -93,6 +103,18 @@ public class Sha384 extends MessageDigest {
      */
     public Sha384() {
         init();
+    }
+
+    /**
+     * Create new SHA2-384 object by making a copy of the one given.
+     *
+     * @param sha384 Initialized/created Sha384 object to be copied
+     *
+     * @throws WolfCryptException if native operation fails
+     */
+    public Sha384(Sha384 sha384) {
+        init();
+        native_copy(sha384);
     }
 
     /**

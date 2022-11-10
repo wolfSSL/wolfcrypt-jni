@@ -31,7 +31,8 @@ import com.wolfssl.provider.jce.WolfCryptDebug;
 /**
  * wolfCrypt JCE MD5 MessageDigest wrapper
  */
-public final class WolfCryptMessageDigestMd5 extends MessageDigestSpi {
+public final class WolfCryptMessageDigestMd5
+    extends MessageDigestSpi implements Cloneable {
 
     /* internal reference to wolfCrypt JNI Md5 object */
     private Md5 md5;
@@ -46,6 +47,16 @@ public final class WolfCryptMessageDigestMd5 extends MessageDigestSpi {
 
         md5 = new Md5();
         md5.init();
+    }
+
+    /**
+     * Create new WolfCryptMessageDigestMd5 based on existing Md5 object.
+     * Existing object should already be initialized.
+     *
+     * @param md5 initialized Md5 object to be used with this MessageDigest
+     */
+    private WolfCryptMessageDigestMd5(Md5 md5) {
+        this.md5 = md5;
     }
 
     @Override
@@ -104,6 +115,12 @@ public final class WolfCryptMessageDigestMd5 extends MessageDigestSpi {
     @Override
     protected int engineGetDigestLength() {
         return this.md5.digestSize();
+    }
+
+    @Override
+    public Object clone() {
+        Md5 md5Copy = new Md5(this.md5);
+        return new WolfCryptMessageDigestMd5(md5Copy);
     }
 
     @SuppressWarnings("deprecation")

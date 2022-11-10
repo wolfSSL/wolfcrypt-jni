@@ -31,6 +31,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1init
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Sha256
+ * Method:    native_copy
+ * Signature: (Lcom/wolfssl/wolfcrypt/Sha256;)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1copy
+  (JNIEnv *, jobject, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Sha256
  * Method:    native_update
  * Signature: (Ljava/nio/ByteBuffer;II)V
  */

@@ -171,6 +171,46 @@ public class WolfCryptMessageDigestSha256Test {
     }
 
     @Test
+    public void testSha256Clone()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               CloneNotSupportedException {
+
+        String input = "Hello World";
+        byte[] inArray = input.getBytes();
+        final byte expected[] = new byte[] {
+            (byte)0xa5, (byte)0x91, (byte)0xa6, (byte)0xd4,
+            (byte)0x0b, (byte)0xf4, (byte)0x20, (byte)0x40,
+            (byte)0x4a, (byte)0x01, (byte)0x17, (byte)0x33,
+            (byte)0xcf, (byte)0xb7, (byte)0xb1, (byte)0x90,
+            (byte)0xd6, (byte)0x2c, (byte)0x65, (byte)0xbf,
+            (byte)0x0B, (byte)0xcd, (byte)0xa3, (byte)0x2b,
+            (byte)0x57, (byte)0xb2, (byte)0x77, (byte)0xd9,
+            (byte)0xad, (byte)0x9f, (byte)0x14, (byte)0x6e
+        };
+
+        byte[] output;
+        byte[] output2;
+
+        MessageDigest sha256 = MessageDigest.getInstance("SHA-256", "wolfJCE");
+
+        for (int i = 0; i < inArray.length; i++) {
+            sha256.update(inArray[i]);
+        }
+
+        /* Try to clone existing MessageDigest, should copy over same state */
+        MessageDigest sha256Copy = (MessageDigest)sha256.clone();
+
+        output = sha256.digest();
+        output2 = sha256Copy.digest();
+
+        assertEquals(expected.length, output.length);
+        assertEquals(expected.length, output2.length);
+
+        assertArrayEquals(expected, output);
+        assertArrayEquals(expected, output2);
+    }
+
+    @Test
     public void testSha256Interop()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 

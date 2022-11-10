@@ -48,6 +48,16 @@ public class Sha256 extends MessageDigest {
     protected native void native_init();
 
     /**
+     * Copy existing native WC_SHA256 struct (Sha256 object) into this one.
+     * Copies structure state using wc_Sha256Copy().
+     *
+     * @param toBeCopied initialized Sha256 object to be copied.
+     *
+     * @throws WolfCryptException if native operation fails
+     */
+    protected native void native_copy(Sha256 toBeCopied);
+
+    /**
      * Native SHA2-256 update
      *
      * @param data input data
@@ -93,6 +103,18 @@ public class Sha256 extends MessageDigest {
      */
     public Sha256() {
         init();
+    }
+
+    /**
+     * Create new SHA2-256 object by making a copy of the one given.
+     *
+     * @param sha256 Initialized/created Sha256 object to be copied
+     *
+     * @throws WolfCryptException if native operation fails
+     */
+    public Sha256(Sha256 sha256) {
+        init();
+        native_copy(sha256);
     }
 
     /**

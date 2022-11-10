@@ -164,6 +164,39 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1init(
 #endif
 }
 
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_native_1copy
+  (JNIEnv* env, jobject this, jobject toBeCopied)
+{
+#ifndef NO_SHA
+    int ret = 0;
+    Sha* sha = NULL;
+    Sha* tbc = NULL; /* tbc = to be copied */
+
+    if (this == NULL || toBeCopied == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+    }
+
+    sha = (Sha*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    tbc = (Sha*) getNativeStruct(env, toBeCopied);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    ret = wc_ShaCopy(tbc, sha);
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Sha_native_1update__Ljava_nio_ByteBuffer_2II(
     JNIEnv* env, jobject this, jobject data_buffer, jint position, jint len)
@@ -224,7 +257,7 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update___3BII(
 
     LogStr("wc_ShaUpdate_fips(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    LogHex(data, offset, len);
 
     releaseByteArray(env, data_buffer, data, JNI_ABORT);
 #else
@@ -316,6 +349,39 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1init(
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1copy
+  (JNIEnv* env, jobject this, jobject toBeCopied)
+{
+#ifndef NO_SHA256
+    int ret = 0;
+    Sha256* sha = NULL;
+    Sha256* tbc = NULL; /* tbc = to be copied */
+
+    if (this == NULL || toBeCopied == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+    }
+
+    sha = (Sha256*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    tbc = (Sha256*) getNativeStruct(env, toBeCopied);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    ret = wc_Sha256Copy(tbc, sha);
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -479,6 +545,39 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1init(
 #endif
 }
 
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_native_1copy
+  (JNIEnv* env, jobject this, jobject toBeCopied)
+{
+#ifdef WOLFSSL_SHA384
+    int ret = 0;
+    Sha384* sha = NULL;
+    Sha384* tbc = NULL; /* tbc = to be copied */
+
+    if (this == NULL || toBeCopied == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+    }
+
+    sha = (Sha384*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    tbc = (Sha384*) getNativeStruct(env, toBeCopied);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    ret = wc_Sha384Copy(tbc, sha);
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Sha384_native_1update__Ljava_nio_ByteBuffer_2II(
     JNIEnv* env, jobject this, jobject data_buffer, jint position, jint len)
@@ -632,6 +731,39 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1init(
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha512_native_1copy
+  (JNIEnv* env, jobject this, jobject toBeCopied)
+{
+#ifdef WOLFSSL_SHA512
+    int ret = 0;
+    Sha512* sha = NULL;
+    Sha512* tbc = NULL; /* tbc = to be copied */
+
+    if (this == NULL || toBeCopied == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+    }
+
+    sha = (Sha512*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    tbc = (Sha512*) getNativeStruct(env, toBeCopied);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    ret = wc_Sha512Copy(tbc, sha);
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
 #else
     throwNotCompiledInException(env);
 #endif

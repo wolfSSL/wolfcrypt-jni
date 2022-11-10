@@ -48,6 +48,16 @@ public class Md5 extends MessageDigest {
     protected native void native_init();
 
     /**
+     * Copy existing native WC_MD5 struct (Md5 object) into this one.
+     * Copies structure state using wc_Md5Copy().
+     *
+     * @param toBeCopied initialized Md5 object to be copied.
+     *
+     * @throws WolfCryptException if native operation fails
+     */
+    protected native void native_copy(Md5 toBeCopied);
+
+    /**
      * Native Md5 update
      *
      * @param data input data
@@ -93,6 +103,18 @@ public class Md5 extends MessageDigest {
      */
     public Md5() {
         init();
+    }
+
+    /**
+     * Create new Md5 object by making a copy of the one given.
+     *
+     * @param md5 Initialized/created Md5 object to be copied
+     *
+     * @throws WolfCryptException if native operation fails
+     */
+    public Md5(Md5 md5) {
+        init();
+        native_copy(md5);
     }
 
     /**
