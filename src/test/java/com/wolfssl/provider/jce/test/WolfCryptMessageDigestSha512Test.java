@@ -247,6 +247,54 @@ public class WolfCryptMessageDigestSha512Test {
     }
 
     @Test
+    public void testSha512Clone()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               CloneNotSupportedException {
+
+        String input = "Hello World";
+        byte[] inArray = input.getBytes();
+        final byte expected[] = new byte[] {
+            (byte)0x2c, (byte)0x74, (byte)0xfd, (byte)0x17,
+            (byte)0xed, (byte)0xaf, (byte)0xd8, (byte)0x0e,
+            (byte)0x84, (byte)0x47, (byte)0xb0, (byte)0xd4,
+            (byte)0x67, (byte)0x41, (byte)0xee, (byte)0x24,
+            (byte)0x3b, (byte)0x7e, (byte)0xb7, (byte)0x4d,
+            (byte)0xd2, (byte)0x14, (byte)0x9a, (byte)0x0a,
+            (byte)0xb1, (byte)0xb9, (byte)0x24, (byte)0x6f,
+            (byte)0xb3, (byte)0x03, (byte)0x82, (byte)0xf2,
+            (byte)0x7e, (byte)0x85, (byte)0x3d, (byte)0x85,
+            (byte)0x85, (byte)0x71, (byte)0x9e, (byte)0x0e,
+            (byte)0x67, (byte)0xcb, (byte)0xda, (byte)0x0d,
+            (byte)0xaa, (byte)0x8f, (byte)0x51, (byte)0x67,
+            (byte)0x10, (byte)0x64, (byte)0x61, (byte)0x5d,
+            (byte)0x64, (byte)0x5a, (byte)0xe2, (byte)0x7a,
+            (byte)0xcb, (byte)0x15, (byte)0xbf, (byte)0xb1,
+            (byte)0x44, (byte)0x7f, (byte)0x45, (byte)0x9b
+        };
+
+        byte[] output;
+        byte[] output2;
+
+        MessageDigest sha512 = MessageDigest.getInstance("SHA-512", "wolfJCE");
+
+        for (int i = 0; i < inArray.length; i++) {
+            sha512.update(inArray[i]);
+        }
+
+        /* Try to clone existing MessageDigest, should copy over same state */
+        MessageDigest sha512Copy = (MessageDigest)sha512.clone();
+
+        output = sha512.digest();
+        output2 = sha512Copy.digest();
+
+        assertEquals(expected.length, output.length);
+        assertEquals(expected.length, output2.length);
+
+        assertArrayEquals(expected, output);
+        assertArrayEquals(expected, output2);
+    }
+
+    @Test
     public void testSha512Interop()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 

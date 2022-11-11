@@ -48,6 +48,16 @@ public class Sha extends MessageDigest {
     protected native void native_init();
 
     /**
+     * Copy existing native WC_SHA struct (Sha object) into this one.
+     * Copies structure state using wc_ShaCopy().
+     *
+     * @param toBeCopied initialized Sha object to be copied.
+     *
+     * @throws WolfCryptException if native operation fails
+     */
+    protected native void native_copy(Sha toBeCopied);
+
+    /**
      * Native SHA-1 update
      *
      * @param data input data
@@ -93,6 +103,18 @@ public class Sha extends MessageDigest {
      */
     public Sha() {
         init();
+    }
+
+    /**
+     * Create new SHA-1 object by making a copy of the one given.
+     *
+     * @param sha Initialized/created Sha object to be copied
+     *
+     * @throws WolfCryptException if native operation fails
+     */
+    public Sha(Sha sha) {
+        init();
+        native_copy(sha);
     }
 
     /**

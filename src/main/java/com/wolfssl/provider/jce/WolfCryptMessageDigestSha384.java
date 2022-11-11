@@ -31,7 +31,8 @@ import com.wolfssl.provider.jce.WolfCryptDebug;
 /**
  * wolfCrypt JCE SHA2-384 MessageDigest wrapper
  */
-public final class WolfCryptMessageDigestSha384 extends MessageDigestSpi {
+public final class WolfCryptMessageDigestSha384
+    extends MessageDigestSpi implements Cloneable {
 
     /* internal reference to wolfCrypt JNI Sha object */
     private Sha384 sha;
@@ -46,6 +47,16 @@ public final class WolfCryptMessageDigestSha384 extends MessageDigestSpi {
 
         sha = new Sha384();
         sha.init();
+    }
+
+    /**
+     * Create new WolfCryptMessageDigestSha384 based on existing Sha384 object.
+     * Existing object should already be initialized.
+     *
+     * @param sha initialized Sha384 object to be used with this MessageDigest
+     */
+    private WolfCryptMessageDigestSha384(Sha384 sha) {
+        this.sha = sha;
     }
 
     @Override
@@ -104,6 +115,12 @@ public final class WolfCryptMessageDigestSha384 extends MessageDigestSpi {
 
     private void log(String msg) {
         debug.print("[MessageDigest, SHA384] " + msg);
+    }
+
+    @Override
+    public Object clone() {
+        Sha384 shaCopy = new Sha384(this.sha);
+        return new WolfCryptMessageDigestSha384(shaCopy);
     }
 
     @SuppressWarnings("deprecation")

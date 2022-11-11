@@ -174,4 +174,33 @@ public class Sha512Test {
 
         sha.releaseNativeStruct();
     }
+
+    @Test
+    public void copyObject() {
+
+        Sha512 sha = null;
+        Sha512 shaCopy = null;
+        byte[] data = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] expected = Util.h2b("B7B70A0B14D7FA213C6CCD3CBFFC8BB8" +
+                                   "F8E11A85F1113B0EB26A00208F2B9B3A" +
+                                   "1DD4AAF39962861E16AB062274342A1C" +
+                                   "E1F9DBA3654F36FC338245589F296C28");
+        byte[] result = null;
+        byte[] result2 = null;
+
+        sha = new Sha512();
+        sha.update(data);
+
+        /* test making copy of Sha512, should retain same state */
+        shaCopy = new Sha512(sha);
+
+        result = sha.digest();
+        result2 = shaCopy.digest();
+
+        assertArrayEquals(expected, result);
+        assertArrayEquals(expected, result2);
+
+        sha.releaseNativeStruct();
+        shaCopy.releaseNativeStruct();
+    }
 }
