@@ -19,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
 #ifndef __ANDROID__
     #include <wolfssl/options.h>
 #endif
@@ -50,7 +51,7 @@ Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct(
     jlong ret = 0;
 
 #ifndef NO_MD5
-    ret = (jlong) XMALLOC(sizeof(Md5), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    ret = (jlong)(uintptr_t)XMALLOC(sizeof(Md5), NULL, DYNAMIC_TYPE_TMP_BUFFER);
 
     if (!ret)
         throwOutOfMemoryException(env, "Failed to allocate Md5 object");
