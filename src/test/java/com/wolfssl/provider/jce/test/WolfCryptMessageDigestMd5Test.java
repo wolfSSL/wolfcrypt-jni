@@ -186,6 +186,42 @@ public class WolfCryptMessageDigestMd5Test {
     }
 
     @Test
+    public void testMd5Clone()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               CloneNotSupportedException {
+
+        String input = "Hello World";
+        byte[] inArray = input.getBytes();
+        final byte expected[] = new byte[] {
+            (byte)0xb1, (byte)0x0a, (byte)0x8d, (byte)0xb1,
+            (byte)0x64, (byte)0xe0, (byte)0x75, (byte)0x41,
+            (byte)0x05, (byte)0xb7, (byte)0xa9, (byte)0x9b,
+            (byte)0xe7, (byte)0x2e, (byte)0x3f, (byte)0xe5
+        };
+
+        byte[] output;
+        byte[] output2;
+
+        MessageDigest md5 = MessageDigest.getInstance("MD5", "wolfJCE");
+
+        for (int i = 0; i < inArray.length; i++) {
+            md5.update(inArray[i]);
+        }
+
+        /* Try to clone existing MessageDigest, should copy over same state */
+        MessageDigest md5Copy = (MessageDigest)md5.clone();
+
+        output = md5.digest();
+        output2 = md5Copy.digest();
+
+        assertEquals(expected.length, output.length);
+        assertEquals(expected.length, output2.length);
+
+        assertArrayEquals(expected, output);
+        assertArrayEquals(expected, output2);
+    }
+
+    @Test
     public void testMd5Interop()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 

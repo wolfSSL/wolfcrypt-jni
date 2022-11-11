@@ -171,4 +171,32 @@ public class Sha384Test {
 
         sha.releaseNativeStruct();
     }
+
+    @Test
+    public void copyObject() {
+
+        Sha384 sha = null;
+        Sha384 shaCopy = null;
+        byte[] data = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] expected = Util.h2b("561C16404A1B592406301780C0C2DF6A" +
+                                   "A0555F504F35BFBEAC810AE36A343B77" +
+                                   "6858C5E0DE56BB79607A34D2F67108F2");
+        byte[] result = null;
+        byte[] result2 = null;
+
+        sha = new Sha384();
+        sha.update(data);
+
+        /* test making copy of Sha384, should retain same state */
+        shaCopy = new Sha384(sha);
+
+        result = sha.digest();
+        result2 = shaCopy.digest();
+
+        assertArrayEquals(expected, result);
+        assertArrayEquals(expected, result2);
+
+        sha.releaseNativeStruct();
+        shaCopy.releaseNativeStruct();
+    }
 }

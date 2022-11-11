@@ -24,7 +24,6 @@ package com.wolfssl.wolfcrypt.test;
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
-
 import javax.crypto.ShortBufferException;
 
 import org.junit.Test;
@@ -158,6 +157,32 @@ public class ShaTest {
         assertArrayEquals(expected2, result2);
 
         sha.releaseNativeStruct();
+    }
+
+    @Test
+    public void copyObject() {
+
+        Sha sha = null;
+        Sha shaCopy = null;
+        byte[] data = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] expected = Util.h2b("1CF251472D59F8FADEB3AB258E90999D8491BE19");
+        byte[] result = null;
+        byte[] result2 = null;
+
+        sha = new Sha();
+        sha.update(data);
+
+        /* test making copy of Sha, should retain same state */
+        shaCopy = new Sha(sha);
+
+        result = sha.digest();
+        result2 = shaCopy.digest();
+
+        assertArrayEquals(expected, result);
+        assertArrayEquals(expected, result2);
+
+        sha.releaseNativeStruct();
+        shaCopy.releaseNativeStruct();
     }
 }
 
