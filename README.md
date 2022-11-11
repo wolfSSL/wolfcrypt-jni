@@ -89,7 +89,7 @@ files to be on your `JUNIT_HOME` path.
 
 To install and set up JUnit:
 
-a) Download "junit-4.13.jar" and "hamcrest-all-1.3.jar" from junit.org
+a) Download "junit-4.13.2.jar" and "hamcrest-all-1.3.jar" from junit.org
 
 b) Place these JAR files on your system and set `JUNIT_HOME` to point to
    that location:
@@ -158,6 +158,17 @@ that requires JCE provider JAR's to be authenticated.  Please see
 
 ### Revision History
 ---------
+
+#### wolfCrypt JNI Release 1.5.0 (11/14/2022)
+
+Release 1.5.0 of wolfCrypt JNI has bug fixes and new features including:
+
+- Add build compatibility for Java 7 (PR 38)
+- Add support for "SHA" algorithm string in wolfJCE (PR 39)
+- Add rpm package support (PR 40)
+- Add wolfJCE MessageDigest.clone() support (PR 41)
+- Improve error checking of native Md5 API calls (PR 41)
+- Add unit tests for com.wolfssl.wolfcrypt.Md5 (PR 41)
 
 #### wolfCrypt JNI Release 1.4.0 (08/11/2022)
 
