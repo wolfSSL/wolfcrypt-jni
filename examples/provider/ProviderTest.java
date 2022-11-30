@@ -22,6 +22,7 @@
 import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 import java.security.Security;
+import java.security.SecureRandom;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
 
@@ -64,6 +65,23 @@ public class ProviderTest {
             System.out.println("Info: " + p.getInfo());
             System.out.println("Services:");
             System.out.println(p.getServices());
+        }
+
+        /* Test which Provider provides SecureRandom */
+        System.out.println(
+              "\nWhat Provider is providing SecureRandom?");
+        System.out.println("--------------------------------");
+        SecureRandom sr = new SecureRandom();
+        Provider prov = sr.getProvider();
+        System.out.println("\tnew SecureRandom() = " + prov);
+
+        /* Test which Provider provides SecureRandom.getInstanceStrong() */
+        try {
+            sr = SecureRandom.getInstanceStrong();
+            prov = sr.getProvider();
+            System.out.println("\tgetInstanceStrong() = " + prov);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
         }
     }
 
