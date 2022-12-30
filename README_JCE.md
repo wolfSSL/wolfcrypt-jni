@@ -68,6 +68,23 @@ The JCE provider currently supports the following algorithms:
         EC
         DH
 
+### SecureRandom.getInstanceStrong()
+
+When registered as the highest priority security provider, wolfJCE will provide
+`SecureRandom` with the underlying `HashDRBG` algorithm.
+
+Java applications can alternatively call the `SecureRandom.getInstanceStrong()`
+API to get a "known strong SecureRandom implementation". To provide this
+with wolfJCE, the `java.security` file needs to be modified by setting the
+`securerandom.strongAlgorithms` property to:
+
+```
+securerandom.strongAlgorithms=HashDRBG:wolfJCE
+```
+
+Note that the `securerandom.source` property in `java.security` has no affect
+on the wolfJCE provider.
+
 ### Example / Test Code
 ---------
 
