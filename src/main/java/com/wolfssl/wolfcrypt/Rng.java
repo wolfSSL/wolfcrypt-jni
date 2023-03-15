@@ -46,33 +46,39 @@ public class Rng extends NativeStruct {
             int length);
     private native void rngGenerateBlock(byte[] buffer, int offset, int length);
 
+    /* Lock to prevent concurrent access to native WC_RNG */
+    private final Object rngLock = new Object();
+
     /** Default Rng constructor */
     public Rng() { }
 
     @Override
-    public void releaseNativeStruct() {
+    public synchronized void releaseNativeStruct() {
         free();
-
         super.releaseNativeStruct();
     }
 
     /**
      * Initialize Rng object
      */
-    public void init() {
-        if (state == WolfCryptState.UNINITIALIZED) {
-            initRng();
-            state = WolfCryptState.INITIALIZED;
+    public synchronized void init() {
+        synchronized (rngLock) {
+            if (state == WolfCryptState.UNINITIALIZED) {
+                initRng();
+                state = WolfCryptState.INITIALIZED;
+            }
         }
     }
 
     /**
      * Free Rng object
      */
-    public void free() {
-        if (state == WolfCryptState.INITIALIZED) {
-            freeRng();
-            state = WolfCryptState.UNINITIALIZED;
+    public synchronized void free() {
+        synchronized (rngLock) {
+            if (state == WolfCryptState.INITIALIZED) {
+                freeRng();
+                state = WolfCryptState.UNINITIALIZED;
+            }
         }
     }
 
@@ -81,14 +87,23 @@ public class Rng extends NativeStruct {
      *
      * Data size will be buffer.remaining() - buffer.position()
      *
-     * @param buffer output buffer to place random data
+     * @param buffer output buffer to place random data, should be direct
+     *               ByteBuffer (ie: ByteBuffer.allocateDirect())
      *
-     * @throws WolfCryptException if native operation fails
+     * @throws WolfCryptException if native operation fails or input
+     *         ByteBuffer is not direct.
      */
-    public void generateBlock(ByteBuffer buffer) {
+    public synchronized void generateBlock(ByteBuffer buffer) {
         init();
 
-        rngGenerateBlock(buffer, buffer.position(), buffer.remaining());
+        if (buffer.isDirect() == false) {
+            throw new WolfCryptException("Input ByteBuffer is not direct");
+        }
+
+        synchronized (rngLock) {
+            rngGenerateBlock(buffer, buffer.position(), buffer.remaining());
+        }
+
         buffer.position(buffer.position() + buffer.remaining());
     }
 
@@ -101,10 +116,12 @@ public class Rng extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-    public void generateBlock(byte[] buffer, int offset, int length) {
+    public synchronized void generateBlock(byte[] buffer, int offset, int length) {
         init();
 
-        rngGenerateBlock(buffer, offset, length);
+        synchronized (rngLock) {
+            rngGenerateBlock(buffer, offset, length);
+        }
     }
 
     /**
@@ -116,7 +133,9 @@ public class Rng extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-    public void generateBlock(byte[] buffer) {
+    public synchronized void generateBlock(byte[] buffer) {
+
+        /* rngLock acquired inside generateBlock() sub call */
         generateBlock(buffer, 0, buffer.length);
     }
 
@@ -129,9 +148,10 @@ public class Rng extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-    public byte[] generateBlock(int length) {
+    public synchronized byte[] generateBlock(int length) {
         byte[] buffer = new byte[length];
 
+        /* rngLock acquired inside generateBlock() sub call */
         generateBlock(buffer, 0, length);
 
         return buffer;
