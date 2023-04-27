@@ -29,7 +29,37 @@ public class WolfObject {
 
     private static native int init();
 
+    /**
+     * Loads JNI library.
+     *
+     * The native library is expected to be called "wolfcryptjni", and must be
+     * on the system library search path.
+     *
+     * "wolfcryptjni" links against the wolfSSL native C library ("wolfssl"),
+     * and for Windows compatibility "wolfssl" needs to be explicitly loaded
+     * first here.
+     */
     static {
+        int fipsLoaded = 0;
+
+        String osName = System.getProperty("os.name").toLowerCase();
+        if (osName.contains("win")) {
+            try {
+                /* Default wolfCrypt FIPS library on Windows is compiled
+                 * as "wolfssl-fips" by Visual Studio solution */
+                System.loadLibrary("wolfssl-fips");
+                fipsLoaded = 1;
+            } catch (UnsatisfiedLinkError e) {
+                /* wolfCrypt FIPS not available */
+            }
+
+            if (fipsLoaded == 0) {
+                /* FIPS library not loaded, try normal libwolfssl */
+                System.loadLibrary("wolfssl");
+            }
+        }
+
+        /* Load wolfcryptjni library */
         System.loadLibrary("wolfcryptjni");
 
         /* initialize native wolfCrypt library */

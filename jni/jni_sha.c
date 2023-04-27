@@ -19,7 +19,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#ifndef __ANDROID__
+#ifdef WOLFSSL_USER_SETTINGS
+    #include <wolfssl/wolfcrypt/settings.h>
+#elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/error-crypt.h>
@@ -248,9 +250,13 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update___3BII(
     data   = getByteArray(env, data_buffer);
     dataSz = getByteArrayLength(env, data_buffer);
 
-    ret = (!sha || !data || ((offset + len) > dataSz))
-        ? BAD_FUNC_ARG
-        : wc_ShaUpdate(sha, data + offset, len);
+    if (sha == NULL || data == NULL ||
+        (word32)(offset + len) > dataSz) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_ShaUpdate(sha, data + offset, len);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
@@ -439,12 +445,17 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update___3BII(
     data   = getByteArray(env, data_buffer);
     dataSz = getByteArrayLength(env, data_buffer);
 
-    ret = (!sha || !data || ((offset + len) > dataSz))
-        ? BAD_FUNC_ARG
-        : wc_Sha256Update(sha, data + offset, len);
+    if (sha == NULL || data == NULL ||
+        (word32)(offset + len) > dataSz) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_Sha256Update(sha, data + offset, len);
+    }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_Sha256Update(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data);
@@ -630,12 +641,17 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1update___3BII(
     data   = getByteArray(env, data_buffer);
     dataSz = getByteArrayLength(env, data_buffer);
 
-    ret = (!sha || !data || ((offset + len) > dataSz))
-        ? BAD_FUNC_ARG
-        : wc_Sha384Update(sha, data + offset, len);
+    if (sha == NULL || data == NULL ||
+        (word32)(offset + len) > dataSz) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_Sha384Update(sha, data + offset, len);
+    }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_Sha384Update(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
@@ -821,12 +837,17 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1update___3BII(
     data   = getByteArray(env, data_buffer);
     dataSz = getByteArrayLength(env, data_buffer);
 
-    ret = (!sha || !data || ((offset + len) > dataSz))
-        ? BAD_FUNC_ARG
-        : wc_Sha512Update(sha, data + offset, len);
+    if (sha == NULL || data == NULL ||
+        (word32)(offset + len) > dataSz) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_Sha512Update(sha, data + offset, len);
+    }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_Sha512Update(sha=%p, data, len) = %d\n", sha, ret);
     LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
