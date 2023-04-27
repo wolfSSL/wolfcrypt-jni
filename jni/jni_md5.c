@@ -20,7 +20,9 @@
  */
 
 #include <stdint.h>
-#ifndef __ANDROID__
+#ifdef WOLFSSL_USER_SETTINGS
+    #include <wolfssl/wolfcrypt/settings.h>
+#elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/error-crypt.h>
@@ -175,7 +177,8 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update___3BII(
     data   = getByteArray(env, data_buffer);
     dataSz = getByteArrayLength(env, data_buffer);
 
-    if (!md5 || !data || (offset + len > dataSz)) {
+    if (md5 == NULL || data == NULL ||
+        ((word32)(offset + len) > dataSz)) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
     } else {
         ret = wc_Md5Update(md5, data + offset, len);

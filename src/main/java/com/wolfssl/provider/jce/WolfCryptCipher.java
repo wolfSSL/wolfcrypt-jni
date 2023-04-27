@@ -480,6 +480,11 @@ public class WolfCryptCipher extends CipherSpi {
         if (input == null || len < 0)
             throw new IllegalArgumentException("Null input buffer or len < 0");
 
+        if ((buffered.length + len) == 0) {
+            /* no data to process */
+            return null;
+        }
+
         if ((cipherType == CipherType.WC_RSA) ||
             ((buffered.length + len) < blockSize)) {
             /* buffer for short inputs, or RSA */

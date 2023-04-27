@@ -20,7 +20,9 @@
  */
 
 #include <stdint.h>
-#ifndef __ANDROID__
+#ifdef WOLFSSL_USER_SETTINGS
+    #include <wolfssl/wolfcrypt/settings.h>
+#elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/types.h>
@@ -32,12 +34,14 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
-#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+#ifndef USE_WINDOWS_API
+    #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+#endif
 
 JavaVM* g_vm = NULL;
 
 /* called when native library is loaded */
-jint JNI_OnLoad(JavaVM* vm, void* reserved)
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
 {
     /* store JavaVM */
     g_vm = vm;

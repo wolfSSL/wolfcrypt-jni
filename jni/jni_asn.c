@@ -19,7 +19,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#ifndef __ANDROID__
+#ifdef WOLFSSL_USER_SETTINGS
+    #include <wolfssl/wolfcrypt/settings.h>
+#elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/asn_public.h>
@@ -39,11 +41,13 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature__Ljava_nio
     byte* encoded = getDirectBufferAddress(env, encoded_object);
     byte* hash = getDirectBufferAddress(env, hash_object);
 
-    if (!encoded || !hash)
+    if (encoded == NULL || hash == NULL) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
-    else
+    }
+    else {
         setDirectBufferLimit(env, encoded_object,
-            wc_EncodeSignature(encoded, hash, hashSize, hashOID));
+            wc_EncodeSignature(encoded, hash, (word32)hashSize, hashOID));
+    }
 }
 
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature___3B_3BJI(
@@ -54,9 +58,12 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature___3B_3BJI
     byte* hash = getByteArray(env, hash_object);
     jlong ret = 0;
 
-    ret = (!encoded || !hash)
-        ? BAD_FUNC_ARG
-        : wc_EncodeSignature(encoded, hash, hashSize, hashOID);
+    if (encoded == NULL || hash == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_EncodeSignature(encoded, hash, (word32)hashSize, hashOID);
+    }
 
     releaseByteArray(env, encoded_object, encoded, ret < 0);
     releaseByteArray(env, hash_object, hash, ret < 0);
