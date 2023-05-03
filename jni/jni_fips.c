@@ -865,7 +865,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetKey_1fips__Lcom_
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && !defined(NO_DES3)
+#if defined(HAVE_FIPS) && \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION < 2)) && \
+    !defined(NO_DES3)
 
     Des3* des = NULL;
     byte* key = NULL;
@@ -903,7 +905,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetKey_1fips__Lcom_
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && !defined(NO_DES3)
+#if defined(HAVE_FIPS) && \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION < 2)) && \
+    !defined(NO_DES3)
 
     Des3* des = NULL;
     byte* key = NULL;
@@ -941,7 +945,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetIV_1fips__Lcom_w
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && !defined(NO_DES3)
+#if defined(HAVE_FIPS) && \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION < 2)) && \
+    !defined(NO_DES3)
 
     Des3* des = NULL;
     byte* iv  = NULL;
@@ -972,7 +978,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1SetIV_1fips__Lcom_w
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && !defined(NO_DES3)
+#if defined(HAVE_FIPS) && \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION < 2)) && \
+    !defined(NO_DES3)
 
     Des3* des = NULL;
     byte* iv  = NULL;
@@ -1005,7 +1013,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcEncrypt_1fips__L
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && !defined(NO_DES3)
+#if defined(HAVE_FIPS) && \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION < 2)) && \
+    !defined(NO_DES3)
 
     Des3* des = NULL;
     byte* out = NULL;
@@ -1042,7 +1052,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcEncrypt_1fips__L
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && !defined(NO_DES3)
+#if defined(HAVE_FIPS) && \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION < 2)) && \
+    !defined(NO_DES3)
 
     Des3* des = NULL;
     byte* out = NULL;
@@ -1081,7 +1093,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcDecrypt_1fips__L
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && !defined(NO_DES3)
+#if defined(HAVE_FIPS) && \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION < 2)) && \
+    !defined(NO_DES3)
 
     Des3* des = NULL;
     byte* out = NULL;
@@ -1118,7 +1132,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_Des3_1CbcDecrypt_1fips__L
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && !defined(NO_DES3)
+#if defined(HAVE_FIPS) && \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION < 2)) && \
+    !defined(NO_DES3)
 
     Des3* des = NULL;
     byte* out = NULL;
