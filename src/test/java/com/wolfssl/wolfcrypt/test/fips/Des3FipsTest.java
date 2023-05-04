@@ -52,6 +52,12 @@ public class Des3FipsTest extends FipsTest {
          * but not when method is overridden here */
         Assume.assumeTrue(Fips.enabled);
 
+        /* 3DES not included in FIPS boundary for 140-3 */
+        if (Fips.fipsVersion < 5) {
+            System.out.println("Des3 test skipped for 140-3");
+        }
+        Assume.assumeTrue(Fips.fipsVersion < 5);
+
         try {
             new Des3();
         } catch (WolfCryptException e) {
