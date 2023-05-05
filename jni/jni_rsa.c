@@ -19,7 +19,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#ifndef __ANDROID__
+#ifdef WOLFSSL_USER_SETTINGS
+    #include <wolfssl/wolfcrypt/settings.h>
+#elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/rsa.h>
@@ -78,9 +80,12 @@ Java_com_wolfssl_wolfcrypt_Rsa_MakeRsaKey(
         return;
     }
 
-    ret = (!key || !rng)
-        ? BAD_FUNC_ARG
-        : wc_MakeRsaKey(key, size, e, rng);
+    if (key == NULL || rng == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_MakeRsaKey(key, size, (long)e, rng);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
@@ -111,9 +116,12 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw__Ljava_nio_ByteBuffer_2
     n = getDirectBufferAddress(env, n_object);
     e = getDirectBufferAddress(env, e_object);
 
-    ret = (!key || !n || !e)
-        ? BAD_FUNC_ARG
-        : wc_RsaPublicKeyDecodeRaw(n, nSize, e, eSize, key);
+    if (key == NULL || n == NULL || e == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_RsaPublicKeyDecodeRaw(n, (long)nSize, e, (long)eSize, key);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
@@ -148,9 +156,12 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw___3BJ_3BJ(
     n = getByteArray(env, n_object);
     e = getByteArray(env, e_object);
 
-    ret = (!key || !n || !e)
-        ? BAD_FUNC_ARG
-        : wc_RsaPublicKeyDecodeRaw(n, nSize, e, eSize, key);
+    if (key == NULL || n == NULL || e == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_RsaPublicKeyDecodeRaw(n, (long)nSize, e, (long)eSize, key);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);

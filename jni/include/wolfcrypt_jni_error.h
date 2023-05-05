@@ -22,7 +22,9 @@
 #ifndef _Included_wolfcrypt_jni_error
 #define _Included_wolfcrypt_jni_error
 
-#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+#ifndef USE_WINDOWS_API
+    #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+#endif
 
 #include <wolfssl/wolfcrypt/error-crypt.h>
 

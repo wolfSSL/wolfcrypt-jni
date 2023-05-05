@@ -19,7 +19,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#ifndef __ANDROID__
+#ifdef WOLFSSL_USER_SETTINGS
+    #include <wolfssl/wolfcrypt/settings.h>
+#elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/ecc.h>
@@ -755,7 +757,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     JNIEnv* env, jobject this, jbyteArray hash_object,
     jbyteArray signature_object)
 {
-    jlong ret = 0;
+    int ret = 0;
 
 #ifdef HAVE_ECC_VERIFY
     int status = 0;
@@ -776,9 +778,13 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     signature   = getByteArray(env, signature_object);
     signatureSz = getByteArrayLength(env, signature_object);
 
-    ret = (!ecc || !hash || !signature)
-        ? BAD_FUNC_ARG
-        : wc_ecc_verify_hash(signature, signatureSz, hash,hashSz, &status, ecc);
+    if (ecc == NULL || hash == NULL || signature == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_ecc_verify_hash(signature, signatureSz, hash,
+                                 hashSz, &status, ecc);
+    }
 
     if (ret == 0) {
         ret = status;
@@ -788,7 +794,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
 
     LogStr(
         "wc_ecc_verify_hash(sig, sigSz, hash, hashSz, &status, ecc); = %d\n",
-        (int)ret);
+        ret);
 
     releaseByteArray(env, hash_object, hash, JNI_ABORT);
     releaseByteArray(env, signature_object, signature, JNI_ABORT);

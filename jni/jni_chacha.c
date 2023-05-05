@@ -20,7 +20,9 @@
  */
 
 #include <stdint.h>
-#ifndef __ANDROID__
+#ifdef WOLFSSL_USER_SETTINGS
+    #include <wolfssl/wolfcrypt/settings.h>
+#elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/chacha.h>
