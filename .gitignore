@@ -16,3 +16,11 @@ codeSigning.properties
 rpm/spec
 *.rpm
 wolfcrypt*.tar.gz
+
+# Windows
+IDE/WIN/.vs
+IDE/WIN/wolfcryptjni.vcxproj.user
+IDE/WIN/DLL Debug
+IDE/WIN/DLL Debug FIPS
+IDE/WIN/DLL Release
+IDE/WIN/DLL Release FIPS

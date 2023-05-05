@@ -19,7 +19,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#ifndef __ANDROID__
+#ifdef WOLFSSL_USER_SETTINGS
+    #include <wolfssl/wolfcrypt/settings.h>
+#elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/des3.h>
@@ -114,10 +116,12 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__I_3BII_3BI(
     else if (offset < 0 || length < 0 || outputOffset < 0) {
         ret = BAD_FUNC_ARG; /* signed sanizizers */
     }
-    else if (offset + length > getByteArrayLength(env, input_object)) {
+    else if ((word32)(offset + length) >
+             getByteArrayLength(env, input_object)) {
         ret = BUFFER_E; /* buffer overflow check */
     }
-    else if (outputOffset + length > getByteArrayLength(env, output_object)) {
+    else if ((word32)(outputOffset + length) >
+             getByteArrayLength(env, output_object)) {
         ret = BUFFER_E; /* buffer overflow check */
     }
     else if (opmode == DES_ENCRYPTION) {
@@ -179,10 +183,12 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update__ILjava_nio_ByteBuffer_2IILjava_n
     else if (offset < 0 || length < 0) {
         ret = BAD_FUNC_ARG; /* signed sanizizers */
     }
-    else if (offset + length > getDirectBufferLimit(env, input_object)) {
+    else if ((word32)(offset + length) >
+             getDirectBufferLimit(env, input_object)) {
         ret = BUFFER_E; /* buffer overflow check */
     }
-    else if (outputOffset + length > getDirectBufferLimit(env, output_object)) {
+    else if ((word32)(outputOffset + length) >
+             getDirectBufferLimit(env, output_object)) {
         ret = BUFFER_E; /* buffer overflow check */
     }
     else if (opmode == DES_ENCRYPTION) {
