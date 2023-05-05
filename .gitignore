@@ -6,6 +6,9 @@ lib/
 # Generated Javadocs
 docs/
 
+# makefile, since copied from makefile.linux or makefile.macosx
+makefile
+
 # Code signing key/alias info file
 codeSigning.properties
 
