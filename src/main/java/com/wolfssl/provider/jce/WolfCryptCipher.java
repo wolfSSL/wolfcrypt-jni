@@ -646,7 +646,9 @@ public class WolfCryptCipher extends CipherSpi {
                 inputLen + ", out offset: " + outputOffset + ")");
 
         tmpOut = wolfCryptUpdate(input, inputOffset, inputLen);
-
+        if (tmpOut == null) {
+            return 0;
+        }
         System.arraycopy(tmpOut, 0, output, outputOffset, tmpOut.length);
 
         return tmpOut.length;
