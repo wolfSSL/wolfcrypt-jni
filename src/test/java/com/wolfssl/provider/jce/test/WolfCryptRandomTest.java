@@ -26,6 +26,11 @@ import org.junit.Test;
 import org.junit.BeforeClass;
 
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import java.security.Security;
 import java.security.Provider;
@@ -33,6 +38,7 @@ import java.security.SecureRandom;
 import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
 
+import com.wolfssl.wolfcrypt.test.Util;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 
 public class WolfCryptRandomTest {
@@ -40,8 +46,8 @@ public class WolfCryptRandomTest {
     @BeforeClass
     public static void testProviderInstallationAtRuntime() {
 
-        /* install wolfJCE provider at runtime */
-        Security.addProvider(new WolfCryptProvider());
+        /* install wolfJCE provider at runtime, highest priority */
+        Security.insertProviderAt(new WolfCryptProvider(), 1);
 
         Provider p = Security.getProvider("wolfJCE");
         assertNotNull(p);
@@ -75,6 +81,50 @@ public class WolfCryptRandomTest {
     }
 
     @Test
+    public void testThreadedNextBytes()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InterruptedException {
+
+        int numThreads = 15;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<byte[]> results = new LinkedBlockingQueue<>();
+        final SecureRandom rand = SecureRandom.getInstance(
+                                        "HashDRBG", "wolfJCE");
+
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+                    byte[] tmp = new byte[16];
+
+                    /* generate 1000 random arrays per thread */
+                    for (int j = 0; j < 1000; j++) {
+                        rand.nextBytes(tmp);
+                        results.add(tmp.clone());
+                    }
+                    latch.countDown();
+                }
+            });
+        }
+
+        /* wait for all threads to complete */
+        latch.await();
+
+        Iterator<byte[]> listIterator = results.iterator();
+        byte[] current = listIterator.next();
+        while (listIterator.hasNext()) {
+            byte[] next = listIterator.next();
+            if (Arrays.equals(current, next)) {
+                fail("Found two identical random arrays in threaded test:\n" +
+                     Util.b2h(current) + "\n" + Util.b2h(next));
+            }
+            if (listIterator.hasNext()) {
+                current = listIterator.next();
+            }
+        }
+    }
+
+    @Test
     public void testGenerateSeed()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 
@@ -91,6 +141,50 @@ public class WolfCryptRandomTest {
                 fail("SecureRandom generated two equal consecutive arrays");
 
             valuesA = Arrays.copyOf(valuesB, valuesB.length);
+        }
+    }
+
+    @Test
+    public void testThreadedGenerateSeed()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InterruptedException {
+
+        int numThreads = 15;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<byte[]> results = new LinkedBlockingQueue<>();
+        final SecureRandom rand = SecureRandom.getInstance(
+                                        "HashDRBG", "wolfJCE");
+
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+                    byte[] tmp = new byte[16];
+
+                    /* generate 1000 random arrays per thread */
+                    for (int j = 0; j < 1000; j++) {
+                        tmp = rand.generateSeed(tmp.length);
+                        results.add(tmp.clone());
+                    }
+                    latch.countDown();
+                }
+            });
+        }
+
+        /* wait for all threads to complete */
+        latch.await();
+
+        Iterator<byte[]> listIterator = results.iterator();
+        byte[] current = listIterator.next();
+        while (listIterator.hasNext()) {
+            byte[] next = listIterator.next();
+            if (Arrays.equals(current, next)) {
+                fail("Found two identical random arrays in threaded test:\n" +
+                     Util.b2h(current) + "\n" + Util.b2h(next));
+            }
+            if (listIterator.hasNext()) {
+                current = listIterator.next();
+            }
         }
     }
 
@@ -115,6 +209,50 @@ public class WolfCryptRandomTest {
     }
 
     @Test
+    public void testThreadedGetSeed()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InterruptedException {
+
+        int numThreads = 15;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<byte[]> results = new LinkedBlockingQueue<>();
+        final SecureRandom rand = SecureRandom.getInstance(
+                                        "HashDRBG", "wolfJCE");
+
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+                    byte[] tmp = new byte[16];
+
+                    /* generate 1000 random arrays per thread */
+                    for (int j = 0; j < 1000; j++) {
+                        tmp = rand.getSeed(tmp.length);
+                        results.add(tmp.clone());
+                    }
+                    latch.countDown();
+                }
+            });
+        }
+
+        /* wait for all threads to complete */
+        latch.await();
+
+        Iterator<byte[]> listIterator = results.iterator();
+        byte[] current = listIterator.next();
+        while (listIterator.hasNext()) {
+            byte[] next = listIterator.next();
+            if (Arrays.equals(current, next)) {
+                fail("Found two identical random arrays in threaded test:\n" +
+                     Util.b2h(current) + "\n" + Util.b2h(next));
+            }
+            if (listIterator.hasNext()) {
+                current = listIterator.next();
+            }
+        }
+    }
+
+    @Test
     public void testSetSeed()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 
@@ -123,5 +261,6 @@ public class WolfCryptRandomTest {
         SecureRandom rand = SecureRandom.getInstance("HashDRBG", "wolfJCE");
         rand.setSeed(seed);
     }
+
 }
 
