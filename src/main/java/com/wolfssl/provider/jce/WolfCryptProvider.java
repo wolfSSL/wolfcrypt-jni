@@ -121,6 +121,8 @@ public final class WolfCryptProvider extends Provider {
         /* Cipher */
         put("Cipher.AES/CBC/NoPadding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCBCNoPadding");
+        put("Cipher.AES/CBC/PKCS5Padding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCBCPKCS5Padding");
 
         put("Cipher.DESede/CBC/NoPadding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcDESedeCBCNoPadding");

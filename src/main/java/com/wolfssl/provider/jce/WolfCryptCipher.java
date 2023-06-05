@@ -70,7 +70,8 @@ public class WolfCryptCipher extends CipherSpi {
 
     enum PaddingType {
         WC_NONE,
-        WC_PKCS1
+        WC_PKCS1,
+        WC_PKCS5
     }
 
     enum OpMode {
@@ -204,6 +205,16 @@ public class WolfCryptCipher extends CipherSpi {
                 if (debug.DEBUG)
                     log("set padding to PKCS1Padding");
             }
+
+        } else if (padding.equals("PKCS5Padding")) {
+
+            if (cipherType == CipherType.WC_AES) {
+                paddingType = PaddingType.WC_PKCS5;
+                supported = 1;
+
+                if (debug.DEBUG)
+                    log("set padding to PKCS5Padding");
+            }
         }
 
         if (supported == 0) {
@@ -218,16 +229,44 @@ public class WolfCryptCipher extends CipherSpi {
     }
 
     @Override
-    protected int engineGetOutputSize(int inputLen) {
+    protected int engineGetOutputSize(int inputLen)
+        throws IllegalStateException {
 
         int size = 0;
 
         switch (this.cipherType) {
             case WC_AES:
+                if (paddingType == PaddingType.WC_NONE) {
+                    /* wolfCrypt expects input to be padded by application to
+                     * block size, thus output is same size as input */
+                    size = inputLen;
+                }
+                else if (paddingType == PaddingType.WC_PKCS5) {
+                    size = buffered.length + inputLen;
+                    size += Aes.getPKCS7PadSize(size, Aes.BLOCK_SIZE);
+                }
+                else {
+                    throw new IllegalStateException(
+                        "Unsupported padding mode for Cipher Aes");
+                }
+
+                break;
+
             case WC_DES3:
-                /* wolfCrypt expects input to be padded by application to
-                 * block size, thus output is same size as input */
-                size = inputLen;
+                if (paddingType == PaddingType.WC_NONE) {
+                    /* wolfCrypt expects input to be padded by application to
+                     * block size, thus output is same size as input */
+                    size = inputLen;
+                }
+                else if (paddingType == PaddingType.WC_PKCS5) {
+                    size = buffered.length + inputLen;
+                    size += Des3.getPKCS7PadSize(size, Des3.BLOCK_SIZE);
+                }
+                else {
+                    throw new IllegalStateException(
+                        "Unsupported padding mode for Cipher Des3");
+                }
+
                 break;
 
             case WC_RSA:
@@ -474,8 +513,10 @@ public class WolfCryptCipher extends CipherSpi {
 
         int  blocks    = 0;
         int  remaining = 0;
-        byte tmpOut[]  = null;
-        byte tmpIn[]   = null;
+        int  bytesToProcess = 0;
+        byte[] output  = null;
+        byte[] tmpIn   = null;
+        byte[] tmpBuf  = null;
 
         if (input == null || len < 0)
             throw new IllegalArgumentException("Null input buffer or len < 0");
@@ -485,48 +526,61 @@ public class WolfCryptCipher extends CipherSpi {
             return null;
         }
 
-        if ((cipherType == CipherType.WC_RSA) ||
-            ((buffered.length + len) < blockSize)) {
-            /* buffer for short inputs, or RSA */
+        if (len > 0) {
+            /* add input bytes to buffered */
             tmpIn = new byte[buffered.length + len];
             System.arraycopy(buffered, 0, tmpIn, 0, buffered.length);
             System.arraycopy(input, inputOffset, tmpIn, buffered.length, len);
             buffered = tmpIn;
-            return null;
         }
 
-        /* do update on block size multiples only */
-        blocks    = (buffered.length + len) / blockSize;
-        remaining = (buffered.length + len) % blockSize;
+        /* keep buffered data if RSA or data is less than block size */
+        if (cipherType == CipherType.WC_RSA ||
+            buffered.length < blockSize) {
+            return new byte[0];
+        }
 
-        tmpIn = new byte[blocks * blockSize];
-        System.arraycopy(buffered, 0, tmpIn, 0, buffered.length);
-        System.arraycopy(input, inputOffset, tmpIn, buffered.length,
-                         len - remaining);
+        /* calculate blocks and partial non-block size remaining */
+        blocks    = buffered.length / blockSize;
+        remaining = buffered.length % blockSize;
+        bytesToProcess = blocks * blockSize;
+
+        /* if PKCS#5/7 padding, and decrypting, hold on to last block for
+         * padding check in wolfCryptFinal() */
+        if (paddingType == PaddingType.WC_PKCS5 &&
+            direction == OpMode.WC_DECRYPT) {
+            bytesToProcess -= blockSize;
+        }
+
+        /* not enough data to process yet return until more or final */
+        if (bytesToProcess == 0) {
+            return new byte[0];
+        }
+
+        tmpIn = new byte[bytesToProcess];
+        System.arraycopy(buffered, 0, tmpIn, 0, bytesToProcess);
 
         /* buffer remaining non-block size input, or reset */
-        buffered = new byte[remaining];
-        if (remaining > 0) {
-            System.arraycopy(input, inputOffset + (len - remaining),
-                             buffered, 0, remaining);
-        }
+        tmpBuf = new byte[buffered.length - bytesToProcess];
+        System.arraycopy(buffered, bytesToProcess, tmpBuf, 0, tmpBuf.length);
+        buffered = tmpBuf;
 
-        /* process tmp[] */
+        /* process tmpIn[] */
         switch (this.cipherType) {
 
             case WC_AES:
-                tmpOut = this.aes.update(tmpIn, 0, tmpIn.length);
+                output = this.aes.update(tmpIn, 0, tmpIn.length);
 
                 /* truncate */
-                tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
+                output = Arrays.copyOfRange(output, 0, tmpIn.length);
 
                 break;
 
             case WC_DES3:
-                tmpOut = this.des3.update(tmpIn, 0, tmpIn.length);
+                output = this.des3.update(tmpIn, 0, tmpIn.length);
 
                 /* truncate */
-                tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
+                output = Arrays.copyOfRange(output, 0, tmpIn.length);
 
                 break;
 
@@ -534,7 +588,12 @@ public class WolfCryptCipher extends CipherSpi {
                 throw new RuntimeException("Unsupported algorithm type");
         };
 
-        return tmpOut;
+        if (output == null) {
+            /* For interop compatibility, return empty byte array */
+            output = new byte[0];
+        }
+
+        return output;
     }
 
     private byte[] wolfCryptFinal(byte[] input, int inputOffset, int len)
@@ -546,7 +605,11 @@ public class WolfCryptCipher extends CipherSpi {
 
         totalSz = buffered.length + len;
 
-        if (isBlockCipher() && (totalSz % blockSize != 0)) {
+        if (isBlockCipher() &&
+            (this.direction == OpMode.WC_DECRYPT ||
+            (this.direction == OpMode.WC_ENCRYPT &&
+             this.paddingType != PaddingType.WC_PKCS5)) &&
+            (totalSz % blockSize != 0)) {
             throw new IllegalBlockSizeException(
                     "Input length not multiple of " + blockSize + " bytes");
         }
@@ -554,8 +617,21 @@ public class WolfCryptCipher extends CipherSpi {
         /* do final encrypt over totalSz */
         tmpIn = new byte[totalSz];
         System.arraycopy(buffered, 0, tmpIn, 0, buffered.length);
-        if (input != null && len > 0)
+        if (input != null && len > 0) {
             System.arraycopy(input, inputOffset, tmpIn, buffered.length, len);
+        }
+
+        /* add padding if encrypting and PKCS5 padding is used. PKCS#5 padding
+         * is treated the same as PKCS#7 padding here, using each algorithm's
+         * specific block size */
+        if (this.direction == OpMode.WC_ENCRYPT &&
+            this.paddingType == PaddingType.WC_PKCS5) {
+            if (this.cipherType == CipherType.WC_AES) {
+                tmpIn = Aes.padPKCS7(tmpIn, Aes.BLOCK_SIZE);
+            } else if (this.cipherType == CipherType.WC_DES3) {
+                tmpIn = Des3.padPKCS7(tmpIn, Des3.BLOCK_SIZE);
+            }
+        }
 
         switch (this.cipherType) {
 
@@ -565,6 +641,12 @@ public class WolfCryptCipher extends CipherSpi {
                 /* truncate */
                 tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
 
+                /* strip PKCS#5/PKCS#7 padding if required */
+                if (this.direction == OpMode.WC_DECRYPT &&
+                    this.paddingType == PaddingType.WC_PKCS5) {
+                    tmpOut = Aes.unPadPKCS7(tmpOut, Aes.BLOCK_SIZE);
+                }
+
                 break;
 
             case WC_DES3:
@@ -572,6 +654,12 @@ public class WolfCryptCipher extends CipherSpi {
 
                 /* truncate */
                 tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
+
+                /* strip PKCS#5/PKCS#7 padding if required */
+                if (this.direction == OpMode.WC_DECRYPT &&
+                    this.paddingType == PaddingType.WC_PKCS5) {
+                    tmpOut = Des3.unPadPKCS7(tmpOut, Des3.BLOCK_SIZE);
+                }
 
                 break;
 
@@ -793,6 +881,19 @@ public class WolfCryptCipher extends CipherSpi {
             super(CipherType.WC_AES, CipherMode.WC_CBC, PaddingType.WC_NONE);
         }
     }
+
+    /**
+     * Class for AES-CBC with PKCS#5 padding
+     */
+    public static final class wcAESCBCPKCS5Padding extends WolfCryptCipher {
+        /**
+         * Create new wcAESCBCPkcs5Padding object
+         */
+        public wcAESCBCPKCS5Padding() {
+            super(CipherType.WC_AES, CipherMode.WC_CBC, PaddingType.WC_PKCS5);
+        }
+    }
+
     /**
      * Class for DES-EDE-CBC with no padding
      */
@@ -804,6 +905,7 @@ public class WolfCryptCipher extends CipherSpi {
             super(CipherType.WC_DES3, CipherMode.WC_CBC, PaddingType.WC_NONE);
         }
     }
+
     /**
      * Class for RSA-ECB with PKCS1 padding
      */

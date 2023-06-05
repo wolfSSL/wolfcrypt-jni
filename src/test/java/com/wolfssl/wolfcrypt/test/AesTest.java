@@ -23,8 +23,8 @@ package com.wolfssl.wolfcrypt.test;
 
 import static org.junit.Assert.*;
 
+import java.util.Arrays;
 import java.nio.ByteBuffer;
-
 import javax.crypto.ShortBufferException;
 
 import org.junit.Assume;
@@ -416,6 +416,105 @@ public class AesTest {
         /* free again */
         enc.releaseNativeStruct();
         dec.releaseNativeStruct();
+    }
+
+    @Test
+    public void testPadPKCS7() {
+
+        int padSz = 0;
+        int expectedPadSz = 0;
+        byte[] input = null;
+        byte[] padded = null;
+        byte[] unpadded = null;
+
+        /* Test calculated pad size matches expected for input sizes
+         * from 1 to Aes.BLOCK_SIZE */
+        for (int i = 0; i < Aes.BLOCK_SIZE; i++) {
+            padSz = Aes.getPKCS7PadSize(i + 1, Aes.BLOCK_SIZE);
+            expectedPadSz = Aes.BLOCK_SIZE - ((i + 1) % Aes.BLOCK_SIZE);
+            assertEquals(padSz, expectedPadSz);
+        }
+
+        /* Test pad/unpad of arrays sized 1 to 2 * Aes.BLOCK SIZE bytes,
+         * Fill test arrays with 0xAA */
+        for (int i = 0; i < 2 * Aes.BLOCK_SIZE; i++) {
+            input = new byte[i+1];
+            Arrays.fill(input, 0, input.length, (byte)0xAA);
+
+            padded = Aes.padPKCS7(input, Aes.BLOCK_SIZE);
+            unpadded = Aes.unPadPKCS7(padded, Aes.BLOCK_SIZE);
+
+            assertEquals(input.length, unpadded.length);
+            assertArrayEquals(input, unpadded);
+        }
+
+        /* Test padPKCS7() with null input */
+        try {
+            padded = Aes.padPKCS7(null, Aes.BLOCK_SIZE);
+            fail("null input should throw WolfCryptException");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* Test padPKCS7() with zero length input */
+        input = new byte[0];
+        padded = Aes.padPKCS7(input, Aes.BLOCK_SIZE);
+        assertNotNull(padded);
+        assertEquals(16, padded.length);
+
+        /* Test padPKCS7() with zero length block size */
+        try {
+            input = new byte[10];
+            padded = Aes.padPKCS7(input, 0);
+            fail("zero length block size should throw WolfCryptException");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* Test unPadPKCS7() with null input */
+        try {
+            unpadded = Aes.unPadPKCS7(null, Aes.BLOCK_SIZE);
+            fail("null input should throw WolfCryptException");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* Test unPadPKCS7() with zero length input */
+        try {
+            input = new byte[0];
+            unpadded = Aes.unPadPKCS7(input, Aes.BLOCK_SIZE);
+            fail("zero length input should throw WolfCryptException");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* Test unPadPKCS7() with zero length block size */
+        try {
+            input = new byte[10];
+            unpadded = Aes.unPadPKCS7(input, 0);
+            fail("zero length block size should throw WolfCryptException");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* Test unPadPKCS7() with inconsistent pad value */
+        try {
+            padded = Util.h2b("00112233445566778899AABBCC020303");
+            unpadded = Aes.unPadPKCS7(padded, Aes.BLOCK_SIZE);
+            fail("inconsistent padding should throw WolfCryptException");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* Test unPadPKCS7() with pad value larger than block size */
+        try {
+            padded = Util.h2b("00112233445566778899AABBCC111111");
+            unpadded = Aes.unPadPKCS7(padded, Aes.BLOCK_SIZE);
+            fail("pad value larger than block size should " +
+                 "throw WolfCryptException");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
     }
 }
 
