@@ -25,8 +25,10 @@
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/rsa.h>
+#include <wolfssl/wolfcrypt/asn.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/misc.h>
 
 #include <com_wolfssl_wolfcrypt_Rsa.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -43,20 +45,36 @@ JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Rsa_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-    jlong ret = 0;
+    void* ret = NULL;
 
 #ifndef NO_RSA
-    ret = (jlong) XMALLOC(sizeof(RsaKey), NULL, DYNAMIC_TYPE_TMP_BUFFER);
-
-    if (!ret)
+    ret = (void*)XMALLOC(sizeof(RsaKey), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (ret == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Rsa object");
+    }
+    else {
+        XMEMSET(ret, 0, sizeof(RsaKey));
+    }
 
     LogStr("new Rsa() = %p\n", (void*)ret);
 #else
     throwNotCompiledInException(env);
 #endif
 
-    return ret;
+    return (jlong)ret;
+}
+
+JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rsa_getDefaultRsaExponent
+  (JNIEnv *env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+
+#ifndef NO_RSA
+    return WC_RSA_EXPONENT;
+#else
+    return 0;
+#endif
 }
 
 JNIEXPORT void JNICALL
@@ -87,10 +105,11 @@ Java_com_wolfssl_wolfcrypt_Rsa_MakeRsaKey(
         ret = wc_MakeRsaKey(key, size, (long)e, rng);
     }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
-    LogStr("MakeRsaKey(%d, %lu) = %d\n", size, e, ret);
+    LogStr("wc_MakeRsaKey(%d, %lu) = %d\n", size, e, ret);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -123,8 +142,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw__Ljava_nio_ByteBuffer_2
         ret = wc_RsaPublicKeyDecodeRaw(n, (long)nSize, e, (long)eSize, key);
     }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_RsaPublicKeyDecodeRaw(n, nSz, e, eSz) = %d\n", ret);
     LogStr("n[%u]: [%p]\n", (word32)nSize, n);
@@ -163,8 +183,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw___3BJ_3BJ(
         ret = wc_RsaPublicKeyDecodeRaw(n, (long)nSize, e, (long)eSize, key);
     }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_RsaPublicKeyDecodeRaw(n, nSz, e, eSz) = %d\n", ret);
     LogStr("n[%u]: [%p]\n", (word32)nSize, n);
@@ -201,9 +222,12 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey__Ljava_nio_ByteBuffer_2Ljava_
     nSize = n ? getDirectBufferLimit(env, n_object) : 0;
     eSize = e ? getDirectBufferLimit(env, e_object) : 0;
 
-    ret = (!key || !n || !e)
-        ? BAD_FUNC_ARG
-        : wc_RsaFlattenPublicKey(key, e, &eSize, n, &nSize);
+    if (key == NULL || n == NULL || e == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_RsaFlattenPublicKey(key, e, &eSize, n, &nSize);
+    }
 
     if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
@@ -220,7 +244,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey__Ljava_nio_ByteBuffer_2Ljava_
         }
     }
 
-    LogStr("RsaFlattenPublicKey(key, e, eSz, n, nSz) = %d\n", ret);
+    LogStr("wc_RsaFlattenPublicKey(key, e, eSz, n, nSz) = %d\n", ret);
     LogStr("n[%u]: [%p]\n", (word32)nSize, n);
     LogHex((byte*) n, 0, nSize);
     LogStr("e[%u]: [%p]\n", (word32)eSize, e);
@@ -263,9 +287,12 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3J_3B_3J(
         return;
     }
 
-    ret = (!key || !n || !e)
-        ? BAD_FUNC_ARG
-        : wc_RsaFlattenPublicKey(key, e, (word32*) &eSz, n, (word32*) &nSz);
+    if (key == NULL || n == NULL || e == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_RsaFlattenPublicKey(key, e, (word32*) &eSz, n, (word32*) &nSz);
+    }
 
     if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
@@ -299,6 +326,270 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3J_3B_3J(
 #endif
 }
 
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaKeyToDer
+  (JNIEnv* env, jobject this)
+{
+    jbyteArray result = NULL;
+#if !defined(NO_RSA) && (defined(WOLFSSL_KEY_GEN) || defined(OPENSSL_EXTRA))
+    int ret = 0;
+    RsaKey* key = NULL;
+    byte* output = NULL;
+    word32 outputSz = 0;
+    word32 outputBufSz = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0 && key == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    /* Get length of DER encoded RSA private key */
+    if (ret == 0) {
+        ret = wc_RsaKeyToDer(key, NULL, 0);
+        if (ret > 0) {
+            outputSz = ret;
+            outputBufSz = outputSz;
+            ret = 0;
+        }
+    }
+
+    /* Allocate temp buffer to hold DER encoded key */
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_RsaKeyToDer(key, output, outputSz);
+        if (ret > 0) {
+            outputSz = ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, outputSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                                       (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env, "Failed NewByteArray() for DER key");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_RsaKeyToDer() = %d\n", ret);
+    LogStr("output[%u]: [%p]\n", outputSz, output);
+    LogHex((byte*) output, 0, outputSz);
+
+    if (output != NULL) {
+        XMEMSET(output, 0, outputBufSz);
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaKeyToPublicDer
+  (JNIEnv* env, jobject this)
+{
+    jbyteArray result = NULL;
+#ifndef NO_RSA
+    int ret = 0;
+    RsaKey* key = NULL;
+    byte* output = NULL;
+    word32 outputSz = 0;
+    word32 outputBufSz = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0 && key == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    /* Get length of DER encoded RSA private key */
+    if (ret == 0) {
+        ret = wc_RsaKeyToPublicDer(key, NULL, 0);
+        if (ret > 0) {
+            outputSz = ret;
+            outputBufSz = outputSz;
+            ret = 0;
+        }
+    }
+
+    /* Allocate temp buffer to hold DER encoded key */
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_RsaKeyToPublicDer(key, output, outputSz);
+        if (ret > 0) {
+            outputSz = ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, outputSz);
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                                       (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env,
+                "Failed NewByteArray() for DER public key");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_RsaKeyToPublicDer() = %d\n", ret);
+    LogStr("output[%u]: [%p]\n", outputSz, output);
+    LogHex((byte*) output, 0, outputSz);
+
+    if (output != NULL) {
+        XMEMSET(output, 0, outputBufSz);
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyToPkcs8
+  (JNIEnv* env, jobject this)
+{
+    jbyteArray result = NULL;
+#ifndef NO_RSA
+    int ret = 0;
+    RsaKey* key  = NULL;
+    byte* derKey = NULL;
+    byte* pkcs8  = NULL;
+    word32 derKeySz = 0;
+    word32 pkcs8Sz = 0;
+
+    /* Keep track of malloc sizes for memset cleanup */
+    word32 derKeyBufSz = 0;
+    word32 pkcs8BufSz = 0;
+
+    int algoID = RSAk;
+    word32 oidSz = 0;
+    const byte* curveOID = NULL;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0 && key == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    /* Get length of DER encoded RSA private key */
+    if (ret == 0) {
+        ret = wc_RsaKeyToDer(key, NULL, 0);
+        if (ret > 0) {
+            derKeySz = ret;
+            ret = 0;
+        }
+    }
+
+    /* Get PKCS#8 output size, into pkcs8Sz */
+    if (ret == 0) {
+        ret = wc_CreatePKCS8Key(NULL, &pkcs8Sz, derKey, derKeySz, algoID,
+                                curveOID, oidSz);
+        if (ret == LENGTH_ONLY_E) {
+            pkcs8 = (byte*)XMALLOC(pkcs8Sz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+            if (pkcs8 == NULL) {
+                ret = MEMORY_E;
+            }
+            else {
+                XMEMSET(pkcs8, 0, pkcs8Sz);
+                pkcs8BufSz = pkcs8Sz;
+                ret = 0;
+            }
+        }
+    }
+
+    if (ret == 0) {
+        /* Allocate temp buffer to hold DER encoded key */
+        derKey = (byte*)XMALLOC(derKeySz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (derKey == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(derKey, 0, derKeySz);
+            derKeyBufSz = derKeySz;
+        }
+    }
+
+    /* Get DER encoded RSA private key */
+    if (ret == 0) {
+        ret = wc_RsaKeyToDer(key, derKey, derKeySz);
+        if (ret > 0) {
+            derKeySz = ret;
+            ret = 0;
+        }
+    }
+
+    /* Create PKCS#8 from DER key */
+    if (ret == 0) {
+        ret = wc_CreatePKCS8Key(pkcs8, &pkcs8Sz, derKey, derKeySz,
+                                algoID, curveOID, oidSz);
+        if (ret > 0) {
+            pkcs8Sz = ret;
+            ret = 0;
+        }
+    }
+
+    /* Create new Java byte[] and return */
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, pkcs8Sz);
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, pkcs8Sz,
+                                       (const jbyte*) pkcs8);
+        }
+    }
+
+    if (derKey != NULL) {
+        XMEMSET(derKey, 0, derKeyBufSz);
+        XFREE(derKey, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (pkcs8 != NULL) {
+        XMEMSET(pkcs8, 0, pkcs8BufSz);
+        XFREE(pkcs8,  NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
+    if (ret < 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+#else
+    throwNotCompiledInException(env);
+#endif /* !NO_RSA */
+    return result;
+}
+
 JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Rsa_wc_1InitRsaKey(
     JNIEnv* env, jobject this)
@@ -311,14 +602,18 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1InitRsaKey(
         return;
     }
 
-    ret = (!key)
-        ? BAD_FUNC_ARG
-        : wc_InitRsaKey(key, NULL);
+    if (key == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_InitRsaKey(key, NULL);
+    }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
-    LogStr("RsaInitKey(key) = %d\n", ret);
+    LogStr("wc_InitRsaKey(key) = %d\n", ret);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -336,12 +631,16 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1FreeRsaKey(
         return;
     }
 
-    ret = (!key)
-        ? BAD_FUNC_ARG
-        : wc_FreeRsaKey(key);
+    if (key == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_FreeRsaKey(key);
+    }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_FreeRsaKey(key) = %d\n", ret);
 #else
@@ -372,16 +671,21 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSetRNG(
         return JNI_FALSE;
     }
 
-    ret = (key == NULL)
-        ? BAD_FUNC_ARG
-        : wc_RsaSetRNG(key, rng);
+    if (key == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_RsaSetRNG(key, rng);
+    }
 
     LogStr("wc_RsaSetRNG(key, rng) = %d\n", ret);
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
-    else
+    }
+    else {
         return JNI_TRUE;
+    }
 #endif
 
 #else
@@ -410,18 +714,23 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecode(
     k   = getByteArray(env, key_object);
     kSz = getByteArrayLength(env, key_object);
 
-    ret = (!key || !k)
-        ? BAD_FUNC_ARG
-        : wc_RsaPrivateKeyDecode(k, &index, key, kSz);
+    if (key == NULL || k == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_RsaPrivateKeyDecode(k, &index, key, kSz);
+    }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    releaseByteArray(env, key_object, k, JNI_ABORT);
 
     LogStr("wc_RsaPrivateKeyDecode(k, kSize, key) = %d\n", ret);
     LogStr("key[%u]: [%p]\n", (word32)kSz, k);
     LogHex((byte*) k, 0, kSz);
 
-    releaseByteArray(env, key_object, k, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -446,18 +755,24 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecodePKC
     k   = getByteArray(env, key_object);
     kSz = getByteArrayLength(env, key_object);
 
-    if (!key || !k) {
+    if (key == NULL || k == NULL) {
         ret = BAD_FUNC_ARG;
-    } else {
-        length = wc_GetPkcs8TraditionalOffset(k, &offset, kSz);
-
-        ret = (length < 0)
-            ? length
-            : wc_RsaPrivateKeyDecode(k, &offset, key, kSz);
     }
 
-    if (ret != 0)
+    if (ret == 0) {
+        length = wc_GetPkcs8TraditionalOffset(k, &offset, kSz);
+        if (length < 0) {
+            ret = length;
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_RsaPrivateKeyDecode(k, &offset, key, kSz);
+    }
+
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_RsaPrivateKeyDecodePKCS8(k, kSize, key) = %d\n", ret);
     LogStr("key[%u]: [%p]\n", (word32)kSz, k);
@@ -485,12 +800,16 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecode
     k   = getByteArray(env, key_object);
     kSz = getByteArrayLength(env, key_object);
 
-    ret = (!key || !k)
-        ? BAD_FUNC_ARG
-        : wc_RsaPublicKeyDecode(k, &index, key, kSz);
+    if (key == NULL || k == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_RsaPublicKeyDecode(k, &index, key, kSz);
+    }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_RsaPublicKeyDecode(k, kSize, key) = %d\n", ret);
     LogStr("key[%u]: [%p]\n", (word32)kSz, k);
@@ -512,15 +831,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaEncryptSize
         return 0;
     }
 
-    ret = (!key)
-        ? BAD_FUNC_ARG
-        : wc_RsaEncryptSize(key);
+    if (key == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_RsaEncryptSize(key);
+    }
 
-    if (ret < 0)
+    if (ret < 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_RsaEncryptSize(key=%p) = %d\n", key, ret);
-
 #else
     throwNotCompiledInException(env);
 #endif
@@ -556,30 +878,41 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt(
 
     plaintext = getByteArray(env, plaintext_object);
     size = getByteArrayLength(env, plaintext_object);
-    outputSz = wc_RsaEncryptSize(key);
 
-    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (output == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate ciphertext buffer");
-
-        releaseByteArray(env, plaintext_object, plaintext, JNI_ABORT);
-
-        return result;
+    if (key == NULL || rng == NULL || plaintext == NULL) {
+        ret = BAD_FUNC_ARG;
     }
 
-    ret = (!key || !rng || !plaintext)
-        ? BAD_FUNC_ARG
-        : wc_RsaPublicEncrypt(plaintext, size, output, outputSz, key, rng);
+    if (ret == 0) {
+        outputSz = wc_RsaEncryptSize(key);
+        if (outputSz < 0) {
+            ret = outputSz;
+        }
+    }
 
-    if (ret >= 0) {
-        outputSz = ret;
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_RsaPublicEncrypt(plaintext, size, output, outputSz, key, rng);
+        if (ret > 0) {
+            outputSz = ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
 
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, outputSz,
-                                                         (const jbyte*) output);
+                                       (const jbyte*) output);
         } else {
-            throwWolfCryptException(env, "Failed to allocate ciphertext");
+            throwWolfCryptException(env, "Failed to create ciphertext array");
         }
     } else {
         throwWolfCryptExceptionFromError(env, ret);
@@ -589,8 +922,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt(
     LogStr("output[%u]: [%p]\n", outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
-    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-
+    if (output != NULL) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
     releaseByteArray(env, plaintext_object, plaintext, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
@@ -620,30 +954,41 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
 
     ciphertext = getByteArray(env, ciphertext_object);
     size = getByteArrayLength(env, ciphertext_object);
-    outputSz = wc_RsaEncryptSize(key);
 
-    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (output == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate plaintext buffer");
-
-        releaseByteArray(env, ciphertext_object, ciphertext, JNI_ABORT);
-
-        return result;
+    if (key == NULL || ciphertext == NULL) {
+        ret = BAD_FUNC_ARG;
     }
 
-    ret = (!key || !ciphertext)
-        ? BAD_FUNC_ARG
-        : wc_RsaPrivateDecrypt(ciphertext, size, output, outputSz, key);
+    if (ret == 0) {
+        outputSz = wc_RsaEncryptSize(key);
+        if (outputSz < 0) {
+            ret = outputSz;
+        }
+    }
 
-    if (ret >= 0) {
-        outputSz = ret;
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_RsaPrivateDecrypt(ciphertext, size, output, outputSz, key);
+        if (ret > 0) {
+            outputSz = ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
 
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, outputSz,
-                                                         (const jbyte*) output);
+                                       (const jbyte*) output);
         } else {
-            throwWolfCryptException(env, "Failed to allocate plaintext");
+            throwWolfCryptException(env, "Failed to create plaintext array");
         }
     } else {
         throwWolfCryptExceptionFromError(env, ret);
@@ -653,8 +998,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
     LogStr("output[%u]: [%p]\n", outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
-    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-
+    if (output != NULL) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
     releaseByteArray(env, ciphertext_object, ciphertext, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
@@ -691,30 +1037,42 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Sign(
 
     data = getByteArray(env, data_object);
     size = getByteArrayLength(env, data_object);
-    outputSz = wc_RsaEncryptSize(key);
 
-    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (output == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate signature buffer");
-
-        releaseByteArray(env, data_object, data, JNI_ABORT);
-
-        return result;
+    if (key == NULL || rng == NULL || data == NULL) {
+        ret = BAD_FUNC_ARG;
     }
 
-    ret = (!key || !rng || !data)
-        ? BAD_FUNC_ARG
-        : wc_RsaSSL_Sign(data, size, output, outputSz, key, rng);
+    if (ret == 0) {
+        outputSz = wc_RsaEncryptSize(key);
+        if (outputSz < 0) {
+            ret = outputSz;
+        }
+    }
 
-    if (ret >= 0) {
-        outputSz = ret;
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_RsaSSL_Sign(data, size, output, outputSz, key, rng);
+        if (ret > 0) {
+            outputSz = ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
 
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, outputSz,
-                                                         (const jbyte*) output);
+                                       (const jbyte*) output);
         } else {
-            throwWolfCryptException(env, "Failed to allocate signature");
+            throwWolfCryptException(env,
+                "Failed to create new signature array");
         }
     } else {
         throwWolfCryptExceptionFromError(env, ret);
@@ -724,8 +1082,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Sign(
     LogStr("output[%u]: [%p]\n", outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
-    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-
+    if (output != NULL) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
     releaseByteArray(env, data_object, data, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
@@ -739,7 +1098,6 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify(
     JNIEnv* env, jobject this, jbyteArray signature_object)
 {
     jbyteArray result = NULL;
-
 #ifndef NO_RSA
     int ret = 0;
     RsaKey* key     = NULL;
@@ -755,30 +1113,41 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify(
 
     signature = getByteArray(env, signature_object);
     size = getByteArrayLength(env, signature_object);
-    outputSz = wc_RsaEncryptSize(key);
 
-    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (output == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate verify buffer");
-
-        releaseByteArray(env, signature_object, signature, JNI_ABORT);
-
-        return result;
+    if (key == NULL || signature == NULL) {
+        ret = BAD_FUNC_ARG;
     }
 
-    ret = (!key || !signature)
-        ? BAD_FUNC_ARG
-        : wc_RsaSSL_Verify(signature, size, output, outputSz, key);
+    if (ret == 0) {
+        outputSz = wc_RsaEncryptSize(key);
+        if (outputSz < 0) {
+            ret = outputSz;
+        }
+    }
 
-    if (ret >= 0) {
-        outputSz = ret;
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_RsaSSL_Verify(signature, size, output, outputSz, key);
+        if (ret > 0) {
+            outputSz = ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
 
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, outputSz,
-                                                         (const jbyte*) output);
+                                       (const jbyte*) output);
         } else {
-            throwWolfCryptException(env, "Failed to allocate verify");
+            throwWolfCryptException(env, "Failed to create new verify array");
         }
     } else {
         throwWolfCryptExceptionFromError(env, ret);
@@ -788,8 +1157,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify(
     LogStr("output[%u]: [%p]\n", outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
-    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-
+    if (output != NULL) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
     releaseByteArray(env, signature_object, signature, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
@@ -797,3 +1167,4 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify(
 
     return result;
 }
+

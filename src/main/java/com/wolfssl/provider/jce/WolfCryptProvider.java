@@ -136,6 +136,8 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptKeyAgreement$wcECDH");
 
         /* KeyPairGenerator */
+        put("KeyPairGenerator.RSA",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenRSA");
         put("KeyPairGenerator.EC",
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenECC");
         put("KeyPairGenerator.DH",
