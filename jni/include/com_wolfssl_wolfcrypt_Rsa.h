@@ -59,6 +59,30 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_MakeRsaKey
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaKeyToDer
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaKeyToDer
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaKeyToPublicDer
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaKeyToPublicDer
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaPrivateKeyToPkcs8
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyToPkcs8
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
  * Method:    wc_InitRsaKey
  * Signature: ()V
  */
@@ -144,6 +168,14 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Sign
  */
 JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify
   (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    getDefaultRsaExponent
+ * Signature: ()J
+ */
+JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rsa_getDefaultRsaExponent
+  (JNIEnv *, jclass);
 
 #ifdef __cplusplus
 }

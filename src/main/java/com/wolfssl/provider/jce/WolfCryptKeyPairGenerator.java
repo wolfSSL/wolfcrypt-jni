@@ -38,7 +38,10 @@ import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.ECGenParameterSpec;
+import java.security.spec.RSAKeyGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 
@@ -48,6 +51,7 @@ import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.DHPrivateKeySpec;
 import javax.crypto.spec.DHPublicKeySpec;
 
+import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Rng;
@@ -60,6 +64,7 @@ import com.wolfssl.provider.jce.WolfCryptDebug;
 public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
     enum KeyType {
+        WC_RSA,
         WC_ECC,
         WC_DH
     }
@@ -68,6 +73,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
     private String curve = null;
     private int keysize = 0;
+    private long publicExponent = 0;
 
     private byte[] dhP = null;
     private byte[] dhG = null;
@@ -100,6 +106,11 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
         this.keysize = keysize;
 
+        if (type == KeyType.WC_RSA) {
+            /* Set default RSA exponent for wolfSSL */
+            this.publicExponent = Rsa.getDefaultRsaExponent();
+        }
+
         if (debug.DEBUG)
             log("init with keysize: " + keysize);
     }
@@ -114,6 +125,31 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         }
 
         switch (type) {
+
+            case WC_RSA:
+
+                if (!(params instanceof RSAKeyGenParameterSpec)) {
+                    throw new InvalidAlgorithmParameterException(
+                        "params must be of type RSAKeyGenParameterSpec");
+                }
+
+                RSAKeyGenParameterSpec rsaSpec = (RSAKeyGenParameterSpec)params;
+                this.keysize = rsaSpec.getKeysize();
+
+                try {
+                    this.publicExponent =
+                        rsaSpec.getPublicExponent().longValueExact();
+                } catch (ArithmeticException e) {
+                    throw new InvalidAlgorithmParameterException(
+                        "RSA public exponent value larger than long");
+                }
+
+                if (debug.DEBUG) {
+                    log("init with RSA spec, keysize = " + keysize +
+                        ", public exponent = " + publicExponent);
+                }
+
+                break;
 
             case WC_ECC:
 
@@ -183,6 +219,58 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
         switch (this.type) {
 
+            case WC_RSA:
+
+                if (keysize == 0) {
+                    throw new RuntimeException(
+                        "keysize is 0, please set before generating key");
+                }
+
+                RSAPrivateKey rsaPriv = null;
+                RSAPublicKey  rsaPub  = null;
+
+                Rsa rsa = new Rsa();
+
+                try {
+                    rsa.makeKey(this.keysize, this.publicExponent, rng);
+
+                    /* private key */
+                    privDer = rsa.privateKeyEncodePKCS8();
+                    if (privDer == null) {
+                        throw new RuntimeException(
+                            "Unable to get RSA private key DER");
+                    }
+                    privSpec = new PKCS8EncodedKeySpec(privDer);
+
+                    /* public key */
+                    pubDer = rsa.exportPublicDer();
+                    if (pubDer == null) {
+                        throw new RuntimeException(
+                            "Unable to get RSA public key DER");
+                    }
+                    pubSpec = new X509EncodedKeySpec(pubDer);
+
+                    zeroArray(privDer);
+                    zeroArray(pubDer);
+                    rsa.releaseNativeStruct();
+
+                    KeyFactory kf = KeyFactory.getInstance("RSA");
+
+                    rsaPriv = (RSAPrivateKey)kf.generatePrivate(privSpec);
+                    rsaPub  = (RSAPublicKey)kf.generatePublic(pubSpec);
+
+                    pair = new KeyPair(rsaPub, rsaPriv);
+
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+
+                if (debug.DEBUG) {
+                    log("generated RSA KeyPair");
+                }
+
+                break;
+
             case WC_ECC:
 
                 if (keysize == 0) {
@@ -203,10 +291,18 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
                 /* private key */
                 privDer = ecc.privateKeyEncodePKCS8();
+                if (privDer == null) {
+                    throw new RuntimeException(
+                        "Unable to get ECC private key DER");
+                }
                 privSpec = new PKCS8EncodedKeySpec(privDer);
 
                 /* public key */
                 pubDer = ecc.publicKeyEncode();
+                if (pubDer == null) {
+                    throw new RuntimeException(
+                        "Unable to get ECC public key DER");
+                }
                 pubSpec = new X509EncodedKeySpec(pubDer);
 
                 zeroArray(privDer);
@@ -226,7 +322,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 }
 
                 if (debug.DEBUG)
-                    log("generated KeyPair");
+                    log("generated ECC KeyPair");
 
                 break;
 
@@ -274,13 +370,13 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 }
 
                 if (debug.DEBUG)
-                    log("generated KeyPair");
+                    log("generated DH KeyPair");
 
                 break;
 
             default:
                 throw new RuntimeException(
-                    "Unsupported algorithm for key generation");
+                    "Unsupported algorithm for key generation: " + this.type);
         }
 
         return pair;
@@ -288,6 +384,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
     private String typeToString(KeyType type) {
         switch (type) {
+            case WC_RSA:
+                return "RSA";
             case WC_ECC:
                 return "ECC";
             case WC_DH:
@@ -321,6 +419,19 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
         for (int i = 0; i < in.length; i++) {
             in[i] = 0;
+        }
+    }
+
+    /**
+     * wolfCrypt RSA key pair generator class
+     */
+    public static final class wcKeyPairGenRSA
+            extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenRSA object
+         */
+        public wcKeyPairGenRSA() {
+            super(KeyType.WC_RSA);
         }
     }
 
