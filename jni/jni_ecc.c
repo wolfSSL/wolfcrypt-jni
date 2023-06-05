@@ -44,13 +44,17 @@ JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-    void* ret = 0;
+    void* ret = NULL;
 
 #ifdef HAVE_ECC
-    ret = XMALLOC(sizeof(ecc_key), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    ret = (void*)XMALLOC(sizeof(ecc_key), NULL, DYNAMIC_TYPE_TMP_BUFFER);
 
-    if (ret == NULL)
+    if (ret == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Ecc object");
+    }
+    else {
+        XMEMSET(ret, 0, sizeof(ecc_key));
+    }
 
     LogStr("new Ecc() = %p\n", (void*)ret);
 #else
@@ -72,12 +76,11 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1init(
         return;
     }
 
-    ret = (!ecc)
-        ? BAD_FUNC_ARG
-        : wc_ecc_init(ecc);
-
-    if (ret != 0)
+    /* Checks ecc for NULL internally */
+    ret = wc_ecc_init(ecc);
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("ecc_init(ecc=%p) = %d\n", ecc, ret);
 #else
@@ -96,8 +99,8 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1free(
         return;
     }
 
-    if (ecc)
-        wc_ecc_free(ecc);
+    /* Checks ecc for NULL internally */
+    wc_ecc_free(ecc);
 
     LogStr("ecc_free(ecc=%p)\n", ecc);
 #else
@@ -126,12 +129,16 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key(
         return;
     }
 
-    ret = (!ecc || !rng)
-        ? BAD_FUNC_ARG
-        : wc_ecc_make_key(rng, size, ecc);
+    if (ecc == NULL || rng == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_ecc_make_key(rng, size, ecc);
+    }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("ecc_make_key(rng, size, ecc=%p) = %d\n", ecc, ret);
 #else
@@ -163,11 +170,17 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key_1ex
         return;
     }
 
-    ret = (!ecc || !rng || !curveName || !name)
-        ? BAD_FUNC_ARG
-        : wc_ecc_get_curve_id_from_name(name);
+    if (ecc == NULL || rng == NULL || curveName == NULL || name == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
 
-    (*env)->ReleaseStringUTFChars(env, curveName, name);
+    if (ret == 0) {
+        ret = wc_ecc_get_curve_id_from_name(name);
+    }
+
+    if (name != NULL) {
+        (*env)->ReleaseStringUTFChars(env, curveName, name);
+    }
 
     if (ret < 0) {
         throwWolfCryptException(env, "ECC curve unsupported or not enabled");
@@ -192,18 +205,24 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1check_1key(
 {
 #ifdef HAVE_ECC
     int ret = 0;
-    ecc_key* ecc = (ecc_key*) getNativeStruct(env, this);
+    ecc_key* ecc = NULL;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
         return;
     }
 
-    ret = (!ecc)
-        ? BAD_FUNC_ARG
-        : wc_ecc_check_key(ecc);
+    if (ecc == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_ecc_check_key(ecc);
+    }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_ecc_check_key(ecc=%p) = %d\n", ecc, ret);
 #else
@@ -229,19 +248,22 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
         /* getNativeStruct may throw exception, prevent throwing another */
         return;
     }
+
     priv   = getByteArray(env, priv_object);
     privSz = getByteArrayLength(env, priv_object);
     pub    = getByteArray(env, pub_object);
     pubSz  = getByteArrayLength(env, pub_object);
 
     /* pub may be null if only importing private key */
-    if (!ecc || !priv) {
+    if (ecc == NULL || priv == NULL) {
         ret = BAD_FUNC_ARG;
+    }
 
-    } else {
+    if (ret == 0) {
         /* detect, and later skip, leading zero byte */
-        if (priv[0] == 0)
+        if (priv[0] == 0) {
             idx = 1;
+        }
 
         if (curveName != NULL) {
             name = (*env)->GetStringUTFChars(env, curveName, 0);
@@ -250,8 +272,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
 
             if (ret > 0) {
                 /* import with curve id, ret stores curve id */
-                ret = wc_ecc_import_private_key_ex(priv + idx, privSz - idx, pub,
-                                                   pubSz, ecc, ret);
+                ret = wc_ecc_import_private_key_ex(priv + idx, privSz - idx,
+                                                   pub, pubSz, ecc, ret);
             } else {
                 /* unsupported curve name */
                 ret = BAD_FUNC_ARG;
@@ -259,12 +281,13 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
 
         } else {
             ret = wc_ecc_import_private_key(priv + idx, privSz - idx, pub,
-                                               pubSz, ecc);
+                                            pubSz, ecc);
         }
     }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_ecc_import_private_key(ecc=%p) = %d\n", ecc, ret);
 
@@ -286,6 +309,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private(
     ecc_key* ecc = NULL;
     byte* output = NULL;
     word32 outputSz = 0;
+    word32 outputBufSz = 0;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -293,43 +317,55 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private(
         return NULL;
     }
 
-    outputSz = wc_ecc_size(ecc);
-
-    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (output == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate key buffer");
-        return result;
+    if (ecc == NULL) {
+        ret = BAD_FUNC_ARG;
     }
 
-    ret = (!ecc)
-        ? BAD_FUNC_ARG
-        : wc_ecc_export_private_only(ecc, output, &outputSz);
+    if (ret == 0) {
+        outputSz = wc_ecc_size(ecc);
+        outputBufSz = outputSz;
+
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(output, 0, sizeof(outputSz));
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_ecc_export_private_only(ecc, output, &outputSz);
+    }
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
 
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, outputSz,
-                                                         (const jbyte*) output);
+                                       (const jbyte*) output);
         } else {
-            throwWolfCryptException(env, "Failed to allocate key");
+            throwWolfCryptException(env, "Failed to allocate ECC key");
         }
     } else {
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    LogStr("wc_ecc_export_x963(ecc, output=%p, outputSz) = %d\n", output, ret);
+    LogStr("wc_ecc_export_private_only(ecc=%p, output=%p, outputSz) = %d\n",
+            ecc, output, ret);
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
-    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (output != NULL) {
+        XMEMSET(output, 0, outputBufSz);
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
 
     return result;
 }
-
 
 JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1x963(
@@ -350,14 +386,20 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1x963(
     key   = getByteArray(env, key_object);
     keySz = getByteArrayLength(env, key_object);
 
-    ret = (!ecc || !key)
-        ? BAD_FUNC_ARG
-        : wc_ecc_import_x963(key, keySz, ecc);
+    if (ecc == NULL || key == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
 
-    if (ret != 0)
+    if (ret == 0) {
+        ret = wc_ecc_import_x963(key, keySz, ecc);
+    }
+
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
-    LogStr("ecc_import_x963(key, keySz, ecc=%p) = %d\n", ecc, ret);
+    LogStr("wc_ecc_import_x963(key=%p, keySz=%d, ecc=%p) = %d\n",
+           key, (int)keySz, ecc, ret);
 
     releaseByteArray(env, key_object, key, JNI_ABORT);
 #else
@@ -383,37 +425,53 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1x963(
         return NULL;
     }
 
-    /* get size */
-    wc_ecc_export_x963(ecc, NULL, &outputSz);
-
-    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (output == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate key buffer");
-        return result;
+    if (ecc == NULL) {
+        ret = BAD_FUNC_ARG;
     }
 
-    ret = (!ecc)
-        ? BAD_FUNC_ARG
-        : wc_ecc_export_x963(ecc, output, &outputSz);
+    /* get size */
+    if (ret == 0) {
+        ret = wc_ecc_export_x963(ecc, NULL, &outputSz);
+        if (ret == LENGTH_ONLY_E) {
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(output, 0, outputSz);
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_ecc_export_x963(ecc, output, &outputSz);
+    }
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
 
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, outputSz,
-                                                         (const jbyte*) output);
+                                       (const jbyte*) output);
         } else {
-            throwWolfCryptException(env, "Failed to allocate key");
+            throwWolfCryptException(env, "Failed to create new ECC key array");
         }
     } else {
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    LogStr("wc_ecc_export_x963(ecc, output=%p, outputSz) = %d\n", output, ret);
+    LogStr("wc_ecc_export_x963(ecc=%p, output=%p, outputSz) = %d\n",
+            ecc, output, ret);
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
-    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (output != NULL) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -441,14 +499,19 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPrivateKeyDecode(
     key   = getByteArray(env, key_object);
     keySz = getByteArrayLength(env, key_object);
 
-    ret = (!ecc || !key)
-        ? BAD_FUNC_ARG
-        : wc_EccPrivateKeyDecode(key, &idx, ecc, keySz);
+    if (ecc == NULL || key == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_EccPrivateKeyDecode(key, &idx, ecc, keySz);
+    }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
-    LogStr("wc_EccPrivateKeyDecode(key, keySz, ecc=%p) = %d\n", ecc, ret);
+    LogStr("wc_EccPrivateKeyDecode(key=%p, keySz=%d, ecc=%p) = %d\n",
+           key, (int)keySz, ecc, ret);
 
     releaseByteArray(env, key_object, key, JNI_ABORT);
 #else
@@ -464,45 +527,63 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccKeyToDer(
 
 #if defined(HAVE_ECC) && !defined(NO_ASN) && defined(WOLFSSL_KEY_GEN)
     int ret = 0;
-    ecc_key* ecc;
+    ecc_key* ecc = NULL;
     byte* output = NULL;
     word32 outputSz = 256;
+    word32 outputBufSz = 0;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
-        return NULL;
+        ret = BAD_FUNC_ARG;
     }
 
-    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (output == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate key buffer");
-        return result;
+    if (ret == 0 && ecc == NULL) {
+        ret = BAD_FUNC_ARG;
     }
 
-    ret = (!ecc)
-        ? BAD_FUNC_ARG
-        : wc_EccKeyToDer(ecc, output, outputSz);
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(output, 0, outputSz);
+        }
+    }
 
-    if (ret >= 0) {
-        outputSz = ret;
+    if (ret == 0) {
+        outputBufSz = outputSz;
+
+        ret = wc_EccKeyToDer(ecc, output, outputSz);
+        if (ret >= 0) {
+            outputSz = ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
 
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, outputSz,
-                                                         (const jbyte*) output);
+                                       (const jbyte*) output);
         } else {
-            throwWolfCryptException(env, "Failed to allocate key");
+            throwWolfCryptException(env, "Failed to allocate ECC key");
         }
     } else {
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    LogStr("wc_EccKeyToDer(ecc, output=%p, outputSz) = %d\n", output, ret);
+    LogStr("wc_EccKeyToDer(ecc = %p, output=%p, outputSz) = %d\n",
+           ecc, output, ret);
     LogStr("output[%u]: [%p]\n", outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
-    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (output != NULL) {
+        XMEMSET(output, 0, outputBufSz);
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -530,14 +611,19 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyDecode(
     key   = getByteArray(env, key_object);
     keySz = getByteArrayLength(env, key_object);
 
-    ret = (!ecc || !key)
-        ? BAD_FUNC_ARG
-        : wc_EccPublicKeyDecode(key, &idx, ecc, keySz);
+    if (ecc == NULL || key == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_EccPublicKeyDecode(key, &idx, ecc, keySz);
+    }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
-    LogStr("wc_EccPublicKeyDecode(key, keySz, ecc=%p) = %d\n", ecc, ret);
+    LogStr("wc_EccPublicKeyDecode(key = %p, keySz = %d, ecc = %p) = %d\n",
+           key, (int)keySz, ecc, ret);
 
     releaseByteArray(env, key_object, key, JNI_ABORT);
 #else
@@ -555,43 +641,66 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPublicKeyToDer(
     int ret = 0;
     ecc_key* ecc = NULL;
     byte* output = NULL;
-    word32 outputSz = 256;
+    word32 outputSz = 0;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
-        return NULL;
+        ret = BAD_FUNC_ARG;
     }
 
-    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (output == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate key buffer");
-        return result;
+    if (ret == 0 && ecc == NULL) {
+        ret = BAD_FUNC_ARG;
     }
 
-    ret = (!ecc)
-        ? BAD_FUNC_ARG
-        : wc_EccPublicKeyToDer(ecc, output, outputSz, 1);
+    /* Calculate ECC DER size */
+    if (ret == 0) {
+        ret = wc_EccPublicKeyDerSize(ecc, 1);
+        if (ret > 0) {
+            outputSz = ret;
+            ret = 0;
+        }
+    }
 
-    if (ret >= 0) {
-        outputSz = ret;
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(output, 0, outputSz);
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_EccPublicKeyToDer(ecc, output, outputSz, 1);
+        if (ret > 0) {
+            outputSz = ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
 
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, outputSz,
-                                                         (const jbyte*) output);
+                                       (const jbyte*) output);
         } else {
-            throwWolfCryptException(env, "Failed to allocate key");
+            throwWolfCryptException(env, "Failed to allocate ECC DER key");
         }
     } else {
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    LogStr("wc_EccPublicKeyToDer(ecc, out=%p, outSz) = %d\n", output, ret);
+    LogStr("wc_EccPublicKeyToDer(ecc = %p, output = %p, outputSz = %d) = %d\n",
+           ecc, output, (int)outputSz, ret);
     LogStr("output[%u]: [%p]\n", outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
-    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (output != NULL) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -612,6 +721,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
     ecc_key* pub = NULL;
     byte* output = NULL;
     word32 outputSz = 0;
+    word32 outputBufSz = 0;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -631,36 +741,42 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
         return NULL;
     }
 
-    outputSz = wc_ecc_size(ecc);
-    output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (output == NULL) {
-        throwOutOfMemoryException(env,
-                                     "Failed to allocate shared secret buffer");
-        return result;
+    if (ecc == NULL || rng == NULL || pub == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        outputSz = wc_ecc_size(ecc);
+        outputBufSz = outputSz;
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(output, 0, outputSz);
+        }
     }
 
 #if defined(ECC_TIMING_RESISTANT) && (!defined(HAVE_FIPS) || \
     (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION != 2))) && \
     !defined(HAVE_SELFTEST)
-    ret = wc_ecc_set_rng(ecc, rng);
-    if (ret != 0) {
-        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-        throwWolfCryptExceptionFromError(env, ret);
+    if (ret == 0) {
+        ret = wc_ecc_set_rng(ecc, rng);
     }
 #else
     (void)rng;
 #endif
 
-    ret = (!ecc || !pub)
-        ? BAD_FUNC_ARG
-        : wc_ecc_shared_secret(ecc, pub, output, &outputSz);
+    if (ret == 0) {
+        ret = wc_ecc_shared_secret(ecc, pub, output, &outputSz);
+    }
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
 
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, outputSz,
-                                                         (const jbyte*) output);
+                                       (const jbyte*) output);
         } else {
             throwWolfCryptException(env, "Failed to allocate shared secret");
         }
@@ -673,7 +789,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
-    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (output != NULL) {
+        XMEMSET(output, 0, outputBufSz);
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -694,6 +813,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
     byte* hash   = NULL;
     byte* signature = NULL;
     word32 hashSz = 0, signatureSz = 0;
+    word32 signatureBufSz = 0;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -709,27 +829,34 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
 
     hash   = getByteArray(env, hash_object);
     hashSz = getByteArrayLength(env, hash_object);
-    signatureSz = wc_ecc_sig_size(ecc);
 
-    signature = XMALLOC(signatureSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (signature == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate signature buffer");
-
-        releaseByteArray(env, hash_object, hash, JNI_ABORT);
-
-        return result;
+    if (ecc == NULL || rng == NULL || hash == NULL) {
+        ret = BAD_FUNC_ARG;
     }
 
-    ret = (!ecc || !rng || !hash)
-        ? BAD_FUNC_ARG
-        : wc_ecc_sign_hash(hash, hashSz, signature, &signatureSz, rng, ecc);
+    if (ret == 0) {
+        signatureSz = wc_ecc_sig_size(ecc);
+        signatureBufSz = signatureSz;
+
+        signature = (byte*)XMALLOC(signatureSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (signature == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(signature, 0, signatureSz);
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_ecc_sign_hash(hash, hashSz, signature, &signatureSz, rng, ecc);
+    }
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, signatureSz);
 
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, signatureSz,
-                                                       (const jbyte*)signature);
+                                       (const jbyte*)signature);
         } else {
             throwWolfCryptException(env, "Failed to allocate signature");
         }
@@ -742,7 +869,10 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
     LogStr("signature[%u]: [%p]\n", (word32)signatureSz, signature);
     LogHex((byte*) signature, 0, signatureSz);
 
-    XFREE(signature, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (signature != NULL) {
+        XMEMSET(signature, 0, signatureBufSz);
+        XFREE(signature, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
 
     releaseByteArray(env, hash_object, hash, JNI_ABORT);
 #else
@@ -758,7 +888,6 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     jbyteArray signature_object)
 {
     int ret = 0;
-
 #ifdef HAVE_ECC_VERIFY
     int status = 0;
     ecc_key* ecc    = NULL;
@@ -858,59 +987,102 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1ke
     word32 derKeySz = MAX_ECC_PRIVATE_DER_SZ;
     word32 pkcs8Sz  = 0;
 
-    int algoID   = 0;
+    word32 derKeyBufSz = 0;
+    word32 pkcs8BufSz = 0;
+
+    int algoID   = ECDSAk;
     word32 oidSz = 0;
     const byte* curveOID = NULL;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
-        return NULL;
+        ret = BAD_FUNC_ARG;
     }
 
-    derKey = XMALLOC(derKeySz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (derKey == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate DER key buffer");
-        return result;
+    if (ret == 0 && ecc == NULL) {
+        ret = BAD_FUNC_ARG;
     }
 
-    /* get pkcs8 output size, into pkcs8Sz */
-    ret = wc_CreatePKCS8Key(NULL, &pkcs8Sz, derKey, derKeySz, algoID,
-                            curveOID, oidSz);
-
-    pkcs8 = XMALLOC(pkcs8Sz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (pkcs8 == NULL) {
-        XFREE(derKey, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-        throwOutOfMemoryException(env, "Failed to allocate PKCS8 key buffer");
-        return result;
+    /* Calculate length of private key DER */
+    if (ret == 0) {
+        ret = wc_EccKeyDerSize(ecc, 0);
+        if (ret > 0) {
+            derKeySz = ret;
+            ret = 0;
+        }
     }
 
-    ret = (!ecc)
-        ? BAD_FUNC_ARG
-        : wc_EccPrivateKeyToDer(ecc, derKey, derKeySz);
+    if (ret == 0) {
+        derKeyBufSz = derKeySz;
+        derKey = (byte*)XMALLOC(derKeySz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (derKey == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(derKey, 0, derKeySz);
+        }
+    }
 
-    if (ret >= 0) {
-        derKeySz = ret;
-        algoID = ECDSAk;
+    if (ret == 0) {
+        ret = wc_EccPrivateKeyToDer(ecc, derKey, derKeySz);
+        if (ret >= 0) {
+            derKeySz = ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
+        /* get pkcs8 output size, into pkcs8Sz */
+        ret = wc_CreatePKCS8Key(NULL, &pkcs8Sz, derKey, derKeySz, algoID,
+                                curveOID, oidSz);
+        if (ret == LENGTH_ONLY_E) {
+            ret = 0;
+        }
+
+        pkcs8 = (byte*)XMALLOC(pkcs8Sz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (pkcs8 == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(pkcs8, 0, pkcs8Sz);
+        }
+    }
+
+    if (ret == 0) {
         ret = wc_ecc_get_oid(ecc->dp->oidSum, &curveOID, &oidSz);
+        if (ret > 0) {
+            /* reset ret, returns oid as well as setting curveOID */
+            ret = 0;
+        }
     }
 
-    if (ret >= 0) {
+    if (ret == 0) {
         ret = wc_CreatePKCS8Key(pkcs8, &pkcs8Sz, derKey, derKeySz,
                                 algoID, curveOID, oidSz);
+        if (ret > 0) {
+            /* reset ret, PKCS#8 size stored in pkcs8Sz */
+            ret = 0;
+        }
     }
 
-    if (ret >= 0) {
-        result = (*env)->NewByteArray(env, ret);
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, pkcs8Sz);
 
         if (result) {
-            (*env)->SetByteArrayRegion(env, result, 0, ret,
+            (*env)->SetByteArrayRegion(env, result, 0, pkcs8Sz,
                                        (const jbyte*) pkcs8);
         }
     }
 
-    XFREE(derKey, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    XFREE(pkcs8,  NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (derKey != NULL) {
+        XMEMSET(derKey, 0, derKeyBufSz);
+        XFREE(derKey, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (pkcs8 != NULL) {
+        XMEMSET(pkcs8, 0, pkcs8BufSz);
+        XFREE(pkcs8,  NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
 
     if (ret < 0) {
         throwWolfCryptExceptionFromError(env, ret);
@@ -942,14 +1114,19 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1id_1f
     byte*  Gy = getByteArray(env, gy_object);
     word32 GySz = getByteArrayLength(env, gy_object);
 
-    ret = (!prime || !Af || !Bf || !order || !Gx || !Gy)
-        ? BAD_FUNC_ARG
-        : wc_ecc_get_curve_id_from_params(fieldSz, prime, primeSz,
+    if (prime == NULL || Af == NULL || Bf == NULL ||
+           order == NULL || Gx == NULL || Gy == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_ecc_get_curve_id_from_params(fieldSz, prime, primeSz,
                 Af, AfSz, Bf, BfSz, order, orderSz, Gx, GxSz,
                 Gy, GySz, cofactor);
+    }
 
-    if (ret < 0)
+    if (ret < 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_ecc_get_curve_id_from_params() = %d\n", ret);
 #else
