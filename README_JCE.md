@@ -65,6 +65,7 @@ The JCE provider currently supports the following algorithms:
         ECDH
 
     KeyPairGenerator Class
+        RSA
         EC
         DH
 

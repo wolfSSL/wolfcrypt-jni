@@ -48,10 +48,12 @@ import java.security.KeyFactory;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.spec.InvalidParameterSpecException;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAKeyGenParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 
+import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.test.Util;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -94,12 +96,13 @@ public class WolfCryptKeyPairGeneratorTest {
     private static ArrayList<String> enabledCurves =
         new ArrayList<String>();
 
-    private static int supportedKeySizes[] = {
-        112, 128, 160, 192, 224, 239, 256, 320, 384, 521
-    };
-
-    private static ArrayList<Integer> enabledKeySizes =
+    private static ArrayList<Integer> enabledEccKeySizes =
         new ArrayList<Integer>();
+
+    /* Test generation of these RSA key sizes */
+    private static int testedRSAKeySizes[] = {
+        1024, 2048, 3072, 4096
+    };
 
     /* DH test params */
     private static byte[] prime = Util.h2b(
@@ -119,7 +122,7 @@ public class WolfCryptKeyPairGeneratorTest {
     public static void testProviderInstallationAtRuntime() {
 
         /* install wolfJCE provider at runtime */
-        Security.addProvider(new WolfCryptProvider());
+        Security.insertProviderAt(new WolfCryptProvider(), 1);
 
         Provider p = Security.getProvider("wolfJCE");
         assertNotNull(p);
@@ -135,8 +138,8 @@ public class WolfCryptKeyPairGeneratorTest {
             if (size > 0) {
                 enabledCurves.add(supportedCurves[i]);
 
-                if (!enabledKeySizes.contains(Integer.valueOf(size))) {
-                    enabledKeySizes.add(Integer.valueOf(size));
+                if (!enabledEccKeySizes.contains(Integer.valueOf(size))) {
+                    enabledEccKeySizes.add(Integer.valueOf(size));
                 }
             }
         }
@@ -148,6 +151,8 @@ public class WolfCryptKeyPairGeneratorTest {
 
         KeyPairGenerator kpg;
         kpg = KeyPairGenerator.getInstance("EC", "wolfJCE");
+        kpg = KeyPairGenerator.getInstance("RSA", "wolfJCE");
+        kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
 
         /* getting a garbage algorithm should throw an exception */
         try {
@@ -157,6 +162,135 @@ public class WolfCryptKeyPairGeneratorTest {
                  "NoSuchAlgorithmException when given bad algorithm value");
 
         } catch (NoSuchAlgorithmException e) { }
+    }
+
+    @Test
+    public void testKeyPairGeneratorRsaInitializeWithParamSpec()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        /* try initializing KPG for all tested key sizes */
+        for (int i = 0; i < testedRSAKeySizes.length; i++) {
+
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "wolfJCE");
+
+            RSAKeyGenParameterSpec rsaSpec =
+                new RSAKeyGenParameterSpec(testedRSAKeySizes[i],
+                        BigInteger.valueOf(Rsa.getDefaultRsaExponent()));
+            kpg.initialize(rsaSpec);
+
+            /* bad key size should fail */
+            try {
+                rsaSpec = new RSAKeyGenParameterSpec(10,
+                        BigInteger.valueOf(Rsa.getDefaultRsaExponent()));
+                kpg.initialize(rsaSpec);
+            } catch (InvalidAlgorithmParameterException e) {}
+        }
+    }
+
+    @Test
+    public void testKeyPairGeneratorRsaInitializeWithKeySize()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        /* try initializing KPG for all tested key sizes */
+        for (int i = 0; i < testedRSAKeySizes.length; i++) {
+
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "wolfJCE");
+
+            kpg.initialize(testedRSAKeySizes[i]);
+
+            /* bad key size should fail */
+            try {
+                kpg.initialize(10);
+            } catch (WolfCryptException e) {}
+        }
+    }
+
+    @Test
+    public void testKeyPairGeneratorRsaKeyGenAllSizes()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        /* try generating keys for all tested sizes */
+        for (int i = 0; i < testedRSAKeySizes.length; i++) {
+
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "wolfJCE");
+
+            RSAKeyGenParameterSpec rsaSpec =
+                new RSAKeyGenParameterSpec(testedRSAKeySizes[i],
+                        BigInteger.valueOf(Rsa.getDefaultRsaExponent()));
+            kpg.initialize(rsaSpec);
+
+            KeyPair kp = kpg.generateKeyPair();
+        }
+    }
+
+    @Test
+    public void testKeyPairGeneratorRsaMultipleInits()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        if (testedRSAKeySizes.length > 0) {
+
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "wolfJCE");
+
+            RSAKeyGenParameterSpec rsaSpec =
+                new RSAKeyGenParameterSpec(testedRSAKeySizes[0],
+                        BigInteger.valueOf(Rsa.getDefaultRsaExponent()));
+
+            kpg.initialize(rsaSpec);
+            kpg.initialize(rsaSpec);
+        }
+    }
+
+    @Test
+    public void testKeyPairGeneratorRsaMultipleKeyGen()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        if (testedRSAKeySizes.length > 0) {
+
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "wolfJCE");
+
+            RSAKeyGenParameterSpec rsaSpec =
+                new RSAKeyGenParameterSpec(testedRSAKeySizes[0],
+                        BigInteger.valueOf(Rsa.getDefaultRsaExponent()));
+            kpg.initialize(rsaSpec);
+
+            KeyPair kp1 = kpg.generateKeyPair();
+            KeyPair kp2 = kpg.generateKeyPair();
+        }
+    }
+
+    @Test
+    public void testKeyPairGeneratorRsaNewKeyFromExisting()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException, InvalidKeySpecException {
+
+        if (testedRSAKeySizes.length > 0) {
+
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "wolfJCE");
+
+            RSAKeyGenParameterSpec rsaSpec =
+                new RSAKeyGenParameterSpec(testedRSAKeySizes[0],
+                        BigInteger.valueOf(Rsa.getDefaultRsaExponent()));
+            kpg.initialize(rsaSpec);
+
+            KeyPair kp = kpg.generateKeyPair();
+
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            PublicKey pub = kf.generatePublic(new X509EncodedKeySpec(
+                        kp.getPublic().getEncoded()));
+            PrivateKey priv = kf.generatePrivate(new PKCS8EncodedKeySpec(
+                        kp.getPrivate().getEncoded()));
+        }
     }
 
     @Test
@@ -178,7 +312,9 @@ public class WolfCryptKeyPairGeneratorTest {
             try {
                 ecSpec = new ECGenParameterSpec("BADCURVE");
                 kpg.initialize(ecSpec);
-            } catch (InvalidAlgorithmParameterException e) {}
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
         }
     }
 
@@ -188,17 +324,19 @@ public class WolfCryptKeyPairGeneratorTest {
                InvalidAlgorithmParameterException {
 
         /* try initializing KPG for all supported key sizes */
-        for (int i = 0; i < enabledKeySizes.size(); i++) {
+        for (int i = 0; i < enabledEccKeySizes.size(); i++) {
 
             KeyPairGenerator kpg =
                 KeyPairGenerator.getInstance("EC", "wolfJCE");
 
-            kpg.initialize(enabledKeySizes.get(i));
+            kpg.initialize(enabledEccKeySizes.get(i));
 
             /* bad key size should fail */
             try {
                 kpg.initialize(9999);
-            } catch (WolfCryptException e) {}
+            } catch (WolfCryptException e) {
+                /* expected */
+            }
         }
     }
 
