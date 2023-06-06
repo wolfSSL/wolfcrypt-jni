@@ -170,7 +170,7 @@ public class Ecc extends NativeStruct {
             wc_ecc_check_key();
         } else {
             throw new IllegalStateException(
-                    "No available key to perform the opperation.");
+                    "No available key to perform the operation.");
         }
     }
 
@@ -225,7 +225,7 @@ public class Ecc extends NativeStruct {
             return wc_ecc_export_private();
         } else {
             throw new IllegalStateException(
-                    "No available key to perform the opperation.");
+                    "No available key to perform the operation.");
         }
     }
 
@@ -259,7 +259,7 @@ public class Ecc extends NativeStruct {
             return wc_ecc_export_x963();
         } else {
             throw new IllegalStateException(
-                    "No available key to perform the opperation.");
+                    "No available key to perform the operation.");
         }
     }
 
@@ -293,7 +293,7 @@ public class Ecc extends NativeStruct {
             return wc_EccKeyToDer();
         } else {
             throw new IllegalStateException(
-                    "No available key to perform the opperation.");
+                    "No available key to perform the operation.");
         }
     }
 
@@ -327,7 +327,7 @@ public class Ecc extends NativeStruct {
             return wc_EccPublicKeyToDer();
         } else {
             throw new IllegalStateException(
-                    "No available key to perform the opperation.");
+                    "No available key to perform the operation.");
         }
     }
 
@@ -346,7 +346,7 @@ public class Ecc extends NativeStruct {
             return wc_ecc_shared_secret(pubKey, this.rng);
         } else {
             throw new IllegalStateException(
-                    "No available key to perform the opperation.");
+                    "No available key to perform the operation.");
         }
     }
 
@@ -368,7 +368,7 @@ public class Ecc extends NativeStruct {
             signature = wc_ecc_sign_hash(hash, rng);
         } else {
             throw new IllegalStateException(
-                    "No available key to perform the opperation.");
+                    "No available key to perform the operation.");
         }
 
         return signature;
@@ -392,7 +392,7 @@ public class Ecc extends NativeStruct {
             result = wc_ecc_verify_hash(hash, signature);
         } else {
             throw new IllegalStateException(
-                    "No available key to perform the opperation.");
+                    "No available key to perform the operation.");
         }
 
         return result;
