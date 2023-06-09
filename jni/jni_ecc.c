@@ -1033,6 +1033,14 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1ke
     }
 
     if (ret == 0) {
+        ret = wc_ecc_get_oid(ecc->dp->oidSum, &curveOID, &oidSz);
+        if (ret > 0) {
+            /* reset ret, returns oid as well as setting curveOID */
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
         /* get pkcs8 output size, into pkcs8Sz */
         ret = wc_CreatePKCS8Key(NULL, &pkcs8Sz, derKey, derKeySz, algoID,
                                 curveOID, oidSz);
@@ -1046,14 +1054,6 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1ke
         }
         else {
             XMEMSET(pkcs8, 0, pkcs8Sz);
-        }
-    }
-
-    if (ret == 0) {
-        ret = wc_ecc_get_oid(ecc->dp->oidSum, &curveOID, &oidSz);
-        if (ret > 0) {
-            /* reset ret, returns oid as well as setting curveOID */
-            ret = 0;
         }
     }
 
