@@ -40,6 +40,7 @@ The JCE provider currently supports the following algorithms:
         AES/CBC/NoPadding
         AES/CBC/PKCS5Padding
         DESede/CBC/NoPadding
+        RSA
         RSA/ECB/PKCS1Padding
 
     Mac Class
