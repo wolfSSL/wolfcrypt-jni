@@ -60,11 +60,15 @@ public class WolfCryptCipherTest {
         "AES/CBC/NoPadding",
         "AES/CBC/PKCS5Padding",
         "DESede/CBC/NoPadding",
+        "RSA",
         "RSA/ECB/PKCS1Padding"
     };
 
     /* JCE provider to run below tests against */
     private static final String jceProvider = "wolfJCE";
+
+    /* Interop provider, may be changed in testProviderInstallationAtRuntime */
+    private static String interopProvider = null;
 
     /* populated with all enabled algos (some could have been compiled out) */
     private static ArrayList<String> enabledJCEAlgos =
@@ -99,7 +103,15 @@ public class WolfCryptCipherTest {
         expectedBlockSizes.put("AES/CBC/NoPadding", 16);
         expectedBlockSizes.put("AES/CBC/PKCS5Padding", 16);
         expectedBlockSizes.put("DESede/CBC/NoPadding", 8);
+        expectedBlockSizes.put("RSA", 0);
         expectedBlockSizes.put("RSA/ECB/PKCS1Padding", 0);
+
+        /* try to set up interop provider, if available */
+        /* NOTE: add other platform providers here if needed */
+        p = Security.getProvider("SunJCE");
+        if (p != null) {
+            interopProvider = "SunJCE";
+        }
     }
 
     @Test
@@ -1484,14 +1496,13 @@ public class WolfCryptCipherTest {
         }
     }
 
-    @Test
-    public void testRSAECBPKCS1Padding()
+    private void testRSAPublicPrivateEncryptDecrypt(String algo)
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
                IllegalBlockSizeException, InvalidAlgorithmParameterException,
                BadPaddingException {
 
-        CipherVector vectors[] = new CipherVector[] {
+        CipherVector[] vectors = new CipherVector[] {
             /* test vectors {key, iv, input, output } */
             new CipherVector(
                 null,
@@ -1509,13 +1520,8 @@ public class WolfCryptCipherTest {
             )
         };
 
-        byte ciphertext[];
-        byte plaintext[];
-
-        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
-            /* bail out if RSA is not enabled */
-            return;
-        }
+        byte[] ciphertext = null;
+        byte[] plaintext = null;
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048, new SecureRandom());
@@ -1524,7 +1530,12 @@ public class WolfCryptCipherTest {
         PrivateKey priv = pair.getPrivate();
         PublicKey  pub  = pair.getPublic();
 
-        Cipher ciph = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        if (!enabledJCEAlgos.contains(algo)) {
+            /* mode not supported, return without testing */
+            return;
+        }
+
+        Cipher ciph = Cipher.getInstance(algo, jceProvider);
 
         for (int i = 0; i < vectors.length; i++) {
 
@@ -1550,15 +1561,13 @@ public class WolfCryptCipherTest {
         }
     }
 
-    /* testing RSA encrypt/decrypt using various update/final sizes */
-    @Test
-    public void testRSAECBPKCS1PaddingWithUpdate()
+    private void testRSAWithUpdateSizes(String algo)
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
                IllegalBlockSizeException, InvalidAlgorithmParameterException,
                BadPaddingException {
 
-        byte input[] = new byte[] {
+        byte[] input = new byte[] {
             (byte)0x45, (byte)0x76, (byte)0x65, (byte)0x72,
             (byte)0x79, (byte)0x6f, (byte)0x6e, (byte)0x65,
             (byte)0x20, (byte)0x67, (byte)0x65, (byte)0x74,
@@ -1568,14 +1577,9 @@ public class WolfCryptCipherTest {
             (byte)0x2e
         };
 
-        byte tmp[];
-        byte ciphertext[];
-        byte plaintext[];
-
-        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
-            /* bail out if RSA is not enabled */
-            return;
-        }
+        byte[] tmp = null;
+        byte[] ciphertext = null;
+        byte[] plaintext = null;
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048, new SecureRandom());
@@ -1584,7 +1588,12 @@ public class WolfCryptCipherTest {
         PrivateKey priv = pair.getPrivate();
         PublicKey  pub  = pair.getPublic();
 
-        Cipher ciph = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        if (!enabledJCEAlgos.contains(algo)) {
+            /* mode not supported, return without testing */
+            return;
+        }
+
+        Cipher ciph = Cipher.getInstance(algo, jceProvider);
 
         /* PRIVATE ENCRYPT, 4 byte chunks + 1 remaining for final */
         ciph.init(Cipher.ENCRYPT_MODE, priv);
@@ -1641,14 +1650,13 @@ public class WolfCryptCipherTest {
         assertArrayEquals(plaintext, input);
     }
 
-    @Test
-    public void testRSAECBPKCS1PaddingWithUpdateVerifyFinalResetsState()
+    private void testRSAWithUpdateVerifyFinalResetsState(String algo)
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
                IllegalBlockSizeException, InvalidAlgorithmParameterException,
                BadPaddingException {
 
-        byte input[] = new byte[] {
+        byte[] input = new byte[] {
             (byte)0x45, (byte)0x76, (byte)0x65, (byte)0x72,
             (byte)0x79, (byte)0x6f, (byte)0x6e, (byte)0x65,
             (byte)0x20, (byte)0x67, (byte)0x65, (byte)0x74,
@@ -1658,16 +1666,11 @@ public class WolfCryptCipherTest {
             (byte)0x2e
         };
 
-        byte tmp[];
-        byte ciphertextA[] = null;
-        byte ciphertextB[] = null;
-        byte plaintextA[]  = null;
-        byte plaintextB[]  = null;
-
-        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
-            /* bail out if RSA is not enabled */
-            return;
-        }
+        byte[] tmp = null;
+        byte[] ciphertextA = null;
+        byte[] ciphertextB = null;
+        byte[] plaintextA  = null;
+        byte[] plaintextB  = null;
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048, new SecureRandom());
@@ -1676,7 +1679,12 @@ public class WolfCryptCipherTest {
         PrivateKey priv = pair.getPrivate();
         PublicKey  pub  = pair.getPublic();
 
-        Cipher ciph = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        if (!enabledJCEAlgos.contains(algo)) {
+            /* mode not supported, return without testing */
+            return;
+        }
+
+        Cipher ciph = Cipher.getInstance(algo, jceProvider);
 
         /* PRIVATE ENCRYPT */
         /* storing to ciphertextA */
@@ -1767,25 +1775,18 @@ public class WolfCryptCipherTest {
         assertArrayEquals(plaintextB, input);
     }
 
-    /* test RSA with update, and too large of data */
-    @Test
-    public void testRSAECBPKCS1PaddingWithTooBigData()
+    private void testRSAWithTooBigData(String algo)
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
                IllegalBlockSizeException, InvalidAlgorithmParameterException,
                BadPaddingException {
 
-        byte tmp[];
-        byte ciphertext[];
-        byte plaintext[];
+        byte[] tmp = null;
+        byte[] ciphertext = null;
+        byte[] plaintext = null;
 
-        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
-            /* bail out if RSA is not enabled */
-            return;
-        }
-
-        byte inputA[] = new byte[2048];
-        byte inputB[] = new byte[100];
+        byte[] inputA = new byte[2048];
+        byte[] inputB = new byte[100];
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048, new SecureRandom());
@@ -1794,7 +1795,12 @@ public class WolfCryptCipherTest {
         PrivateKey priv = pair.getPrivate();
         PublicKey  pub  = pair.getPublic();
 
-        Cipher ciph = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        if (!enabledJCEAlgos.contains(algo)) {
+            /* mode not supported, return without testing */
+            return;
+        }
+
+        Cipher ciph = Cipher.getInstance(algo, jceProvider);
 
         /* PRIVATE ENCRYPT */
         ciph.init(Cipher.ENCRYPT_MODE, priv);
@@ -1809,8 +1815,8 @@ public class WolfCryptCipherTest {
 
         try {
             ciphertext = ciph.doFinal();
-            fail("Cipher.doFinal should throw exception when data is larger " +
-                 "than RSA key size");
+            fail("Cipher.doFinal should throw exception when data " +
+                 "is larger than RSA key size");
         } catch (WolfCryptException | IllegalBlockSizeException e) {
             /* expected */
         }
@@ -1828,8 +1834,8 @@ public class WolfCryptCipherTest {
 
         try {
             plaintext = ciph.doFinal();
-            fail("Cipher.doFinal should throw exception when data is larger " +
-                 "than RSA key size");
+            fail("Cipher.doFinal should throw exception when data " +
+                 "is larger than RSA key size");
         } catch (WolfCryptException | IllegalBlockSizeException e) {
             /* expected */
         }
@@ -1847,8 +1853,8 @@ public class WolfCryptCipherTest {
 
         try {
             ciphertext = ciph.doFinal();
-            fail("Cipher.doFinal should throw exception when data is larger " +
-                 "than RSA key size");
+            fail("Cipher.doFinal should throw exception when data " +
+                 "is larger than RSA key size");
         } catch (WolfCryptException | IllegalBlockSizeException e) {
             /* expected */
         }
@@ -1866,21 +1872,20 @@ public class WolfCryptCipherTest {
 
         try {
             plaintext = ciph.doFinal();
-            fail("Cipher.doFinal should throw exception when data is larger " +
-                 "than RSA key size");
+            fail("Cipher.doFinal should throw exception when data " +
+                 "is larger than RSA key size");
         } catch (WolfCryptException | IllegalBlockSizeException e) {
             /* expected */
         }
     }
 
-    @Test
-    public void testRSAECBPKCS1PaddingInterop()
+    private void testRSAInterop(String algo)
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
                IllegalBlockSizeException, InvalidAlgorithmParameterException,
                BadPaddingException {
 
-        CipherVector vectors[] = new CipherVector[] {
+        CipherVector[] vectors = new CipherVector[] {
             /* test vectors {key, iv, input, output } */
             new CipherVector(
                 null,
@@ -1898,13 +1903,8 @@ public class WolfCryptCipherTest {
             )
         };
 
-        byte ciphertext[];
-        byte plaintext[];
-
-        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
-            /* bail out if RSA is not enabled */
-            return;
-        }
+        byte[] ciphertext = null;
+        byte[] plaintext = null;
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048, new SecureRandom());
@@ -1913,8 +1913,13 @@ public class WolfCryptCipherTest {
         PrivateKey priv = pair.getPrivate();
         PublicKey  pub  = pair.getPublic();
 
-        Cipher ciphA = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
-        Cipher ciphB = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        if (!enabledJCEAlgos.contains(algo)) {
+            /* mode not supported, return without testing */
+            return;
+        }
+
+        Cipher ciphA = Cipher.getInstance(algo, jceProvider);
+        Cipher ciphB = Cipher.getInstance(algo, interopProvider);
 
         Provider prov = ciphB.getProvider();
         if (prov.equals("wolfJCE")) {
@@ -1972,6 +1977,31 @@ public class WolfCryptCipherTest {
                 assertArrayEquals(plaintext, vectors[i].input);
             }
         }
+    }
+
+    @Test
+    public void testRSA()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        testRSAPublicPrivateEncryptDecrypt("RSA");
+        testRSAPublicPrivateEncryptDecrypt("RSA/ECB/PKCS1Padding");
+
+        /* test RSA encrypt/decrypt using various update/final sizes */
+        testRSAWithUpdateSizes("RSA");
+        testRSAWithUpdateSizes("RSA/ECB/PKCS1Padding");
+
+        testRSAWithUpdateVerifyFinalResetsState("RSA");
+        testRSAWithUpdateVerifyFinalResetsState("RSA/ECB/PKCS1Padding");
+
+        /* test RSA with update, and too large of data */
+        testRSAWithTooBigData("RSA");
+        testRSAWithTooBigData("RSA/ECB/PKCS1Padding");
+
+        testRSAInterop("RSA");
+        testRSAInterop("RSA/ECB/PKCS1Padding");
     }
 
     private class CipherVector {
