@@ -21,6 +21,7 @@
 
 package com.wolfssl.wolfcrypt;
 
+import java.util.Arrays;
 import java.nio.ByteBuffer;
 
 import javax.crypto.ShortBufferException;
@@ -192,4 +193,120 @@ public abstract class BlockCipher extends NativeStruct {
         state = WolfCryptState.UNINITIALIZED;
         setNativeStruct(NULL);
     }
+
+    /**
+     * Return number of PKCS#7 pad bytes required given input size.
+     *
+     * @param inputSize size to calculate needed PKCS#7 pad bytes
+     * @param blockSize Block size of algorithm being used
+     *
+     * @return Number of PKCS#7 pad bytes that would be appended to an input
+     *         of size inputSize.
+     */
+    public static int getPKCS7PadSize(int inputSize, int blockSize) {
+
+        int padSz = 0;
+
+        if (inputSize == 0 || blockSize == 0) {
+            throw new WolfCryptException(
+                "Input or block size is 0");
+        }
+
+        padSz = blockSize - (inputSize % blockSize);
+
+        return padSz;
+    }
+
+    /**
+     * Pad input data with PKCS#7 padding.
+     *
+     * @param in Input data to be padded
+     * @param blockSize Block size of algorithm being used
+     *
+     * @return Byte array which includes PKCS#7 padding on end
+     *
+     * @throws WolfCryptException if input is null, zero length,
+     *         or blockSize is invalid
+     */
+    public static byte[] padPKCS7(byte[] in, int blockSize)
+        throws WolfCryptException {
+
+        int padSz = 0;
+        byte[] padded = null;
+
+        if (in == null) {
+            throw new WolfCryptException(
+                "Input array is null");
+        }
+
+        if (blockSize == 0) {
+            throw new WolfCryptException("Block size is 0");
+        }
+
+        padSz = blockSize - (in.length % blockSize);
+        padded = new byte[in.length + padSz];
+
+        System.arraycopy(in, 0, padded, 0, in.length);
+
+        try {
+            Arrays.fill(padded, in.length, padded.length, (byte)(padSz & 0xff));
+        } catch (IllegalArgumentException | ArrayIndexOutOfBoundsException e) {
+            throw new WolfCryptException(e);
+        }
+
+        return padded;
+    }
+
+    /**
+     * Unpad PKCS#7-padded data.
+     *
+     * @param in Input data which includes PKCS#7 padding on end
+     * @param blockSize Block size of algorithm being used
+     *
+     * @return Byte array with PKCS#7 padding removed
+     *
+     * @throws WolfCryptException if input is null, zero length,
+     *         or blockSize is invalid
+     */
+    public static byte[] unPadPKCS7(byte[] in, int blockSize) {
+
+        byte padValue = 0;
+        byte[] unpadded = null;
+        boolean valid = true;
+
+        if (in == null || in.length == 0) {
+            throw new WolfCryptException(
+                "Input array is null or zero length");
+        }
+
+        if (blockSize == 0) {
+            throw new WolfCryptException("Block size is 0");
+        }
+
+        padValue = in[in.length - 1];
+
+        /* verify pad value is less than or equal to block size */
+        if (padValue > (byte)blockSize) {
+            throw new WolfCryptException(
+                "Invalid pad value, larger than block size");
+        }
+
+        /* verify pad bytes are consistent */
+        for (int i = in.length; i > in.length - padValue; i--) {
+            if (in[i - 1] != padValue) {
+                valid = false;
+            }
+        }
+
+        unpadded = new byte[in.length - padValue];
+        System.arraycopy(in, 0, unpadded, 0, in.length - padValue);
+
+        if (!valid) {
+            throw new WolfCryptException(
+                "Invalid PKCS#7 padding, pad bytes not consistent");
+        }
+
+        return unpadded;
+    }
 }
+

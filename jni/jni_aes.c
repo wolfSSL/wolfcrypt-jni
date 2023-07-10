@@ -36,20 +36,24 @@
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-    jlong ret = 0;
+    void* ret = NULL;
 
 #ifndef NO_AES
-    ret = (jlong) XMALLOC(sizeof(Aes), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    ret = (void*)XMALLOC(sizeof(Aes), NULL, DYNAMIC_TYPE_TMP_BUFFER);
 
-    if (!ret)
+    if (ret == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Aes object");
+    }
+    else {
+        XMEMSET(ret, 0, sizeof(Aes));
+    }
 
-    LogStr("new Aes() = %p\n", (void*)ret);
+    LogStr("new Aes() = %p\n", ret);
 #else
     throwNotCompiledInException(env);
 #endif
 
-    return ret;
+    return (jlong)ret;
 }
 
 JNIEXPORT void JNICALL
