@@ -384,6 +384,30 @@ $ cp ./lib/signed/release/wolfcrypt-jni.jar ./lib
 $ ant test
 ```
 
+# Running Examples
+
+Windows batch scripts have been included to easily run some of the provided
+examples from the Windows command line.
+
+After the above steps have been followed to compile native wolfSSL and
+wolfCrypt JNI/JCE, open a Command Prompt and navigate to the wolfCrypt JNI/JCE
+directory root (ie: wolfcryptjni).
+
+The examples are already compiled as part of running ant above.
+
+Edit the Windows configuration batch script to set the appropriate paths
+for native wolfSSL and wolfCrypt JNI DLL locations. This can change between
+build types (ex: normal wolfSSL, FIPS 140-2, etc):
+
+**Edit examples\WindowsConfig.bat**
+
+From the root wolfcryptjni directory, run the desired .bat file. For example,
+to run the ProviderTest:
+
+```
+examples\provider\ProviderTest.bat
+```
+
 # Support
 
 For support, please contact support@wolfssl.com.
