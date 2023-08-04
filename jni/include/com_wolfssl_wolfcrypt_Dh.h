@@ -11,10 +11,10 @@ extern "C" {
 #define com_wolfssl_wolfcrypt_Dh_NULL 0LL
 /*
  * Class:     com_wolfssl_wolfcrypt_Dh
- * Method:    mallocNativeStruct
+ * Method:    mallocNativeStruct_internal
  * Signature: ()J
  */
-JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Dh_mallocNativeStruct
+JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Dh_mallocNativeStruct_1internal
   (JNIEnv *, jobject);
 
 /*
