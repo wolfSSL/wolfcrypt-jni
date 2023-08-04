@@ -92,7 +92,7 @@ public abstract class MessageDigest extends NativeStruct {
     /**
      * Initialize object
      */
-    public void init() {
+    public synchronized void init() {
         native_init();
         state = WolfCryptState.READY;
     }
@@ -106,7 +106,9 @@ public abstract class MessageDigest extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException object not initialized
      */
-    public void update(ByteBuffer data, int length) {
+    public synchronized void update(ByteBuffer data, int length)
+        throws WolfCryptException, IllegalStateException {
+
         if (state == WolfCryptState.READY) {
             length = Math.min(length, data.remaining());
 
@@ -126,7 +128,9 @@ public abstract class MessageDigest extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException object not initialized
      */
-    public void update(ByteBuffer data) {
+    public synchronized void update(ByteBuffer data)
+        throws WolfCryptException, IllegalStateException {
+
         update(data, data.remaining());
     }
 
@@ -140,7 +144,9 @@ public abstract class MessageDigest extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException object not initialized
      */
-    public void update(byte[] data, int offset, int len) {
+    public synchronized void update(byte[] data, int offset, int len)
+        throws WolfCryptException, IllegalStateException {
+
         if (state == WolfCryptState.READY) {
             if (offset >= data.length || offset < 0 || len < 0)
                 return;
@@ -164,7 +170,9 @@ public abstract class MessageDigest extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException object not initialized
      */
-    public void update(byte[] data, int len) {
+    public synchronized void update(byte[] data, int len)
+        throws WolfCryptException, IllegalStateException {
+
         update(data, 0, len);
     }
 
@@ -176,7 +184,9 @@ public abstract class MessageDigest extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException object not initialized
      */
-    public void update(byte[] data) {
+    public synchronized void update(byte[] data)
+        throws WolfCryptException, IllegalStateException {
+
         update(data, 0, data.length);
     }
 
@@ -189,7 +199,9 @@ public abstract class MessageDigest extends NativeStruct {
      * @throws ShortBufferException if input buffer is too small
      * @throws IllegalStateException object not initialized
      */
-    public void digest(ByteBuffer hash) throws ShortBufferException {
+    public synchronized void digest(ByteBuffer hash)
+        throws ShortBufferException, WolfCryptException, IllegalStateException {
+
         if (state == WolfCryptState.READY) {
             if (hash.remaining() < digestSize())
                 throw new ShortBufferException(
@@ -212,7 +224,9 @@ public abstract class MessageDigest extends NativeStruct {
      * @throws ShortBufferException if input buffer is too small
      * @throws IllegalStateException object not initialized
      */
-    public void digest(byte[] hash) throws ShortBufferException {
+    public synchronized void digest(byte[] hash)
+        throws ShortBufferException, WolfCryptException, IllegalStateException {
+
         if (state == WolfCryptState.READY) {
             if (hash.length < digestSize())
                 throw new ShortBufferException(
@@ -233,7 +247,9 @@ public abstract class MessageDigest extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException object not initialized
      */
-    public byte[] digest() {
+    public synchronized byte[] digest()
+        throws WolfCryptException, IllegalStateException {
+
         if (state == WolfCryptState.READY) {
             byte[] hash = new byte[digestSize()];
 
@@ -247,7 +263,7 @@ public abstract class MessageDigest extends NativeStruct {
     }
 
     @Override
-    public void releaseNativeStruct() {
+    public synchronized void releaseNativeStruct() {
 
         /* reset state first, then free */
         state = WolfCryptState.UNINITIALIZED;
