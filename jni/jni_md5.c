@@ -47,7 +47,7 @@
 #endif
 
 JNIEXPORT jlong JNICALL
-Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct(
+Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
     jlong ret = 0;
@@ -67,7 +67,7 @@ Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Md5_native_1init(
+Java_com_wolfssl_wolfcrypt_Md5_native_1init_1internal(
     JNIEnv* env, jobject this)
 {
 #ifndef NO_MD5
@@ -91,7 +91,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1init(
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1copy
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1copy_1internal
   (JNIEnv* env, jobject this, jobject toBeCopied)
 {
 #ifndef NO_MD5
@@ -125,7 +125,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1copy
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Md5_native_1update__Ljava_nio_ByteBuffer_2II(
+Java_com_wolfssl_wolfcrypt_Md5_native_1update_1internal__Ljava_nio_ByteBuffer_2II(
     JNIEnv* env, jobject this, jobject data_buffer, jint position, jint len)
 {
 #ifndef NO_MD5
@@ -159,7 +159,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update__Ljava_nio_ByteBuffer_2II(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Md5_native_1update___3BII(
+Java_com_wolfssl_wolfcrypt_Md5_native_1update_1internal___3BII(
     JNIEnv* env, jobject this, jbyteArray data_buffer, jint offset, jint len)
 {
 #ifndef NO_MD5
@@ -198,7 +198,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update___3BII(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Md5_native_1final__Ljava_nio_ByteBuffer_2I(
+Java_com_wolfssl_wolfcrypt_Md5_native_1final_1internal__Ljava_nio_ByteBuffer_2I(
     JNIEnv* env, jobject this, jobject hash_buffer, jint position)
 {
 #ifndef NO_MD5
@@ -232,7 +232,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final__Ljava_nio_ByteBuffer_2I(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Md5_native_1final___3B(
+Java_com_wolfssl_wolfcrypt_Md5_native_1final_1internal___3B(
     JNIEnv* env, jobject this, jbyteArray hash_buffer)
 {
 #ifndef NO_MD5
