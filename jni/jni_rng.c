@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -43,20 +45,25 @@ JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Rng_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-    jlong ret = 0;
-
 #ifndef WC_NO_RNG
-    ret = (jlong) XMALLOC(sizeof(RNG), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    RNG* rng = NULL;
 
-    if (!ret)
+    rng = (RNG*)XMALLOC(sizeof(RNG), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (rng == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Rng object");
+    }
+    else {
+        XMEMSET(rng, 0, sizeof(RNG));
+    }
 
-    LogStr("new Rng() = %p\n", (void*)ret);
+    LogStr("new Rng() = %p\n", rng);
+
+    return (jlong)(uintptr_t)rng;
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT void JNICALL

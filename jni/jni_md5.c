@@ -20,6 +20,7 @@
  */
 
 #include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -50,20 +51,25 @@ JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
-    jlong ret = 0;
-
 #ifndef NO_MD5
-    ret = (jlong)(uintptr_t)XMALLOC(sizeof(Md5), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    Md5* md5 = NULL;
 
-    if (!ret)
+    md5 = (Md5*)XMALLOC(sizeof(Md5), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (md5 == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Md5 object");
+    }
+    else {
+        XMEMSET(md5, 0, sizeof(Md5));
+    }
 
-    LogStr("new Md5() = %p\n", (void*)ret);
+    LogStr("new Md5() = %p\n", md5);
+
+    return (jlong)(uintptr_t)md5;
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT void JNICALL

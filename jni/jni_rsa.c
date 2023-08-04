@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -45,23 +47,25 @@ JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Rsa_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-    void* ret = NULL;
-
 #ifndef NO_RSA
-    ret = (void*)XMALLOC(sizeof(RsaKey), NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    if (ret == NULL) {
+    RsaKey* rsa = NULL;
+
+    rsa = (RsaKey*)XMALLOC(sizeof(RsaKey), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (rsa == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Rsa object");
     }
     else {
-        XMEMSET(ret, 0, sizeof(RsaKey));
+        XMEMSET(rsa, 0, sizeof(RsaKey));
     }
 
-    LogStr("new Rsa() = %p\n", (void*)ret);
+    LogStr("new Rsa() = %p\n", rsa);
+
+    return (jlong)(uintptr_t)rsa;
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return (jlong)ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rsa_getDefaultRsaExponent
@@ -366,6 +370,8 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaKeyToDer
     }
 
     if (ret == 0) {
+        XMEMSET(output, 0, outputSz);
+
         ret = wc_RsaKeyToDer(key, output, outputSz);
         if (ret > 0) {
             outputSz = ret;
@@ -441,6 +447,8 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaKeyToPublicDe
     }
 
     if (ret == 0) {
+        XMEMSET(output, 0, outputSz);
+
         ret = wc_RsaKeyToPublicDer(key, output, outputSz);
         if (ret > 0) {
             outputSz = ret;
@@ -898,6 +906,8 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt(
     }
 
     if (ret == 0) {
+        XMEMSET(output, 0, outputSz);
+
         ret = wc_RsaPublicEncrypt(plaintext, size, output, outputSz, key, rng);
         if (ret > 0) {
             outputSz = ret;
@@ -974,6 +984,8 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
     }
 
     if (ret == 0) {
+        XMEMSET(output, 0, outputSz);
+
         ret = wc_RsaPrivateDecrypt(ciphertext, size, output, outputSz, key);
         if (ret > 0) {
             outputSz = ret;
@@ -1057,6 +1069,8 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Sign(
     }
 
     if (ret == 0) {
+        XMEMSET(output, 0, outputSz);
+
         ret = wc_RsaSSL_Sign(data, size, output, outputSz, key, rng);
         if (ret > 0) {
             outputSz = ret;
@@ -1133,6 +1147,8 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify(
     }
 
     if (ret == 0) {
+        XMEMSET(output, 0, outputSz);
+
         ret = wc_RsaSSL_Verify(signature, size, output, outputSz, key);
         if (ret > 0) {
             outputSz = ret;
