@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -36,20 +38,25 @@
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Des3_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-    jlong ret = 0;
-
 #ifndef NO_DES3
-    ret = (jlong) XMALLOC(sizeof(Des3), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    Des3* des = NULL;
 
-    if (!ret)
+    des = (Des3*) XMALLOC(sizeof(Des3), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (des == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Des3 object");
+    }
+    else {
+        XMEMSET(des, 0, sizeof(Des3));
+    }
 
-    LogStr("new Des3() = %p\n", (void*)ret);
+    LogStr("new Des3() = %p\n", des);
+
+    return (jlong)(uintptr_t)des;
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT void JNICALL

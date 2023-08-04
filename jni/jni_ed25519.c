@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -44,20 +46,25 @@ JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Ed25519_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-    void* ret = 0;
-
 #ifdef HAVE_ED25519
-    ret = XMALLOC(sizeof(ed25519_key), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    ed25519_key* key = NULL;
 
-    if (ret == NULL)
+    key = (ed25519_key*)XMALLOC(sizeof(ed25519_key), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (key == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Ed25519 object");
+    }
+    else {
+        XMEMSET(key, 0, sizeof(ed25519_key));
+    }
 
-    LogStr("new Ed25519() = %p\n", (void*)ret);
+    LogStr("new Ed25519() = %p\n", key);
+
+    return (jlong)(uintptr_t)key;
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return (jlong) ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT void JNICALL
@@ -303,6 +310,7 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private(
         throwOutOfMemoryException(env, "Failed to allocate key buffer");
         return result;
     }
+    XMEMSET(output, 0, outputSz);
 
     ret = (!ed25519)
         ? BAD_FUNC_ARG
@@ -358,6 +366,7 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private_1only(
         throwOutOfMemoryException(env, "Failed to allocate key buffer");
         return result;
     }
+    XMEMSET(output, 0, outputSz);
 
     ret = (!ed25519)
         ? BAD_FUNC_ARG
@@ -413,6 +422,7 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1public(
         throwOutOfMemoryException(env, "Failed to allocate key buffer");
         return result;
     }
+    XMEMSET(output, 0, outputSz);
 
     ret = (!ed25519)
         ? BAD_FUNC_ARG
@@ -460,13 +470,23 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1sig
         /* getNativeStruct may throw exception, prevent throwing another */
         return NULL;
     }
-    msg = getByteArray(env, msg_in);
-    len = getByteArrayLength(env, msg_in);
-    output = XMALLOC(outlen, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 
-    if (!ed25519) {
+    if (ed25519 == NULL) {
         ret = BAD_FUNC_ARG;
-    } else {
+    }
+
+    if (ret == 0) {
+        msg = getByteArray(env, msg_in);
+        len = getByteArrayLength(env, msg_in);
+        output = XMALLOC(outlen, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(output, 0, outlen);
+
         ret = wc_ed25519_sign_msg(msg, len, output, &outlen, ed25519);
     }
 

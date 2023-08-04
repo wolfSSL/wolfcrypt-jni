@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -44,24 +46,25 @@ JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Ecc_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-    void* ret = NULL;
-
 #ifdef HAVE_ECC
-    ret = (void*)XMALLOC(sizeof(ecc_key), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    ecc_key* ecc = NULL;
 
-    if (ret == NULL) {
+    ecc = (ecc_key*)XMALLOC(sizeof(ecc_key), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (ecc == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Ecc object");
     }
     else {
-        XMEMSET(ret, 0, sizeof(ecc_key));
+        XMEMSET(ecc, 0, sizeof(ecc_key));
     }
 
-    LogStr("new Ecc() = %p\n", (void*)ret);
+    LogStr("new Ecc() = %p\n", ecc);
+
+    return (jlong)(uintptr_t)ecc;
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return (jlong) ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT void JNICALL

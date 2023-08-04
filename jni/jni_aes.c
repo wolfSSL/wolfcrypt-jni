@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -36,24 +38,26 @@
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-    void* ret = NULL;
-
 #ifndef NO_AES
-    ret = (void*)XMALLOC(sizeof(Aes), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    Aes* aes = NULL;
 
-    if (ret == NULL) {
+    aes = (Aes*)XMALLOC(sizeof(Aes), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (aes == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Aes object");
     }
     else {
-        XMEMSET(ret, 0, sizeof(Aes));
+        XMEMSET(aes, 0, sizeof(Aes));
     }
 
-    LogStr("new Aes() = %p\n", ret);
+    LogStr("new Aes() = %p\n", aes);
+
+    return (jlong)(uintptr_t)aes;
+
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return (jlong)ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT void JNICALL
