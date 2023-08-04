@@ -47,6 +47,17 @@ public class Aes extends BlockCipher {
 
     private int opmode;
 
+    /* native JNI methods, internally reach back and grab/use pointer from
+     * NativeStruct.java. We wrap calls to these below in order to
+     * synchronize access to native pointer between threads */
+    private native long mallocNativeStruct_internal() throws OutOfMemoryError;
+    private native void native_set_key_internal(byte[] key, byte[] iv,
+        int opmode);
+    private native int native_update_internal(int opmode, byte[] input,
+        int offset, int length, byte[] output, int outputOffset);
+    private native int native_update_internal(int opmode, ByteBuffer input,
+        int offset, int length, ByteBuffer output, int outputOffset);
+
     /**
      * Malloc native JNI AES structure
      *
@@ -54,7 +65,13 @@ public class Aes extends BlockCipher {
      *
      * @throws OutOfMemoryError when malloc fails with memory error
      */
-    protected native long mallocNativeStruct() throws OutOfMemoryError;
+    protected long mallocNativeStruct()
+        throws OutOfMemoryError {
+
+        synchronized (pointerLock) {
+            return mallocNativeStruct_internal();
+        }
+    }
 
     /**
      * Set native AES key
@@ -64,7 +81,12 @@ public class Aes extends BlockCipher {
      * @param opmode AES mode, either Aes.ENCRYPT_MODE or
      *        Aes.DECRYPT_MODE
      */
-    protected native void native_set_key(byte[] key, byte[] iv, int opmode);
+    protected void native_set_key(byte[] key, byte[] iv, int opmode) {
+
+        synchronized (pointerLock) {
+            native_set_key_internal(key, iv, opmode);
+        }
+    }
 
     /**
      * Native AES encrypt/decrypt update operation
@@ -79,8 +101,14 @@ public class Aes extends BlockCipher {
      *
      * @return number of bytes stored in output
      */
-    protected native int native_update(int opmode, byte[] input, int offset,
-            int length, byte[] output, int outputOffset);
+    protected int native_update(int opmode, byte[] input, int offset,
+            int length, byte[] output, int outputOffset) {
+
+        synchronized (pointerLock) {
+            return native_update_internal(opmode, input, offset, length,
+                output, outputOffset);
+        }
+    }
 
     /**
      * Native AES encrypt/decrypt update operation
@@ -95,8 +123,14 @@ public class Aes extends BlockCipher {
      *
      * @return number of bytes stored in output
      */
-    protected native int native_update(int opmode, ByteBuffer input,
-            int offset, int length, ByteBuffer output, int outputOffset);
+    protected int native_update(int opmode, ByteBuffer input,
+            int offset, int length, ByteBuffer output, int outputOffset) {
+
+        synchronized (pointerLock) {
+            return native_update_internal(opmode, input, offset, length,
+                output, outputOffset);
+        }
+    }
 
     /**
      * Create new Aes object

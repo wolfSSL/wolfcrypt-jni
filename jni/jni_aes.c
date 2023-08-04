@@ -35,7 +35,7 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
-JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct(
+JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
 #ifndef NO_AES
@@ -61,7 +61,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key(
+Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key_1internal(
     JNIEnv* env, jobject this, jbyteArray key_object, jbyteArray iv_object,
     jint opmode)
 {
@@ -100,7 +100,7 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Aes_native_1update__I_3BII_3BI(
+Java_com_wolfssl_wolfcrypt_Aes_native_1update_1internal__I_3BII_3BI(
     JNIEnv* env, jobject this, jint opmode,
     jbyteArray input_object, jint offset, jint length,
     jbyteArray output_object, jint outputOffset)
@@ -168,7 +168,7 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update__I_3BII_3BI(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Aes_native_1update__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2I(
+Java_com_wolfssl_wolfcrypt_Aes_native_1update_1internal__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2I(
     JNIEnv* env, jobject this, jint opmode,
     jobject input_object, jint offset, jint length,
     jobject output_object, jint outputOffset)

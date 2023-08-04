@@ -84,7 +84,8 @@ public abstract class BlockCipher extends NativeStruct {
      * @param iv block cipher initialization vector (IV) array
      * @param opmode block cipher operation mode, dependent on subclass type
      */
-    public void setKey(byte[] key, byte[] iv, int opmode) {
+    public synchronized void setKey(byte[] key, byte[] iv, int opmode) {
+
         native_set_key(key, iv, opmode);
 
         this.opmode = opmode;
@@ -96,7 +97,8 @@ public abstract class BlockCipher extends NativeStruct {
      *
      * @throws IllegalStateException if algorithm or key not usable
      */
-    public void willUseKey() {
+    public synchronized void willUseKey() {
+
         if (state != WolfCryptState.READY)
             throw new IllegalStateException(
                     "No available key to perform the opperation.");
@@ -109,7 +111,8 @@ public abstract class BlockCipher extends NativeStruct {
      *
      * @return output data array from update operation
      */
-    public byte[] update(byte[] input) {
+    public synchronized byte[] update(byte[] input) {
+
         return update(input, 0, input.length);
     }
 
@@ -122,7 +125,8 @@ public abstract class BlockCipher extends NativeStruct {
      *
      * @return output data array from update operation
      */
-    public byte[] update(byte[] input, int offset, int length) {
+    public synchronized byte[] update(byte[] input, int offset, int length) {
+
         willUseKey();
 
         byte[] output = new byte[input.length];
@@ -145,8 +149,9 @@ public abstract class BlockCipher extends NativeStruct {
      *
      * @throws ShortBufferException if output buffer is too small
      */
-    public int update(byte[] input, int offset, int length, byte[] output,
-            int outputOffset) throws ShortBufferException {
+    public synchronized int update(byte[] input, int offset, int length,
+        byte[] output, int outputOffset) throws ShortBufferException {
+
         willUseKey();
 
         if (outputOffset + length > output.length)
@@ -167,8 +172,9 @@ public abstract class BlockCipher extends NativeStruct {
      *
      * @throws ShortBufferException if output buffer is not large enough
      */
-    public int update(ByteBuffer input, ByteBuffer output)
-            throws ShortBufferException {
+    public synchronized int update(ByteBuffer input, ByteBuffer output)
+        throws ShortBufferException {
+
         willUseKey();
 
         int ret = 0;
@@ -187,7 +193,7 @@ public abstract class BlockCipher extends NativeStruct {
     }
 
     @Override
-    public void releaseNativeStruct() {
+    public synchronized void releaseNativeStruct() {
 
         /* reset state first, then free */
         state = WolfCryptState.UNINITIALIZED;
@@ -203,7 +209,8 @@ public abstract class BlockCipher extends NativeStruct {
      * @return Number of PKCS#7 pad bytes that would be appended to an input
      *         of size inputSize.
      */
-    public static int getPKCS7PadSize(int inputSize, int blockSize) {
+    public static synchronized int getPKCS7PadSize(int inputSize,
+        int blockSize) {
 
         int padSz = 0;
 
@@ -228,7 +235,7 @@ public abstract class BlockCipher extends NativeStruct {
      * @throws WolfCryptException if input is null, zero length,
      *         or blockSize is invalid
      */
-    public static byte[] padPKCS7(byte[] in, int blockSize)
+    public static synchronized byte[] padPKCS7(byte[] in, int blockSize)
         throws WolfCryptException {
 
         int padSz = 0;
@@ -268,7 +275,7 @@ public abstract class BlockCipher extends NativeStruct {
      * @throws WolfCryptException if input is null, zero length,
      *         or blockSize is invalid
      */
-    public static byte[] unPadPKCS7(byte[] in, int blockSize) {
+    public static synchronized byte[] unPadPKCS7(byte[] in, int blockSize) {
 
         byte padValue = 0;
         byte[] unpadded = null;
