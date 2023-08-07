@@ -83,6 +83,9 @@ public class WolfCryptCipherTest {
     private static HashMap<String, Integer> expectedBlockSizes =
         new HashMap<String, Integer>();
 
+    /* One static SecureRandom to share */
+    private static SecureRandom secureRandom = new SecureRandom();
+
     @BeforeClass
     public static void testProviderInstallationAtRuntime()
         throws NoSuchProviderException, NoSuchPaddingException {
@@ -1747,7 +1750,7 @@ public class WolfCryptCipherTest {
         byte[] plaintext = null;
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, new SecureRandom());
+        keyGen.initialize(2048, secureRandom);
 
         KeyPair pair = keyGen.generateKeyPair();
         PrivateKey priv = pair.getPrivate();
@@ -1805,7 +1808,7 @@ public class WolfCryptCipherTest {
         byte[] plaintext = null;
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, new SecureRandom());
+        keyGen.initialize(2048, secureRandom);
 
         KeyPair pair = keyGen.generateKeyPair();
         PrivateKey priv = pair.getPrivate();
@@ -1896,7 +1899,7 @@ public class WolfCryptCipherTest {
         byte[] plaintextB  = null;
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, new SecureRandom());
+        keyGen.initialize(2048, secureRandom);
 
         KeyPair pair = keyGen.generateKeyPair();
         PrivateKey priv = pair.getPrivate();
@@ -2012,7 +2015,7 @@ public class WolfCryptCipherTest {
         byte[] inputB = new byte[100];
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, new SecureRandom());
+        keyGen.initialize(2048, secureRandom);
 
         KeyPair pair = keyGen.generateKeyPair();
         PrivateKey priv = pair.getPrivate();
@@ -2130,7 +2133,7 @@ public class WolfCryptCipherTest {
         byte[] plaintext = null;
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, new SecureRandom());
+        keyGen.initialize(2048, secureRandom);
 
         KeyPair pair = keyGen.generateKeyPair();
         PrivateKey priv = pair.getPrivate();
