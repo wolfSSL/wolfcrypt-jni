@@ -68,6 +68,9 @@ public class WolfCryptSignatureTest {
     private static ArrayList<String> enabledAlgos =
         new ArrayList<String>();
 
+    /* One static SecureRandom to share */
+    private static SecureRandom secureRandom = new SecureRandom();
+
     @BeforeClass
     public static void testProviderInstallationAtRuntime()
         throws NoSuchProviderException {
@@ -131,12 +134,8 @@ public class WolfCryptSignatureTest {
             assertNotNull(signer);
             assertNotNull(verifier);
 
-            SecureRandom rand =
-                SecureRandom.getInstance("HashDRBG", "wolfJCE");
-            assertNotNull(rand);
-
             /* generate key pair */
-            KeyPair pair = generateKeyPair(enabledAlgos.get(i), rand);
+            KeyPair pair = generateKeyPair(enabledAlgos.get(i), secureRandom);
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();
@@ -180,12 +179,8 @@ public class WolfCryptSignatureTest {
             assertNotNull(signer);
             assertNotNull(verifier);
 
-            SecureRandom rand =
-                SecureRandom.getInstance("HashDRBG", "wolfJCE");
-            assertNotNull(rand);
-
             /* generate key pair */
-            KeyPair pair = generateKeyPair(enabledAlgos.get(i), rand);
+            KeyPair pair = generateKeyPair(enabledAlgos.get(i), secureRandom);
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();
@@ -241,12 +236,8 @@ public class WolfCryptSignatureTest {
                 return;
             }
 
-            SecureRandom rand =
-                SecureRandom.getInstance("HashDRBG", "wolfJCE");
-            assertNotNull(rand);
-
             /* generate key pair */
-            KeyPair pair = generateKeyPair(enabledAlgos.get(i), rand);
+            KeyPair pair = generateKeyPair(enabledAlgos.get(i), secureRandom);
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();
@@ -297,12 +288,8 @@ public class WolfCryptSignatureTest {
                 return;
             }
 
-            SecureRandom rand =
-                SecureRandom.getInstance("HashDRBG", "wolfJCE");
-            assertNotNull(rand);
-
             /* generate key pair */
-            KeyPair pair = generateKeyPair(enabledAlgos.get(i), rand);
+            KeyPair pair = generateKeyPair(enabledAlgos.get(i), secureRandom);
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();

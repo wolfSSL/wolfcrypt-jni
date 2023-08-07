@@ -100,6 +100,9 @@ public class WolfCryptKeyAgreementTest {
     private static ArrayList<String> disabledCurves =
         new ArrayList<String>();
 
+    /* One static SecureRandom to share */
+    private static SecureRandom secureRandom = new SecureRandom();
+
     private static void printDisabledCurves() {
 
         if (disabledCurves.size() > 0)
@@ -185,7 +188,7 @@ public class WolfCryptKeyAgreementTest {
 
         /* initialize key pair generator */
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
-        keyGen.initialize(dhParams, new SecureRandom());
+        keyGen.initialize(dhParams, secureRandom);
 
         KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
         KeyAgreement bKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
@@ -236,7 +239,7 @@ public class WolfCryptKeyAgreementTest {
 
         /* initialize key pair generator */
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
-        keyGen.initialize(dhParams, new SecureRandom());
+        keyGen.initialize(dhParams, secureRandom);
 
         KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
         KeyAgreement bKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
@@ -290,7 +293,7 @@ public class WolfCryptKeyAgreementTest {
 
         /* initialize key pair generator */
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
-        keyGen.initialize(dhParams, new SecureRandom());
+        keyGen.initialize(dhParams, secureRandom);
 
         KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
         KeyAgreement bKeyAgree = KeyAgreement.getInstance("DH");
