@@ -27,7 +27,13 @@ import org.junit.BeforeClass;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Random;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -76,6 +82,9 @@ public class WolfCryptCipherTest {
 
     private static HashMap<String, Integer> expectedBlockSizes =
         new HashMap<String, Integer>();
+
+    /* One static SecureRandom to share */
+    private static SecureRandom secureRandom = new SecureRandom();
 
     @BeforeClass
     public static void testProviderInstallationAtRuntime()
@@ -1358,6 +1367,114 @@ public class WolfCryptCipherTest {
     }
 
     @Test
+    public void testAesCbcThreaded() throws InterruptedException {
+
+        int numThreads = 50;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
+        final byte[] rand2kBuf = new byte[2048];
+
+        final byte[] key = new byte[] {
+            (byte)0x30, (byte)0x31, (byte)0x32, (byte)0x33,
+            (byte)0x34, (byte)0x35, (byte)0x36, (byte)0x37,
+            (byte)0x38, (byte)0x39, (byte)0x61, (byte)0x62,
+            (byte)0x63, (byte)0x64, (byte)0x65, (byte)0x66
+        };
+        final byte[] iv = new byte[] {
+            (byte)0x31, (byte)0x32, (byte)0x33, (byte)0x34,
+            (byte)0x35, (byte)0x36, (byte)0x37, (byte)0x38,
+            (byte)0x39, (byte)0x30, (byte)0x61, (byte)0x62,
+            (byte)0x63, (byte)0x64, (byte)0x65, (byte)0x66
+        };
+
+        if (!enabledJCEAlgos.contains("AES/CBC/NoPadding")) {
+            /* skip if AES/CBC/NoPadding is not enabled */
+            return;
+        }
+
+        /* fill large input buffer with random bytes */
+        new Random().nextBytes(rand2kBuf);
+
+        /* encrypt / decrypt input data, make sure decrypted matches original */
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+
+                    int ret = 0;
+
+                    try {
+                        Cipher enc = Cipher.getInstance(
+                            "AES/CBC/NoPadding", jceProvider);
+                        enc.init(Cipher.ENCRYPT_MODE,
+                            new SecretKeySpec(key, "AES"),
+                            new IvParameterSpec(iv));
+
+                        Cipher dec = Cipher.getInstance(
+                            "AES/CBC/NoPadding", jceProvider);
+                        dec.init(Cipher.DECRYPT_MODE,
+                            new SecretKeySpec(key, "AES"),
+                            new IvParameterSpec(iv));
+
+                        byte[] encrypted = new byte[2048];
+                        byte[] plaintext = new byte[2048];
+
+                        /* encrypt in 128-byte chunks */
+                        Arrays.fill(encrypted, (byte)0);
+                        for (int j = 0; j < rand2kBuf.length; j+= 128) {
+                            ret = enc.update(rand2kBuf, j, 128, encrypted, j);
+                            if (ret != 128) {
+                                throw new Exception(
+                                    "Cipher.update(Aes,ENCRYPT_MODE) returned "
+                                    + ret);
+                            }
+                        }
+
+                        /* decrypt in 128-byte chunks */
+                        Arrays.fill(plaintext, (byte)0);
+                        for (int j = 0; j < encrypted.length; j+= 128) {
+                            ret = dec.update(encrypted, j, 128, plaintext, j);
+                            if (ret != 128) {
+                                throw new Exception(
+                                    "Cipher.update(Aes,DECRYPT_MODE) returned "
+                                    + ret);
+                            }
+                        }
+
+                        /* make sure decrypted is same as input */
+                        if (Arrays.equals(rand2kBuf, plaintext)) {
+                            results.add(0);
+                        }
+                        else {
+                            /* not equal, error case */
+                            results.add(1);
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        results.add(1);
+
+                    } finally {
+                        latch.countDown();
+                    }
+                }
+            });
+        }
+
+        /* wait for all threads to complete */
+        latch.await();
+
+        /* compare all digests, all should be the same across threads */
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur == 1) {
+                fail("Threading error in AES Cipher thread test");
+            }
+        }
+    }
+
+    @Test
     public void testDESedeCbcNoPadding()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
@@ -1496,6 +1613,115 @@ public class WolfCryptCipherTest {
         }
     }
 
+    @Test
+    public void testDESedeCbcNoPaddingThreaded() throws InterruptedException {
+
+        int numThreads = 50;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
+        final byte[] rand2kBuf = new byte[2048];
+
+        final byte key[] = new byte[] {
+            (byte)0x01, (byte)0x23, (byte)0x45, (byte)0x67,
+            (byte)0x89, (byte)0xab, (byte)0xcd, (byte)0xef,
+            (byte)0xfe, (byte)0xde, (byte)0xba, (byte)0x98,
+            (byte)0x76, (byte)0x54, (byte)0x32, (byte)0x10,
+            (byte)0x89, (byte)0xab, (byte)0xcd, (byte)0xef,
+            (byte)0x01, (byte)0x23, (byte)0x45, (byte)0x67
+        };
+
+        final byte iv[] = new byte[] {
+            (byte)0x12, (byte)0x34, (byte)0x56, (byte)0x78,
+            (byte)0x90, (byte)0xab, (byte)0xcd, (byte)0xef,
+        };
+
+        if (!enabledJCEAlgos.contains("DESede/CBC/NoPadding")) {
+            /* skip if DESede/CBC/NoPadding is not enabled */
+            return;
+        }
+
+        /* fill large input buffer with random bytes */
+        new Random().nextBytes(rand2kBuf);
+
+        /* encrypt / decrypt input data, make sure decrypted matches original */
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+
+                    int ret = 0;
+
+                    try {
+                        Cipher enc = Cipher.getInstance(
+                            "DESede/CBC/NoPadding", jceProvider);
+                        enc.init(Cipher.ENCRYPT_MODE,
+                            new SecretKeySpec(key, "DESede"),
+                            new IvParameterSpec(iv));
+
+                        Cipher dec = Cipher.getInstance(
+                            "DESede/CBC/NoPadding", jceProvider);
+                        dec.init(Cipher.DECRYPT_MODE,
+                            new SecretKeySpec(key, "DESede"),
+                            new IvParameterSpec(iv));
+
+                        byte[] encrypted = new byte[2048];
+                        byte[] plaintext = new byte[2048];
+
+                        /* encrypt in 128-byte chunks */
+                        Arrays.fill(encrypted, (byte)0);
+                        for (int j = 0; j < rand2kBuf.length; j+= 128) {
+                            ret = enc.update(rand2kBuf, j, 128, encrypted, j);
+                            if (ret != 128) {
+                                throw new Exception(
+                                    "Cipher.update(DES,ENCRYPT_MODE) returned "
+                                    + ret);
+                            }
+                        }
+
+                        /* decrypt in 128-byte chunks */
+                        Arrays.fill(plaintext, (byte)0);
+                        for (int j = 0; j < encrypted.length; j+= 128) {
+                            ret = dec.update(encrypted, j, 128, plaintext, j);
+                            if (ret != 128) {
+                                throw new Exception(
+                                    "Cipher.update(DES,DECRYPT_MODE) returned "
+                                    + ret);
+                            }
+                        }
+
+                        /* make sure decrypted is same as input */
+                        if (Arrays.equals(rand2kBuf, plaintext)) {
+                            results.add(0);
+                        }
+                        else {
+                            /* not equal, error case */
+                            results.add(1);
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        results.add(1);
+
+                    } finally {
+                        latch.countDown();
+                    }
+                }
+            });
+        }
+
+        /* wait for all threads to complete */
+        latch.await();
+
+        /* compare all digests, all should be the same across threads */
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur == 1) {
+                fail("Threading error in DESede Cipher thread test");
+            }
+        }
+    }
+
     private void testRSAPublicPrivateEncryptDecrypt(String algo)
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
@@ -1524,7 +1750,7 @@ public class WolfCryptCipherTest {
         byte[] plaintext = null;
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, new SecureRandom());
+        keyGen.initialize(2048, secureRandom);
 
         KeyPair pair = keyGen.generateKeyPair();
         PrivateKey priv = pair.getPrivate();
@@ -1582,7 +1808,7 @@ public class WolfCryptCipherTest {
         byte[] plaintext = null;
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, new SecureRandom());
+        keyGen.initialize(2048, secureRandom);
 
         KeyPair pair = keyGen.generateKeyPair();
         PrivateKey priv = pair.getPrivate();
@@ -1673,7 +1899,7 @@ public class WolfCryptCipherTest {
         byte[] plaintextB  = null;
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, new SecureRandom());
+        keyGen.initialize(2048, secureRandom);
 
         KeyPair pair = keyGen.generateKeyPair();
         PrivateKey priv = pair.getPrivate();
@@ -1789,7 +2015,7 @@ public class WolfCryptCipherTest {
         byte[] inputB = new byte[100];
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, new SecureRandom());
+        keyGen.initialize(2048, secureRandom);
 
         KeyPair pair = keyGen.generateKeyPair();
         PrivateKey priv = pair.getPrivate();
@@ -1907,7 +2133,7 @@ public class WolfCryptCipherTest {
         byte[] plaintext = null;
 
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, new SecureRandom());
+        keyGen.initialize(2048, secureRandom);
 
         KeyPair pair = keyGen.generateKeyPair();
         PrivateKey priv = pair.getPrivate();

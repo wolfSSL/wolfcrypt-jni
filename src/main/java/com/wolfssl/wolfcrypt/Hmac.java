@@ -50,6 +50,9 @@ public class Hmac extends NativeStruct {
     private int type = -1;
     private byte[] key;
 
+    /* Lock around object state */
+    protected final Object stateLock = new Object();
+
     /**
      * Create new Hmac object
      */
@@ -90,7 +93,9 @@ public class Hmac extends NativeStruct {
 
     /* check if type is -1, if so that type is not compiled in at native
      * wolfSSL level. Throw exception if so. */
-    private void checkHashTypeCompiledIn(int type) throws WolfCryptException {
+    private void checkHashTypeCompiledIn(int type)
+        throws WolfCryptException {
+
         WolfCryptError notCompiledIn = WolfCryptError.NOT_COMPILED_IN;
         if (type == -1) {
             throw new WolfCryptException(notCompiledIn.getCode());
@@ -105,16 +110,21 @@ public class Hmac extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-    public void setKey(int type, byte[] key) {
+    public synchronized void setKey(int type, byte[] key)
+        throws WolfCryptException {
 
-        /* verify hash type is compiled in */
-        checkHashTypeCompiledIn(type);
+        synchronized (stateLock) {
+            /* verify hash type is compiled in */
+            checkHashTypeCompiledIn(type);
 
-        wc_HmacSetKey(type, key);
-        this.type = type;
-        this.key = key;
+            synchronized (pointerLock) {
+                wc_HmacSetKey(type, key);
+            }
+            this.type = type;
+            this.key = key;
 
-        state = WolfCryptState.READY;
+            state = WolfCryptState.READY;
+        }
     }
 
     /**
@@ -123,12 +133,16 @@ public class Hmac extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object has no key
      */
-    public void reset() {
-        if (state == WolfCryptState.READY) {
-            setKey(type, key);
-        } else {
-            throw new IllegalStateException(
-                "No available key to perform the operation.");
+    public synchronized void reset()
+        throws WolfCryptException, IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+                setKey(type, key);
+            } else {
+                throw new IllegalStateException(
+                    "No available key to perform the operation");
+            }
         }
     }
 
@@ -140,12 +154,19 @@ public class Hmac extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object has no key
      */
-    public void update(byte data) {
-        if (state == WolfCryptState.READY) {
-            wc_HmacUpdate(data);
-        } else {
-            throw new IllegalStateException(
-                "No available key to perform the operation.");
+    public synchronized void update(byte data)
+        throws WolfCryptException, IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+
+                synchronized (pointerLock) {
+                    wc_HmacUpdate(data);
+                }
+            } else {
+                throw new IllegalStateException(
+                    "No available key to perform the operation");
+            }
         }
     }
 
@@ -157,12 +178,19 @@ public class Hmac extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object has no key
      */
-    public void update(byte[] data) {
-        if (state == WolfCryptState.READY) {
-            wc_HmacUpdate(data, 0, data.length);
-        } else {
-            throw new IllegalStateException(
-                "No available key to perform the operation.");
+    public void update(byte[] data)
+        throws WolfCryptException, IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+
+                synchronized (pointerLock) {
+                    wc_HmacUpdate(data, 0, data.length);
+                }
+            } else {
+                throw new IllegalStateException(
+                    "No available key to perform the operation");
+            }
         }
     }
 
@@ -176,12 +204,19 @@ public class Hmac extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object has no key
      */
-    public void update(byte[] data, int offset, int length) {
-        if (state == WolfCryptState.READY) {
-            wc_HmacUpdate(data, offset, length);
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
+    public synchronized void update(byte[] data, int offset, int length)
+        throws WolfCryptException, IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+
+                synchronized (pointerLock) {
+                    wc_HmacUpdate(data, offset, length);
+                }
+            } else {
+                throw new IllegalStateException(
+                    "No available key to perform the operation");
+            }
         }
     }
 
@@ -193,17 +228,23 @@ public class Hmac extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object has no key
      */
-    public void update(ByteBuffer data) {
-        if (state == WolfCryptState.READY) {
-            int offset = data.position();
-            int length = data.remaining();
+    public synchronized void update(ByteBuffer data)
+        throws WolfCryptException, IllegalStateException {
 
-            wc_HmacUpdate(data, offset, length);
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+                int offset = data.position();
+                int length = data.remaining();
 
-            data.position(offset + length);
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
+                synchronized (pointerLock) {
+                    wc_HmacUpdate(data, offset, length);
+                }
+
+                data.position(offset + length);
+            } else {
+                throw new IllegalStateException(
+                    "No available key to perform the operation");
+            }
         }
     }
 
@@ -215,12 +256,19 @@ public class Hmac extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object has no key
      */
-    public byte[] doFinal() {
-        if (state == WolfCryptState.READY) {
-            return wc_HmacFinal();
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
+    public synchronized byte[] doFinal()
+        throws WolfCryptException, IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+
+                synchronized (pointerLock) {
+                    return wc_HmacFinal();
+                }
+            } else {
+                throw new IllegalStateException(
+                    "No available key to perform the operation");
+            }
         }
     }
 
@@ -234,13 +282,20 @@ public class Hmac extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object has no key
      */
-    public byte[] doFinal(byte[] data) {
-        if (state == WolfCryptState.READY) {
-            update(data);
-            return wc_HmacFinal();
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
+    public synchronized byte[] doFinal(byte[] data)
+        throws WolfCryptException, IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+                update(data);
+
+                synchronized (pointerLock) {
+                    return wc_HmacFinal();
+                }
+            } else {
+                throw new IllegalStateException(
+                    "No available key to perform the operation");
+            }
         }
     }
 
@@ -251,28 +306,30 @@ public class Hmac extends NativeStruct {
      *
      * @throws IllegalStateException if object has no key
      */
-    public String getAlgorithm() {
-        if (state == WolfCryptState.READY) {
+    public synchronized String getAlgorithm()
+        throws IllegalStateException {
 
-            if (type == MD5) {
-                return "HmacMD5";
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+                if (type == MD5) {
+                    return "HmacMD5";
+                }
+                else if (type == SHA256) {
+                    return "HmacSHA256";
+                }
+                else if (type == SHA384) {
+                    return "HmacSHA384";
+                }
+                else if (type == SHA512) {
+                    return "HmacSHA512";
+                }
+                else {
+                    return "";
+                }
+            } else {
+                throw new IllegalStateException(
+                    "No available key to perform the operation");
             }
-            else if (type == SHA256) {
-                return "HmacSHA256";
-            }
-            else if (type == SHA384) {
-                return "HmacSHA384";
-            }
-            else if (type == SHA512) {
-                return "HmacSHA512";
-            }
-            else {
-                return "";
-            }
-
-        } else {
-            throw new IllegalStateException(
-                "No available key to perform the operation.");
         }
     }
 
@@ -284,12 +341,18 @@ public class Hmac extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object has no key
      */
-    public int getMacLength() {
-        if (state == WolfCryptState.READY) {
-            return wc_HmacSizeByType(type);
-        } else {
-            throw new IllegalStateException(
-                "No available key to perform the operation.");
+    public synchronized int getMacLength()
+        throws WolfCryptException, IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+                /* Does not use Hmac poiner, no need to lock */
+                return wc_HmacSizeByType(type);
+
+            } else {
+                throw new IllegalStateException(
+                    "No available key to perform the operation");
+            }
         }
     }
 

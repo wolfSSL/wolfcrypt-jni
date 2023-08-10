@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -64,87 +66,107 @@
 #endif
 
 JNIEXPORT jlong JNICALL
-Java_com_wolfssl_wolfcrypt_Sha_mallocNativeStruct(
+Java_com_wolfssl_wolfcrypt_Sha_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
-    jlong ret = 0;
-
 #ifndef NO_SHA
-    ret = (jlong) XMALLOC(sizeof(Sha), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    Sha* sha = NULL;
 
-    if (!ret)
+    sha = (Sha*) XMALLOC(sizeof(Sha), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (sha == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Sha object");
+    }
+    else {
+        XMEMSET(sha, 0, sizeof(Sha));
+    }
 
-    LogStr("new Sha() = %p\n", (void*)ret);
+    LogStr("new Sha() = %p\n", sha);
+
+    return (jlong)(uintptr_t)sha;
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_wolfssl_wolfcrypt_Sha256_mallocNativeStruct(
+Java_com_wolfssl_wolfcrypt_Sha256_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
-    jlong ret = 0;
-
 #ifndef NO_SHA256
-    ret = (jlong) XMALLOC(sizeof(Sha256), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    Sha256* sha = NULL;
 
-    if (!ret)
+    sha = (Sha256*) XMALLOC(sizeof(Sha256), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (sha == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Sha256 object");
+    }
+    else {
+        XMEMSET(sha, 0, sizeof(Sha256));
+    }
 
-    LogStr("new Sha256() = %p\n", (void*)ret);
+    LogStr("new Sha256() = %p\n", sha);
+
+    return (jlong)(uintptr_t)sha;
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_wolfssl_wolfcrypt_Sha384_mallocNativeStruct(
+Java_com_wolfssl_wolfcrypt_Sha384_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
-    jlong ret = 0;
-
 #ifdef WOLFSSL_SHA384
-    ret = (jlong) XMALLOC(sizeof(Sha384), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    Sha384* sha = NULL;
 
-    if (!ret)
+    sha = (Sha384*) XMALLOC(sizeof(Sha384), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (sha == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Sha384 object");
+    }
+    else {
+        XMEMSET(sha, 0, sizeof(Sha384));
+    }
 
-    LogStr("new Sha384() = %p\n", (void*)ret);
+    LogStr("new Sha384() = %p\n", sha);
+
+    return (jlong)(uintptr_t)sha;
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT jlong JNICALL
-Java_com_wolfssl_wolfcrypt_Sha512_mallocNativeStruct(
+Java_com_wolfssl_wolfcrypt_Sha512_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
-    jlong ret = 0;
-
 #ifdef WOLFSSL_SHA512
-    ret = (jlong) XMALLOC(sizeof(Sha512), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    Sha512* sha = NULL;
 
-    if (!ret)
+    sha = (Sha512*) XMALLOC(sizeof(Sha512), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (sha == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Sha512 object");
+    }
+    else {
+        XMEMSET(sha, 0, sizeof(Sha512));
+    }
 
-    LogStr("new Sha512() = %p\n", (void*)ret);
+    LogStr("new Sha512() = %p\n", sha);
+
+    return (jlong)(uintptr_t)sha;
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha_native_1init(
+Java_com_wolfssl_wolfcrypt_Sha_native_1init_1internal(
     JNIEnv* env, jobject this)
 {
 #ifndef NO_SHA
@@ -166,7 +188,7 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1init(
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_native_1copy
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_native_1copy_1internal
   (JNIEnv* env, jobject this, jobject toBeCopied)
 {
 #ifndef NO_SHA
@@ -200,7 +222,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_native_1copy
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha_native_1update__Ljava_nio_ByteBuffer_2II(
+Java_com_wolfssl_wolfcrypt_Sha_native_1update_1internal__Ljava_nio_ByteBuffer_2II(
     JNIEnv* env, jobject this, jobject data_buffer, jint position, jint len)
 {
 #ifndef NO_SHA
@@ -232,7 +254,7 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update__Ljava_nio_ByteBuffer_2II(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha_native_1update___3BII(
+Java_com_wolfssl_wolfcrypt_Sha_native_1update_1internal___3BII(
     JNIEnv* env, jobject this, jbyteArray data_buffer, jint offset, jint len)
 {
 #ifndef NO_SHA
@@ -272,7 +294,7 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update___3BII(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha_native_1final__Ljava_nio_ByteBuffer_2I(
+Java_com_wolfssl_wolfcrypt_Sha_native_1final_1internal__Ljava_nio_ByteBuffer_2I(
     JNIEnv* env, jobject this, jobject hash_buffer, jint position)
 {
 #ifndef NO_SHA
@@ -304,7 +326,7 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1final__Ljava_nio_ByteBuffer_2I(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha_native_1final___3B(
+Java_com_wolfssl_wolfcrypt_Sha_native_1final_1internal___3B(
     JNIEnv* env, jobject this, jbyteArray hash_buffer)
 {
 #ifndef NO_SHA
@@ -338,7 +360,7 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1final___3B(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha256_native_1init(
+Java_com_wolfssl_wolfcrypt_Sha256_native_1init_1internal(
     JNIEnv* env, jobject this)
 {
 #ifndef NO_SHA256
@@ -360,7 +382,7 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1init(
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1copy
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1copy_1internal
   (JNIEnv* env, jobject this, jobject toBeCopied)
 {
 #ifndef NO_SHA256
@@ -394,7 +416,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1copy
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha256_native_1update__Ljava_nio_ByteBuffer_2II(
+Java_com_wolfssl_wolfcrypt_Sha256_native_1update_1internal__Ljava_nio_ByteBuffer_2II(
     JNIEnv* env, jobject this, jobject data_buffer, jint position, jint len)
 {
 #ifndef NO_SHA256
@@ -426,9 +448,9 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update__Ljava_nio_ByteBuffer_2II(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha256_native_1update___3BII(
+Java_com_wolfssl_wolfcrypt_Sha256_native_1update_1internal___3BII(
     JNIEnv* env, jobject this, jbyteArray data_buffer, jint offset,
-   jint len)
+    jint len)
 {
 #ifndef NO_SHA256
     int ret = 0;
@@ -468,7 +490,7 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update___3BII(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha256_native_1final__Ljava_nio_ByteBuffer_2I(
+Java_com_wolfssl_wolfcrypt_Sha256_native_1final_1internal__Ljava_nio_ByteBuffer_2I(
     JNIEnv* env, jobject this, jobject hash_buffer, jint position)
 {
 #ifndef NO_SHA256
@@ -500,7 +522,7 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1final__Ljava_nio_ByteBuffer_2I(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha256_native_1final___3B(
+Java_com_wolfssl_wolfcrypt_Sha256_native_1final_1internal___3B(
     JNIEnv* env, jobject this, jbyteArray hash_buffer)
 {
 #ifndef NO_SHA256
@@ -534,7 +556,7 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1final___3B(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha384_native_1init(
+Java_com_wolfssl_wolfcrypt_Sha384_native_1init_1internal(
     JNIEnv* env, jobject this)
 {
 #ifdef WOLFSSL_SHA384
@@ -556,7 +578,7 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1init(
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_native_1copy
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_native_1copy_1internal
   (JNIEnv* env, jobject this, jobject toBeCopied)
 {
 #ifdef WOLFSSL_SHA384
@@ -590,7 +612,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_native_1copy
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha384_native_1update__Ljava_nio_ByteBuffer_2II(
+Java_com_wolfssl_wolfcrypt_Sha384_native_1update_1internal__Ljava_nio_ByteBuffer_2II(
     JNIEnv* env, jobject this, jobject data_buffer, jint position, jint len)
 {
 #ifdef WOLFSSL_SHA384
@@ -622,9 +644,8 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1update__Ljava_nio_ByteBuffer_2II(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha384_native_1update___3BII(
-    JNIEnv* env, jobject this, jbyteArray data_buffer, jint offset,
-   jint len)
+Java_com_wolfssl_wolfcrypt_Sha384_native_1update_1internal___3BII(
+    JNIEnv* env, jobject this, jbyteArray data_buffer, jint offset, jint len)
 {
 #ifdef WOLFSSL_SHA384
     int ret = 0;
@@ -664,7 +685,7 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1update___3BII(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha384_native_1final__Ljava_nio_ByteBuffer_2I(
+Java_com_wolfssl_wolfcrypt_Sha384_native_1final_1internal__Ljava_nio_ByteBuffer_2I(
     JNIEnv* env, jobject this, jobject hash_buffer, jint position)
 {
 #ifdef WOLFSSL_SHA384
@@ -696,7 +717,7 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1final__Ljava_nio_ByteBuffer_2I(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha384_native_1final___3B(
+Java_com_wolfssl_wolfcrypt_Sha384_native_1final_1internal___3B(
     JNIEnv* env, jobject this, jbyteArray hash_buffer)
 {
 #ifdef WOLFSSL_SHA384
@@ -730,7 +751,7 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1final___3B(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha512_native_1init(
+Java_com_wolfssl_wolfcrypt_Sha512_native_1init_1internal(
     JNIEnv* env, jobject this)
 {
 #ifdef WOLFSSL_SHA512
@@ -752,7 +773,7 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1init(
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha512_native_1copy
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha512_native_1copy_1internal
   (JNIEnv* env, jobject this, jobject toBeCopied)
 {
 #ifdef WOLFSSL_SHA512
@@ -786,7 +807,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha512_native_1copy
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha512_native_1update__Ljava_nio_ByteBuffer_2II(
+Java_com_wolfssl_wolfcrypt_Sha512_native_1update_1internal__Ljava_nio_ByteBuffer_2II(
     JNIEnv* env, jobject this, jobject data_buffer, jint position, jint len)
 {
 #ifdef WOLFSSL_SHA512
@@ -818,9 +839,9 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1update__Ljava_nio_ByteBuffer_2II(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha512_native_1update___3BII(
+Java_com_wolfssl_wolfcrypt_Sha512_native_1update_1internal___3BII(
     JNIEnv* env, jobject this, jbyteArray data_buffer, jint offset,
-   jint len)
+    jint len)
 {
 #ifdef WOLFSSL_SHA512
     int ret = 0;
@@ -860,7 +881,7 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1update___3BII(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha512_native_1final__Ljava_nio_ByteBuffer_2I(
+Java_com_wolfssl_wolfcrypt_Sha512_native_1final_1internal__Ljava_nio_ByteBuffer_2I(
     JNIEnv* env, jobject this, jobject hash_buffer, jint position)
 {
 #ifdef WOLFSSL_SHA512
@@ -892,7 +913,7 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1final__Ljava_nio_ByteBuffer_2I(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Sha512_native_1final___3B(
+Java_com_wolfssl_wolfcrypt_Sha512_native_1final_1internal___3B(
     JNIEnv* env, jobject this, jbyteArray hash_buffer)
 {
 #ifdef WOLFSSL_SHA512

@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -33,31 +35,33 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
-JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct(
+JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
-    void* ret = NULL;
-
 #ifndef NO_AES
-    ret = (void*)XMALLOC(sizeof(Aes), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    Aes* aes = NULL;
 
-    if (ret == NULL) {
+    aes = (Aes*)XMALLOC(sizeof(Aes), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (aes == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Aes object");
     }
     else {
-        XMEMSET(ret, 0, sizeof(Aes));
+        XMEMSET(aes, 0, sizeof(Aes));
     }
 
-    LogStr("new Aes() = %p\n", ret);
+    LogStr("new Aes() = %p\n", aes);
+
+    return (jlong)(uintptr_t)aes;
+
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return (jlong)ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key(
+Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key_1internal(
     JNIEnv* env, jobject this, jbyteArray key_object, jbyteArray iv_object,
     jint opmode)
 {
@@ -96,7 +100,7 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Aes_native_1update__I_3BII_3BI(
+Java_com_wolfssl_wolfcrypt_Aes_native_1update_1internal__I_3BII_3BI(
     JNIEnv* env, jobject this, jint opmode,
     jbyteArray input_object, jint offset, jint length,
     jbyteArray output_object, jint outputOffset)
@@ -164,7 +168,7 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update__I_3BII_3BI(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Aes_native_1update__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2I(
+Java_com_wolfssl_wolfcrypt_Aes_native_1update_1internal__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2I(
     JNIEnv* env, jobject this, jint opmode,
     jobject input_object, jint offset, jint length,
     jobject output_object, jint outputOffset)

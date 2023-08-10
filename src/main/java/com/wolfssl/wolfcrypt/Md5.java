@@ -33,6 +33,19 @@ public class Md5 extends MessageDigest {
     /** MD5 digest size */
     public static final int DIGEST_SIZE = 16;
 
+    /* native JNI methods, internally reach back and grab/use pointer from
+     * NativeStruct.java. We wrap calls to these below in order to
+     * synchronize access to native pointer between threads */
+    private native long mallocNativeStruct_internal() throws OutOfMemoryError;
+    private native void native_init_internal();
+    private native void native_copy_internal(Md5 toBeCopied);
+    private native void native_update_internal(ByteBuffer data, int offset,
+        int len);
+    private native void native_update_internal(byte[] data, int offset,
+        int len);
+    private native void native_final_internal(ByteBuffer hash, int offset);
+    private native void native_final_internal(byte[] hash);
+
     /**
      * Malloc native JNI Md5 structure
      *
@@ -40,12 +53,26 @@ public class Md5 extends MessageDigest {
      *
      * @throws OutOfMemoryError when malloc fails with memory error
      */
-    protected native long mallocNativeStruct() throws OutOfMemoryError;
+    protected long mallocNativeStruct()
+        throws OutOfMemoryError {
+
+        synchronized (pointerLock) {
+            return mallocNativeStruct_internal();
+        }
+    }
 
     /**
      * Initialize Md5 object
+     *
+     * @throws WolfCryptException if native operation fails
      */
-    protected native void native_init();
+    protected void native_init()
+        throws WolfCryptException {
+
+        synchronized (pointerLock) {
+            native_init_internal();
+        }
+    }
 
     /**
      * Copy existing native WC_MD5 struct (Md5 object) into this one.
@@ -55,7 +82,13 @@ public class Md5 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-    protected native void native_copy(Md5 toBeCopied);
+    protected void native_copy(Md5 toBeCopied)
+        throws WolfCryptException {
+
+        synchronized (pointerLock) {
+            native_copy_internal(toBeCopied);
+        }
+    }
 
     /**
      * Native Md5 update
@@ -66,7 +99,13 @@ public class Md5 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-    protected native void native_update(ByteBuffer data, int offset, int len);
+    protected void native_update(ByteBuffer data, int offset, int len)
+        throws WolfCryptException {
+
+        synchronized (pointerLock) {
+            native_update_internal(data, offset, len);
+        }
+    }
 
     /**
      * Native Md5 update
@@ -77,7 +116,13 @@ public class Md5 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-    protected native void native_update(byte[] data, int offset, int len);
+    protected void native_update(byte[] data, int offset, int len)
+        throws WolfCryptException {
+
+        synchronized (pointerLock) {
+            native_update_internal(data, offset, len);
+        }
+    }
 
     /**
      * Native Md5 final, calculate final digest
@@ -87,7 +132,13 @@ public class Md5 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-    protected native void native_final(ByteBuffer hash, int offset);
+    protected void native_final(ByteBuffer hash, int offset)
+        throws WolfCryptException {
+
+        synchronized (pointerLock) {
+            native_final_internal(hash, offset);
+        }
+    }
 
     /**
      * Native Md5 final, calculate final digest
@@ -96,7 +147,13 @@ public class Md5 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-    protected native void native_final(byte[] hash);
+    protected void native_final(byte[] hash)
+        throws WolfCryptException {
+
+        synchronized (pointerLock) {
+            native_final_internal(hash);
+        }
+    }
 
     /**
      * Create new Md5 object

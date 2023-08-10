@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -44,20 +46,26 @@ JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Curve25519_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-    void* ret = 0;
-
 #ifdef HAVE_CURVE25519
-    ret = XMALLOC(sizeof(curve25519_key), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    curve25519_key* key = NULL;
 
-    if (ret == NULL)
+    key = (curve25519_key*)XMALLOC(sizeof(curve25519_key), NULL,
+                DYNAMIC_TYPE_TMP_BUFFER);
+    if (key == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Curve25519 object");
+    }
+    else {
+        XMEMSET(key, 0, sizeof(curve25519_key));
+    }
 
-    LogStr("new Curve25519() = %p\n", (void*)ret);
+    LogStr("new Curve25519() = %p\n", key);
+
+    return (jlong)(uintptr_t)key;
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return (jlong) ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT void JNICALL
@@ -277,6 +285,7 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1private(
         throwOutOfMemoryException(env, "Failed to allocate key buffer");
         return result;
     }
+    XMEMSET(output, 0, outputSz);
 
     ret = (!curve25519)
         ? BAD_FUNC_ARG
@@ -332,6 +341,7 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1public (
         throwOutOfMemoryException(env, "Failed to allocate key buffer");
         return result;
     }
+    XMEMSET(output, 0, outputSz);
 
     ret = (!curve25519)
         ? BAD_FUNC_ARG
@@ -394,6 +404,7 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1make_1shared_1secret(
                                      "Failed to allocate shared secret buffer");
         return result;
     }
+    XMEMSET(output, 0, outputSz);
 
     ret = (!curve25519 || !pub)
         ? BAD_FUNC_ARG

@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -104,20 +106,26 @@ JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Hmac_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-    jlong ret = 0;
-
 #ifndef NO_HMAC
-    ret = (jlong) XMALLOC(sizeof(Hmac), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    Hmac* hmac = NULL;
 
-    if (!ret)
+    hmac = (Hmac*) XMALLOC(sizeof(Hmac), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (hmac == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Hmac object");
+    }
+    else {
+        XMEMSET(hmac, 0, sizeof(Hmac));
+    }
 
-    LogStr("new Hmac() = %p\n", (void*)ret);
+    LogStr("new Hmac() = %p\n", hmac);
+
+    return (jlong)(uintptr_t)hmac;
+
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT void JNICALL

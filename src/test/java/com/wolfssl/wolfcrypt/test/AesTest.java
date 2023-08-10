@@ -24,6 +24,13 @@ package com.wolfssl.wolfcrypt.test;
 import static org.junit.Assert.*;
 
 import java.util.Arrays;
+import java.util.Random;
+import java.util.Iterator;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import javax.crypto.ShortBufferException;
 import java.nio.ByteBuffer;
 import javax.crypto.ShortBufferException;
 
@@ -514,6 +521,87 @@ public class AesTest {
                  "throw WolfCryptException");
         } catch (WolfCryptException e) {
             /* expected */
+        }
+    }
+
+    @Test
+    public void threadedAesTest() throws InterruptedException {
+
+        int numThreads = 50;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
+        final byte[] rand2kBuf = new byte[2048];
+        final byte[] key = Util.h2b("2b7e151628aed2a6abf7158809cf4f3c");
+        final byte[] iv = Util.h2b("000102030405060708090A0B0C0D0E0F");
+
+        /* fill large input buffer with random bytes */
+        new Random().nextBytes(rand2kBuf);
+
+        /* encrypt / decrypt input data, make sure decrypted matches original */
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+
+                    int ret = 0;
+                    Aes enc = new Aes(key, iv, Aes.ENCRYPT_MODE);
+                    Aes dec = new Aes(key, iv, Aes.DECRYPT_MODE);
+                    byte[] encrypted = new byte[2048];
+                    byte[] plaintext = new byte[2048];
+
+                    try {
+                        /* encrypt in 128-byte chunks */
+                        Arrays.fill(encrypted, (byte)0);
+                        for (int j = 0; j < rand2kBuf.length; j+= 128) {
+                            ret = enc.update(rand2kBuf, j, 128, encrypted, j);
+                            if (ret != 128) {
+                                throw new Exception(
+                                    "Aes.update(ENCRYPT_MODE) returned " + ret);
+                            }
+                        }
+
+                        /* decrypt in 128-byte chunks */
+                        Arrays.fill(plaintext, (byte)0);
+                        for (int j = 0; j < encrypted.length; j+= 128) {
+                            ret = dec.update(encrypted, j, 128, plaintext, j);
+                            if (ret != 128) {
+                                throw new Exception(
+                                    "Aes.update(DECRYPT_MODE) returned " + ret);
+                            }
+                        }
+
+                        /* make sure decrypted is same as input */
+                        if (Arrays.equals(rand2kBuf, plaintext)) {
+                            results.add(0);
+                        }
+                        else {
+                            /* not equal, error case */
+                            results.add(1);
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        results.add(1);
+
+                    } finally {
+                        enc.releaseNativeStruct();
+                        dec.releaseNativeStruct();
+                        latch.countDown();
+                    }
+                }
+            });
+        }
+
+        /* wait for all threads to complete */
+        latch.await();
+
+        /* compare all digests, all should be the same across threads */
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur == 1) {
+                fail("Threading error in AES thread test");
+            }
         }
     }
 }

@@ -20,6 +20,7 @@
  */
 
 #include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -47,27 +48,32 @@
 #endif
 
 JNIEXPORT jlong JNICALL
-Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct(
+Java_com_wolfssl_wolfcrypt_Md5_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
-    jlong ret = 0;
-
 #ifndef NO_MD5
-    ret = (jlong)(uintptr_t)XMALLOC(sizeof(Md5), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    Md5* md5 = NULL;
 
-    if (!ret)
+    md5 = (Md5*)XMALLOC(sizeof(Md5), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (md5 == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate Md5 object");
+    }
+    else {
+        XMEMSET(md5, 0, sizeof(Md5));
+    }
 
-    LogStr("new Md5() = %p\n", (void*)ret);
+    LogStr("new Md5() = %p\n", md5);
+
+    return (jlong)(uintptr_t)md5;
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Md5_native_1init(
+Java_com_wolfssl_wolfcrypt_Md5_native_1init_1internal(
     JNIEnv* env, jobject this)
 {
 #ifndef NO_MD5
@@ -91,7 +97,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1init(
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1copy
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1copy_1internal
   (JNIEnv* env, jobject this, jobject toBeCopied)
 {
 #ifndef NO_MD5
@@ -125,7 +131,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1copy
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Md5_native_1update__Ljava_nio_ByteBuffer_2II(
+Java_com_wolfssl_wolfcrypt_Md5_native_1update_1internal__Ljava_nio_ByteBuffer_2II(
     JNIEnv* env, jobject this, jobject data_buffer, jint position, jint len)
 {
 #ifndef NO_MD5
@@ -159,7 +165,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update__Ljava_nio_ByteBuffer_2II(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Md5_native_1update___3BII(
+Java_com_wolfssl_wolfcrypt_Md5_native_1update_1internal___3BII(
     JNIEnv* env, jobject this, jbyteArray data_buffer, jint offset, jint len)
 {
 #ifndef NO_MD5
@@ -198,7 +204,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update___3BII(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Md5_native_1final__Ljava_nio_ByteBuffer_2I(
+Java_com_wolfssl_wolfcrypt_Md5_native_1final_1internal__Ljava_nio_ByteBuffer_2I(
     JNIEnv* env, jobject this, jobject hash_buffer, jint position)
 {
 #ifndef NO_MD5
@@ -232,7 +238,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final__Ljava_nio_ByteBuffer_2I(
 }
 
 JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Md5_native_1final___3B(
+Java_com_wolfssl_wolfcrypt_Md5_native_1final_1internal___3B(
     JNIEnv* env, jobject this, jbyteArray hash_buffer)
 {
 #ifndef NO_MD5

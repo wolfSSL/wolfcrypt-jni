@@ -24,6 +24,13 @@ package com.wolfssl.wolfcrypt.test;
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
+import java.util.Random;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 import javax.crypto.ShortBufferException;
 
 import org.junit.Test;
@@ -201,6 +208,56 @@ public class Md5Test {
 
         md5.releaseNativeStruct();
         md5Copy.releaseNativeStruct();
+    }
+
+    @Test
+    public void threadedHashTest() throws InterruptedException {
+
+        int numThreads = 100;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<byte[]> results = new LinkedBlockingQueue<>();
+        final byte[] rand10kBuf = new byte[10240];
+
+        /* fill large input buffer with random bytes */
+        new Random().nextBytes(rand10kBuf);
+
+        /* generate hash over input data concurrently across numThreads */
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+                    Md5 md5 = new Md5();
+
+                    /* process/update in 1024-byte chunks */
+                    for (int j = 0; j < rand10kBuf.length; j+= 1024) {
+                        md5.update(rand10kBuf, j, 1024);
+                    }
+
+                    /* get final hash */
+                    byte[] hash = md5.digest();
+                    results.add(hash.clone());
+
+                    md5.releaseNativeStruct();
+                    latch.countDown();
+                }
+            });
+        }
+
+        /* wait for all threads to complete */
+        latch.await();
+
+        /* compare all digests, all should be the same across threads */
+        Iterator<byte[]> listIterator = results.iterator();
+        byte[] current = listIterator.next();
+        while (listIterator.hasNext()) {
+            byte[] next = listIterator.next();
+            if (!Arrays.equals(current, next)) {
+                fail("Found two non-identical digests in thread test");
+            }
+            if (listIterator.hasNext()) {
+                current = listIterator.next();
+            }
+        }
     }
 }
 
