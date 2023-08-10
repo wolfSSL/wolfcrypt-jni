@@ -37,10 +37,17 @@ public abstract class NativeStruct extends WolfObject {
     }
 
     /* points to the internal native structure */
-    private long pointer;
+    private long pointer = 0;
+
+    /* Lock around native pointer use */
+    protected final Object pointerLock = new Object();
 
     /**
      * Get pointer to wrapped native structure
+     *
+     * WARNING: the pointer returned from this function has not been locked
+     * and may cause threading synchronization issues if used in a
+     * multi-threaded use case or application.
      *
      * @return pointer to native structure
      */
@@ -57,10 +64,14 @@ public abstract class NativeStruct extends WolfObject {
      * @param nativeStruct pointer to initialized native structure
      */
     protected void setNativeStruct(long nativeStruct) {
-        if (this.pointer != NULL)
-            xfree(this.pointer);
 
-        this.pointer = nativeStruct;
+        synchronized (pointerLock) {
+            if (this.pointer != NULL) {
+                xfree(this.pointer);
+            }
+
+            this.pointer = nativeStruct;
+        }
     }
 
     /**

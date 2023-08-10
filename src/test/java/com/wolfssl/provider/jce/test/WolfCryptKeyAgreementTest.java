@@ -27,6 +27,12 @@ import org.junit.BeforeClass;
 
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Random;
+import java.util.Iterator;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.ShortBufferException;
@@ -93,6 +99,9 @@ public class WolfCryptKeyAgreementTest {
 
     private static ArrayList<String> disabledCurves =
         new ArrayList<String>();
+
+    /* One static SecureRandom to share */
+    private static SecureRandom secureRandom = new SecureRandom();
 
     private static void printDisabledCurves() {
 
@@ -179,7 +188,7 @@ public class WolfCryptKeyAgreementTest {
 
         /* initialize key pair generator */
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
-        keyGen.initialize(dhParams, new SecureRandom());
+        keyGen.initialize(dhParams, secureRandom);
 
         KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
         KeyAgreement bKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
@@ -230,7 +239,7 @@ public class WolfCryptKeyAgreementTest {
 
         /* initialize key pair generator */
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
-        keyGen.initialize(dhParams, new SecureRandom());
+        keyGen.initialize(dhParams, secureRandom);
 
         KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
         KeyAgreement bKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
@@ -284,7 +293,7 @@ public class WolfCryptKeyAgreementTest {
 
         /* initialize key pair generator */
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
-        keyGen.initialize(dhParams, new SecureRandom());
+        keyGen.initialize(dhParams, secureRandom);
 
         KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
         KeyAgreement bKeyAgree = KeyAgreement.getInstance("DH");
@@ -493,6 +502,137 @@ public class WolfCryptKeyAgreementTest {
         byte secretC[]  = cKeyAgree.generateSecret();
 
         assertArrayEquals(secretA2, secretC);
+    }
+
+    private void threadRunnerKeyAgreeTest(String algo)
+        throws InterruptedException, NoSuchAlgorithmException {
+
+        int numThreads = 10;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
+        final String currentAlgo = algo;
+
+        /* DH Tests */
+        AlgorithmParameterGenerator paramGen =
+            AlgorithmParameterGenerator.getInstance("DH");
+        paramGen.init(512);
+        final AlgorithmParameters params = paramGen.generateParameters();
+
+        /* Do encrypt/decrypt and sign/verify in parallel across numThreads
+         * threads, all operations should pass */
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+
+                    int failed = 0;
+                    KeyPairGenerator keyGen = null;
+                    KeyAgreement aKeyAgree = null;
+                    KeyAgreement bKeyAgree = null;
+                    KeyAgreement cKeyAgree = null;
+                    KeyPair aPair = null;
+                    KeyPair bPair = null;
+                    KeyPair cPair = null;
+
+                    try {
+
+                        /* Set up KeyPairGenerator */
+                        if (currentAlgo.equals("DH")) {
+                            DHParameterSpec dhParams =
+                                (DHParameterSpec)params.getParameterSpec(
+                                    DHParameterSpec.class);
+
+                            keyGen = KeyPairGenerator.getInstance(
+                                "DH", "wolfJCE");
+                            keyGen.initialize(dhParams, secureRandom);
+                        } else {
+                            ECGenParameterSpec ecsp =
+                                new ECGenParameterSpec("secp256r1");
+
+                            keyGen = KeyPairGenerator.getInstance(
+                                "EC", "wolfJCE");
+                            keyGen.initialize(ecsp);
+                        }
+
+                        /* Get KeyAgreement objects */
+                        aKeyAgree = KeyAgreement.getInstance(
+                            currentAlgo, "wolfJCE");
+                        bKeyAgree = KeyAgreement.getInstance(
+                            currentAlgo, "wolfJCE");
+
+                        /* Generate key pairs */
+                        aPair = keyGen.generateKeyPair();
+                        bPair = keyGen.generateKeyPair();
+
+                        /* Initialize KeyAgreement objects with private keys */
+                        aKeyAgree.init(aPair.getPrivate());
+                        bKeyAgree.init(bPair.getPrivate());
+
+                        aKeyAgree.doPhase(bPair.getPublic(), true);
+                        bKeyAgree.doPhase(aPair.getPublic(), true);
+
+                        /* Generate shared secrets */
+                        byte secretA[] = aKeyAgree.generateSecret();
+                        byte secretB[] = bKeyAgree.generateSecret();
+
+                        if (!Arrays.equals(secretA, secretB)) {
+                            failed = 1;
+                        }
+
+                        if (failed == 0) {
+                            cKeyAgree = KeyAgreement.getInstance(
+                                currentAlgo, "wolfJCE");
+                            cPair = keyGen.generateKeyPair();
+                            cKeyAgree.init(cPair.getPrivate());
+
+                            aKeyAgree.doPhase(cPair.getPublic(), true);
+                            cKeyAgree.doPhase(aPair.getPublic(), true);
+
+                            byte secretA2[] = aKeyAgree.generateSecret();
+                            byte secretC[]  = cKeyAgree.generateSecret();
+
+                            if (!Arrays.equals(secretA2, secretC)) {
+                                failed = 1;
+                            }
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        failed = 1;
+
+                    } finally {
+                        latch.countDown();
+                    }
+
+                    if (failed == 1) {
+                        results.add(1);
+                    }
+                    else {
+                        results.add(0);
+                    }
+                }
+            });
+        }
+
+        /* wait for all threads to complete */
+        latch.await();
+
+        /* Look for any failures that happened */
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur == 1) {
+                fail("Threading error in KeyAgreement thread test");
+            }
+        }
+    }
+
+    @Test
+    public void testThreadedKeyAgreement()
+        throws InterruptedException, NoSuchAlgorithmException {
+
+        threadRunnerKeyAgreeTest("DH");
+        threadRunnerKeyAgreeTest("ECDH");
     }
 }
 

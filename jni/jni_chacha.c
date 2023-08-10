@@ -20,6 +20,7 @@
  */
 
 #include <stdint.h>
+
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
 #elif !defined(__ANDROID__)
@@ -40,21 +41,26 @@ JNIEXPORT jlong JNICALL
 Java_com_wolfssl_wolfcrypt_Chacha_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-    void* ret = 0;
-
 #ifdef HAVE_CHACHA
-    ret = (void*)XMALLOC(sizeof(ChaCha), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    ChaCha* chacha = NULL;
 
-    if (ret == NULL)
+    chacha = (ChaCha*)XMALLOC(sizeof(ChaCha), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (chacha == NULL) {
         throwOutOfMemoryException(env, "Failed to allocate ChaCha object");
+    }
+    else {
+        XMEMSET(chacha, 0, sizeof(ChaCha));
+    }
 
-    XMEMSET(ret, 0, sizeof(ChaCha));
-    LogStr("new ChaCha object allocated = %p\n", ret);
+    LogStr("new ChaCha object allocated = %p\n", chacha);
+
+    return (jlong)(uintptr_t)chacha;
+
 #else
     throwNotCompiledInException(env);
-#endif
 
-    return (jlong)(uintptr_t)ret;
+    return (jlong)0;
+#endif
 }
 
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setIV
@@ -162,6 +168,8 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
     }
 
     if (ret == 0) {
+        XMEMSET(output, 0, inputSz);
+
         ret = wc_Chacha_Process(chacha, output, input, inputSz);
     }
 

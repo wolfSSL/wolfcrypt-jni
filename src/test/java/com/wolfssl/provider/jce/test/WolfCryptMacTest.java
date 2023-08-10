@@ -26,11 +26,17 @@ import org.junit.Test;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Random;
+import java.util.Iterator;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import java.security.Security;
 import java.security.Provider;
@@ -662,6 +668,274 @@ public class WolfCryptMacTest {
                 /* skip test if not available */
                 Assume.assumeTrue(false);
             }
+        }
+    }
+
+    private void threadRunnerMacTest(String hmacAlgo, String digest,
+        HmacVector vector) throws InterruptedException {
+
+        int numThreads = 20;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
+        final String currentAlgo = hmacAlgo;
+        final String mdAlgo = digest;
+        final byte[] key = vector.getKey();
+        final byte[] input = vector.getInput();
+        final byte[] output = vector.getOutput();
+
+        /* Do MAC in parallel across numThreads threads, all ops should pass */
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+
+                    int failed = 0;
+                    SecretKeySpec keyspec = null;
+                    Mac mac = null;
+
+                    try {
+                        keyspec = new SecretKeySpec(key, mdAlgo);
+                        mac = Mac.getInstance(currentAlgo, "wolfJCE");
+
+                        mac.init(keyspec);
+                        mac.update(input);
+                        byte out[] = mac.doFinal();
+
+                        if (!Arrays.equals(out, output)) {
+                            failed = 1;
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        failed = 1;
+
+                    } finally {
+                        latch.countDown();
+                    }
+
+                    if (failed == 1) {
+                        results.add(1);
+                    }
+                    else {
+                        results.add(0);
+                    }
+                }
+            });
+        }
+
+        /* wait for all threads to complete */
+        latch.await();
+
+        /* Look for any failures that happened */
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur == 1) {
+                fail("Threading error in MAC thread test: " + currentAlgo);
+            }
+        }
+    }
+
+    @Test
+    public void testThreadedMac() throws InterruptedException {
+
+        HmacVector md5Vector = new HmacVector(
+            new byte[] {
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+            },
+            new byte[] {
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD
+            },
+            new byte[] {
+                (byte)0x56, (byte)0xbe, (byte)0x34, (byte)0x52,
+                (byte)0x1d, (byte)0x14, (byte)0x4c, (byte)0x88,
+                (byte)0xdb, (byte)0xb8, (byte)0xc7, (byte)0x33,
+                (byte)0xf0, (byte)0xe8, (byte)0xb3, (byte)0xf6
+            }
+        );
+
+        HmacVector sha1Vector = new HmacVector(
+            new byte[] {
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA
+            },
+            new byte[] {
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD
+            },
+            new byte[] {
+                (byte)0x12, (byte)0x5d, (byte)0x73, (byte)0x42,
+                (byte)0xb9, (byte)0xac, (byte)0x11, (byte)0xcd,
+                (byte)0x91, (byte)0xa3, (byte)0x9a, (byte)0xf4,
+                (byte)0x8a, (byte)0xa1, (byte)0x7b, (byte)0x4f,
+                (byte)0x63, (byte)0xf1, (byte)0x75, (byte)0xd3
+            }
+        );
+
+        HmacVector sha256Vector = new HmacVector(
+            new byte[] {
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA
+            },
+            new byte[] {
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD
+            },
+            new byte[] {
+                (byte)0x77, (byte)0x3e, (byte)0xa9, (byte)0x1e,
+                (byte)0x36, (byte)0x80, (byte)0x0e, (byte)0x46,
+                (byte)0x85, (byte)0x4d, (byte)0xb8, (byte)0xeb,
+                (byte)0xd0, (byte)0x91, (byte)0x81, (byte)0xa7,
+                (byte)0x29, (byte)0x59, (byte)0x09, (byte)0x8b,
+                (byte)0x3e, (byte)0xf8, (byte)0xc1, (byte)0x22,
+                (byte)0xd9, (byte)0x63, (byte)0x55, (byte)0x14,
+                (byte)0xce, (byte)0xd5, (byte)0x65, (byte)0xfe
+            }
+        );
+
+        HmacVector sha384Vector = new HmacVector(
+            new byte[] {
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA
+            },
+            new byte[] {
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD
+            },
+            new byte[] {
+                (byte)0x88, (byte)0x06, (byte)0x26, (byte)0x08,
+                (byte)0xd3, (byte)0xe6, (byte)0xad, (byte)0x8a,
+                (byte)0x0a, (byte)0xa2, (byte)0xac, (byte)0xe0,
+                (byte)0x14, (byte)0xc8, (byte)0xa8, (byte)0x6f,
+                (byte)0x0a, (byte)0xa6, (byte)0x35, (byte)0xd9,
+                (byte)0x47, (byte)0xac, (byte)0x9f, (byte)0xeb,
+                (byte)0xe8, (byte)0x3e, (byte)0xf4, (byte)0xe5,
+                (byte)0x59, (byte)0x66, (byte)0x14, (byte)0x4b,
+                (byte)0x2a, (byte)0x5a, (byte)0xb3, (byte)0x9d,
+                (byte)0xc1, (byte)0x38, (byte)0x14, (byte)0xb9,
+                (byte)0x4e, (byte)0x3a, (byte)0xb6, (byte)0xe1,
+                (byte)0x01, (byte)0xa3, (byte)0x4f, (byte)0x27
+            }
+        );
+
+        HmacVector sha512Vector = new HmacVector(
+            new byte[] {
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA,
+                (byte)0xAA, (byte)0xAA, (byte)0xAA, (byte)0xAA
+            },
+            new byte[] {
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD, (byte)0xDD, (byte)0xDD,
+                (byte)0xDD, (byte)0xDD
+            },
+            new byte[] {
+                (byte)0xfa, (byte)0x73, (byte)0xb0, (byte)0x08,
+                (byte)0x9d, (byte)0x56, (byte)0xa2, (byte)0x84,
+                (byte)0xef, (byte)0xb0, (byte)0xf0, (byte)0x75,
+                (byte)0x6c, (byte)0x89, (byte)0x0b, (byte)0xe9,
+                (byte)0xb1, (byte)0xb5, (byte)0xdb, (byte)0xdd,
+                (byte)0x8e, (byte)0xe8, (byte)0x1a, (byte)0x36,
+                (byte)0x55, (byte)0xf8, (byte)0x3e, (byte)0x33,
+                (byte)0xb2, (byte)0x27, (byte)0x9d, (byte)0x39,
+                (byte)0xbf, (byte)0x3e, (byte)0x84, (byte)0x82,
+                (byte)0x79, (byte)0xa7, (byte)0x22, (byte)0xc8,
+                (byte)0x06, (byte)0xb4, (byte)0x85, (byte)0xa4,
+                (byte)0x7e, (byte)0x67, (byte)0xc8, (byte)0x07,
+                (byte)0xb9, (byte)0x46, (byte)0xa3, (byte)0x37,
+                (byte)0xbe, (byte)0xe8, (byte)0x94, (byte)0x26,
+                (byte)0x74, (byte)0x27, (byte)0x88, (byte)0x59,
+                (byte)0xe1, (byte)0x32, (byte)0x92, (byte)0xfb
+            }
+        );
+
+        if (enabledAlgos.contains("HmacMD5")) {
+            threadRunnerMacTest("HmacMD5", "MD5", md5Vector);
+        }
+
+        if (enabledAlgos.contains("HmacSHA1")) {
+            threadRunnerMacTest("HmacSHA1", "SHA1", sha1Vector);
+        }
+
+        if (enabledAlgos.contains("HmacSHA256")) {
+            threadRunnerMacTest("HmacSHA256", "SHA256", sha256Vector);
+        }
+
+        if (enabledAlgos.contains("HmacSHA384")) {
+            threadRunnerMacTest("HmacSHA384", "SHA384", sha384Vector);
+        }
+
+        if (enabledAlgos.contains("HmacSHA512")) {
+            threadRunnerMacTest("HmacSHA512", "SHA512", sha512Vector);
         }
     }
 

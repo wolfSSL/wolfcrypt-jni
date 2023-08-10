@@ -40,6 +40,16 @@ public class Des3 extends BlockCipher {
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
     private int opmode;
 
+    /* native JNI methods, internally reach back and grab/use pointer from
+     * NativeStruct.java. We wrap calls to these below in order to
+     * synchronize access to native pointer between threads */
+    private native void native_set_key_internal(byte[] key, byte[] iv,
+        int opmode);
+    private native int native_update_internal(int opmode, byte[] input,
+        int offset, int length, byte[] output, int outputOffset);
+    private native int native_update_internal(int opmode, ByteBuffer input,
+        int offset, int length, ByteBuffer output, int outputOffset);
+
     /**
      * Malloc native JNI Des3 structure
      *
@@ -57,7 +67,12 @@ public class Des3 extends BlockCipher {
      * @param opmode 3DES mode, either Des3.ENCRYPT_MODE or
      *        Des3.DECRYPT_MODE
      */
-    protected native void native_set_key(byte[] key, byte[] iv, int opmode);
+    protected void native_set_key(byte[] key, byte[] iv, int opmode) {
+
+        synchronized (pointerLock) {
+            native_set_key_internal(key, iv, opmode);
+        }
+    }
 
     /**
      * Native Des3 encrypt/decrypt update operation
@@ -72,8 +87,14 @@ public class Des3 extends BlockCipher {
      *
      * @return number of bytes stored in output
      */
-    protected native int native_update(int opmode, byte[] input, int offset,
-            int length, byte[] output, int outputOffset);
+    protected int native_update(int opmode, byte[] input, int offset,
+        int length, byte[] output, int outputOffset) {
+
+        synchronized (pointerLock) {
+            return native_update_internal(opmode, input, offset, length,
+                output, outputOffset);
+        }
+    }
 
     /**
      * Native Des3 encrypt/decrypt update operation
@@ -88,8 +109,14 @@ public class Des3 extends BlockCipher {
      *
      * @return number of bytes stored in output
      */
-    protected native int native_update(int opmode, ByteBuffer input,
-            int offset, int length, ByteBuffer output, int outputOffset);
+    protected int native_update(int opmode, ByteBuffer input,
+        int offset, int length, ByteBuffer output, int outputOffset) {
+
+        synchronized (pointerLock) {
+            return native_update_internal(opmode, input, offset, length,
+                output, outputOffset);
+        }
+    }
 
     /**
      * Create new Des3 object

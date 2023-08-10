@@ -29,6 +29,15 @@ import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Random;
+import java.util.Iterator;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+
 import com.wolfssl.wolfcrypt.Hmac;
 import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptError;
@@ -251,6 +260,155 @@ public class HmacTest {
                     throw e;
                 }
             }
+        }
+    }
+
+    private void threadRunnerHmacTest(int hmacType, byte[] inKey,
+        byte[] inData, byte[] inExpected)
+        throws InterruptedException {
+
+        int numThreads = 20;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
+        final int type = hmacType;
+        final byte[] key = inKey;
+        final byte[] data = inData;
+        final byte[] expected = inExpected;
+
+        /* Do HMAC across numThread threads, all should be successful */
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+
+                    int failed = 0;
+                    Hmac hmac = null;
+
+                    try {
+
+                        hmac = new Hmac();
+                        hmac.setKey(type, key);
+                        hmac.update(data);
+
+                        if (!Arrays.equals(expected, hmac.doFinal())) {
+                            failed = 1;
+                        }
+
+                        if (failed == 0) {
+                            hmac.reset();
+                            hmac.update(data);
+                            if (!Arrays.equals(expected, hmac.doFinal())) {
+                                failed = 1;
+                            }
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        failed = 1;
+
+                    } finally {
+                        latch.countDown();
+                    }
+
+                    if (failed == 1) {
+                        results.add(1);
+                    }
+                    else {
+                        results.add(0);
+                    }
+                }
+            });
+        }
+
+        /* wait for all threads to complete */
+        latch.await();
+
+        /* Look for any failures that happened */
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur == 1) {
+                fail("Threading error in HMAC thread test");
+            }
+        }
+    }
+
+    @Test
+    public void testThreadedHmac() throws InterruptedException {
+
+        if (Hmac.SHA != -1) {
+            threadRunnerHmacTest(Hmac.SHA,
+                Util.h2b("fd42f5044e3f70825102017f8521"), /* key */
+                Util.h2b("c9995cad63f60f7c7c552ac12c08" + /* data */
+                         "0a7262cec4636d47c460c2abb47a" +
+                         "f9bca09e18f9576c1415144595a7" +
+                         "5da6fa232cb59d094d1a585c0710" +
+                         "4856febcd05a58bde12a1f04795a" +
+                         "e6e66a05b06f5dbe0dfa16c986fe" +
+                         "fa8c3b2bce40cbb6c1ec74f1ad94" +
+                         "7c1e9aadcf8584d5e9c45ec1f667" +
+                         "567738b85bbdaad8dcd1e30fd35a" +
+                         "3c61"),
+                Util.h2b("8865eb9df41dcc2e74360f0c97ae" + /* expected */
+                         "567cb2377022")
+            );
+        }
+        if (Hmac.SHA256 != -1) {
+            threadRunnerHmacTest(Hmac.SHA256,
+                Util.h2b("26afdd2445b1f3cecbd4a797fed8"), /* key */
+                Util.h2b("bd74f8646cdd9b217927b04ef4ee" + /* data */
+                         "ef0b8ef0b78fafcabb11c202f8e8" +
+                         "d44aeaf15d03ff315d014cbbab8e" +
+                         "7ed48ab114567eb0cc525ed35bf9" +
+                         "a96b61bd1d139cb386365c3cd5d1" +
+                         "37e4717afd8ad2a2efc24b172b77" +
+                         "27cc6bd5f8ddef652cceb87ae114" +
+                         "f7cdfbd6c56473f414b8f149e616" +
+                         "9e2dbd46333e526b5761892a2703" +
+                         "a50e"),
+                Util.h2b("208661dd6bdeab1c2843dfb8226c" + /* expected */
+                         "be0a69db31aa183004e12025039f" +
+                         "9fc2446a")
+            );
+        }
+        if (Hmac.SHA384 != -1) {
+            threadRunnerHmacTest(Hmac.SHA384,
+                Util.h2b("d35d6a733af2947fbdb4a67f5b3d"), /* key */
+                Util.h2b("44a8e36ec9b42a94a9627bd391f7" + /* data */
+                         "114dad4296d31c3639a8a1d80188" +
+                         "9b5c61e9378a0c81e4670a080712" +
+                         "0c3ff0ecfd310dfbd9b95e91c244" +
+                         "292851d8ef912a569e4ed3fc083c" +
+                         "c62d9475c47534746dc8977a0e0a" +
+                         "9f31bad5158f9c769cfe8b38e3ba" +
+                         "dfe61f7a838bb9524c7c43d88998" +
+                         "b186dccfc65f48e1ccd58a6888eb" +
+                         "ad19"),
+                Util.h2b("346ff5f9b77866d72154b6b6965f" + /* expected */
+                         "1f56e7c21ddf3392bdbe12e5dffb" +
+                         "1d75e2f0d919c1e133c83b9b56d3" +
+                         "17c3db1364de")
+            );
+        }
+        if (Hmac.SHA512 != -1) {
+            threadRunnerHmacTest(Hmac.SHA512,
+                Util.h2b("c3ec1135bb477eb81ca421deb9e0"), /* key */
+                Util.h2b("837dbbb0371bf60082c788c8f16f" + /* data */
+                         "f883dd9216d235f7decf7ea09f9e" +
+                         "17fa5d46c25673bf609c7c4dfc3e" +
+                         "740c0b6c1bcbf2879a1dc9d769ae" +
+                         "5f8070d47eb26d66702195d1c1b5" +
+                         "7e6847823cfc60facbad7b61adff" +
+                         "da82d33196a1c1cae3b0ee7495c6" +
+                         "690de3ccc2fc6b7a28c17782cfd0" +
+                         "7f0a95a0ef60e4ff29e9daa8ce5b" +
+                         "a717"),
+                Util.h2b("517bd0146fe52cb464a0d555a7c2" + /* expected */
+                         "9b5f9a604b07f32ff255f139156e" +
+                         "214b6eb3836aa089987a5aca585e" +
+                         "3cb10af8cb19c12a89628e8f59b6" +
+                         "952ac4b7da7131f0")
+            );
         }
     }
 }
