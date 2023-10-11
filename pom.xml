@@ -2,17 +2,22 @@
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>wolfssl</groupId>
+	<groupId>com.wolfssl</groupId>
 	<artifactId>wolfcrypt-jni</artifactId>
-	<version>1.0.0-SNAPSHOT</version>
+	<version>1.5.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>wolfcrypt-jni</name>
+    <url>https://www.wolfssl.com</url>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
 
 	<dependencies>
 		<!-- https://mvnrepository.com/artifact/org.hamcrest/hamcrest-core -->
 		<dependency>
 			<groupId>org.hamcrest</groupId>
-			<artifactId>hamcrest-core</artifactId>
+			<artifactId>hamcrest-all</artifactId>
 			<version>1.3</version>
 			<scope>test</scope>
 		</dependency>
@@ -27,7 +32,9 @@
 	<build>
 		<plugins>
 			<plugin>
+                <groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
 				<configuration>
 					<source>1.8</source>
 					<target>1.8</target>
@@ -36,10 +43,20 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
+                <version>3.1.2</version>
 				<configuration>
 					<argLine>-Djava.library.path=./lib:/usr/lib/jni</argLine>
 				</configuration>
 			</plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <outputDirectory>./docs</outputDirectory>
+                    <reportOutputDirectory>./docs</reportOutputDirectory>
+                </configuration>
+            </plugin>
 		</plugins>
 	</build>
 </project>
