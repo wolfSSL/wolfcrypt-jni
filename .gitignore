@@ -24,3 +24,7 @@ IDE/WIN/DLL Debug
 IDE/WIN/DLL Debug FIPS
 IDE/WIN/DLL Release
 IDE/WIN/DLL Release FIPS
+
+# Maven output directory
+target/
+
