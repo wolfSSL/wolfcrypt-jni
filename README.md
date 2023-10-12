@@ -11,12 +11,13 @@ or the wolfSSL online documentation.
 For instructions and notes on the JCE provider, please reference the
 [README_JCE.md](./README_JCE.md) file, or online instructions.
 
-### Compiling
+### Compiling Native wolfSSL (Dependency)
 ---------
 
-To compile the wolfCrypt JNI wrapper:
+To compile the wolfCrypt JNI wrapper and JCE provider, first the native (C)
+wolfSSL library must be compiled and installed.
 
-1) Compile and install a wolfSSL (wolfssl-x.x.x), wolfSSL FIPS
+Compile and install a wolfSSL (wolfssl-x.x.x), wolfSSL FIPS
 release (wolfssl-x.x.x-commercial-fips), or wolfSSL FIPS Ready release:
 
 In any of these cases, you will need the `--enable-keygen` ./configure option.
@@ -56,23 +57,32 @@ $ make check
 $ sudo make install
 ```
 
-2) Compile the native wolfCrypt JNI object files. Two makefiles are distributed
-for Linux (`makefile.linux`) and Mac OSX (`makefile.macosx`). First copy
-the makefile for your platform to a file called `makefile`:
+### Compiling wolfSSL JNI/JCE with ant
+---------
+
+wolfCrypt JNI/JCE's ant build is the most stable and well-tested. Newer support
+for building with Maven has also been added. See section below for instructions
+on building with Maven. Continue reading here for instructions to build with
+ant.
+
+1) Compile the native wolfCrypt JNI object files. Two makefiles are distributed,
+one for Linux (`makefile.linux`) and one for Mac OSX (`makefile.macosx`). First
+copy the makefile for your platform to a file called `makefile`:
 
 ```
 $ cd wolfcrypt-jni
 $ cp makefile.linux makefile
 ```
 
-Then compile the native wolfCrypt JNI object files:
+Then compile the native wolfCrypt JNI object files into a native C shared
+library:
 
 ```
 $ cd wolfcrypt-jni
 $ make
 ```
 
-3) Compile the wolfCrypt JNI Java sources files, from the wolfcrypt-jni
+2) Compile the wolfCrypt JNI/JCE Java sources files, from the wolfcrypt-jni
    directory:
 
 ```
@@ -111,13 +121,104 @@ $ ant clean
 $ make clean
 ```
 
-### API Javadocs
+#### API Javadocs
 ---------
 
 Running `ant` will generate a set of Javadocs under the `wolfcrypt-jni/docs`
 directory.  To view the root document, open the following file in a web browser:
 
 `wolfcrypt-jni/docs/index.html`
+
+### Compiling wolfSSL JNI/JCE with Maven
+---------
+
+wolfSSL JNI/JCE supports building and packaging with Maven, for those projects
+that are already set up to use and consume Maven packages.
+
+wolfSSL JNI/JCE's Maven build configuration is defined in the included
+`pom.xml` file.
+
+First, compile the native JNI shared library (libwolfcryptjni.so/dylib) same
+as above. This will create the native JNI shared library under the `./lib`
+directory:
+
+```
+$ cd wolfcrypt-jni
+$ cp makefile.linux makefile
+$ make
+```
+
+Compile the Java sources, where Maven will place the compiled `.class` files
+under the `./target/classes` directory:
+
+```
+$ mvn compile
+```
+
+Compile and run JUnit tests using:
+
+```
+$ mvn test
+```
+
+Package up the wolfCrypt JNI/JCE JAR file using the following command. This will
+run the JUnit tests then create a `.jar` file located under the `./target`
+directory, similar to `target/wolfcrypt-jni-X.X.X-SNAPSHOT.jar`:
+
+```
+$ mvn package
+```
+
+To build the Javadoc API reference for wolfCrypt JNI/JCE run the following. This
+will generate Javadoc HTML under the `./docs/apidocs` directory:
+
+```
+$ mvn javadoc:javadoc
+```
+
+To install the wolfSSL JNI/JCE JAR file, run the following. This will install
+the JAR into the local Maven repository:
+
+```
+$ mvn install
+```
+
+The local Maven repository installation location will be similar to:
+
+```
+~/.m2/repository/com/wolfssl/wolfcrypt-jni/X.X.X-SNAPSHOT/wolfcrypt-jni-X.X.X-SNAPSHOT.jar
+```
+
+The wolfCrypt JNI shared library (`libwolfcryptjni.so/dylib`) created with
+`make` will need to be "installed" by being placed on your native
+library search path. For example, copied into `/usr/local/lib`, `/usr/lib`,
+or other location. Alternatively, append the `./libs` directory to your native
+library search path by exporting `LD_LIBRARY_PATH` (Linux) or
+`DYLD_LIBRARY_PATH` (OSX):
+
+```
+$ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/path/to/wolfcryptjni/lib
+```
+
+After wolfCrypt JNI/JCE has been installed into the local Maven repository,
+an application can include this as a dependency in the application's
+`pom.xml` file, similar to (where the version number will change depending
+on the current release):
+
+```
+<project ...>
+    ...
+    <dependencies>
+        <dependency>
+            <groupId>com.wolfssl</groupId>
+            <artifactId>wolfcrypt-jni</artifactId>
+            <version>1.5.0-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+    ...
+</project>
+```
+
 
 ### Example / Test Code
 ---------
