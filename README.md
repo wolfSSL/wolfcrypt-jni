@@ -30,15 +30,6 @@ $ make check
 $ sudo make install
 ```
 
-**wolfSSL FIPSv1 Build**:
-
-```
-$ cd wolfssl-x.x.x-commercial-fips
-$ ./configure --enable-fips --enable-keygen
-$ make check
-$ sudo make install
-```
-
 **wolfSSL FIPSv2 Build**:
 
 ```
