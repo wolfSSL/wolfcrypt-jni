@@ -75,6 +75,34 @@ public class FeatureDetect {
     public static native boolean HmacMd5Enabled();
 
     /**
+     * Tests if HMAC-SHA1 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false.
+     */
+    public static native boolean HmacShaEnabled();
+
+    /**
+     * Tests if HMAC-SHA256 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false.
+     */
+    public static native boolean HmacSha256Enabled();
+
+    /**
+     * Tests if HMAC-SHA384 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false.
+     */
+    public static native boolean HmacSha384Enabled();
+
+    /**
+     * Tests if HMAC-SHA512 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false.
+     */
+    public static native boolean HmacSha512Enabled();
+
+    /**
      * Loads JNI library.
      *
      * The native library is expected to be called "wolfcryptjni", and must be
