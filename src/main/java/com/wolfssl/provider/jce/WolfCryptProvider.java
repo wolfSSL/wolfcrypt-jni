@@ -97,23 +97,23 @@ public final class WolfCryptProvider extends Provider {
         }
 
         /* Mac */
-        if (FeatureDetect.Md5Enabled()) {
+        if (FeatureDetect.HmacMd5Enabled()) {
             put("Mac.HmacMD5",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacMD5");
         }
-        if (FeatureDetect.ShaEnabled()) {
+        if (FeatureDetect.HmacShaEnabled()) {
             put("Mac.HmacSHA1",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA1");
         }
-        if (FeatureDetect.Sha256Enabled()) {
+        if (FeatureDetect.HmacSha256Enabled()) {
             put("Mac.HmacSHA256",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA256");
         }
-        if (FeatureDetect.Sha384Enabled()) {
+        if (FeatureDetect.HmacSha384Enabled()) {
             put("Mac.HmacSHA384",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA384");
         }
-        if (FeatureDetect.Sha512Enabled()) {
+        if (FeatureDetect.HmacSha512Enabled()) {
             put("Mac.HmacSHA512",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA512");
         }
