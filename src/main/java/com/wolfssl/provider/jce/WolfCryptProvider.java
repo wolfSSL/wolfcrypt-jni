@@ -97,7 +97,7 @@ public final class WolfCryptProvider extends Provider {
         }
 
         /* Mac */
-        if (FeatureDetect.Md5Enabled()) {
+        if (FeatureDetect.HmacMd5Enabled()) {
             put("Mac.HmacMD5",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacMD5");
         }
