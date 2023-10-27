@@ -25,6 +25,7 @@
     #include <wolfssl/options.h>
 #endif
 #include <jni.h>
+#include <wolfssl/wolfcrypt/types.h>
 #include <wolfcrypt_jni_debug.h>
 
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Md5Enabled
@@ -81,6 +82,66 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Sha512Enable
     (void)env;
     (void)jcl;
 #ifdef WOLFSSL_SHA512
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_HmacMd5Enabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_HMAC) && !defined(NO_MD5) && FIPS_VERSION_LT(5,2)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_HmacShaEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_HMAC) && !defined(NO_SHA)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_HmacSha256Enabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_HMAC) && !defined(NO_SHA256)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_HmacSha384Enabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_HMAC) && defined(WOLFSSL_SHA384)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_HmacSha512Enabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_HMAC) && defined(WOLFSSL_SHA512)
     return JNI_TRUE;
 #else
     return JNI_FALSE;
