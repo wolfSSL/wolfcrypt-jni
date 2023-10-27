@@ -63,6 +63,18 @@ public class FeatureDetect {
     public static native boolean Sha512Enabled();
 
     /**
+     * Tests if HMAC-MD5 is compiled into the native wolfSSL library and
+     * available for use.
+     *
+     * For FIPS 140-3, even if MD5 is compiled into the
+     * library, HMAC-MD5 is not available and will throw BAD_FUNC_ARG.
+     * Use this helper to prevent people from calling it in the first place.
+     *
+     * @return true if enabled, otherwise false.
+     */
+    public static native boolean HmacMd5Enabled();
+
+    /**
      * Loads JNI library.
      *
      * The native library is expected to be called "wolfcryptjni", and must be
