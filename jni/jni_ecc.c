@@ -434,7 +434,9 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1x963(
 
     /* get size */
     if (ret == 0) {
+        PRIVATE_KEY_UNLOCK();
         ret = wc_ecc_export_x963(ecc, NULL, &outputSz);
+        PRIVATE_KEY_LOCK();
         if (ret == LENGTH_ONLY_E) {
             ret = 0;
         }
@@ -451,7 +453,9 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1x963(
     }
 
     if (ret == 0) {
+        PRIVATE_KEY_UNLOCK();
         ret = wc_ecc_export_x963(ecc, output, &outputSz);
+        PRIVATE_KEY_LOCK();
     }
 
     if (ret == 0) {
@@ -771,7 +775,9 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
 #endif
 
     if (ret == 0) {
+        PRIVATE_KEY_UNLOCK();
         ret = wc_ecc_shared_secret(ecc, pub, output, &outputSz);
+        PRIVATE_KEY_LOCK();
     }
 
     if (ret == 0) {

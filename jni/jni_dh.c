@@ -208,7 +208,9 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
         }
         XMEMSET(pub, 0, pubSz);
 
+        PRIVATE_KEY_UNLOCK();
         ret = wc_DhGenerateKeyPair(key, rng, priv, &privSz, pub, &pubSz);
+        PRIVATE_KEY_LOCK();
     }
 
     if (ret == 0) {
@@ -367,7 +369,9 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
         ret = BAD_FUNC_ARG;
     }
     else {
+        PRIVATE_KEY_UNLOCK();
         ret = wc_DhAgree(key, secret, &secretSz, priv, privSz, pub, pubSz);
+        PRIVATE_KEY_LOCK();
     }
 
     if (ret == 0) {
