@@ -1,4 +1,4 @@
-/* WolfJCETestSuite.java
+/* jni_wolfcrypt.c
  *
  * Copyright (C) 2006-2024 wolfSSL Inc.
  *
@@ -19,27 +19,30 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-package com.wolfssl.provider.jce.test;
+#include <stdint.h>
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
+#ifdef WOLFSSL_USER_SETTINGS
+    #include <wolfssl/wolfcrypt/settings.h>
+#elif !defined(__ANDROID__)
+    #include <wolfssl/options.h>
+#endif
 
-@RunWith(Suite.class)
-@SuiteClasses({
-    WolfCryptMessageDigestMd5Test.class,
-    WolfCryptMessageDigestShaTest.class,
-    WolfCryptMessageDigestSha256Test.class,
-    WolfCryptMessageDigestSha384Test.class,
-    WolfCryptMessageDigestSha512Test.class,
-    WolfCryptRandomTest.class,
-    WolfCryptSignatureTest.class,
-    WolfCryptMacTest.class,
-    WolfCryptCipherTest.class,
-    WolfCryptKeyAgreementTest.class,
-    WolfCryptKeyPairGeneratorTest.class,
-    WolfCryptPKIXCertPathValidatorTest.class
-})
+#include <com_wolfssl_wolfcrypt_WolfCrypt.h>
+#include <wolfcrypt_jni_error.h>
 
-public class WolfJCETestSuite { }
+/* #define WOLFCRYPT_JNI_DEBUG_ON */
+#include <wolfcrypt_jni_debug.h>
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_CrlEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+
+#ifdef HAVE_CRL
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
 
