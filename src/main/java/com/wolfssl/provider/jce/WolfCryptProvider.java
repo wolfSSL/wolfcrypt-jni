@@ -174,6 +174,10 @@ public final class WolfCryptProvider extends Provider {
         put("KeyStore.WKS",
                 "com.wolfssl.provider.jce.WolfSSLKeyStore$WolfSSLKeyStoreWKS");
 
+        /* CertPathValidator */
+        put("CertPathValidator.PKIX",
+                "com.wolfssl.provider.jce.WolfCryptPKIXCertPathValidator");
+
         /* If using a FIPS version of wolfCrypt, allow private key to be
          * exported for use. Only applicable to FIPS 140-3 */
         if (Fips.enabled) {

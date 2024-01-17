@@ -11,6 +11,8 @@ extern "C" {
 #define com_wolfssl_wolfcrypt_WolfCrypt_SUCCESS 0L
 #undef com_wolfssl_wolfcrypt_WolfCrypt_FAILURE
 #define com_wolfssl_wolfcrypt_WolfCrypt_FAILURE -1L
+#undef com_wolfssl_wolfcrypt_WolfCrypt_WOLFSSL_SUCCESS
+#define com_wolfssl_wolfcrypt_WolfCrypt_WOLFSSL_SUCCESS 1L
 #undef com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_128_BITS
 #define com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_128_BITS 16L
 #undef com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_160_BITS
@@ -27,6 +29,14 @@ extern "C" {
 #define com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_1024_BITS 128L
 #undef com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_2048_BITS
 #define com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_2048_BITS 256L
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    CrlEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_CrlEnabled
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif

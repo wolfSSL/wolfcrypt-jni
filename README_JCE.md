@@ -72,6 +72,9 @@ The JCE provider currently supports the following algorithms:
         EC
         DH
 
+    CertPathValidator Class
+        PKIX
+
 ### SecureRandom.getInstanceStrong()
 
 When registered as the highest priority security provider, wolfJCE will provide
