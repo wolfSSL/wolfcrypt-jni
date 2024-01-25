@@ -34,6 +34,7 @@ infer run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/Md5.java \
     src/main/java/com/wolfssl/wolfcrypt/MessageDigest.java \
     src/main/java/com/wolfssl/wolfcrypt/NativeStruct.java \
+    src/main/java/com/wolfssl/wolfcrypt/Pwdbased.java \
     src/main/java/com/wolfssl/wolfcrypt/Rng.java \
     src/main/java/com/wolfssl/wolfcrypt/Rsa.java \
     src/main/java/com/wolfssl/wolfcrypt/Sha256.java \
@@ -45,6 +46,7 @@ infer run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/WolfCrypt.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfCryptState.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfObject.java \
+    src/main/java/com/wolfssl/wolfcrypt/WolfSSLCertManager.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptCipher.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptDebug.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyAgreement.java \
@@ -57,7 +59,8 @@ infer run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptProvider.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptRandom.java \
-    src/main/java/com/wolfssl/provider/jce/WolfCryptSignature.java
+    src/main/java/com/wolfssl/provider/jce/WolfCryptSignature.java \
+    src/main/java/com/wolfssl/provider/jce/WolfSSLKeyStore.java
 
 # remove compiled class files
 rm -r ./com

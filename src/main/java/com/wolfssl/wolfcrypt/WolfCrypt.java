@@ -51,6 +51,82 @@ public class WolfCrypt extends WolfObject {
     /** Size of 2048 bits in bytes */
     public static final int SIZE_OF_2048_BITS = 256;
 
+    /*
+     * Native wolfCrypt hash types, from wolfssl/wolfcrypt/types.h
+     * wc_HashType enum.
+     */
+
+    /** wolfSSL hash type: None */
+    public static int WC_HASH_TYPE_NONE =
+        WolfCrypt.getWC_HASH_TYPE_NONE();
+
+    /** wolfSSL hash type: MD2 */
+    public static int WC_HASH_TYPE_MD2 =
+        WolfCrypt.getWC_HASH_TYPE_MD2();
+
+    /** wolfSSL hash type: MD4 */
+    public static int WC_HASH_TYPE_MD4 =
+        WolfCrypt.getWC_HASH_TYPE_MD4();
+
+    /** wolfSSL hash type: MD5 */
+    public static int WC_HASH_TYPE_MD5 =
+        WolfCrypt.getWC_HASH_TYPE_MD5();
+
+    /** wolfSSL hash type: SHA-1 */
+    public static int WC_HASH_TYPE_SHA =
+        WolfCrypt.getWC_HASH_TYPE_SHA();
+
+    /** wolfSSL hash type: SHA-224 */
+    public static int WC_HASH_TYPE_SHA224 =
+        WolfCrypt.getWC_HASH_TYPE_SHA224();
+
+    /** wolfSSL hash type: SHA-256 */
+    public static int WC_HASH_TYPE_SHA256 =
+        WolfCrypt.getWC_HASH_TYPE_SHA256();
+
+    /** wolfSSL hash type: SHA-384 */
+    public static int WC_HASH_TYPE_SHA384 =
+        WolfCrypt.getWC_HASH_TYPE_SHA384();
+
+    /** wolfSSL hash type: SHA-512 */
+    public static int WC_HASH_TYPE_SHA512 =
+        WolfCrypt.getWC_HASH_TYPE_SHA512();
+
+    /** wolfSSL hash type: MD5-SHA */
+    public static int WC_HASH_TYPE_MD5_SHA =
+        WolfCrypt.getWC_HASH_TYPE_MD5_SHA();
+
+    /** wolfSSL hash type: SHA3-224 */
+    public static int WC_HASH_TYPE_SHA3_224 =
+        WolfCrypt.getWC_HASH_TYPE_SHA3_224();
+
+    /** wolfSSL hash type: SHA3-256 */
+    public static int WC_HASH_TYPE_SHA3_256 =
+        WolfCrypt.getWC_HASH_TYPE_SHA3_256();
+
+    /** wolfSSL hash type: SHA3-384 */
+    public static int WC_HASH_TYPE_SHA3_384 =
+        WolfCrypt.getWC_HASH_TYPE_SHA3_384();
+
+    /** wolfSSL hash type: SHA3-512 */
+    public static int WC_HASH_TYPE_SHA3_512 =
+        WolfCrypt.getWC_HASH_TYPE_SHA3_512();
+
+    private static native int getWC_HASH_TYPE_NONE();
+    private static native int getWC_HASH_TYPE_MD2();
+    private static native int getWC_HASH_TYPE_MD4();
+    private static native int getWC_HASH_TYPE_MD5();
+    private static native int getWC_HASH_TYPE_SHA();
+    private static native int getWC_HASH_TYPE_SHA224();
+    private static native int getWC_HASH_TYPE_SHA256();
+    private static native int getWC_HASH_TYPE_SHA384();
+    private static native int getWC_HASH_TYPE_SHA512();
+    private static native int getWC_HASH_TYPE_MD5_SHA();
+    private static native int getWC_HASH_TYPE_SHA3_224();
+    private static native int getWC_HASH_TYPE_SHA3_256();
+    private static native int getWC_HASH_TYPE_SHA3_384();
+    private static native int getWC_HASH_TYPE_SHA3_512();
+
     /* Public mappings of some SSL/TLS level enums/defines */
     /** wolfSSL file type: PEM */
     public static int SSL_FILETYPE_PEM  = 1;
