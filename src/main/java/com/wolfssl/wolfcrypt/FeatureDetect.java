@@ -196,12 +196,28 @@ public class FeatureDetect {
     public static native boolean HmacSha3_512Enabled();
 
     /**
+     * Tests if PKCS#5 PBKDF1 is compiled into the native wolfSSL library.
+     *
+     * @return true if PBKDF1 is enabled (HAVE_PBKDF1, !NO_PWDBASED),
+     *         otherwise false.
+     */
+    public static native boolean Pbkdf1Enabled();
+
+    /**
      * Tests if PKCS#5 v2.1 PBKDF2 is compiled into the native wolfSSL library.
      *
      * @return true if PBKDF2 is enabled (HAVE_PBKDF2, !NO_PWDBASED, !NO_HMAC),
      *         otherwise false.
      */
     public static native boolean Pbkdf2Enabled();
+
+    /**
+     * Tests if PKCS#12 PBKDF is compiled into the native wolfSSL library.
+     *
+     * @return true if PKCS#12 PBKDF is enabled (HAVE_PKCS12, !NO_PWDBASED),
+     *         otherwise false.
+     */
+    public static native boolean Pkcs12PbkdfEnabled();
 
     /**
      * Tests if RSA is compiled into the native wolfSSL library.

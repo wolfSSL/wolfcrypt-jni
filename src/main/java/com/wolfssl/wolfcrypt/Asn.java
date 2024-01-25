@@ -33,6 +33,19 @@ public class Asn extends WolfObject {
     /** Maximum encoded signature size */
     public static final int MAX_ENCODED_SIG_SIZE = 512;
 
+    /* Key Sum values, from asn.h Key_Sum enum */
+
+    /** DSA key value, from asn.h Key_Sum enum */
+    public static final int DSAk = 515;
+    /** RSA key value, from asn.h Key_Sum enum */
+    public static final int RSAk = 645;
+    /** RSA-PSS key value, from asn.h Key_Sum enum */
+    public static final int RSAPSSk = 654;
+    /** RSA-OAEP key value, from asn.h Key_Sum enum */
+    public static final int RSAESOAEPk = 651;
+    /** ECDSA key value, from asn.h Key_Sum enum */
+    public static final int ECDSAk = 518;
+
     /** Default Asn constructor */
     public Asn() { }
 
@@ -67,5 +80,17 @@ public class Asn extends WolfObject {
      * @return hash algorithm OID, for use with encodeSignature()
      */
     public static native int getCTC_HashOID(int type);
+
+    /**
+     * Get the Algorithm Identifier from inside DER-encoded PKCS#8 key.
+     *
+     * @param pkcs8Der DER-encoded PKCS#8 private key
+     *
+     * @return Algorithm Identifier on success, will match one of the values
+     *         for key sums (ie: Asn.RSAk, Asn.ECDSAk, etc)
+     *
+     * @throws WolfCryptException upon native error
+     */
+    public static native int getPkcs8AlgoID(byte[] pkcs8Der);
 }
 
