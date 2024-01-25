@@ -251,7 +251,7 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
      * @return password as UTF-8 encoded byte array, or null if input password
      *         is null or zero length
      */
-    private static byte[] passwordToByteArray(char[] pass) {
+    protected static byte[] passwordToByteArray(char[] pass) {
 
         byte[] passBytes = null;
         CharBuffer passBuf = null;

@@ -87,6 +87,9 @@ The JCE provider currently supports the following algorithms:
         PBKDF2WithHmacSHA3-384
         PBKDF2WithHmacSHA3-512
 
+    KeyStore
+        WKS
+
 ### SecureRandom.getInstanceStrong()
 
 When registered as the highest priority security provider, wolfJCE will provide
@@ -103,6 +106,87 @@ securerandom.strongAlgorithms=HashDRBG:wolfJCE
 
 Note that the `securerandom.source` property in `java.security` has no affect
 on the wolfJCE provider.
+
+### WolfSSLKeyStore (WKS) Implementation Details and Usage
+
+wolfJCE implements one custom KeyStore class named WolfSSLKeyStore, represented
+as "WKS". If wolfJCE has been installed as a Security provider, this KeyStore
+can be used with:
+
+```
+KeyStore store = KeyStore.getInstance("WKS");
+```
+
+#### Algorithm Use and FIPS 140-2 / 140-3 Compatibility
+
+The WKS KeyStore has been designed to be compatible with wolfCrypt
+FIPS 140-2 and 140-3. It uses PKCS#5 PBKDF2 to derive an encryption key
+from passwords, then encrypts private key entries with AES-GCM. KeyStore
+integrity is protected using PKCS#5 PBKDF2 and HMAC-SHA256.
+
+This KeyStore uses a different format that is not directly compatible with
+existing formats (ex: JKS, PKCS12, etc).
+
+#### Stored Object Compatibility
+
+The WKS KeyStore supports storage of PrivateKey, Certificate, and
+SecretKey objects.
+
+#### Converting Other KeyStore Formats to WKS
+
+The Java `keytool` application can be used to convert between KeyStore formats.
+This can be easily used for example to convert a JKS KeyStore into a WKS
+format KeyStore.
+
+The following example command would convert a KeyStore in JKS format named
+`server.jks` to a KeyStore in WKS format named `server.wks`:
+
+```
+keytool -importkeystore -srckeystore server.jks -destkeystore server.wks \
+    -srcstoretype JKS -deststoretype WKS \
+    -srcstorepass "pass" -deststorepass "pass" \
+    -provider com.wolfssl.provider.jce.WolfCryptProvider \
+    --providerpath /path/to/wolfcrypt-jni.jar
+```
+
+To list entries inside a WKS keystore using the `keytool`, a command
+similar to the following can be used (with the `-list` option):
+
+```
+keytool -list -provider com.wolfssl.provider.jce.WolfCryptProvider \
+    --providerpath /path/to/wolfcrypt-jni.jar \
+    -storetype WKS -storepass "pass" -keystore server.wks
+```
+
+If running the above commands gives an error about the native wolfcryptjni
+shared library not being found, you may need to add the library location
+to `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (Mac OSX), ie:
+
+```
+export LD_LIBRARY_PATH=/path/to/libwolfcryptjni.so:$LD_LIBRARY_PATH
+```
+
+#### Converting System cacerts to WKS Format KeyStore
+
+For FIPS compatibility, users who do not want to use non-wolfSSL KeyStore
+implementations (ex: JKS) may need to convert the system cacerts or
+jssecacerts KeyStore to WKS format. This can be done using the keytool
+command as described above (default password for cacerts is 'changeit'), or
+the helper script located in this package at:
+
+```
+examples/certs/systemcerts/system-cacerts-to-wks.sh
+```
+
+This is a shell script that takes no arguments. It tries to detect the
+location of the active Java installation and converts `cacerts` and/or
+`jssecacerts` to WKS format if they are found. Converted KeyStores are placed
+under the same directory as the script, specifically:
+
+```
+examples/certs/systemcerts/cacerts.wks
+examples/certs/systemcerts/jssecacerts.wks
+```
 
 ### Example / Test Code
 ---------
