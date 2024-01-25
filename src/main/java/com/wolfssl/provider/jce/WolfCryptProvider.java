@@ -172,10 +172,6 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.KeyPairGenerator.DiffieHellman", "DH");
         }
 
-        /* KeyStore */
-        put("KeyStore.WKS",
-                "com.wolfssl.provider.jce.WolfSSLKeyStore$WolfSSLKeyStoreWKS");
-
         /* CertPathValidator */
         put("CertPathValidator.PKIX",
                 "com.wolfssl.provider.jce.WolfCryptPKIXCertPathValidator");
@@ -219,6 +215,10 @@ public final class WolfCryptProvider extends Provider {
                     "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcPBKDF2WithHmacSHA3_512");
             }
         }
+
+        /* KeyStore */
+        put("KeyStore.WKS",
+                "com.wolfssl.provider.jce.WolfSSLKeyStore");
 
         /* If using a FIPS version of wolfCrypt, allow private key to be
          * exported for use. Only applicable to FIPS 140-3 */

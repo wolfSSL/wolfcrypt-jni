@@ -24,6 +24,7 @@
 #elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
+#include <wolfssl/wolfcrypt/asn.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 
@@ -76,3 +77,65 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getCTC_1HashOID(
 {
     return wc_GetCTC_HashOID(type);
 }
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getPkcs8AlgoID
+  (JNIEnv* env, jclass class, jbyteArray pkcs8Der)
+{
+#if !defined(NO_ASN) && !defined(NO_PWDBASED) && defined(HAVE_PKCS8)
+    int ret = 0;
+    word32 algoId = 0;
+    byte* p8 = NULL;
+    byte* p8Copy = NULL;
+    word32 p8Len = 0;
+
+    if (pkcs8Der != NULL) {
+        p8 = (byte*)(*env)->GetByteArrayElements(env, pkcs8Der, NULL);
+        p8Len = (*env)->GetArrayLength(env, pkcs8Der);
+    }
+
+    if (p8 == NULL || p8Len == 0) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        p8Copy = (byte*)XMALLOC(p8Len, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (p8Copy == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        /* Copy array since ToTraditional modifies source buffer */
+        XMEMSET(p8Copy, 0, p8Len);
+        XMEMCPY(p8Copy, p8, p8Len);
+
+        ret = ToTraditional_ex(p8Copy, p8Len, &algoId);
+        if (ret > 0) {
+            /* returns length of header, but not needed here */
+            ret = 0;
+        }
+    }
+
+    if (p8Copy != NULL) {
+        XMEMSET(p8Copy, 0, p8Len);
+        XFREE(p8Copy, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
+    if (pkcs8Der != NULL) {
+        (*env)->ReleaseByteArrayElements(env, pkcs8Der, (jbyte*)p8, JNI_ABORT);
+    }
+
+    if (ret == 0) {
+        ret = (int)algoId;
+    }
+
+    return (jint)ret;
+
+#else
+    (void)env;
+    (void)class;
+    (void)pkcs8Der;
+    return (jint)NOT_COMPILED_IN;
+#endif
+}
+
