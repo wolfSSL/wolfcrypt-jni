@@ -18,6 +18,7 @@
 
 infer run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/Aes.java \
+    src/main/java/com/wolfssl/wolfcrypt/AesGcm.java \
     src/main/java/com/wolfssl/wolfcrypt/Asn.java \
     src/main/java/com/wolfssl/wolfcrypt/BlockCipher.java \
     src/main/java/com/wolfssl/wolfcrypt/Chacha.java \
