@@ -42,6 +42,13 @@ public class FeatureDetect {
     public static native boolean ShaEnabled();
 
     /**
+     * Tests if SHA-224 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Sha224Enabled();
+
+    /**
      * Tests if SHA-256 is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.
@@ -61,6 +68,57 @@ public class FeatureDetect {
      * @return true if enabled, otherwise false if not compiled in.
      */
     public static native boolean Sha512Enabled();
+
+    /**
+     * Tests if AES-128 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Aes128Enabled();
+
+    /**
+     * Tests if AES-192 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Aes192Enabled();
+
+    /**
+     * Tests if AES-256 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Aes256Enabled();
+
+    /**
+     * Tests if AES-CBC is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesCbcEnabled();
+
+
+    /**
+     * Tests if AES-GCM is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesGcmEnabled();
+
+    /**
+     * Tests if AES-GCM stream mode (WOLFSSL_AESGCM_STREAM) is compiled into
+     * native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesGcmStreamEnabled();
+
+    /**
+     * Tests if 3DES is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Des3Enabled();
 
     /**
      * Tests if HMAC-MD5 is compiled into the native wolfSSL library and
