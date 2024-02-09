@@ -233,7 +233,8 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                         "shared secret");
                 }
 
-                tmp = this.dh.makeSharedSecret(this.dh);
+                /* public key has been stored inside this.dh already */
+                tmp = this.dh.makeSharedSecret();
                 if (tmp == null) {
                     throw new RuntimeException("Error when creating DH " +
                             "shared secret");
