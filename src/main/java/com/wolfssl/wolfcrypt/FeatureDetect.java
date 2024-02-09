@@ -161,6 +161,49 @@ public class FeatureDetect {
     public static native boolean HmacSha512Enabled();
 
     /**
+     * Tests if RSA is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean RsaEnabled();
+
+    /**
+     * Tests if RSA key generation is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean RsaKeyGenEnabled();
+
+    /**
+     * Tests if DH is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean DhEnabled();
+
+    /**
+     * Tests if ECC is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean EccEnabled();
+
+    /**
+     * Tests if ECC key generation is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean EccKeyGenEnabled();
+
+    /**
+     * Tests if ECDHE / wc_ecc_shared_secret() is compiled into the native
+     * wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean EccDheEnabled();
+
+    /**
      * Loads JNI library.
      *
      * The native library is expected to be called "wolfcryptjni", and must be

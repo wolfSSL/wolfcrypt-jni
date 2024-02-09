@@ -119,34 +119,58 @@ public final class WolfCryptProvider extends Provider {
         }
 
         /* Cipher */
-        put("Cipher.AES/CBC/NoPadding",
+        if (FeatureDetect.AesCbcEnabled()) {
+            put("Cipher.AES/CBC/NoPadding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCBCNoPadding");
-        put("Cipher.AES/CBC/PKCS5Padding",
+            put("Cipher.AES/CBC/PKCS5Padding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCBCPKCS5Padding");
+        }
+        if (FeatureDetect.AesGcmEnabled()) {
+            put("Cipher.AES/GCM/NoPadding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESGCMNoPadding");
+        }
 
-        put("Cipher.DESede/CBC/NoPadding",
+        if (FeatureDetect.Des3Enabled()) {
+            put("Cipher.DESede/CBC/NoPadding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcDESedeCBCNoPadding");
+        }
 
-        put("Cipher.RSA",
+        if (FeatureDetect.RsaEnabled()) {
+            put("Cipher.RSA",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcRSAECBPKCS1Padding");
-        put("Cipher.RSA/ECB/PKCS1Padding",
+            put("Cipher.RSA/ECB/PKCS1Padding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcRSAECBPKCS1Padding");
+        }
 
         /* KeyAgreement */
-        put("KeyAgreement.DiffieHellman",
+        if (FeatureDetect.DhEnabled()) {
+            put("KeyAgreement.DiffieHellman",
                 "com.wolfssl.provider.jce.WolfCryptKeyAgreement$wcDH");
-        put("Alg.Alias.KeyAgreement.DH", "DiffieHellman");
-        put("KeyAgreement.ECDH",
+            put("Alg.Alias.KeyAgreement.DH", "DiffieHellman");
+        }
+        if (FeatureDetect.EccDheEnabled()) {
+            put("KeyAgreement.ECDH",
                 "com.wolfssl.provider.jce.WolfCryptKeyAgreement$wcECDH");
+        }
 
         /* KeyPairGenerator */
-        put("KeyPairGenerator.RSA",
+        if (FeatureDetect.RsaKeyGenEnabled()) {
+            put("KeyPairGenerator.RSA",
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenRSA");
-        put("KeyPairGenerator.EC",
+        }
+        if (FeatureDetect.EccKeyGenEnabled()) {
+            put("KeyPairGenerator.EC",
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenECC");
-        put("KeyPairGenerator.DH",
+        }
+        if (FeatureDetect.DhEnabled()) {
+            put("KeyPairGenerator.DH",
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenDH");
-        put("Alg.Alias.KeyPairGenerator.DiffieHellman", "DH");
+            put("Alg.Alias.KeyPairGenerator.DiffieHellman", "DH");
+        }
+
+        /* KeyStore */
+        put("KeyStore.WKS",
+                "com.wolfssl.provider.jce.WolfSSLKeyStore$WolfSSLKeyStoreWKS");
 
         /* If using a FIPS version of wolfCrypt, allow private key to be
          * exported for use. Only applicable to FIPS 140-3 */
