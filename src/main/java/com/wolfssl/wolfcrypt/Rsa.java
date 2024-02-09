@@ -201,12 +201,12 @@ public class Rsa extends NativeStruct {
      */
     protected void willUseKey(boolean priv) throws IllegalStateException {
 
-        if (priv && !hasPrivateKey) {
-            throw new IllegalStateException(
-                    "No available private key to perform the operation");
-        }
-
         synchronized (stateLock) {
+            if (priv && !hasPrivateKey) {
+                throw new IllegalStateException(
+                        "No available private key to perform the operation");
+            }
+
             if (state != WolfCryptState.READY) {
                 throw new IllegalStateException(
                         "No available key to perform the operation");
