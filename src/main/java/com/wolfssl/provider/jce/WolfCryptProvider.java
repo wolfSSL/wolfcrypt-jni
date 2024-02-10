@@ -44,6 +44,8 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.ShaEnabled()) {
             put("MessageDigest.SHA",
                     "com.wolfssl.provider.jce.WolfCryptMessageDigestSha");
+            put("MessageDigest.SHA1",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha");
             put("MessageDigest.SHA-1",
                     "com.wolfssl.provider.jce.WolfCryptMessageDigestSha");
         }
