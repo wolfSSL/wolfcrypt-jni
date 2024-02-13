@@ -25,6 +25,14 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_ShaEnabled
 
 /*
  * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    Sha224Enabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Sha224Enabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
  * Method:    Sha256Enabled
  * Signature: ()Z
  */
@@ -45,6 +53,62 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Sha384Enable
  * Signature: ()Z
  */
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Sha512Enabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    Aes128Enabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Aes128Enabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    Aes192Enabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Aes192Enabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    Aes256Enabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Aes256Enabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    AesCbcEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCbcEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    AesGcmEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesGcmEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    AesGcmStreamEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesGcmStreamEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    Des3Enabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Des3Enabled
   (JNIEnv *, jclass);
 
 /*
@@ -85,6 +149,54 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_HmacSha384En
  * Signature: ()Z
  */
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_HmacSha512Enabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    RsaEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_RsaEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    RsaKeyGenEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_RsaKeyGenEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    DhEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_DhEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    EccEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_EccEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    EccKeyGenEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_EccKeyGenEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    EccDheEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_EccDheEnabled
   (JNIEnv *, jclass);
 
 #ifdef __cplusplus
