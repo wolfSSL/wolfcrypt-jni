@@ -52,7 +52,9 @@ public abstract class NativeStruct extends WolfObject {
      * @return pointer to native structure
      */
     public long getNativeStruct() {
-        return this.pointer;
+        synchronized (pointerLock) {
+            return this.pointer;
+        }
     }
 
     /**
