@@ -234,6 +234,29 @@ public class Dh extends NativeStruct {
     }
 
     /**
+     * Generate DH shared secret using private and public key stored in
+     * this object.
+     *
+     * @return shared secret as byte array
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if this object has no stored private
+     *         and public keys
+     */
+    public synchronized byte[] makeSharedSecret()
+        throws WolfCryptException, IllegalStateException {
+
+        byte[] publicKey = getPublicKey();
+
+        if (publicKey == null) {
+            throw new IllegalStateException(
+                "Dh object has no public key");
+        }
+
+        return makeSharedSecret(publicKey);
+    }
+
+    /**
      * Generate DH shared secret
      *
      * @param pubKey public key to use for secret generation
@@ -246,15 +269,42 @@ public class Dh extends NativeStruct {
     public synchronized byte[] makeSharedSecret(Dh pubKey)
         throws WolfCryptException, IllegalStateException {
 
-        byte[] publicKey = pubKey.getPublicKey();
+        byte[] publicKey = null;
 
-        if (privateKey != null || publicKey != null) {
-            synchronized (pointerLock) {
-                return wc_DhAgree(privateKey, publicKey);
-            }
-        } else {
+        if (pubKey == null) {
             throw new IllegalStateException(
-                "No available key to perform the operation");
+                "Provided public key is null");
+        }
+
+        return makeSharedSecret(pubKey.getPublicKey());
+    }
+
+    /**
+     * Generate DH shared secret using internal private key and
+     * externally-provided public key as byte array.
+     *
+     * @param pubKey public key to use for secret generation
+     *
+     * @return shared secret as byte array
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object has no key
+     */
+    public synchronized byte[] makeSharedSecret(byte[] pubKey)
+        throws WolfCryptException, IllegalStateException {
+
+        if (pubKey == null) {
+            throw new IllegalStateException(
+                "Provided public key is null");
+        }
+
+        if (this.privateKey == null) {
+            throw new IllegalStateException(
+                "Dh object has no private key");
+        }
+
+        synchronized (pointerLock) {
+            return wc_DhAgree(this.privateKey, pubKey);
         }
     }
 }
