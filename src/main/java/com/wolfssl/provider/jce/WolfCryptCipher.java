@@ -22,6 +22,7 @@
 package com.wolfssl.provider.jce;
 
 import java.util.Arrays;
+import java.nio.ByteBuffer;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherSpi;
@@ -31,6 +32,7 @@ import javax.crypto.ShortBufferException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.GCMParameterSpec;
 
 import java.security.SecureRandom;
 import java.security.AlgorithmParameters;
@@ -46,6 +48,7 @@ import java.security.interfaces.RSAPublicKey;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Asn;
 import com.wolfssl.wolfcrypt.Aes;
+import com.wolfssl.wolfcrypt.AesGcm;
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Rng;
@@ -65,7 +68,8 @@ public class WolfCryptCipher extends CipherSpi {
 
     enum CipherMode {
         WC_ECB,
-        WC_CBC
+        WC_CBC,
+        WC_GCM
     }
 
     enum PaddingType {
@@ -92,10 +96,11 @@ public class WolfCryptCipher extends CipherSpi {
 
     private int blockSize = 0;
 
-    private Aes  aes  = null;
-    private Des3 des3 = null;
-    private Rsa  rsa  = null;
-    private Rng  rng  = null;
+    private Aes  aes      = null;
+    private AesGcm aesGcm = null;
+    private Des3 des3     = null;
+    private Rsa  rsa      = null;
+    private Rng  rng      = null;
 
     /* for debug logging */
     private WolfCryptDebug debug;
@@ -106,6 +111,18 @@ public class WolfCryptCipher extends CipherSpi {
     private Key storedKey = null;
     private AlgorithmParameterSpec storedSpec = null;
     private byte[] iv = null;
+
+    /* AES-GCM tag length (bytes) */
+    private int gcmTagLen = 0;
+
+    /* AAD data for AES-GCM, populated via engineUpdateAAD() */
+    private byte[] aadData = null;
+
+    /* Has update/final been called yet, gates setting of AAD for GCM */
+    private boolean operationStarted = false;
+
+    /* Has this Cipher been inintialized? */
+    private boolean cipherInitialized = false;
 
     /* buffered data from update calls */
     private byte[] buffered = new byte[0];
@@ -122,24 +139,59 @@ public class WolfCryptCipher extends CipherSpi {
 
         switch (cipherType) {
             case WC_AES:
-                aes = new Aes();
                 blockSize = Aes.BLOCK_SIZE;
                 break;
 
             case WC_DES3:
-                des3 = new Des3();
                 blockSize = Des3.BLOCK_SIZE;
-                break;
-
-            case WC_RSA:
-                rsa = new Rsa();
-                rsa.setRng(this.rng);
                 break;
         }
 
         if (debug.DEBUG) {
             algString = typeToString(cipherType);
             algMode = modeToString(cipherMode);
+        }
+    }
+
+    /**
+     * Reset / re-create internal native struct for algorithm.
+     * Should be called during wolfCryptInit() and wolfCryptFinal()
+     */
+    private void InitializeNativeStructs() {
+        switch (this.cipherType) {
+            case WC_AES:
+                if (cipherMode == CipherMode.WC_CBC) {
+                    if (aes != null) {
+                        aes.releaseNativeStruct();
+                        aes = null;
+                    }
+                    aes = new Aes();
+                }
+                else if (cipherMode == CipherMode.WC_GCM) {
+                    if (aesGcm != null) {
+                        aesGcm.releaseNativeStruct();
+                        aesGcm = null;
+                    }
+                    aesGcm = new AesGcm();
+                }
+                break;
+
+            case WC_DES3:
+                if (des3 != null) {
+                    des3.releaseNativeStruct();
+                    des3 = null;
+                }
+                des3 = new Des3();
+                break;
+
+            case WC_RSA:
+                if (rsa != null) {
+                    rsa.releaseNativeStruct();
+                    rsa = null;
+                }
+                rsa = new Rsa();
+                rsa.setRng(this.rng);
+                break;
         }
     }
 
@@ -156,8 +208,9 @@ public class WolfCryptCipher extends CipherSpi {
                 cipherMode = CipherMode.WC_ECB;
                 supported = 1;
 
-                if (debug.DEBUG)
+                if (debug.DEBUG) {
                     log("set mode to ECB");
+                }
             }
 
         } else if (mode.equals("CBC")) {
@@ -168,14 +221,28 @@ public class WolfCryptCipher extends CipherSpi {
                 cipherMode = CipherMode.WC_CBC;
                 supported = 1;
 
-                if (debug.DEBUG)
+                if (debug.DEBUG) {
                     log("set mode to CBC");
+                }
+            }
+
+        } else if (mode.equals("GCM")) {
+
+            /* AES supports GCM */
+            if (cipherType == CipherType.WC_AES) {
+                cipherMode = CipherMode.WC_GCM;
+                supported = 1;
+
+                if (debug.DEBUG) {
+                    log("set mode to GCM");
+                }
             }
         }
 
         if (supported == 0) {
             throw new NoSuchAlgorithmException(
-                "Unsupported cipher mode for active algorithm choice");
+                "Unsupported cipher mode for active algorithm choice: " +
+                mode);
         }
     }
 
@@ -192,8 +259,9 @@ public class WolfCryptCipher extends CipherSpi {
                 paddingType = PaddingType.WC_NONE;
                 supported = 1;
 
-                if (debug.DEBUG)
+                if (debug.DEBUG) {
                     log("set padding to NoPadding");
+                }
             }
 
         } else if (padding.equals("PKCS1Padding")) {
@@ -202,24 +270,29 @@ public class WolfCryptCipher extends CipherSpi {
                 paddingType = PaddingType.WC_PKCS1;
                 supported = 1;
 
-                if (debug.DEBUG)
+                if (debug.DEBUG) {
                     log("set padding to PKCS1Padding");
+                }
             }
 
         } else if (padding.equals("PKCS5Padding")) {
 
-            if (cipherType == CipherType.WC_AES) {
+            if ((cipherType == CipherType.WC_AES) &&
+                (cipherMode == CipherMode.WC_CBC)) {
+
                 paddingType = PaddingType.WC_PKCS5;
                 supported = 1;
 
-                if (debug.DEBUG)
+                if (debug.DEBUG) {
                     log("set padding to PKCS5Padding");
+                }
             }
         }
 
         if (supported == 0) {
             throw new NoSuchPaddingException(
-                "Unsupported padding type for active algorithm choice");
+                "Unsupported padding type for active algorithm choice: " +
+                padding);
         }
     }
 
@@ -234,12 +307,24 @@ public class WolfCryptCipher extends CipherSpi {
 
         int size = 0;
 
+        if (!this.cipherInitialized) {
+            throw new IllegalStateException(
+                "Cipher has not been initialized yet");
+        }
+
         switch (this.cipherType) {
             case WC_AES:
                 if (paddingType == PaddingType.WC_NONE) {
-                    /* wolfCrypt expects input to be padded by application to
-                     * block size, thus output is same size as input */
-                    size = inputLen;
+                    if (cipherMode == CipherMode.WC_GCM) {
+                        /* In AES-GCM mode we append the authentication tag
+                         * to the end of ciphertext */
+                        size = inputLen + this.gcmTagLen;
+                    }
+                    else {
+                        /* wolfCrypt expects input to be padded by application to
+                         * block size, thus output is same size as input */
+                        size = inputLen;
+                    }
                 }
                 else if (paddingType == PaddingType.WC_PKCS5) {
                     size = buffered.length + inputLen;
@@ -330,21 +415,48 @@ public class WolfCryptCipher extends CipherSpi {
             }
 
         } else {
-            if (!(spec instanceof IvParameterSpec)) {
-                throw new InvalidAlgorithmParameterException(
-                    "AlgorithmParameterSpec must be of type IvParameterSpec");
+            if (cipherMode == CipherMode.WC_GCM) {
+                if (!(spec instanceof GCMParameterSpec)) {
+                    throw new InvalidAlgorithmParameterException(
+                        "AlgorithmParameterSpec must be of type " +
+                        "GCMParameterSpec");
+                }
+
+                GCMParameterSpec gcmSpec = (GCMParameterSpec)spec;
+
+                if (gcmSpec.getIV() == null ||
+                    gcmSpec.getIV().length == 0) {
+                    throw new InvalidAlgorithmParameterException(
+                        "AES-GCM IV is null or 0 length");
+                }
+
+                this.iv = gcmSpec.getIV().clone();
+
+                /* store tag length as bytes */
+                if (gcmSpec.getTLen() == 0) {
+                    throw new InvalidAlgorithmParameterException(
+                        "Tag length cannot be zero");
+                }
+                this.gcmTagLen = (gcmSpec.getTLen() / 8);
             }
+            else {
+                if (!(spec instanceof IvParameterSpec)) {
+                    throw new InvalidAlgorithmParameterException(
+                        "AlgorithmParameterSpec must be of type " +
+                        "IvParameterSpec");
+                }
 
-            IvParameterSpec ivSpec = (IvParameterSpec)spec;
+                IvParameterSpec ivSpec = (IvParameterSpec)spec;
 
-            /* IV should be of block size length */
-            if (ivSpec.getIV().length != this.blockSize) {
-                throw new InvalidAlgorithmParameterException(
-                        "Bad IV length (" + ivSpec.getIV().length +
-                        "), must be " + blockSize + " bytes long");
+                /* IV should be of block size length */
+                if (ivSpec.getIV().length != this.blockSize) {
+                    throw new InvalidAlgorithmParameterException(
+                            "Bad IV length (" + ivSpec.getIV().length +
+                            "), must be " + blockSize + " bytes long");
+                }
+
+                this.iv = ivSpec.getIV().clone();
             }
-
-            this.iv = ivSpec.getIV();
         }
     }
 
@@ -380,15 +492,26 @@ public class WolfCryptCipher extends CipherSpi {
 
         /* import key */
         encodedKey = key.getEncoded();
-        if (encodedKey == null)
+        if (encodedKey == null) {
             throw new InvalidKeyException("Key does not support encoding");
+        }
 
         switch (cipherType) {
             case WC_AES:
                 if (this.direction == OpMode.WC_ENCRYPT) {
-                    this.aes.setKey(encodedKey, iv, Aes.ENCRYPT_MODE);
+                    if (cipherMode == CipherMode.WC_GCM) {
+                        this.aesGcm.setKey(encodedKey);
+                    }
+                    else {
+                        this.aes.setKey(encodedKey, iv, Aes.ENCRYPT_MODE);
+                    }
                 } else {
-                    this.aes.setKey(encodedKey, iv, Aes.DECRYPT_MODE);
+                    if (cipherMode == CipherMode.WC_GCM) {
+                        this.aesGcm.setKey(encodedKey);
+                    }
+                    else {
+                        this.aes.setKey(encodedKey, iv, Aes.DECRYPT_MODE);
+                    }
                 }
                 break;
 
@@ -425,9 +548,12 @@ public class WolfCryptCipher extends CipherSpi {
             AlgorithmParameterSpec spec, SecureRandom random)
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
+        InitializeNativeStructs();
         wolfCryptSetDirection(opmode);
         wolfCryptSetIV(spec, random);
         wolfCryptSetKey(key);
+        this.operationStarted = false;
+        this.cipherInitialized = true;
     }
 
     @Override
@@ -438,8 +564,9 @@ public class WolfCryptCipher extends CipherSpi {
 
             wolfCryptCipherInit(opmode, key, null, random);
 
-            if (debug.DEBUG)
+            if (debug.DEBUG) {
                 log("initialized with key");
+            }
 
         } catch (InvalidAlgorithmParameterException iape) {
             throw new InvalidKeyException("Invalid algorithm parameters");
@@ -453,8 +580,9 @@ public class WolfCryptCipher extends CipherSpi {
 
         wolfCryptCipherInit(opmode, key, params, random);
 
-        if (debug.DEBUG)
+        if (debug.DEBUG) {
             log("initialized with key and AlgorithmParameterSpec");
+        }
     }
 
     @Override
@@ -466,10 +594,16 @@ public class WolfCryptCipher extends CipherSpi {
 
         try {
 
-            spec = params.getParameterSpec(IvParameterSpec.class);
+            if (this.cipherMode == CipherMode.WC_GCM) {
+                spec = params.getParameterSpec(GCMParameterSpec.class);
+            }
+            else {
+                spec = params.getParameterSpec(IvParameterSpec.class);
+            }
 
-            if (debug.DEBUG)
+            if (debug.DEBUG) {
                 log("initialized with key and AlgorithmParameters");
+            }
 
         } catch (InvalidParameterSpecException ipe) {
             throw new InvalidAlgorithmParameterException(ipe);
@@ -490,6 +624,7 @@ public class WolfCryptCipher extends CipherSpi {
                 break;
             default:
                 isBlockCipher = false;
+                break;
         };
 
         return isBlockCipher;
@@ -500,16 +635,19 @@ public class WolfCryptCipher extends CipherSpi {
     private int isValidBlockLength(int length) {
 
         /* skip if not a block cipher */
-        if (isBlockCipher() == false)
+        if (isBlockCipher() == false) {
             return 1;
+        }
 
-        if ((length % this.blockSize) != 0)
+        if ((length % this.blockSize) != 0) {
             return 0;
+        }
 
         return 1;
     }
 
-    private byte[] wolfCryptUpdate(byte[] input, int inputOffset, int len) {
+    private byte[] wolfCryptUpdate(byte[] input, int inputOffset, int len)
+        throws IllegalArgumentException {
 
         int  blocks    = 0;
         int  remaining = 0;
@@ -520,6 +658,8 @@ public class WolfCryptCipher extends CipherSpi {
 
         if (input == null || len < 0)
             throw new IllegalArgumentException("Null input buffer or len < 0");
+
+        this.operationStarted = true;
 
         if ((buffered.length + len) == 0) {
             /* no data to process */
@@ -534,9 +674,12 @@ public class WolfCryptCipher extends CipherSpi {
             buffered = tmpIn;
         }
 
-        /* keep buffered data if RSA or data is less than block size */
-        if (cipherType == CipherType.WC_RSA ||
-            buffered.length < blockSize) {
+        /* keep buffered data if RSA or data is less than block size, or doing
+         * AES-GCM without stream mode compiled natively */
+        if ((cipherType == CipherType.WC_RSA) ||
+            ((cipherType == CipherType.WC_AES) &&
+             (cipherMode == CipherMode.WC_GCM)) ||
+            (buffered.length < blockSize)) {
             return new byte[0];
         }
 
@@ -568,6 +711,8 @@ public class WolfCryptCipher extends CipherSpi {
         /* process tmpIn[] */
         switch (this.cipherType) {
 
+            /* Only CBC mode reaches this point currently, GCM caches all
+             * data internally above until final call */
             case WC_AES:
                 output = this.aes.update(tmpIn, 0, tmpIn.length);
 
@@ -603,9 +748,12 @@ public class WolfCryptCipher extends CipherSpi {
         byte tmpIn[]  = null;
         byte tmpOut[] = null;
 
+        this.operationStarted = true;
         totalSz = buffered.length + len;
 
+        /* AES-GCM does not require block size inputs */
         if (isBlockCipher() &&
+            (cipherMode != CipherMode.WC_GCM) &&
             (this.direction == OpMode.WC_DECRYPT ||
             (this.direction == OpMode.WC_ENCRYPT &&
              this.paddingType != PaddingType.WC_PKCS5)) &&
@@ -636,10 +784,39 @@ public class WolfCryptCipher extends CipherSpi {
         switch (this.cipherType) {
 
             case WC_AES:
-                tmpOut = this.aes.update(tmpIn, 0, tmpIn.length);
+                if (cipherMode == CipherMode.WC_GCM) {
+                    if (this.direction == OpMode.WC_ENCRYPT) {
+                        byte[] tag = new byte[this.gcmTagLen];
+                        tmpOut = this.aesGcm.encrypt(tmpIn, this.iv, tag,
+                                    this.aadData);
 
-                /* truncate */
-                tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
+                        /* Concatenate auth tag to end of ciphertext */
+                        byte[] totalOut = new byte[tmpOut.length + tag.length];
+                        System.arraycopy(tmpOut, 0, totalOut, 0, tmpOut.length);
+                        System.arraycopy(tag, 0, totalOut, tmpOut.length,
+                                         tag.length);
+                        tmpOut = totalOut;
+                    }
+                    else {
+                        /* Get auth tag from end of ciphertext */
+                        byte[] tag = Arrays.copyOfRange(tmpIn,
+                                        tmpIn.length - this.gcmTagLen,
+                                        tmpIn.length);
+
+                        /* Shrink ciphertext array down to not include tag */
+                        tmpIn = Arrays.copyOfRange(tmpIn, 0,
+                                    tmpIn.length - this.gcmTagLen);
+
+                        tmpOut = this.aesGcm.decrypt(tmpIn, this.iv, tag,
+                                    this.aadData);
+                    }
+                }
+                else {
+                    tmpOut = this.aes.update(tmpIn, 0, tmpIn.length);
+
+                    /* truncate */
+                    tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
+                }
 
                 /* strip PKCS#5/PKCS#7 padding if required */
                 if (this.direction == OpMode.WC_DECRYPT &&
@@ -690,14 +867,20 @@ public class WolfCryptCipher extends CipherSpi {
         /* reset state, user doesn't need to call init again before use */
         try {
             buffered = new byte[0];
+
             if (this.direction == OpMode.WC_ENCRYPT) {
                 wolfCryptSetDirection(Cipher.ENCRYPT_MODE);
             } else {
                 wolfCryptSetDirection(Cipher.DECRYPT_MODE);
             }
 
+            InitializeNativeStructs();
             wolfCryptSetIV(storedSpec, null);
             wolfCryptSetKey(storedKey);
+
+            this.aadData = null;
+            this.operationStarted = false;
+            this.cipherInitialized = true;
 
         } catch (InvalidKeyException e) {
             throw new RuntimeException(e.getMessage());
@@ -709,9 +892,15 @@ public class WolfCryptCipher extends CipherSpi {
     }
 
     @Override
-    protected byte[] engineUpdate(byte[] input, int inputOffset, int inputLen) {
+    protected byte[] engineUpdate(byte[] input, int inputOffset, int inputLen)
+        throws IllegalStateException {
 
         byte output[];
+
+        if (!this.cipherInitialized) {
+            throw new IllegalStateException(
+                "Cipher has not been initialized yet");
+        }
 
         if (debug.DEBUG)
             log("update (offset: " + inputOffset + ", len: " +
@@ -725,9 +914,14 @@ public class WolfCryptCipher extends CipherSpi {
     @Override
     protected int engineUpdate(byte[] input, int inputOffset, int inputLen,
             byte[] output, int outputOffset)
-        throws ShortBufferException {
+        throws IllegalStateException, ShortBufferException {
 
         byte tmpOut[];
+
+        if (!this.cipherInitialized) {
+            throw new IllegalStateException(
+                "Cipher has not been initialized yet");
+        }
 
         if (debug.DEBUG)
             log("update (in offset: " + inputOffset + ", len: " +
@@ -755,7 +949,13 @@ public class WolfCryptCipher extends CipherSpi {
     @Override
     protected byte[] engineDoFinal(byte[] input, int inputOffset,
             int inputLen)
-        throws IllegalBlockSizeException, BadPaddingException {
+        throws IllegalStateException, IllegalBlockSizeException,
+               BadPaddingException {
+
+        if (!this.cipherInitialized) {
+            throw new IllegalStateException(
+                "Cipher has not been initialized yet");
+        }
 
         if (debug.DEBUG)
             log("final (offset: " + inputOffset + ", len: " +
@@ -767,10 +967,15 @@ public class WolfCryptCipher extends CipherSpi {
     @Override
     protected int engineDoFinal(byte[] input, int inputOffset,
             int inputLen, byte[] output, int outputOffset)
-        throws ShortBufferException, IllegalBlockSizeException,
-               BadPaddingException {
+        throws IllegalStateException, ShortBufferException,
+               IllegalBlockSizeException, BadPaddingException {
 
         byte tmpOut[];
+
+        if (!this.cipherInitialized) {
+            throw new IllegalStateException(
+                "Cipher has not been initialized yet");
+        }
 
         if (debug.DEBUG)
             log("final (in offset: " + inputOffset + ", len: " +
@@ -816,6 +1021,71 @@ public class WolfCryptCipher extends CipherSpi {
         return encodedKey.length;
     }
 
+    @Override
+    protected void engineUpdateAAD(byte[] src, int offset, int len)
+        throws IllegalArgumentException, IllegalStateException {
+
+        if (this.cipherType != CipherType.WC_AES ||
+            this.cipherMode != CipherMode.WC_GCM) {
+            throw new IllegalStateException(
+                "AAD only supported for AES-GCM");
+        }
+
+        if (this.operationStarted) {
+            throw new IllegalStateException(
+                "Must set AAD before calling Cipher.update/final");
+        }
+
+        if (!this.cipherInitialized || this.aesGcm == null) {
+            throw new IllegalStateException(
+                "Cipher not initialized yet");
+        }
+
+        if (src == null || offset < 0 || len < 0 ||
+            (src.length < (offset + len))) {
+            throw new IllegalArgumentException(
+                "Source buffer is null or bad offset/len");
+        }
+
+        if (this.aadData == null) {
+            /* Store as new array inside object */
+            this.aadData = new byte[len];
+            System.arraycopy(src, offset, this.aadData, 0, len);
+        }
+        else {
+            /* Append to existing AAD array held inside object */
+            byte[] tmp = new byte[this.aadData.length + len];
+            System.arraycopy(this.aadData, 0, tmp, 0, this.aadData.length);
+            System.arraycopy(src, offset, tmp, this.aadData.length, len);
+            this.aadData = tmp;
+        }
+    }
+
+    @Override
+    protected void engineUpdateAAD(ByteBuffer src)
+        throws IllegalArgumentException, IllegalStateException {
+
+        int originalPos = 0;
+        byte[] remaining = null;
+
+        if (src == null) {
+            throw new IllegalArgumentException("Source buffer is null");
+        }
+
+        originalPos = src.position();
+        remaining = new byte[src.remaining()];
+
+        src.get(remaining);
+
+        try {
+            engineUpdateAAD(remaining, 0, remaining.length);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            /* restore state of ByteBuffer on state error before returning */
+            src.position(originalPos);
+            throw e;
+        }
+    }
+
     private String typeToString(CipherType type) {
         switch (type) {
             case WC_AES:
@@ -835,6 +1105,8 @@ public class WolfCryptCipher extends CipherSpi {
                 return "ECB";
             case WC_CBC:
                 return "CBC";
+            case WC_GCM:
+                return "GCM";
             default:
                 return "None";
         }
@@ -848,17 +1120,30 @@ public class WolfCryptCipher extends CipherSpi {
     @Override
     protected void finalize() throws Throwable {
         try {
-            if (this.aes != null)
+            if (this.aes != null) {
                 this.aes.releaseNativeStruct();
+                this.aes = null;
+            }
 
-            if (this.des3 != null)
+            if (this.aesGcm != null) {
+                this.aesGcm.releaseNativeStruct();
+                this.aesGcm = null;
+            }
+
+            if (this.des3 != null) {
                 this.des3.releaseNativeStruct();
+                this.des3 = null;
+            }
 
-            if (this.rsa != null)
+            if (this.rsa != null) {
                 this.rsa.releaseNativeStruct();
+                this.rsa = null;
+            }
 
-            if (this.rng != null)
+            if (this.rng != null) {
                 this.rng.releaseNativeStruct();
+                this.rng = null;
+            }
 
             zeroArray(this.iv);
 
@@ -891,6 +1176,18 @@ public class WolfCryptCipher extends CipherSpi {
          */
         public wcAESCBCPKCS5Padding() {
             super(CipherType.WC_AES, CipherMode.WC_CBC, PaddingType.WC_PKCS5);
+        }
+    }
+
+    /**
+     * Class for AES-GCM with no padding
+     */
+    public static final class wcAESGCMNoPadding extends WolfCryptCipher {
+        /**
+         * Create new wcAESGCMNoPadding object
+         */
+        public wcAESGCMNoPadding() {
+            super(CipherType.WC_AES, CipherMode.WC_GCM, PaddingType.WC_NONE);
         }
     }
 
