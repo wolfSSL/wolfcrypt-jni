@@ -1842,11 +1842,8 @@ public class WolfCryptCipherTest {
             for (int j = 0; j < fourByteBlocks; j++) {
                 tmp = enc.update(Arrays.copyOfRange(vIn, inIdx, inIdx + 4));
                 assertNotNull(tmp);
-                if (FeatureDetect.AesGcmStreamEnabled()) {
-                    assertEquals(4, tmp.length);
-                } else {
-                    assertEquals(0, tmp.length);
-                }
+                /* AES-GCM stream API not supported in JCE yet */
+                assertEquals(0, tmp.length);
                 System.arraycopy(tmp, 0, output, outIdx, tmp.length);
                 inIdx += 4;
                 outIdx += tmp.length;
@@ -1858,11 +1855,8 @@ public class WolfCryptCipherTest {
                 tmp = enc.update(Arrays.copyOfRange(vIn, inIdx,
                         inIdx + remainingBytes));
                 assertNotNull(tmp);
-                if (FeatureDetect.AesGcmStreamEnabled()) {
-                    assertEquals(remainingBytes, tmp.length);
-                } else {
-                    assertEquals(0, tmp.length);
-                }
+                /* AES-GCM stream API not supported in JCE yet */
+                assertEquals(0, tmp.length);
                 System.arraycopy(tmp, 0, output, outIdx, tmp.length);
                 inIdx += remainingBytes;
                 outIdx += tmp.length;
@@ -1872,11 +1866,8 @@ public class WolfCryptCipherTest {
              * streaming is not enabled at native wolfSSL level) */
             tmp = enc.doFinal();
             assertNotNull(tmp);
-            if (FeatureDetect.AesGcmStreamEnabled()) {
-                assertEquals(vTag.length, tmp.length);
-            } else {
-                assertEquals(tmpOut.length, tmp.length);
-            }
+            /* AES-GCM stream API not supported in JCE yet */
+            assertEquals(tmpOut.length, tmp.length);
             System.arraycopy(tmp, 0, output, outIdx, tmp.length);
             outIdx += tmp.length;
 
@@ -1914,11 +1905,8 @@ public class WolfCryptCipherTest {
             for (int j = 0; j < fourByteBlocks; j++) {
                 tmp = dec.update(Arrays.copyOfRange(output, inIdx, inIdx + 4));
                 assertNotNull(tmp);
-                if (FeatureDetect.AesGcmStreamEnabled()) {
-                    assertEquals(4, tmp.length);
-                } else {
-                    assertEquals(0, tmp.length);
-                }
+                /* AES-GCM stream API not supported in JCE yet */
+                assertEquals(0, tmp.length);
                 System.arraycopy(tmp, 0, plain, outIdx, tmp.length);
                 inIdx += 4;
                 outIdx += tmp.length;
@@ -1930,11 +1918,8 @@ public class WolfCryptCipherTest {
                 tmp = dec.update(Arrays.copyOfRange(output, inIdx,
                         inIdx + remainingBytes));
                 assertNotNull(tmp);
-                if (FeatureDetect.AesGcmStreamEnabled()) {
-                    assertEquals(remainingBytes, tmp.length);
-                } else {
-                    assertEquals(0, tmp.length);
-                }
+                /* AES-GCM stream API not supported in JCE yet */
+                assertEquals(0, tmp.length);
                 System.arraycopy(tmp, 0, plain, outIdx, tmp.length);
                 inIdx += remainingBytes;
                 outIdx += tmp.length;
@@ -1944,11 +1929,8 @@ public class WolfCryptCipherTest {
              * streaming is not enabled at native wolfSSL level */
             tmp = dec.doFinal();
             assertNotNull(tmp);
-            if (FeatureDetect.AesGcmStreamEnabled()) {
-                assertEquals(0, tmp.length);
-            } else {
-                assertEquals(vIn.length, tmp.length);
-            }
+            /* AES-GCM stream API not supported in JCE yet */
+            assertEquals(vIn.length, tmp.length);
             System.arraycopy(tmp, 0, plain, outIdx, tmp.length);
             outIdx += tmp.length;
 
