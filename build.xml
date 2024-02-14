@@ -40,8 +40,8 @@
     <property name="jce.debug" value="false" />
 
     <!-- compatible defaults -->
-    <property name="java.source" value="1.7" />
-    <property name="java.target" value="1.7" />
+    <property name="java.source" value="1.8" />
+    <property name="java.target" value="1.8" />
 
     <!-- property file for code signing -->
     <property file="codeSigning.properties" />
