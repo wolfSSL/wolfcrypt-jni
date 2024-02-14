@@ -2,6 +2,24 @@ OUT_PATH  = lib
 SRC_PATH  = jni
 INC_PATH  = $(SRC_PATH)/include
 
+ifneq ($(PREFIX),)
+    INSTALL_DIR = $(DESTDIR)$(PREFIX)
+else
+    INSTALL_DIR = $(DESTDIR)/usr/local
+endif
+
+ifeq ($(LIBDIR),)
+    LIBDIR=lib
+endif
+
+ifeq ($(INSTALL),)
+    INSTALL=install
+endif
+
+ifeq ($(WOLFSSL_LIBNAME),)
+    WOLFSSL_LIBNAME=wolfssl
+endif
+
 OBJ_LIST  = jni_fips.o jni_native_struct.o jni_aes.o jni_aesgcm.o jni_des3.o \
 			jni_md5.o jni_sha.o jni_hmac.o jni_rng.o jni_rsa.o jni_dh.o \
 			jni_ecc.o jni_ed25519.o jni_curve25519.o jni_chacha.o jni_error.o \
@@ -12,8 +30,8 @@ TARGET    = $(OUT_PATH)/libwolfcryptjni.dylib
 JAVA_HOME ?= $(shell /usr/libexec/java_home)
 CC        = gcc
 override CCFLAGS   += -Wall -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/darwin \
-			-I$(INC_PATH)
-override LDFLAGS   += -dynamiclib -lwolfssl
+			-I$(INC_PATH) -I$(INSTALL_DIR)/include
+override LDFLAGS   += -dynamiclib -L$(INSTALL_DIR)/$(LIBDIR) -l$(WOLFSSL_LIBNAME)
 
 all: $(TARGET)
 
