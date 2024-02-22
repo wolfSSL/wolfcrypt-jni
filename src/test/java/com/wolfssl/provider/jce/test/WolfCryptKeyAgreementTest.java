@@ -314,6 +314,22 @@ public class WolfCryptKeyAgreementTest {
             byte secretA[] = aKeyAgree.generateSecret();
             byte secretB[] = bKeyAgree.generateSecret();
 
+            if (secretA.length != secretB.length) {
+                int i = 0;
+                System.out.println("secretA.length != secretB.length");
+
+                System.out.println("secretA (wolfJCE, " +
+                    secretA.length + " bytes):");
+                for (i = 0; i < secretA.length; i++) {
+                    System.out.printf("%02x", secretA[i]);
+                } System.out.printf("\n");
+
+                System.out.println("secretB (SunJCE, " +
+                    secretB.length + " bytes):");
+                for (i = 0; i < secretB.length; i++) {
+                    System.out.printf("%02x", secretB[i]);
+                } System.out.printf("\n");
+            }
             assertArrayEquals(secretA, secretB);
 
             /* now, try reusing the A object without calling init() again */
