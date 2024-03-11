@@ -653,9 +653,16 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         /* If we are in FIPS mode, verify wolfJCE is the Signature provider
          * to help maintain FIPS compliance */
         if (Fips.enabled && pkixParams.getSigProvider() != "wolfJCE") {
-            throw new CertPathValidatorException(
-                "CertPathParameters Signature Provider must be wolfJCE " +
-                "when using wolfCrypt FIPS");
+            if (pkixParams.getSigProvider() == null) {
+                /* Preferred Signature provider not set, set to wolfJCE */
+                pkixParams.setSigProvider("wolfJCE");
+            }
+            else {
+                throw new CertPathValidatorException(
+                    "CertPathParameters Signature Provider must be wolfJCE " +
+                    "when using wolfCrypt FIPS: " +
+                    pkixParams.getSigProvider());
+            }
         }
 
         /* Use wolfSSL CertManager to facilitate chain verification */
