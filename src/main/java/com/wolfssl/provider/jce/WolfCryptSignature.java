@@ -215,7 +215,7 @@ public class WolfCryptSignature extends SignatureSpi {
     }
 
     @Override
-    protected void engineInitSign(PrivateKey privateKey)
+    protected synchronized void engineInitSign(PrivateKey privateKey)
         throws InvalidKeyException {
 
         int    ret;
@@ -279,7 +279,7 @@ public class WolfCryptSignature extends SignatureSpi {
     }
 
     @Override
-    protected void engineInitVerify(PublicKey publicKey)
+    protected synchronized void engineInitVerify(PublicKey publicKey)
         throws InvalidKeyException {
 
         int    ret;
@@ -353,7 +353,7 @@ public class WolfCryptSignature extends SignatureSpi {
     }
 
     @Override
-    protected byte[] engineSign() throws SignatureException {
+    protected synchronized byte[] engineSign() throws SignatureException {
 
         int ret = 0;
         int encodedSz = 0;
@@ -442,7 +442,7 @@ public class WolfCryptSignature extends SignatureSpi {
     }
 
     @Override
-    protected void engineUpdate(byte b) throws SignatureException {
+    protected synchronized void engineUpdate(byte b) throws SignatureException {
 
         byte[] tmp = new byte[1];
         tmp[0] = b;
@@ -454,7 +454,7 @@ public class WolfCryptSignature extends SignatureSpi {
     }
 
     @Override
-    protected void engineUpdate(byte[] b, int off, int len)
+    protected synchronized void engineUpdate(byte[] b, int off, int len)
         throws SignatureException {
 
         switch (this.digestType) {
@@ -484,7 +484,7 @@ public class WolfCryptSignature extends SignatureSpi {
     }
 
     @Override
-    protected boolean engineVerify(byte[] sigBytes)
+    protected synchronized boolean engineVerify(byte[] sigBytes)
         throws SignatureException {
 
         int    ret = 0;
