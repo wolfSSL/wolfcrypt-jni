@@ -28,3 +28,6 @@ IDE/WIN/DLL Release FIPS
 # Maven output directory
 target/
 
+# Generated system cacerts.wks and jssecacerts.wks
+examples/certs/systemcerts/cacerts.wks
+examples/certs/systemcerts/jssecacerts.wks
