@@ -314,6 +314,17 @@ public class WolfCryptKeyAgreementTest {
             byte secretA[] = aKeyAgree.generateSecret();
             byte secretB[] = bKeyAgree.generateSecret();
 
+            /* Older versions of Java did not prepend a zero byte to shared
+             * secrets that were smaller than the prime length. This was
+             * changed in SunJCE as of JDK-7146728, but we may be running this
+             * test on an older version that does not prepend the zero byte.
+             * Since wolfJCE does prepend the zero byte, for the sake of this
+             * interop test, we strip the zero byte from wolfJCE's secret
+             * if lengths are different and try to compare that. */
+            if (secretB.length == (secretA.length - 1)) {
+                secretA = Arrays.copyOfRange(secretA, 1, secretA.length);
+            }
+
             if (secretA.length != secretB.length) {
                 int i = 0;
                 System.out.println("secretA.length != secretB.length");
