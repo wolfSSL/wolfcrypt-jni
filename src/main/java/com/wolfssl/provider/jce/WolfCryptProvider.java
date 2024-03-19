@@ -178,6 +178,44 @@ public final class WolfCryptProvider extends Provider {
         put("CertPathValidator.PKIX",
                 "com.wolfssl.provider.jce.WolfCryptPKIXCertPathValidator");
 
+        /* SecretKeyFactory */
+        if (FeatureDetect.HmacShaEnabled()) {
+            put("SecretKeyFactory.PBKDF2WithHmacSHA1",
+                "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcPBKDF2WithHmacSHA1");
+        }
+        if (FeatureDetect.HmacSha224Enabled()) {
+            put("SecretKeyFactory.PBKDF2WithHmacSHA224",
+                "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcPBKDF2WithHmacSHA224");
+        }
+        if (FeatureDetect.HmacSha256Enabled()) {
+            put("SecretKeyFactory.PBKDF2WithHmacSHA256",
+                "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcPBKDF2WithHmacSHA256");
+        }
+        if (FeatureDetect.HmacSha384Enabled()) {
+            put("SecretKeyFactory.PBKDF2WithHmacSHA384",
+                "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcPBKDF2WithHmacSHA384");
+        }
+        if (FeatureDetect.HmacSha512Enabled()) {
+            put("SecretKeyFactory.PBKDF2WithHmacSHA512",
+                "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcPBKDF2WithHmacSHA512");
+        }
+        if (FeatureDetect.HmacSha3_224Enabled()) {
+            put("SecretKeyFactory.PBKDF2WithHmacSHA3-224",
+                "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcPBKDF2WithHmacSHA3_224");
+        }
+        if (FeatureDetect.HmacSha3_256Enabled()) {
+            put("SecretKeyFactory.PBKDF2WithHmacSHA3-256",
+                "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcPBKDF2WithHmacSHA3_256");
+        }
+        if (FeatureDetect.HmacSha3_384Enabled()) {
+            put("SecretKeyFactory.PBKDF2WithHmacSHA3-384",
+                "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcPBKDF2WithHmacSHA3_384");
+        }
+        if (FeatureDetect.HmacSha3_512Enabled()) {
+            put("SecretKeyFactory.PBKDF2WithHmacSHA3-512",
+                "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcPBKDF2WithHmacSHA3_512");
+        }
+
         /* If using a FIPS version of wolfCrypt, allow private key to be
          * exported for use. Only applicable to FIPS 140-3 */
         if (Fips.enabled) {

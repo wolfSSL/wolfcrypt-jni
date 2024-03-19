@@ -140,6 +140,13 @@ public class FeatureDetect {
     public static native boolean HmacShaEnabled();
 
     /**
+     * Tests if HMAC-SHA224 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false.
+     */
+    public static native boolean HmacSha224Enabled();
+
+    /**
      * Tests if HMAC-SHA256 is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false.
@@ -159,6 +166,42 @@ public class FeatureDetect {
      * @return true if enabled, otherwise false.
      */
     public static native boolean HmacSha512Enabled();
+
+    /**
+     * Tests if HMAC-SHA3-224 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false.
+     */
+    public static native boolean HmacSha3_224Enabled();
+
+    /**
+     * Tests if HMAC-SHA3-256 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false.
+     */
+    public static native boolean HmacSha3_256Enabled();
+
+    /**
+     * Tests if HMAC-SHA3-384 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false.
+     */
+    public static native boolean HmacSha3_384Enabled();
+
+    /**
+     * Tests if HMAC-SHA3-512 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false.
+     */
+    public static native boolean HmacSha3_512Enabled();
+
+    /**
+     * Tests if PKCS#5 v2.1 PBKDF2 is compiled into the native wolfSSL library.
+     *
+     * @return true if PBKDF2 is enabled (HAVE_PBKDF2, !NO_PWDBASED, !NO_HMAC),
+     *         otherwise false.
+     */
+    public static native boolean Pbkdf2Enabled();
 
     /**
      * Tests if RSA is compiled into the native wolfSSL library.
