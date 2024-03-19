@@ -75,6 +75,17 @@ The JCE provider currently supports the following algorithms:
     CertPathValidator Class
         PKIX
 
+    SecretKeyFactory
+        PBKDF2WithHmacSHA1
+        PBKDF2WithHmacSHA224
+        PBKDF2WithHmacSHA256
+        PBKDF2WithHmacSHA384
+        PBKDF2WithHmacSHA512
+        PBKDF2WithHmacSHA3-224
+        PBKDF2WithHmacSHA3-256
+        PBKDF2WithHmacSHA3-384
+        PBKDF2WithHmacSHA3-512
+
 ### SecureRandom.getInstanceStrong()
 
 When registered as the highest priority security provider, wolfJCE will provide
