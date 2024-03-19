@@ -21,6 +21,7 @@
 
 package com.wolfssl.provider.jce;
 
+import java.util.Arrays;
 import javax.crypto.KeyAgreementSpi;
 import javax.crypto.SecretKey;
 import javax.crypto.ShortBufferException;
@@ -194,6 +195,33 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             secret = new byte[len];
             System.arraycopy(tmp, 0, secret, 0, len);
 
+            /* DH shared secrets can vary in length depending on if they are
+             * padded or not at the beginning with zero bytes to make a total
+             * output size matching the prime length.
+             *
+             * Native wolfCrypt does not prepend zero bytes to DH shared
+             * secrets, following RFC 5246 (8.1.2) which instructs to strip
+             * leading zero bytes.
+             *
+             * Sun KeyAgreement DH implementations as of after Java 8
+             * prepend zero bytes if total length is not equal to prime length.
+             * This was changed with OpenJDK bug fix JDK-7146728.
+             *
+             * BouncyCastle also behaves the same way, prepending zero bytes
+             * if total secret size is not prime length. This follows
+             * RFC 2631 (2.1.2).
+             *
+             * To match Sun and BC behavior, we will follow the same here if
+             * running on a Java version later than Java 8.
+             */
+            if (this.type == KeyAgreeType.WC_DH) {
+                tmp = new byte[this.primeLen];
+                Arrays.fill(tmp, (byte)0);
+                System.arraycopy(secret, 0, tmp,
+                    tmp.length - secret.length, secret.length);
+                secret = tmp.clone();
+            }
+
         } catch (ShortBufferException e) {
             zeroArray(tmp);
             zeroArray(secret);
@@ -360,6 +388,12 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 this.dh.setParams(paramP, paramG);
 
                 primeLen = paramP.length;
+
+                /* prime may have leading zero */
+                if (paramP[0] == 0x00) {
+                    primeLen--;
+                }
+
                 return;
 
             } else {
@@ -382,6 +416,11 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         this.dh.setParams(paramP, paramG);
 
         primeLen = paramP.length;
+
+        /* prime may have leading zero */
+        if (paramP[0] == 0x00) {
+            primeLen--;
+        }
 
         /* import private key */
         dhPriv = dhKey.getX().toByteArray();
