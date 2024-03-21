@@ -33,6 +33,90 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1NONE
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_NONE;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1MD2
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_MD2;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1MD4
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_MD4;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1MD5
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_MD5;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHA
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_SHA;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHA224
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_SHA224;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHA256
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_SHA256;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHA384
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_SHA384;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHA512
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_SHA512;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1MD5_1SHA
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_MD5_SHA;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHA3_1224
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_SHA3_224;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHA3_1256
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_SHA3_256;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHA3_1384
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_SHA3_384;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHA3_1512
+  (JNIEnv* env, jclass class)
+{
+    return WC_HASH_TYPE_SHA3_512;
+}
+
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_CrlEnabled
   (JNIEnv* env, jclass jcl)
 {
