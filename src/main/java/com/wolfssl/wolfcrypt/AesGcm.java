@@ -28,7 +28,7 @@ public class AesGcm extends NativeStruct {
 
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
-    /* Lock around object state */
+    /** Lock around object state */
     protected final Object stateLock = new Object();
 
     /* Lock around native Aes poiner use */
@@ -51,6 +51,11 @@ public class AesGcm extends NativeStruct {
         init();
     }
 
+    /**
+     * Create and initialize new AesGcm object using provided key.
+     *
+     * @param key AES-GCM key to be used with this object
+     */
     public AesGcm(byte[] key) {
         init();
         setKey(key);

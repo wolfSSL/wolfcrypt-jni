@@ -32,7 +32,7 @@ public class Rsa extends NativeStruct {
     private boolean hasPrivateKey = false;
     private Rng rng;
 
-    /* Lock around object state */
+    /** Lock around object state */
     protected final Object stateLock = new Object();
 
     /**

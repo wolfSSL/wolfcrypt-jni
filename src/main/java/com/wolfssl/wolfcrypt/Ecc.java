@@ -38,7 +38,7 @@ public class Ecc extends NativeStruct {
     /* used with native wc_ecc_set_rng() */
     private Rng rng = null;
 
-    /* Lock around object state */
+    /** Lock around object state */
     protected final Object stateLock = new Object();
 
     /**

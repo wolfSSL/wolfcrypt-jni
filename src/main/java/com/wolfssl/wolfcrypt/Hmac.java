@@ -50,7 +50,7 @@ public class Hmac extends NativeStruct {
     private int type = -1;
     private byte[] key;
 
-    /* Lock around object state */
+    /** Lock around object state */
     protected final Object stateLock = new Object();
 
     /**
