@@ -73,6 +73,9 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
 
     private WolfCryptDebug debug;
 
+    /**
+     * Create new WolfCryptPKIXCertPathValidator object.
+     */
     public WolfCryptPKIXCertPathValidator() {
         if (debug.DEBUG) {
             log("created new WolfCryptPKIXCertPathValidator");
