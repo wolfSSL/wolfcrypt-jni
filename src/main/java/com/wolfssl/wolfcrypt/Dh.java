@@ -31,7 +31,7 @@ public class Dh extends NativeStruct {
     private byte[] publicKey = null;
     private int pSize = 0;
 
-    /* Lock around object state */
+    /** Lock around object state */
     protected final Object stateLock = new Object();
 
     /**
