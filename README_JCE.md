@@ -34,6 +34,7 @@ The JCE provider currently supports the following algorithms:
         SHA-512
 
     SecureRandom Class
+        DEFAULT (maps to HashDRBG)
         HashDRBG
 
     Cipher Class
