@@ -57,7 +57,13 @@ public class WolfCryptRandomTest {
     public void testGetRandomFromProvider()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 
-        SecureRandom rand = SecureRandom.getInstance("HashDRBG", "wolfJCE");
+        SecureRandom rand = null;
+
+        /* HashDRBG */
+        rand = SecureRandom.getInstance("HashDRBG", "wolfJCE");
+
+        /* DEFAULT */
+        rand = SecureRandom.getInstance("DEFAULT", "wolfJCE");
     }
 
     @Test
