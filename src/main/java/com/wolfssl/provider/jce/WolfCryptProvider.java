@@ -65,6 +65,8 @@ public final class WolfCryptProvider extends Provider {
         /* SecureRandom */
         /* TODO: May need to add "SHA1PRNG" alias, other JCA consumemrs may
          * explicitly request it? Needs more testing. */
+        put("SecureRandom.DEFAULT",
+                "com.wolfssl.provider.jce.WolfCryptRandom");
         put("SecureRandom.HashDRBG",
                 "com.wolfssl.provider.jce.WolfCryptRandom");
 
