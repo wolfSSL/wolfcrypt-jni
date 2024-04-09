@@ -617,7 +617,7 @@ public class WolfCryptSignature extends SignatureSpi {
 
     @SuppressWarnings("deprecation")
     @Override
-    protected void finalize() throws Throwable {
+    protected synchronized void finalize() throws Throwable {
         try {
             /* free native digest objects */
             if (this.md5 != null)
