@@ -136,6 +136,7 @@ section titled `/* Configuration */`:
 
 ```
 #define WOLFSSL_KEY_GEN
+#define HAVE_CRL
 ```
 
 After editing and saving the `user_settings.h` file, select one of the following
@@ -202,6 +203,7 @@ and set the values for `HAVE_FIPS`, `HAVE_FIPS_VERSION`, and
 
 ```
 #define WOLFSSL_KEY_GEN
+#define HAVE_CRL
 ```
 
 6. Build the `wolfssl-fips` project, which will create a DLL in one of the
@@ -258,6 +260,7 @@ The following additional defines will also need to be added to
 
 ```
 #define WOLFSSL_KEY_GEN
+#define HAVE_CRL
 ```
 
 For additional help, contact support@wolfssl.com.
