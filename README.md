@@ -20,12 +20,17 @@ wolfSSL library must be compiled and installed.
 Compile and install a wolfSSL (wolfssl-x.x.x), wolfSSL FIPS
 release (wolfssl-x.x.x-commercial-fips), or wolfSSL FIPS Ready release:
 
-In any of these cases, you will need the `--enable-keygen` ./configure option.
+In any of these cases, you will need the `--enable-jni` ./configure option.
+The `--enable-jni` option includes all native wolfSSL features needed by
+both wolfCrypt JNI/JCE (this package) as well as wolfSSL JNI/JSSE (a
+separate package and repo). If you want the minimal set of requirements needed
+for only wolfJCE, you can use `--enable-keygen --enable-crl`, where
+CRL support is needed to support JCE `CertPathValidator(PKIX)` CRL support.
 
 **wolfSSL Standard Build**:
 ```
 $ cd wolfssl-x.x.x
-$ ./configure --enable-keygen
+$ ./configure --enable-jni
 $ make check
 $ sudo make install
 ```
@@ -34,7 +39,7 @@ $ sudo make install
 
 ```
 $ cd wolfssl-x.x.x-commercial-fips
-$ ./configure --enable-fips=v2 --enable-keygen
+$ ./configure --enable-fips=v2 --enable-jni
 $ make check
 $ sudo make install
 ```
@@ -43,7 +48,7 @@ $ sudo make install
 
 ```
 $ cd wolfssl-x.x.x-commercial-fips
-$ ./configure --enable-fips=ready --enable-keygen
+$ ./configure --enable-fips=ready --enable-jni
 $ make check
 $ sudo make install
 ```
