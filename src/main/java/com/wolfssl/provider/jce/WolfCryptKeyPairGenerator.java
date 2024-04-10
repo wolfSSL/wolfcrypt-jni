@@ -96,7 +96,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     }
 
     @Override
-    public void initialize(int keysize, SecureRandom random) {
+    public synchronized void initialize(int keysize, SecureRandom random) {
 
         if (type == KeyType.WC_DH) {
             throw new RuntimeException(
@@ -116,8 +116,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     }
 
     @Override
-    public void initialize(AlgorithmParameterSpec params,
-            SecureRandom random) throws InvalidAlgorithmParameterException {
+    public synchronized void initialize(AlgorithmParameterSpec params,
+        SecureRandom random) throws InvalidAlgorithmParameterException {
 
         if (params == null) {
             throw new InvalidAlgorithmParameterException(
@@ -206,7 +206,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     }
 
     @Override
-    public KeyPair generateKeyPair() {
+    public synchronized KeyPair generateKeyPair() {
 
         KeyPair pair = null;
 
@@ -401,7 +401,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
     @SuppressWarnings("deprecation")
     @Override
-    protected void finalize() throws Throwable {
+    protected synchronized void finalize() throws Throwable {
         try {
             if (this.rng != null) {
                 rng.free();
