@@ -80,6 +80,9 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
     private Rng rng = null;
 
+    /* Lock around Rng access */
+    private final Object rngLock = new Object();
+
     /* for debug logging */
     private WolfCryptDebug debug;
     private String algString;
@@ -88,8 +91,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
         this.type = type;
 
-        rng = new Rng();
-        rng.init();
+        this.rng = new Rng();
+        this.rng.init();
 
         if (debug.DEBUG)
             algString = typeToString(type);
@@ -232,7 +235,10 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 Rsa rsa = new Rsa();
 
                 try {
-                    rsa.makeKey(this.keysize, this.publicExponent, rng);
+                    synchronized (rngLock) {
+                        rsa.makeKey(this.keysize, this.publicExponent,
+                            this.rng);
+                    }
 
                     /* private key */
                     privDer = rsa.privateKeyEncodePKCS8();
@@ -280,13 +286,16 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
                 ECPrivateKey eccPriv = null;
                 ECPublicKey  eccPub  = null;
+                Ecc ecc = null;
 
-                Ecc ecc = new Ecc();
+                synchronized (rngLock) {
+                    ecc = new Ecc(this.rng);
 
-                if (this.curve == null) {
-                    ecc.makeKey(rng, this.keysize);
-                } else {
-                    ecc.makeKeyOnCurve(rng, this.keysize, this.curve);
+                    if (this.curve == null) {
+                        ecc.makeKey(this.rng, this.keysize);
+                    } else {
+                        ecc.makeKeyOnCurve(this.rng, this.keysize, this.curve);
+                    }
                 }
 
                 /* private key */
@@ -343,7 +352,9 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 dh.setParams(dhP, dhG);
 
                 /* make key */
-                dh.makeKey(rng);
+                synchronized (rngLock) {
+                    dh.makeKey(this.rng);
+                }
 
                 privSpec = new DHPrivateKeySpec(
                                 new BigInteger(dh.getPrivateKey()),
@@ -403,9 +414,11 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     @Override
     protected synchronized void finalize() throws Throwable {
         try {
-            if (this.rng != null) {
-                rng.free();
-                rng.releaseNativeStruct();
+            synchronized (rngLock) {
+                if (this.rng != null) {
+                    this.rng.free();
+                    this.rng.releaseNativeStruct();
+                }
             }
         } finally {
             super.finalize();

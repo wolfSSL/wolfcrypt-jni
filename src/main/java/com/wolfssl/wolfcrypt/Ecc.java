@@ -38,13 +38,33 @@ public class Ecc extends NativeStruct {
     /* used with native wc_ecc_set_rng() */
     private Rng rng = null;
 
+    /* Do we own the Rng struct, or has that been passed in? Used
+     * during Rng cleanup. */
+    private boolean weOwnRng = true;
+
+    /** Lock around Rng object access */
+    private final Object rngLock = new Object();
+
     /** Lock around object state */
     protected final Object stateLock = new Object();
+
 
     /**
      * Create new Ecc object
      */
     public Ecc() {
+        init();
+    }
+
+    /**
+     * Create new Ecc object with existing Rng object.
+     *
+     * @param rng initialized com.wolfssl.wolfcrypt.Rng object
+     */
+    public Ecc(Rng rng) {
+        this.rng = rng;
+        weOwnRng = false;
+
         init();
     }
 
@@ -100,9 +120,12 @@ public class Ecc extends NativeStruct {
                 }
 
                 /* used with native wc_ecc_set_rng() */
-                if (rng == null) {
-                    rng = new Rng();
-                    rng.init();
+                synchronized (rngLock) {
+                    if (rng == null) {
+                        rng = new Rng();
+                        rng.init();
+                        weOwnRng = true;
+                    }
                 }
 
                 state = WolfCryptState.INITIALIZED;
@@ -124,9 +147,11 @@ public class Ecc extends NativeStruct {
                     wc_ecc_free();
                 }
 
-                if (this.rng != null) {
-                    rng.free();
-                    rng.releaseNativeStruct();
+                synchronized (rngLock) {
+                    if (this.weOwnRng && this.rng != null) {
+                        rng.free();
+                        rng.releaseNativeStruct();
+                    }
                 }
 
                 state = WolfCryptState.UNINITIALIZED;
@@ -445,7 +470,9 @@ public class Ecc extends NativeStruct {
             if (state == WolfCryptState.READY) {
 
                 synchronized (pointerLock) {
-                    return wc_ecc_shared_secret(pubKey, this.rng);
+                    synchronized (rngLock) {
+                        return wc_ecc_shared_secret(pubKey, this.rng);
+                    }
                 }
             } else {
                 throw new IllegalStateException(
