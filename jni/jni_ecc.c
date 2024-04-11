@@ -896,8 +896,8 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     JNIEnv* env, jobject this, jbyteArray hash_object,
     jbyteArray signature_object)
 {
-    int ret = 0;
 #ifdef HAVE_ECC_VERIFY
+    int ret = 0;
     int status = 0;
     ecc_key* ecc    = NULL;
     byte* hash      = NULL;
@@ -907,7 +907,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
-        return 0;
+        return JNI_FALSE;
     }
 
     hash   = getByteArray(env, hash_object);
@@ -921,26 +921,29 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     }
     else {
         ret = wc_ecc_verify_hash(signature, signatureSz, hash,
-                                 hashSz, &status, ecc);
+            hashSz, &status, ecc);
     }
 
-    if (ret == 0) {
-        ret = status;
-    } else {
-        throwWolfCryptExceptionFromError(env, ret);
-    }
+    releaseByteArray(env, hash_object, hash, JNI_ABORT);
+    releaseByteArray(env, signature_object, signature, JNI_ABORT);
 
     LogStr(
         "wc_ecc_verify_hash(sig, sigSz, hash, hashSz, &status, ecc); = %d\n",
         ret);
 
-    releaseByteArray(env, hash_object, hash, JNI_ABORT);
-    releaseByteArray(env, signature_object, signature, JNI_ABORT);
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    if (status == 1) {
+        return JNI_TRUE;
+    } else {
+        return JNI_FALSE;
+    }
 #else
     throwNotCompiledInException(env);
+    return JNI_FALSE;
 #endif
-
-    return ret;
 }
 
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1size_1from_1name
