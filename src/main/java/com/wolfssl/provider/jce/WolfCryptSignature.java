@@ -101,6 +101,10 @@ public class WolfCryptSignature extends SignatureSpi {
     private String keyString;
     private String digestString;
 
+    /* Class-wide RNG to be used for padding during sign operations */
+    private Rng rng = null;
+    private final Object rngLock = new Object();
+
     private WolfCryptSignature(KeyType ktype, DigestType dtype)
         throws NoSuchAlgorithmException {
 
@@ -151,6 +155,11 @@ public class WolfCryptSignature extends SignatureSpi {
             default:
                 throw new NoSuchAlgorithmException(
                     "Unsupported signature algorithm digest type");
+        }
+
+        synchronized (rngLock) {
+            this.rng = new Rng();
+            this.rng.init();
         }
 
         if (debug.DEBUG) {
@@ -390,10 +399,6 @@ public class WolfCryptSignature extends SignatureSpi {
             throw new SignatureException(e.getMessage());
         }
 
-        /* init RNG for padding */
-        Rng rng = new Rng();
-        rng.init();
-
         /* sign digest */
         switch (this.keyType) {
             case WC_RSA:
@@ -409,7 +414,9 @@ public class WolfCryptSignature extends SignatureSpi {
 
                 byte[] tmp = new byte[encodedSz];
                 System.arraycopy(encDigest, 0, tmp, 0, encodedSz);
-                signature = this.rsa.sign(tmp, rng);
+                synchronized (rngLock) {
+                    signature = this.rsa.sign(tmp, rng);
+                }
                 zeroArray(tmp);
 
                 break;
@@ -417,7 +424,9 @@ public class WolfCryptSignature extends SignatureSpi {
             case WC_ECDSA:
 
                 /* ECC sign */
-                signature = this.ecc.sign(digest, rng);
+                synchronized (rngLock) {
+                    signature = this.ecc.sign(digest, rng);
+                }
 
                 break;
 
@@ -425,10 +434,6 @@ public class WolfCryptSignature extends SignatureSpi {
                 throw new SignatureException(
                     "Invalid signature algorithm type");
         }
-
-        /* release RNG */
-        rng.free();
-        rng.releaseNativeStruct();
 
         if (debug.DEBUG) {
             if (signature != null) {
@@ -641,6 +646,14 @@ public class WolfCryptSignature extends SignatureSpi {
 
             if (this.ecc != null)
                 this.ecc.releaseNativeStruct();  /* frees internally */
+
+            synchronized (rngLock) {
+                if (this.rng != null) {
+                    /* release RNG */
+                    this.rng.free();
+                    this.rng.releaseNativeStruct();
+                }
+            }
 
         } finally {
             super.finalize();
