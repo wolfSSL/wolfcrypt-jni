@@ -71,9 +71,14 @@ public class RsaTest {
     @Test
     public void testMakeKey() {
 
-        Rsa key = new Rsa();
-        key.makeKey(1024, 65537, rng);
-        key.releaseNativeStruct();
+        Rsa key = null;
+
+        /* FIPS after 2425 doesn't allow 1024-bit RSA key gen */
+        if (Fips.enabled && Fips.fipsVersion < 5) {
+            key = new Rsa();
+            key.makeKey(1024, 65537, rng);
+            key.releaseNativeStruct();
+        }
 
         key = new Rsa();
         key.makeKey(2048, 65537, rng);
@@ -218,6 +223,12 @@ public class RsaTest {
               + "37e32da3750d1e4d2134d557705c89bf72ec4a6e68d5cd187433"
               + "4e8c3a458fe69640eb63f919863a51dd894bb0f3f99f5d289538"
               + "be35abca5ce7935334a1455d1339654246a19fcdf5bf");
+
+        /* FIPS after 2425 doesn't allow 1024-bit RSA key gen */
+        if (Fips.enabled && Fips.fipsVersion >= 5) {
+            /* skip */
+            return;
+        }
 
         /* Test that exception is thrown without private key available */
         try {
