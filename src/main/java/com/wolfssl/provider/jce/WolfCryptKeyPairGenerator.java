@@ -91,9 +91,6 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
         this.type = type;
 
-        this.rng = new Rng();
-        this.rng.init();
-
         if (debug.DEBUG)
             algString = typeToString(type);
     }
@@ -114,6 +111,13 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
             this.publicExponent = Rsa.getDefaultRsaExponent();
         }
 
+        synchronized (rngLock) {
+            if (this.rng == null) {
+                this.rng = new Rng();
+                this.rng.init();
+            }
+        }
+
         if (debug.DEBUG)
             log("init with keysize: " + keysize);
     }
@@ -125,6 +129,13 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         if (params == null) {
             throw new InvalidAlgorithmParameterException(
                 "AlgorithmParameterSpec must not be null");
+        }
+
+        synchronized (rngLock) {
+            if (this.rng == null) {
+                this.rng = new Rng();
+                this.rng.init();
+            }
         }
 
         switch (type) {
