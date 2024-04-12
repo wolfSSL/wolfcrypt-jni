@@ -49,7 +49,17 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfObject_init
     }
 #endif
 
-#if defined(HAVE_FIPS) && defined(HAVE_FIPS_VERSION) && (HAVE_FIPS_VERSION == 5)
+#if defined(HAVE_FIPS) && defined(HAVE_FIPS_VERSION) && \
+    (HAVE_FIPS_VERSION >= 7)
+
+    ret = wc_RunAllCast_fips();
+    if (ret != 0) {
+        printf("FIPS CASTs failed to run");
+    }
+
+#elif defined(HAVE_FIPS) && defined(HAVE_FIPS_VERSION) && \
+    (HAVE_FIPS_VERSION == 5)
+
     /* run FIPS 140-3 conditional algorithm self tests early to prevent
      * multi threaded issues later on */
 #if !defined(NO_AES) && !defined(NO_AES_CBC)
