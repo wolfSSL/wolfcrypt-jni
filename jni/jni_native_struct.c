@@ -151,9 +151,10 @@ byte* getByteArray(JNIEnv* env, jbyteArray array)
 
 void releaseByteArray(JNIEnv* env, jbyteArray array, byte* elements, jint abort)
 {
-    if (elements)
+    if ((env != NULL) && (array != NULL) && (elements != NULL)) {
         (*env)->ReleaseByteArrayElements(env, array, (jbyte*) elements,
             abort ? JNI_ABORT : 0);
+    }
 }
 
 word32 getByteArrayLength(JNIEnv* env, jbyteArray array)
