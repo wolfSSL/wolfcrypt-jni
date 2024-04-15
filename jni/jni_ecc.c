@@ -821,7 +821,9 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
     RNG*  rng    = NULL;
     byte* hash   = NULL;
     byte* signature = NULL;
-    word32 hashSz = 0, signatureSz = 0;
+    word32 hashSz = 0;
+    word32 expectedSigSz = 0;
+    word32 signatureSz = 0;
     word32 signatureBufSz = 0;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
@@ -844,7 +846,8 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
     }
 
     if (ret == 0) {
-        signatureSz = wc_ecc_sig_size(ecc);
+        expectedSigSz = wc_ecc_sig_size(ecc);
+        signatureSz = expectedSigSz;
         signatureBufSz = signatureSz;
 
         signature = (byte*)XMALLOC(signatureSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
@@ -861,24 +864,38 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
     }
 
     if (ret == 0) {
+        /* Sanity check on wc_ecc_sig_size() and actual length */
+        if (expectedSigSz < signatureSz) {
+            ret = BUFFER_E;
+            throwWolfCryptException(env,
+                "wc_ecc_sig_size() less than actual sig size");
+        }
+    }
+
+    if (ret == 0) {
         result = (*env)->NewByteArray(env, signatureSz);
 
-        if (result) {
+        if (result != NULL) {
             (*env)->SetByteArrayRegion(env, result, 0, signatureSz,
                                        (const jbyte*)signature);
         } else {
+            releaseByteArray(env, hash_object, hash, JNI_ABORT);
             throwWolfCryptException(env, "Failed to allocate signature");
+            return NULL;
         }
     } else {
+        releaseByteArray(env, hash_object, hash, JNI_ABORT);
         throwWolfCryptExceptionFromError(env, ret);
+        return NULL;
     }
 
     LogStr("wc_ecc_sign_hash(input, inSz, output, &outSz, rng, ecc) = %d\n",
         ret);
-    LogStr("signature[%u]: [%p]\n", (word32)signatureSz, signature);
-    LogHex((byte*) signature, 0, signatureSz);
 
     if (signature != NULL) {
+        LogStr("signature[%u]: [%p]\n", (word32)signatureSz, signature);
+        LogHex((byte*) signature, 0, signatureSz);
+
         XMEMSET(signature, 0, signatureBufSz);
         XFREE(signature, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }

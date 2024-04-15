@@ -500,7 +500,9 @@ public class Ecc extends NativeStruct {
         synchronized (stateLock) {
             if (state == WolfCryptState.READY) {
                 synchronized (pointerLock) {
-                    signature = wc_ecc_sign_hash(hash, rng);
+                    synchronized (rngLock) {
+                        signature = wc_ecc_sign_hash(hash, rng);
+                    }
                 }
             } else {
                 throw new IllegalStateException(
