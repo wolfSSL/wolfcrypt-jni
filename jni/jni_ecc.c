@@ -821,7 +821,9 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
     RNG*  rng    = NULL;
     byte* hash   = NULL;
     byte* signature = NULL;
-    word32 hashSz = 0, signatureSz = 0;
+    word32 hashSz = 0;
+    word32 expectedSigSz = 0;
+    word32 signatureSz = 0;
     word32 signatureBufSz = 0;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
@@ -844,7 +846,8 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
     }
 
     if (ret == 0) {
-        signatureSz = wc_ecc_sig_size(ecc);
+        expectedSigSz = wc_ecc_sig_size(ecc);
+        signatureSz = expectedSigSz;
         signatureBufSz = signatureSz;
 
         signature = (byte*)XMALLOC(signatureSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
@@ -861,24 +864,38 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
     }
 
     if (ret == 0) {
+        /* Sanity check on wc_ecc_sig_size() and actual length */
+        if (expectedSigSz < signatureSz) {
+            ret = BUFFER_E;
+            throwWolfCryptException(env,
+                "wc_ecc_sig_size() less than actual sig size");
+        }
+    }
+
+    if (ret == 0) {
         result = (*env)->NewByteArray(env, signatureSz);
 
-        if (result) {
+        if (result != NULL) {
             (*env)->SetByteArrayRegion(env, result, 0, signatureSz,
                                        (const jbyte*)signature);
         } else {
+            releaseByteArray(env, hash_object, hash, JNI_ABORT);
             throwWolfCryptException(env, "Failed to allocate signature");
+            return NULL;
         }
     } else {
+        releaseByteArray(env, hash_object, hash, JNI_ABORT);
         throwWolfCryptExceptionFromError(env, ret);
+        return NULL;
     }
 
     LogStr("wc_ecc_sign_hash(input, inSz, output, &outSz, rng, ecc) = %d\n",
         ret);
-    LogStr("signature[%u]: [%p]\n", (word32)signatureSz, signature);
-    LogHex((byte*) signature, 0, signatureSz);
 
     if (signature != NULL) {
+        LogStr("signature[%u]: [%p]\n", (word32)signatureSz, signature);
+        LogHex((byte*) signature, 0, signatureSz);
+
         XMEMSET(signature, 0, signatureBufSz);
         XFREE(signature, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
@@ -896,8 +913,8 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     JNIEnv* env, jobject this, jbyteArray hash_object,
     jbyteArray signature_object)
 {
-    int ret = 0;
 #ifdef HAVE_ECC_VERIFY
+    int ret = 0;
     int status = 0;
     ecc_key* ecc    = NULL;
     byte* hash      = NULL;
@@ -907,7 +924,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
-        return 0;
+        return JNI_FALSE;
     }
 
     hash   = getByteArray(env, hash_object);
@@ -921,26 +938,29 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1verify_1hash(
     }
     else {
         ret = wc_ecc_verify_hash(signature, signatureSz, hash,
-                                 hashSz, &status, ecc);
+            hashSz, &status, ecc);
     }
 
-    if (ret == 0) {
-        ret = status;
-    } else {
-        throwWolfCryptExceptionFromError(env, ret);
-    }
+    releaseByteArray(env, hash_object, hash, JNI_ABORT);
+    releaseByteArray(env, signature_object, signature, JNI_ABORT);
 
     LogStr(
         "wc_ecc_verify_hash(sig, sigSz, hash, hashSz, &status, ecc); = %d\n",
         ret);
 
-    releaseByteArray(env, hash_object, hash, JNI_ABORT);
-    releaseByteArray(env, signature_object, signature, JNI_ABORT);
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    if (status == 1) {
+        return JNI_TRUE;
+    } else {
+        return JNI_FALSE;
+    }
 #else
     throwNotCompiledInException(env);
+    return JNI_FALSE;
 #endif
-
-    return ret;
 }
 
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1size_1from_1name

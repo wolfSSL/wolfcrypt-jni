@@ -80,6 +80,9 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
     private Rng rng = null;
 
+    /* Lock around Rng access */
+    private final Object rngLock = new Object();
+
     /* for debug logging */
     private WolfCryptDebug debug;
     private String algString;
@@ -88,15 +91,12 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
         this.type = type;
 
-        rng = new Rng();
-        rng.init();
-
         if (debug.DEBUG)
             algString = typeToString(type);
     }
 
     @Override
-    public void initialize(int keysize, SecureRandom random) {
+    public synchronized void initialize(int keysize, SecureRandom random) {
 
         if (type == KeyType.WC_DH) {
             throw new RuntimeException(
@@ -111,17 +111,31 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
             this.publicExponent = Rsa.getDefaultRsaExponent();
         }
 
+        synchronized (rngLock) {
+            if (this.rng == null) {
+                this.rng = new Rng();
+                this.rng.init();
+            }
+        }
+
         if (debug.DEBUG)
             log("init with keysize: " + keysize);
     }
 
     @Override
-    public void initialize(AlgorithmParameterSpec params,
-            SecureRandom random) throws InvalidAlgorithmParameterException {
+    public synchronized void initialize(AlgorithmParameterSpec params,
+        SecureRandom random) throws InvalidAlgorithmParameterException {
 
         if (params == null) {
             throw new InvalidAlgorithmParameterException(
                 "AlgorithmParameterSpec must not be null");
+        }
+
+        synchronized (rngLock) {
+            if (this.rng == null) {
+                this.rng = new Rng();
+                this.rng.init();
+            }
         }
 
         switch (type) {
@@ -206,7 +220,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     }
 
     @Override
-    public KeyPair generateKeyPair() {
+    public synchronized KeyPair generateKeyPair() {
 
         KeyPair pair = null;
 
@@ -232,7 +246,10 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 Rsa rsa = new Rsa();
 
                 try {
-                    rsa.makeKey(this.keysize, this.publicExponent, rng);
+                    synchronized (rngLock) {
+                        rsa.makeKey(this.keysize, this.publicExponent,
+                            this.rng);
+                    }
 
                     /* private key */
                     privDer = rsa.privateKeyEncodePKCS8();
@@ -280,13 +297,16 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
                 ECPrivateKey eccPriv = null;
                 ECPublicKey  eccPub  = null;
+                Ecc ecc = null;
 
-                Ecc ecc = new Ecc();
+                synchronized (rngLock) {
+                    ecc = new Ecc(this.rng);
 
-                if (this.curve == null) {
-                    ecc.makeKey(rng, this.keysize);
-                } else {
-                    ecc.makeKeyOnCurve(rng, this.keysize, this.curve);
+                    if (this.curve == null) {
+                        ecc.makeKey(this.rng, this.keysize);
+                    } else {
+                        ecc.makeKeyOnCurve(this.rng, this.keysize, this.curve);
+                    }
                 }
 
                 /* private key */
@@ -343,7 +363,9 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 dh.setParams(dhP, dhG);
 
                 /* make key */
-                dh.makeKey(rng);
+                synchronized (rngLock) {
+                    dh.makeKey(this.rng);
+                }
 
                 privSpec = new DHPrivateKeySpec(
                                 new BigInteger(dh.getPrivateKey()),
@@ -401,11 +423,13 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
     @SuppressWarnings("deprecation")
     @Override
-    protected void finalize() throws Throwable {
+    protected synchronized void finalize() throws Throwable {
         try {
-            if (this.rng != null) {
-                rng.free();
-                rng.releaseNativeStruct();
+            synchronized (rngLock) {
+                if (this.rng != null) {
+                    this.rng.free();
+                    this.rng.releaseNativeStruct();
+                }
             }
         } finally {
             super.finalize();

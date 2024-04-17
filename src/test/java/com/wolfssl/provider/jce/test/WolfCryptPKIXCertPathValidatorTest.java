@@ -63,6 +63,7 @@ import java.security.cert.CertStore;
 import java.security.cert.CollectionCertStoreParameters;
 import java.lang.IllegalArgumentException;
 
+import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 
 public class WolfCryptPKIXCertPathValidatorTest {
@@ -387,6 +388,13 @@ public class WolfCryptPKIXCertPathValidatorTest {
         CertStore crlStore = null;
         Collection<CRL> crls = null;
         List<CertStore> certStores = null;
+
+        if (!WolfCrypt.CrlEnabled()) {
+            /* Native CRL not enabled, skip CRL test */
+            System.out.println("CertPathValidator CRL test skipped, " +
+                "CRL not compiled in");
+            return;
+        }
 
         /* Use example KeyStore that verifies server-cert.der */
         store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);

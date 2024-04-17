@@ -55,6 +55,7 @@ import java.security.spec.PKCS8EncodedKeySpec;
 
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
+import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.test.Util;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.provider.jce.WolfCryptProvider;
@@ -93,6 +94,16 @@ public class WolfCryptKeyPairGeneratorTest {
         "brainpoolp512r1"
     };
 
+    private static String supportedCurvesFIPS1403[] = {
+        "secp224r1",
+        "secp256r1",
+        "secp384r1",
+        "secp521r1",
+
+        "secp224k1",
+        "secp256k1",
+    };
+
     private static ArrayList<String> enabledCurves =
         new ArrayList<String>();
 
@@ -100,9 +111,7 @@ public class WolfCryptKeyPairGeneratorTest {
         new ArrayList<Integer>();
 
     /* Test generation of these RSA key sizes */
-    private static int testedRSAKeySizes[] = {
-        1024, 2048, 3072, 4096
-    };
+    private static int testedRSAKeySizes[] = null;
 
     /* DH test params */
     private static byte[] prime = Util.h2b(
@@ -127,16 +136,35 @@ public class WolfCryptKeyPairGeneratorTest {
         Provider p = Security.getProvider("wolfJCE");
         assertNotNull(p);
 
+        if (Fips.enabled && Fips.fipsVersion >= 5) {
+            /* FIPS after 2425 doesn't allow 1024-bit RSA key gen */
+            testedRSAKeySizes = new int[] {
+                2048, 3072, 4096
+            };
+        }
+        else {
+            testedRSAKeySizes = new int[] {
+                1024, 2048, 3072, 4096
+            };
+        }
+
         /* build list of enabled curves and key sizes,
          * getCurveSizeFromName() will return 0 if curve not found */
         Ecc tmp = new Ecc();
-        for (int i = 0; i < supportedCurves.length; i++) {
+        String[] curves = null;
 
-            int size = tmp.getCurveSizeFromName(
-                        supportedCurves[i].toUpperCase());
+        if (Fips.enabled && Fips.fipsVersion >= 5) {
+            curves = supportedCurvesFIPS1403;
+        } else {
+            curves = supportedCurves;
+        }
+
+        for (int i = 0; i < curves.length; i++) {
+
+            int size = tmp.getCurveSizeFromName(curves[i].toUpperCase());
 
             if (size > 0) {
-                enabledCurves.add(supportedCurves[i]);
+                enabledCurves.add(curves[i]);
 
                 if (!enabledEccKeySizes.contains(Integer.valueOf(size))) {
                     enabledEccKeySizes.add(Integer.valueOf(size));

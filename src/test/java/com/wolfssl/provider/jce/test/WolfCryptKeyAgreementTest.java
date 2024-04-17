@@ -29,10 +29,11 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.ShortBufferException;
@@ -537,8 +538,17 @@ public class WolfCryptKeyAgreementTest {
         int numThreads = 10;
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
-        final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
         final String currentAlgo = algo;
+
+        /* Used to detect timeout of CountDownLatch, don't run indefinitely
+         * if threads are stalled out or deadlocked */
+        boolean returnWithoutTimeout = true;
+
+        /* Keep track of failure and success count */
+        final AtomicIntegerArray failures = new AtomicIntegerArray(1);
+        final AtomicIntegerArray success = new AtomicIntegerArray(1);
+        failures.set(0, 0);
+        success.set(0, 0);
 
         /* DH Tests */
         AlgorithmParameterGenerator paramGen =
@@ -552,7 +562,6 @@ public class WolfCryptKeyAgreementTest {
             service.submit(new Runnable() {
                 @Override public void run() {
 
-                    int failed = 0;
                     KeyPairGenerator keyGen = null;
                     KeyAgreement aKeyAgree = null;
                     KeyAgreement bKeyAgree = null;
@@ -603,53 +612,56 @@ public class WolfCryptKeyAgreementTest {
                         byte secretB[] = bKeyAgree.generateSecret();
 
                         if (!Arrays.equals(secretA, secretB)) {
-                            failed = 1;
+                            throw new Exception(
+                                "Secrets A and B to not match");
                         }
 
-                        if (failed == 0) {
-                            cKeyAgree = KeyAgreement.getInstance(
-                                currentAlgo, "wolfJCE");
-                            cPair = keyGen.generateKeyPair();
-                            cKeyAgree.init(cPair.getPrivate());
+                        cKeyAgree = KeyAgreement.getInstance(
+                            currentAlgo, "wolfJCE");
+                        cPair = keyGen.generateKeyPair();
+                        cKeyAgree.init(cPair.getPrivate());
 
-                            aKeyAgree.doPhase(cPair.getPublic(), true);
-                            cKeyAgree.doPhase(aPair.getPublic(), true);
+                        aKeyAgree.doPhase(cPair.getPublic(), true);
+                        cKeyAgree.doPhase(aPair.getPublic(), true);
 
-                            byte secretA2[] = aKeyAgree.generateSecret();
-                            byte secretC[]  = cKeyAgree.generateSecret();
+                        byte secretA2[] = aKeyAgree.generateSecret();
+                        byte secretC[]  = cKeyAgree.generateSecret();
 
-                            if (!Arrays.equals(secretA2, secretC)) {
-                                failed = 1;
-                            }
+                        if (!Arrays.equals(secretA2, secretC)) {
+                            throw new Exception(
+                                "Secrets A2 and C do not match");
                         }
+
+                        /* Log success */
+                        success.incrementAndGet(0);
 
                     } catch (Exception e) {
                         e.printStackTrace();
-                        failed = 1;
+
+                        /* Log failure */
+                        failures.incrementAndGet(0);
 
                     } finally {
                         latch.countDown();
-                    }
-
-                    if (failed == 1) {
-                        results.add(1);
-                    }
-                    else {
-                        results.add(0);
                     }
                 }
             });
         }
 
         /* wait for all threads to complete */
-        latch.await();
+        returnWithoutTimeout = latch.await(10, TimeUnit.SECONDS);
+        service.shutdown();
 
-        /* Look for any failures that happened */
-        Iterator<Integer> listIterator = results.iterator();
-        while (listIterator.hasNext()) {
-            Integer cur = listIterator.next();
-            if (cur == 1) {
-                fail("Threading error in KeyAgreement thread test");
+        /* Check failure count and success count against thread count */
+        if ((failures.get(0) != 0) ||
+            (success.get(0) != numThreads)) {
+            if (returnWithoutTimeout == true) {
+                fail("KeyAgreement test threading error: " +
+                    failures.get(0) + " failures, " +
+                    success.get(0) + " success, " +
+                    numThreads + " num threads total");
+            } else {
+                fail("KeyAgreement test threading error, threads timed out");
             }
         }
     }
