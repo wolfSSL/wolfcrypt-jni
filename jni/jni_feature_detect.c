@@ -213,7 +213,7 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_HmacSha224En
 {
     (void)env;
     (void)jcl;
-#if !defined(NO_HMAC) && !defined(WOLFSSL_SHA224)
+#if !defined(NO_HMAC) && defined(WOLFSSL_SHA224)
     return JNI_TRUE;
 #else
     return JNI_FALSE;

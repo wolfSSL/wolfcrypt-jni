@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.wolfssl</groupId>
 	<artifactId>wolfcrypt-jni</artifactId>
-	<version>1.5.0-SNAPSHOT</version>
+	<version>1.6.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>wolfcrypt-jni</name>
     <url>https://www.wolfssl.com</url>

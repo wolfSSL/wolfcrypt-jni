@@ -101,20 +101,29 @@ public class WolfCryptSignature extends SignatureSpi {
     private String keyString;
     private String digestString;
 
+    /* Class-wide RNG to be used for padding during sign operations */
+    private Rng rng = null;
+    private final Object rngLock = new Object();
+
     private WolfCryptSignature(KeyType ktype, DigestType dtype)
         throws NoSuchAlgorithmException {
 
         this.keyType = ktype;
         this.digestType = dtype;
 
-        /* init asn object */
-        asn = new Asn();
-
         if ((ktype != KeyType.WC_RSA) &&
             (ktype != KeyType.WC_ECDSA)) {
             throw new NoSuchAlgorithmException(
                 "Signature algorithm key type must be RSA or ECC");
         }
+
+        synchronized (rngLock) {
+            this.rng = new Rng();
+            this.rng.init();
+        }
+
+        /* init asn object */
+        asn = new Asn();
 
         /* init hash type */
         switch (dtype) {
@@ -238,14 +247,18 @@ public class WolfCryptSignature extends SignatureSpi {
         /* initialize native struct */
         switch (keyType) {
             case WC_RSA:
-                if (this.rsa != null)
+                if (this.rsa != null) {
                     this.rsa.releaseNativeStruct();
+                }
                 this.rsa = new Rsa();
                 break;
             case WC_ECDSA:
-                if (this.ecc != null)
+                if (this.ecc != null) {
                     this.ecc.releaseNativeStruct();
-                this.ecc = new Ecc();
+                }
+                synchronized (this.rngLock) {
+                    this.ecc = new Ecc(this.rng);
+                }
                 break;
         }
 
@@ -303,14 +316,18 @@ public class WolfCryptSignature extends SignatureSpi {
         /* initialize native struct */
         switch (keyType) {
             case WC_RSA:
-                if (this.rsa != null)
+                if (this.rsa != null) {
                     this.rsa.releaseNativeStruct();
+                }
                 this.rsa = new Rsa();
                 break;
             case WC_ECDSA:
-                if (this.ecc != null)
+                if (this.ecc != null) {
                     this.ecc.releaseNativeStruct();
-                this.ecc = new Ecc();
+                }
+                synchronized (this.rngLock) {
+                    this.ecc = new Ecc(this.rng);
+                }
                 break;
         }
 
@@ -390,10 +407,6 @@ public class WolfCryptSignature extends SignatureSpi {
             throw new SignatureException(e.getMessage());
         }
 
-        /* init RNG for padding */
-        Rng rng = new Rng();
-        rng.init();
-
         /* sign digest */
         switch (this.keyType) {
             case WC_RSA:
@@ -409,7 +422,9 @@ public class WolfCryptSignature extends SignatureSpi {
 
                 byte[] tmp = new byte[encodedSz];
                 System.arraycopy(encDigest, 0, tmp, 0, encodedSz);
-                signature = this.rsa.sign(tmp, rng);
+                synchronized (rngLock) {
+                    signature = this.rsa.sign(tmp, this.rng);
+                }
                 zeroArray(tmp);
 
                 break;
@@ -417,7 +432,9 @@ public class WolfCryptSignature extends SignatureSpi {
             case WC_ECDSA:
 
                 /* ECC sign */
-                signature = this.ecc.sign(digest, rng);
+                synchronized (rngLock) {
+                    signature = this.ecc.sign(digest, this.rng);
+                }
 
                 break;
 
@@ -425,10 +442,6 @@ public class WolfCryptSignature extends SignatureSpi {
                 throw new SignatureException(
                     "Invalid signature algorithm type");
         }
-
-        /* release RNG */
-        rng.free();
-        rng.releaseNativeStruct();
 
         if (debug.DEBUG) {
             if (signature != null) {
@@ -617,7 +630,7 @@ public class WolfCryptSignature extends SignatureSpi {
 
     @SuppressWarnings("deprecation")
     @Override
-    protected void finalize() throws Throwable {
+    protected synchronized void finalize() throws Throwable {
         try {
             /* free native digest objects */
             if (this.md5 != null)
@@ -641,6 +654,15 @@ public class WolfCryptSignature extends SignatureSpi {
 
             if (this.ecc != null)
                 this.ecc.releaseNativeStruct();  /* frees internally */
+
+            synchronized (rngLock) {
+                if (this.rng != null) {
+                    /* release RNG */
+                    this.rng.free();
+                    this.rng.releaseNativeStruct();
+                    this.rng = null;
+                }
+            }
 
         } finally {
             super.finalize();

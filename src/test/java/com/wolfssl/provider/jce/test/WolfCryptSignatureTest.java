@@ -29,10 +29,12 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import java.security.Security;
 import java.security.Provider;
@@ -343,15 +345,48 @@ public class WolfCryptSignatureTest {
         return pair;
     }
 
-    private void threadRunnerSignVerify(byte[] inBuf, String algo)
-        throws InterruptedException {
+    private void threadRunnerSignVerify(byte[] inBuf, String algo,
+        final AtomicIntegerArray failures, final AtomicIntegerArray success,
+        ExecutorService service, final CountDownLatch latch, int numThreads)
+        throws InterruptedException, Exception {
 
-        int numThreads = 10;
-        ExecutorService service = Executors.newFixedThreadPool(numThreads);
-        final CountDownLatch latch = new CountDownLatch(numThreads);
-        final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
-        final String currentAlgo = algo;
+        final String currentAlg = algo;
         final byte[] toSignBuf = inBuf;
+        KeyPair pair = null;
+        KeyPairGenerator keyGen = null;
+        final PrivateKey priv;
+        final PublicKey pub;
+
+        /* Generate key pairs once up front to minimize use of entropy from
+         * RNG. We also are just interested in testing sign/verify across
+         * multiple threads, not key gen in this test. */
+        if (currentAlg.contains("RSA")) {
+            keyGen = KeyPairGenerator.getInstance("RSA");
+            keyGen.initialize(2048, secureRandom);
+            pair = keyGen.generateKeyPair();
+
+        } else if (currentAlg.contains("ECDSA")) {
+            keyGen = KeyPairGenerator.getInstance("EC",
+                "wolfJCE");
+            ECGenParameterSpec ecSpec =
+                new ECGenParameterSpec("secp521r1");
+            keyGen.initialize(ecSpec);
+            pair = keyGen.generateKeyPair();
+        }
+
+        if (pair == null) {
+            throw new Exception("KeyPair from generateKeyPair() is null");
+        }
+        else {
+            priv = pair.getPrivate();
+            if (priv == null) {
+                throw new Exception("KeyPair.getPrivate() returned null");
+            }
+            pub  = pair.getPublic();
+            if (pub == null) {
+                throw new Exception("KeyPair.getPublic() returned null");
+            }
+        }
 
         /* Do encrypt/decrypt and sign/verify in parallel across numThreads
          * threads, all operations should pass */
@@ -359,107 +394,115 @@ public class WolfCryptSignatureTest {
             service.submit(new Runnable() {
                 @Override public void run() {
 
-                    int failed = 0;
-                    KeyPair pair = null;
-                    KeyPairGenerator keyGen = null;
-                    PrivateKey priv = null;
-                    PublicKey pub = null;
+                    byte[] signature = null;
                     Signature signer = null;
                     Signature verifier = null;
-                    byte[] signature = null;
 
                     try {
-                        signer = Signature.getInstance(
-                            currentAlgo, "wolfJCE");
-                        verifier = Signature.getInstance(
-                            currentAlgo, "wolfJCE");
+                        signer = Signature.getInstance(currentAlg, "wolfJCE");
+                        verifier = Signature.getInstance(currentAlg, "wolfJCE");
 
                         if (signer == null || verifier == null) {
-                            failed = 1;
+                            throw new Exception(
+                                "signer or verifier Signature object null");
                         }
 
-                        /* generate key pair */
-                        if (failed == 0) {
-                            if (currentAlgo.contains("RSA")) {
-                                keyGen = KeyPairGenerator.getInstance("RSA");
-                                keyGen.initialize(2048, secureRandom);
-                                pair = keyGen.generateKeyPair();
-
-                            } else if (currentAlgo.contains("ECDSA")) {
-                                keyGen = KeyPairGenerator.getInstance("EC",
-                                    "wolfJCE");
-                                ECGenParameterSpec ecSpec =
-                                    new ECGenParameterSpec("secp521r1");
-                                keyGen.initialize(ecSpec);
-                                pair = keyGen.generateKeyPair();
-                            }
-
-                            if (pair == null) {
-                                failed = 1;
-                            }
-                            else {
-                                priv = pair.getPrivate();
-                                pub  = pair.getPublic();
-                            }
+                        /* generate signature */
+                        signer.initSign(priv);
+                        signer.update(toSignBuf, 0, toSignBuf.length);
+                        signature = signer.sign();
+                        if (signature == null || signature.length == 0) {
+                            throw new Exception(
+                                "signer.sign() returned null or zero " +
+                                "length array");
                         }
 
-                        if (failed == 0) {
-                            /* generate signature */
-                            signer.initSign(priv);
-                            signer.update(toSignBuf, 0, toSignBuf.length);
-                            signature = signer.sign();
+                        /* verify signature */
+                        verifier.initVerify(pub);
+                        verifier.update(toSignBuf, 0, toSignBuf.length);
+                        boolean verified = verifier.verify(signature);
 
-                            /* verify signature */
-                            verifier.initVerify(pub);
-                            verifier.update(toSignBuf, 0, toSignBuf.length);
-                            boolean verified = verifier.verify(signature);
-
-                            if (verified == false) {
-                                failed = 1;
-                            }
+                        if (verified == false) {
+                            throw new Exception(
+                                "verifier.verify() returned false:\n" +
+                                "algo: " + currentAlg + "\n" +
+                                "signature (" + signature.length + " bytes): " +
+                                arrayToHex(signature) + "\n" +
+                                "private (" + priv.getEncoded().length +
+                                " bytes): " + arrayToHex(priv.getEncoded()) +
+                                "\npublic (" + pub.getEncoded().length +
+                                " bytes): " + arrayToHex(pub.getEncoded()));
                         }
+
+                        /* Log success */
+                        success.incrementAndGet(0);
 
                     } catch (Exception e) {
                         e.printStackTrace();
-                        failed = 1;
+
+                        /* Log failure */
+                        failures.incrementAndGet(0);
 
                     } finally {
                         latch.countDown();
                     }
-
-                    if (failed == 1) {
-                        results.add(1);
-                    }
-                    else {
-                        results.add(0);
-                    }
                 }
             });
         }
+    }
 
-        /* wait for all threads to complete */
-        latch.await();
-
-        /* Look for any failures that happened */
-        Iterator<Integer> listIterator = results.iterator();
-        while (listIterator.hasNext()) {
-            Integer cur = listIterator.next();
-            if (cur == 1) {
-                fail("Threading error in RSA sign/verify thread test");
-            }
+    private synchronized String arrayToHex(byte[] in) {
+        StringBuilder builder = new StringBuilder();
+        for (byte b: in) {
+            builder.append(String.format("%02X", b));
         }
+
+        return builder.toString();
     }
 
     @Test
-    public void testThreadedWolfSignWolfVerify() throws InterruptedException {
-
+    public void testThreadedWolfSignWolfVerify() throws Exception {
 
         final String toSign = "Hello World";
         final byte[] toSignBuf = toSign.getBytes();
 
+        int numThreads = 10;
+        int numAlgos = enabledAlgos.size();
+        ExecutorService service =
+            Executors.newFixedThreadPool(numAlgos * numThreads);
+        final CountDownLatch latch = new CountDownLatch(numAlgos * numThreads);
+
+        /* Used to detect timeout of CountDownLatch, don't run indefinitely
+         * if threads are stalled out or deadlocked */
+        boolean returnWithoutTimeout = true;
+
+        /* Keep track of failure and success count */
+        final AtomicIntegerArray failures = new AtomicIntegerArray(1);
+        final AtomicIntegerArray success = new AtomicIntegerArray(1);
+        failures.set(0, 0);
+        success.set(0, 0);
+
         /* run threaded test for each enabled Signature algorithm */
-        for (int i = 0; i < enabledAlgos.size(); i++) {
-            threadRunnerSignVerify(toSignBuf, enabledAlgos.get(i));
+        for (int i = 0; i < numAlgos; i++) {
+            threadRunnerSignVerify(toSignBuf, enabledAlgos.get(i),
+                failures, success, service, latch, numThreads);
+        }
+
+        /* wait for all threads to complete */
+        returnWithoutTimeout = latch.await(10, TimeUnit.SECONDS);
+        service.shutdown();
+
+        /* Check failure count and success count against thread count */
+        if ((failures.get(0) != 0) ||
+            (success.get(0) != (enabledAlgos.size() * numThreads))) {
+            if (returnWithoutTimeout == true) {
+                fail("Signature test threading error: " +
+                    failures.get(0) + " failures, " +
+                    success.get(0) + " success, " +
+                    (numThreads * enabledAlgos.size()) + " num threads total");
+            } else {
+                fail("Signature test threading error, threads timed out");
+            }
         }
     }
 }
