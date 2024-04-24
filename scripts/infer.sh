@@ -13,10 +13,25 @@
 #    $ cd wolfcryptjni
 #    $ ./scripts/infer.sh
 #
-# wolfSSL Inc, May 2023
+# By default the generated output and logs from Infer will be deleted. To keep
+# them, pass 'keep' to the script:
 #
+#    $ ./scripts/infer.sh keep
+#
+# wolfSSL Inc, April 2024
 
-infer run -- javac \
+
+# These variables may be overridden on the command line.
+KEEP="${KEEP:-no}"
+
+while [ "$1" ]; do
+  if [ "$1" = 'keep' ]; then
+      KEEP='yes';
+  fi
+  shift
+done
+
+infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/Aes.java \
     src/main/java/com/wolfssl/wolfcrypt/AesGcm.java \
     src/main/java/com/wolfssl/wolfcrypt/Asn.java \
@@ -64,9 +79,18 @@ infer run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSecretKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSignature.java
 
+RETVAL=$?
+
 # remove compiled class files
 rm -r ./com
 
 # remove infer out directory (comment this out to inspect logs if needed)
-rm -r ./infer-out
+if [ "$RETVAL" == '0' ] && [ "$KEEP" == 'no' ]; then
+    rm -r ./infer-out
+fi
+
+if [ "$RETVAL" == '2' ]; then
+    # GitHub Actions expects return of 1 to mark step as failure
+    exit 1
+fi
 
