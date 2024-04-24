@@ -25,6 +25,9 @@ IDE/WIN/DLL Debug FIPS
 IDE/WIN/DLL Release
 IDE/WIN/DLL Release FIPS
 
+# infer RacerD
+infer-out/
+
 # Maven output directory
 target/
 
