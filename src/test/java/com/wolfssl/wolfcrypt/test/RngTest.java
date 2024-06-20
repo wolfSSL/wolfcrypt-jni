@@ -23,7 +23,12 @@ package com.wolfssl.wolfcrypt.test;
 
 import static org.junit.Assert.*;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.nio.ByteBuffer;
@@ -37,6 +42,18 @@ import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 
 public class RngTest {
+
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
+    @BeforeClass
+    public static void setupClass() {
+        System.out.println("JNI Rng Class");
+    }
 
     @Test
     public void constructorShouldInitializeNativeStruct() {

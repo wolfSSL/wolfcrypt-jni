@@ -36,6 +36,10 @@ import javax.crypto.ShortBufferException;
 import org.junit.Test;
 import org.junit.Assume;
 import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Md5;
 import com.wolfssl.wolfcrypt.NativeStruct;
@@ -47,10 +51,18 @@ public class Md5Test {
     private ByteBuffer result = ByteBuffer.allocateDirect(Md5.DIGEST_SIZE);
     private ByteBuffer expected = ByteBuffer.allocateDirect(Md5.DIGEST_SIZE);
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void checkMd5IsAvailable() {
         try {
             Md5 md5 = new Md5();
+            System.out.println("JNI Md5 Class");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
                 System.out.println("MD5 skipped: " + e.getError());

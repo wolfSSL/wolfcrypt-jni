@@ -26,6 +26,10 @@ import static org.junit.Assert.*;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -53,6 +57,13 @@ public class EccTest {
     private static Rng rng = new Rng();
     private static final Object rngLock = new Rng();
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void setUpRng() {
         synchronized (rngLock) {
@@ -64,6 +75,7 @@ public class EccTest {
     public static void checkAvailability() {
         try {
             new Ecc();
+            System.out.println("JNI Ecc Class");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
                 System.out.println("Ecc test skipped: " + e.getError());

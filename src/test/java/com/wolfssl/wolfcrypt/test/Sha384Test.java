@@ -36,6 +36,10 @@ import javax.crypto.ShortBufferException;
 import org.junit.Test;
 import org.junit.Assume;
 import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.NativeStruct;
@@ -47,10 +51,18 @@ public class Sha384Test {
     private ByteBuffer result = ByteBuffer.allocateDirect(Sha384.DIGEST_SIZE);
     private ByteBuffer expected = ByteBuffer.allocateDirect(Sha384.DIGEST_SIZE);
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void checkSha384IsAvailable() {
         try {
             Sha384 sha = new Sha384();
+            System.out.println("JNI Sha384 Class");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
                 System.out.println("Sha384Test skipped: " + e.getError());

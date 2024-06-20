@@ -46,7 +46,7 @@ import com.wolfssl.provider.jce.WolfCryptProvider;
 public class WolfSSLKeyStoreExample {
 
     /* KeyStore password */
-    static String storePass = "wolfSSL test";
+    static String storePass = "wolfsslpassword";
 
     /* KeyStore output file */
     static String wksFile = "wolfssl.wks";

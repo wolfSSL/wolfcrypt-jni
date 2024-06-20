@@ -26,6 +26,10 @@ import static org.junit.Assert.*;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -46,6 +50,13 @@ public class DhTest {
     private static Rng rng = new Rng();
     private final Object rngLock = new Rng();
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void setUpRng() {
         rng.init();
@@ -59,6 +70,7 @@ public class DhTest {
     public static void checkAvailability() {
         try {
             new Dh();
+            System.out.println("JNI Dh Class");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
                 System.out.println("Dh test skipped: " + e.getError());
