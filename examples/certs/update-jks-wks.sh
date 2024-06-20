@@ -1,10 +1,11 @@
 
 # Example KeyStore Update Script
 #
-# This script is Used to update all example JKS stores, using example
+# This script is Used to update all example JKS and WKS stores, using example
 # certificates found in wolfSSL proper.
 #
-# Java KeyStores which this script creates includes:
+# Java KeyStores which this script creates includes the following. WKS
+# versions will also be generated of each of these:
 #
 # client.jks              RSA 2048-bit and ECC client certs:
 #                         client-cert.pem, client-ecc-cert.pem
@@ -37,10 +38,10 @@
 #       be preferred, but older versions of keytool do not support PKCS#12
 #       format. This would cause test failures in those older environments.
 
-printf "Removing and updating JKS stores\n"
+printf "Removing and updating example JKS and WKS KeyStore files\n"
 if [ -z "$1" ]; then
     printf "\tNo directory to certs provided\n"
-    printf "\tExample use ./update-jks.sh ~/wolfssl/certs\n"
+    printf "\tExample use ./update-jks-wks.sh ~/wolfssl/certs\n"
     exit 1;
 fi
 CERT_LOCATION=$1
