@@ -23,6 +23,10 @@ package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
 import org.junit.Assume;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.junit.Test;
 import org.junit.BeforeClass;
 import org.junit.AfterClass;
@@ -69,7 +73,10 @@ public class WolfSSLKeyStoreTest {
     private final String storeType = "WKS";
     private final String jksExt = ".wks";
     private static final String storeProvider = "wolfJCE";
-    protected static String storePass = "wolfSSL test";
+    /* Example pass is "wolfsslpassword" instead of normal
+     * "wolfSSL test" because with wolfCrypt FIPS the HMAC minimum key
+     * length is 14 bytes. Password gets passed down to HMAC via PBKDF2 */
+    protected static String storePass = "wolfsslpassword";
 
     /*
      * Example Certificate and Key file paths:
@@ -147,6 +154,13 @@ public class WolfSSLKeyStoreTest {
      * slow. We set down to 10,000 for test duration. */
     private static boolean iterationCountPropSet = false;
     private static String iterationCountProp = null;
+
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
 
     /**
      * Test if this environment is Android.
@@ -303,6 +317,8 @@ public class WolfSSLKeyStoreTest {
         throws Exception, NoSuchProviderException {
 
         String certPre = "";
+
+        System.out.println("JCE WolfSSLKeyStore Class");
 
         /* Install wolfJCE provider at runtime */
         Security.insertProviderAt(new WolfCryptProvider(), 1);
@@ -1409,7 +1425,7 @@ public class WolfSSLKeyStoreTest {
         String jssecacertsWKS = "jssecacerts.wks";
         String cmd = "cd " + userDir + scriptDir + " && /bin/sh " + scriptName;
         KeyStore store = null;
-        String cacertsPass = "changeit";
+        String cacertsPass = "changeitchangeit";
         File cacertFile = null;
 
         /* Skip running this test on Android, since directory structure

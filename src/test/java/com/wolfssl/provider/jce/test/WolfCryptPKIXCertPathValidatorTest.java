@@ -22,6 +22,10 @@
 package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.junit.Test;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -79,7 +83,7 @@ public class WolfCryptPKIXCertPathValidatorTest {
     protected static String keyStoreType = "JKS";
 
     /* Example KeyStore password */
-    protected static String keyStorePass = "wolfSSL test";
+    protected static String keyStorePass = "wolfsslpassword";
 
     /* Example Certificate file paths */
     protected static String serverCertDer    = null; /* server-cert.der */
@@ -119,12 +123,21 @@ public class WolfCryptPKIXCertPathValidatorTest {
         return false;
     }
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void testSetupAndProviderInstallation()
         throws Exception, NoSuchProviderException {
 
         String certPre = "";
         String jksExt = ".jks";
+
+        System.out.println("JCE WolfCryptPKIXCertPathValidator Class");
 
         /* Install wolfJCE provider at runtime */
         Security.insertProviderAt(new WolfCryptProvider(), 1);

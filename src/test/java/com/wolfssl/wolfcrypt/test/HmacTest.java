@@ -28,6 +28,10 @@ import java.nio.ByteBuffer;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -45,10 +49,18 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
 
 public class HmacTest {
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void checkAvailability() {
         try {
             new Hmac();
+            System.out.println("JNI Hmac Class");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
                 System.out.println("Hmac test skipped: " + e.getError());

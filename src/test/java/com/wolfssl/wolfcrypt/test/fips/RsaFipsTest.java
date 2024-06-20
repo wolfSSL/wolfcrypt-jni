@@ -25,7 +25,12 @@ import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Asn;
 import com.wolfssl.wolfcrypt.Rsa;
@@ -55,6 +60,18 @@ public class RsaFipsTest extends FipsTest {
             .allocateDirect(Asn.MAX_ENCODED_SIG_SIZE);
     private ByteBuffer result = ByteBuffer
             .allocateDirect(Asn.MAX_ENCODED_SIG_SIZE);
+
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
+    @BeforeClass
+    public static void setupClass() {
+        System.out.println("JNI FIPS RSA Tests");
+    }
 
     @Test
     public void initShouldReturnZero() {

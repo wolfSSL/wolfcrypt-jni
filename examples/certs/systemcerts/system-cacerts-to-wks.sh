@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Script to convert system CA certs KeyStore file from JKS to WKS format
 #
@@ -17,6 +17,11 @@
 #   1. $JAVA_HOME/lib/security/jssecacerts     (JDK 9+)
 #   2. $JAVA_HOME/jre/lib/security/jssecacerts (JDK <= 8)
 #
+# The default cacerts.jks password is 'changeit'. Since wolfCrypt FIPS
+# requires a minimum HMAC key size of 14 bytes, we expand the password
+# to 'changeitchangeit' here to get past the 14 byte limitation when using
+# WKS type.
+#
 
 # Export library paths for Linux and Mac to find shared JNI library
 export LD_LIBRARY_PATH=../../../lib:$LD_LIBRARY_PATH
@@ -24,9 +29,9 @@ export DYLD_LIBRARY_PATH=../../../lib:$DYLD_LIBRARY_PATH
 
 OUTDIR=`pwd`
 
-# ARGS: <input-keystore-name> <output-keystore-name> <password>
+# ARGS: <input-keystore-name> <output-keystore-name> <in-password> <out-password>
 jks_to_wks() {
-    keytool -importkeystore -srckeystore ${1} -destkeystore ${2}.wks -srcstoretype JKS -deststoretype WKS -srcstorepass "$3" -deststorepass "$3" -provider com.wolfssl.provider.jce.WolfCryptProvider --providerpath ../../../lib/wolfcrypt-jni.jar &> /dev/null
+    keytool -importkeystore -srckeystore ${1} -destkeystore ${2}.wks -srcstoretype JKS -deststoretype WKS -srcstorepass "$3" -deststorepass "$3" -deststorepass "$4" -provider com.wolfssl.provider.jce.WolfCryptProvider --providerpath ../../../lib/wolfcrypt-jni.jar &> /dev/null
     if [ $? -ne 0 ]; then
         printf "Failed to convert JKS to WKS!"
         exit 1
@@ -88,44 +93,48 @@ if [ -f "$javaHome/$CACERTS_JDK9" ]; then
     echo "System cacerts found, converting from JKS to WKS:"
     echo "    FROM: $javaHome/$CACERTS_JDK9"
     echo "    TO:   $OUTDIR/cacerts.wks"
-    echo "    PASS (default): changeit"
+    echo "    IN PASS (default): changeit"
+    echo "    OUT PASS: changeitchangeit"
     if [ -f $OUTDIR/cacerts.wks ]; then
         rm $OUTDIR/cacerts.wks
     fi
-    jks_to_wks "$javaHome/$CACERTS_JDK9" "$OUTDIR/cacerts" "changeit"
+    jks_to_wks "$javaHome/$CACERTS_JDK9" "$OUTDIR/cacerts" "changeit" "changeitchangeit"
 fi
 
 if [ -f "$javaHome/$CACERTS_JDK8" ]; then
     echo "System cacerts found, converting from JKS to WKS:"
     echo "    FROM: $javaHome/$CACERTS_JDK8"
     echo "    TO:   $OUTDIR/cacerts.wks"
-    echo "    PASS (default): changeit"
+    echo "    IN PASS (default): changeit"
+    echo "    OUT PASS: changeitchangeit"
     if [ -f $OUTDIR/cacerts.wks ]; then
         rm $OUTDIR/cacerts.wks
     fi
-    jks_to_wks "$javaHome/$CACERTS_JDK8" "$OUTDIR/cacerts" "changeit"
+    jks_to_wks "$javaHome/$CACERTS_JDK8" "$OUTDIR/cacerts" "changeit" "changeitchangeit"
 fi
 
 if [ -f "$javaHome/$JSSECERTS_JDK9" ]; then
     echo "System jssecacerts found, converting from JKS to WKS:"
     echo "    FROM: $javaHome/$JSSECACERTS_JDK9"
     echo "    TO:   $OUTDIR/jssecacerts.wks"
-    echo "    PASS (default): changeit"
+    echo "    IN PASS (default): changeit"
+    echo "    OUT PASS: changeitchangeit"
     if [ -f $OUTDIR/jssecacerts.wks ]; then
         rm $OUTDIR/jssecacerts.wks
     fi
-    jks_to_wks "$javaHome/$JSSECACERTS_JDK9" "$OUTDIR/jssecacerts" "changeit"
+    jks_to_wks "$javaHome/$JSSECACERTS_JDK9" "$OUTDIR/jssecacerts" "changeit" "changeitchangeit"
 fi
 
 if [ -f "$javaHome/$JSSECERTS_JDK8" ]; then
     echo "System jssecacerts found, converting from JKS to WKS:"
     echo "    FROM: $javaHome/$JSSECACERTS_JDK8"
     echo "    TO:   $OUTDIR/jssecacerts.wks"
-    echo "    PASS (default): changeit"
+    echo "    IN PASS (default): changeit"
+    echo "    OUT PASS: changeitchangeit"
     if [ -f $OUTDIR/jssecacerts.wks ]; then
         rm $OUTDIR/jssecacerts.wks
     fi
-    jks_to_wks "$javaHome/$JSSECACERTS_JDK8" "$OUTDIR/jssecacerts" "changeit"
+    jks_to_wks "$javaHome/$JSSECACERTS_JDK8" "$OUTDIR/jssecacerts" "changeit" "changeitchangeit"
 fi
 
 echo ""

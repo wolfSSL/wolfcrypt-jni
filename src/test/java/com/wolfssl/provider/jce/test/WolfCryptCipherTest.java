@@ -22,6 +22,10 @@
 package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
@@ -90,9 +94,18 @@ public class WolfCryptCipherTest {
     /* One static SecureRandom to share */
     private static SecureRandom secureRandom = new SecureRandom();
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void testProviderInstallationAtRuntime()
         throws NoSuchProviderException, NoSuchPaddingException {
+
+        System.out.println("JCE WolfCryptCipher Class");
 
         /* install wolfJCE provider at runtime */
         Security.insertProviderAt(new WolfCryptProvider(), 1);
