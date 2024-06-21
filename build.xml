@@ -26,7 +26,7 @@
     <property name="jni.dir" value="jni/include/" />
     <property name="lib.dir" value="lib/" />
     <property name="build.dir" value="build" />
-    <property name="doc.dir" value="docs" />
+    <property name="doc.dir" value="docs/javadoc" />
     <property name="test.dir" value="src/test/java/" />
     <property name="test.build.dir" value="build/test" />
     <property name="reports.dir" value="build/reports" />
@@ -86,6 +86,9 @@
         <delete failonerror="false">
             <fileset dir="${lib.dir}" includes="wolfcrypt-jni.jar" />
         </delete>
+        <delete includeemptydirs="true" failonerror="false">
+            <fileset dir="${doc.dir}" includes="**/*"/>
+        </delete>
     </target>
 
     <!-- set javac flags: debug jar, no optimization, all debug symbols -->
@@ -111,6 +114,7 @@
     <target name="init" depends="clean, debug-javac-flags, release-javac-flags">
         <mkdir dir="${build.dir}" />
         <mkdir dir="${lib.dir}" />
+        <mkdir dir="${doc.dir}" />
         <mkdir dir="${test.build.dir}" />
         <mkdir dir="${reports.dir}" />
         <mkdir dir="${examples.provider.build.dir}" />

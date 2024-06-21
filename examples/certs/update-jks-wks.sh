@@ -1,10 +1,11 @@
 
 # Example KeyStore Update Script
 #
-# This script is Used to update all example JKS stores, using example
+# This script is Used to update all example JKS and WKS stores, using example
 # certificates found in wolfSSL proper.
 #
-# Java KeyStores which this script creates includes:
+# Java KeyStores which this script creates includes the following. WKS
+# versions will also be generated of each of these:
 #
 # client.jks              RSA 2048-bit and ECC client certs:
 #                         client-cert.pem, client-ecc-cert.pem
@@ -37,15 +38,19 @@
 #       be preferred, but older versions of keytool do not support PKCS#12
 #       format. This would cause test failures in those older environments.
 
-printf "Removing and updating JKS stores\n"
+printf "Removing and updating example JKS and WKS KeyStore files\n"
 if [ -z "$1" ]; then
     printf "\tNo directory to certs provided\n"
-    printf "\tExample use ./update-jks.sh ~/wolfssl/certs\n"
+    printf "\tExample use ./update-jks-wks.sh ~/wolfssl/certs\n"
     exit 1;
 fi
 CERT_LOCATION=$1
 
-# keystore-name , cert file , alias , password
+# Export library paths for Linux and Mac to find shared JNI library
+export LD_LIBRARY_PATH=../../lib:$LD_LIBRARY_PATH
+export DYLD_LIBRARY_PATH=../../lib:$DYLD_LIBRARY_PATH
+
+# ARGS: <keystore-name> <cert file> <alias> <password>
 add_cert() {
     keytool -import -keystore "$1" -file "$CERT_LOCATION/$2" -alias "$3" -noprompt -trustcacerts -deststoretype JKS -storepass "$4" &> /dev/null
     if [ $? -ne 0 ]; then
@@ -54,7 +59,7 @@ add_cert() {
     fi
 }
 
-# keystore-name , cert file , key file , alias , password
+# ARGS: <keystore-name> <cert file> <key file> <alias> <password>
 add_cert_key() {
     openssl pkcs12 -export -in "$CERT_LOCATION/$2" -inkey "$CERT_LOCATION/$3" -out tmp.p12 -passin pass:"$5" -passout pass:"$5" -name "$4" &> /dev/null
     keytool -importkeystore -deststorepass "$5" -destkeystore "$1" -deststoretype JKS -srckeystore tmp.p12 -srcstoretype PKCS12 -srcstorepass "$5" -alias "$4" &> /dev/null
@@ -63,6 +68,16 @@ add_cert_key() {
         exit 1
     fi
     rm tmp.p12
+}
+
+# ARGS: <keystore-name> <password>
+jks_to_wks() {
+    keytool -importkeystore -srckeystore ${1}.jks -destkeystore ${1}.wks -srcstoretype JKS -deststoretype WKS -srcstorepass "$2" -deststorepass "$2" -provider com.wolfssl.provider.jce.WolfCryptProvider --providerpath ../../lib/wolfcrypt-jni.jar &> /dev/null
+    if [ $? -ne 0 ]; then
+        printf "fail"
+        exit 1
+    fi
+
 }
 
 #################### CLIENT KEYSTORES ####################
@@ -164,5 +179,74 @@ printf "\tCreating ca-server-ecc-256.jks ..."
 rm ca-server-ecc-256.jks &> /dev/null
 #add_cert_key "ca-server-ecc-256.jks" "/ca-ecc-cert.pem" "/ca-ecc-key.pem" "ca-ecc" "wolfSSL test"
 add_cert "ca-server-ecc-256.jks" "/ca-ecc-cert.pem" "ca-ecc" "wolfSSL test"
+printf "done\n"
+
+################### CONVERT JKS TO WKS ###################
+
+printf "\nConverting keystores from JKS to WKS ...\n"
+
+printf "\tCreating client.wks ..."
+rm client.wks &> /dev/null
+jks_to_wks "client" "wolfSSL test"
+printf "done\n"
+
+printf "\tCreating client-rsa-1024.wks ..."
+rm client-rsa-1024.wks &> /dev/null
+jks_to_wks "client-rsa-1024" "wolfSSL test"
+printf "done\n"
+
+printf "\tCreating client-rsa.wks ..."
+rm client-rsa.wks &> /dev/null
+jks_to_wks "client-rsa" "wolfSSL test"
+printf "done\n"
+
+printf "\tCreating client-ecc.wks ..."
+rm client-ecc.wks &> /dev/null
+jks_to_wks "client-ecc" "wolfSSL test"
+printf "done\n"
+
+printf "\tCreating server.wks ..."
+rm server.wks &> /dev/null
+jks_to_wks "server" "wolfSSL test"
+printf "done\n"
+
+printf "\tCreating server-rsa-1024.wks ..."
+rm server-rsa-1024.wks &> /dev/null
+jks_to_wks "server-rsa-1024" "wolfSSL test"
+printf "done\n"
+
+printf "\tCreating server-rsa.wks ..."
+rm server-rsa.wks &> /dev/null
+jks_to_wks "server-rsa" "wolfSSL test"
+printf "done\n"
+
+printf "\tCreating server-ecc.wks ..."
+rm server-ecc.wks &> /dev/null
+jks_to_wks "server-ecc" "wolfSSL test"
+printf "done\n"
+
+printf "\tCreating cacerts.wks ..."
+rm cacerts.wks &> /dev/null
+jks_to_wks "cacerts" "wolfSSL test"
+printf "done\n"
+
+printf "\tCreating ca-client.wks ..."
+rm ca-client.wks &> /dev/null
+jks_to_wks "ca-client" "wolfSSL test"
+printf "done\n"
+
+printf "\tCreating ca-server.wks ..."
+rm ca-server.wks &> /dev/null
+jks_to_wks "ca-server" "wolfSSL test"
+printf "done\n"
+
+printf "\tCreating ca-server-rsa-2048.wks ..."
+rm ca-server-rsa-2048.wks &> /dev/null
+jks_to_wks "ca-server-rsa-2048" "wolfSSL test"
+printf "done\n"
+
+printf "\tCreating ca-server-ecc-256.wks ..."
+rm ca-server-ecc-256.wks &> /dev/null
+jks_to_wks "ca-server-ecc-256" "wolfSSL test"
 printf "done\n"
 

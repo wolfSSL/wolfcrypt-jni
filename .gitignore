@@ -4,7 +4,7 @@ build/
 lib/
 
 # Generated Javadocs
-docs/
+docs/javadoc
 
 # makefile, since copied from makefile.linux or makefile.macosx
 makefile
@@ -31,3 +31,6 @@ infer-out/
 # Maven output directory
 target/
 
+# Generated system cacerts.wks and jssecacerts.wks
+examples/certs/systemcerts/cacerts.wks
+examples/certs/systemcerts/jssecacerts.wks
