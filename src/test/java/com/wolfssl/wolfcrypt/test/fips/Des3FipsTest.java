@@ -28,6 +28,10 @@ import java.nio.ByteBuffer;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.WolfCrypt;
@@ -45,6 +49,13 @@ public class Des3FipsTest extends FipsTest {
     private ByteBuffer key = ByteBuffer.allocateDirect(Des3.KEY_SIZE);
     private ByteBuffer iv = ByteBuffer.allocateDirect(Des3.BLOCK_SIZE);
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void checkAvailability() {
 
@@ -60,6 +71,7 @@ public class Des3FipsTest extends FipsTest {
 
         try {
             new Des3();
+            System.out.println("JNI FIPS 3DES Tests");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
                 System.out.println("Des3 test skipped: " + e.getError());

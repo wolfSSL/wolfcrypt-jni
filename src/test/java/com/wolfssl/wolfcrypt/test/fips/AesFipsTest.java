@@ -25,7 +25,12 @@ import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.WolfCrypt;
@@ -43,6 +48,18 @@ public class AesFipsTest extends FipsTest {
     private ByteBuffer aad = ByteBuffer.allocateDirect(Aes.BLOCK_SIZE);
     private ByteBuffer tag = ByteBuffer.allocateDirect(Aes.BLOCK_SIZE);
     private ByteBuffer expected = ByteBuffer.allocateDirect(Aes.BLOCK_SIZE);
+
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
+    @BeforeClass
+    public static void setupClass() {
+        System.out.println("JNI FIPS AES Tests");
+    }
 
     @Test
     public void setKeyShouldReturnZeroUsingByteBuffer() {

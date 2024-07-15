@@ -9,6 +9,16 @@ extern "C" {
 #endif
 #undef com_wolfssl_wolfcrypt_Asn_MAX_ENCODED_SIG_SIZE
 #define com_wolfssl_wolfcrypt_Asn_MAX_ENCODED_SIG_SIZE 512L
+#undef com_wolfssl_wolfcrypt_Asn_DSAk
+#define com_wolfssl_wolfcrypt_Asn_DSAk 515L
+#undef com_wolfssl_wolfcrypt_Asn_RSAk
+#define com_wolfssl_wolfcrypt_Asn_RSAk 645L
+#undef com_wolfssl_wolfcrypt_Asn_RSAPSSk
+#define com_wolfssl_wolfcrypt_Asn_RSAPSSk 654L
+#undef com_wolfssl_wolfcrypt_Asn_RSAESOAEPk
+#define com_wolfssl_wolfcrypt_Asn_RSAESOAEPk 651L
+#undef com_wolfssl_wolfcrypt_Asn_ECDSAk
+#define com_wolfssl_wolfcrypt_Asn_ECDSAk 518L
 /*
  * Class:     com_wolfssl_wolfcrypt_Asn
  * Method:    encodeSignature
@@ -32,6 +42,14 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature___3B_3BJI
  */
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getCTC_1HashOID
   (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getPkcs8AlgoID
+ * Signature: ([B)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getPkcs8AlgoID
+  (JNIEnv *, jclass, jbyteArray);
 
 #ifdef __cplusplus
 }

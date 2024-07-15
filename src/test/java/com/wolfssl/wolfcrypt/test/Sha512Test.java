@@ -36,6 +36,10 @@ import javax.crypto.ShortBufferException;
 import org.junit.Test;
 import org.junit.Assume;
 import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Sha512;
 import com.wolfssl.wolfcrypt.NativeStruct;
@@ -47,10 +51,18 @@ public class Sha512Test {
     private ByteBuffer result = ByteBuffer.allocateDirect(Sha512.DIGEST_SIZE);
     private ByteBuffer expected = ByteBuffer.allocateDirect(Sha512.DIGEST_SIZE);
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void checkSha512IsAvailable() {
         try {
             Sha512 sha = new Sha512();
+            System.out.println("JNI Sha512 Class");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
                 System.out.println("Sha512Test skipped: " + e.getError());

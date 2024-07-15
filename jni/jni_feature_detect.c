@@ -304,12 +304,36 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_HmacSha3_151
 #endif
 }
 
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Pbkdf1Enabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_PWDBASED) && defined(HAVE_PBKDF1)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Pbkdf2Enabled
   (JNIEnv* env, jclass jcl)
 {
     (void)env;
     (void)jcl;
 #if !defined(NO_PWDBASED) && defined(HAVE_PBKDF2) && !defined(NO_HMAC)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Pkcs12PbkdfEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_PWDBASED) && defined(HAVE_PKCS12)
     return JNI_TRUE;
 #else
     return JNI_FALSE;

@@ -150,6 +150,34 @@ public class WolfCrypt extends WolfObject {
      */
     public static native boolean CrlEnabled();
 
+    /**
+     * Constant time byte array comparison.
+     *
+     * If arrays are of different lengths, return false right away. Apart
+     * from length check, this matches native wolfSSL ConstantCompare()
+     * logic in misc.c.
+     *
+     * @param a first byte array for comparison
+     * @param b second byte array for comparison
+     *
+     * @return true if equal, otherwise false
+     */
+    public static boolean ConstantCompare(byte[] a, byte[] b) {
+
+        int i;
+        int compareSum = 0;
+
+        if (a.length != b.length) {
+            return false;
+        }
+
+        for (i = 0; i < a.length; i++) {
+            compareSum |= a[i] ^ b[i];
+        }
+
+        return (compareSum == 0);
+    }
+
     private WolfCrypt() {
     }
 }
