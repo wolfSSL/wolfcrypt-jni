@@ -27,6 +27,7 @@
     #include <wolfssl/options.h>
 #endif
 
+#include <wolfssl/wolfcrypt/types.h>
 #include <com_wolfssl_wolfcrypt_WolfCrypt.h>
 #include <wolfcrypt_jni_error.h>
 

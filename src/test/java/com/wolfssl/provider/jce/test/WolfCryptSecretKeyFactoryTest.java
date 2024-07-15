@@ -22,6 +22,10 @@
 package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.junit.Test;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -73,11 +77,20 @@ public class WolfCryptSecretKeyFactoryTest {
         return enabledAlgos.contains(algo);
     }
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void testProviderInstallationAtRuntime()
         throws NoSuchProviderException {
 
         SecretKeyFactory kf;
+
+        System.out.println("JCE WolfCryptSecretKeyFactory Class");
 
         /* Install wolfJCE provider at runtime. Not registering as top priority
          * provider so we can still likely get SunJCE or platform provider

@@ -22,6 +22,10 @@
 package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
@@ -43,8 +47,17 @@ import com.wolfssl.provider.jce.WolfCryptProvider;
 
 public class WolfCryptRandomTest {
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void testProviderInstallationAtRuntime() {
+
+        System.out.println("JCE WolfCryptRandom Class");
 
         /* install wolfJCE provider at runtime, highest priority */
         Security.insertProviderAt(new WolfCryptProvider(), 1);

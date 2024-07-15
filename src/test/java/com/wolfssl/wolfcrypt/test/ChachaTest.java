@@ -31,6 +31,10 @@ import javax.crypto.ShortBufferException;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Chacha;
 import com.wolfssl.wolfcrypt.NativeStruct;
@@ -68,10 +72,18 @@ public class ChachaTest {
         (byte)0xa0,(byte)0xf1,(byte)0x3d,(byte)0x90
     };
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void checkAvailability() {
         try {
             new Chacha();
+            System.out.println("JNI Chacha Class");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
                 System.out.println("Chacha test skipped: " + e.getError());

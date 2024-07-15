@@ -301,11 +301,11 @@ public class WolfCryptSignature extends SignatureSpi {
 
         if (this.keyType == KeyType.WC_RSA &&
                 !(publicKey instanceof RSAPublicKey)) {
-            throw new InvalidKeyException("Key is not of type RSAPrivateKey");
+            throw new InvalidKeyException("Key is not of type RSAPublicKey");
 
         } else if (this.keyType == KeyType.WC_ECDSA &&
                 !(publicKey instanceof ECPublicKey)) {
-            throw new InvalidKeyException("Key is not of type ECPrivateKey");
+            throw new InvalidKeyException("Key is not of type ECPublicKey");
         }
 
         /* get encoded key, returns PKCS#8 formatted private key */

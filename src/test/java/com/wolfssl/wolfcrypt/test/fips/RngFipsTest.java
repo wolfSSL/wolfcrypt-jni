@@ -25,7 +25,12 @@ import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCrypt;
@@ -37,6 +42,18 @@ public class RngFipsTest extends FipsTest {
     private ByteBuffer entropyA = ByteBuffer.allocateDirect(48);
     private ByteBuffer entropyB = ByteBuffer.allocateDirect(32);
     private ByteBuffer expected = ByteBuffer.allocateDirect(128);
+
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
+    @BeforeClass
+    public static void setupClass() {
+        System.out.println("JNI FIPS RNG Tests");
+    }
 
     @Test
     public void initShouldReturnZero() {

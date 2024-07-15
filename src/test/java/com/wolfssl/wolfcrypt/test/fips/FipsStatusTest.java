@@ -25,7 +25,12 @@ import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.WolfCrypt;
@@ -34,6 +39,19 @@ import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.Fips.ErrorCallback;
 
 public class FipsStatusTest extends FipsTest {
+
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
+    @BeforeClass
+    public static void setupClass() {
+        System.out.println("JNI FIPS Status Tests");
+    }
+
     @Test
     public void wolfCrypt_GetStatus_fipsShouldReturnZero() {
         assertEquals(WolfCrypt.SUCCESS, Fips.wolfCrypt_GetStatus_fips());

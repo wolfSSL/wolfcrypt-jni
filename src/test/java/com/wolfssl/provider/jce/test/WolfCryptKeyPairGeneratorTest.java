@@ -22,6 +22,10 @@
 package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
@@ -127,8 +131,17 @@ public class WolfCryptKeyPairGeneratorTest {
     );
     private static byte[] base = new byte[] { 0x02 };
 
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = new TestWatcher() {
+        protected void starting(Description desc) {
+            System.out.println("\t" + desc.getMethodName());
+        }
+    };
+
     @BeforeClass
     public static void testProviderInstallationAtRuntime() {
+
+        System.out.println("JCE WolfCryptKeyPairGeneratorTest Class");
 
         /* install wolfJCE provider at runtime */
         Security.insertProviderAt(new WolfCryptProvider(), 1);
