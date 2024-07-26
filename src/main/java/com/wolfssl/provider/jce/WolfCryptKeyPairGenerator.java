@@ -150,10 +150,13 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 RSAKeyGenParameterSpec rsaSpec = (RSAKeyGenParameterSpec)params;
                 this.keysize = rsaSpec.getKeysize();
 
-                try {
-                    this.publicExponent =
-                        rsaSpec.getPublicExponent().longValueExact();
-                } catch (ArithmeticException e) {
+                this.publicExponent =
+                    rsaSpec.getPublicExponent().longValue();
+
+                /* Double check longValue() converted correctly. Some platforms
+                 * do not have longValueExact() */
+                if (!BigInteger.valueOf(this.publicExponent).equals(
+                        rsaSpec.getPublicExponent())) {
                     throw new InvalidAlgorithmParameterException(
                         "RSA public exponent value larger than long");
                 }
