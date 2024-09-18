@@ -171,6 +171,14 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    rsaMinSize
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_rsaMinSize
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
  * Method:    getDefaultRsaExponent
  * Signature: ()J
  */
