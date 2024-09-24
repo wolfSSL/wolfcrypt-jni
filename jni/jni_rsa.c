@@ -81,6 +81,15 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rsa_getDefaultRsaExponent
 #endif
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_rsaMinSize
+  (JNIEnv *env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+
+    return (jint)RSA_MIN_SIZE;
+}
+
 JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Rsa_MakeRsaKey(
     JNIEnv *env, jobject this, jint size, jlong e, jobject rng_object)

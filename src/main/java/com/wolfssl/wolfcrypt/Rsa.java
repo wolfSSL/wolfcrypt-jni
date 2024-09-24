@@ -32,6 +32,8 @@ public class Rsa extends NativeStruct {
     private boolean hasPrivateKey = false;
     private Rng rng;
 
+    public static final int RSA_MIN_SIZE = Rsa.rsaMinSize();
+
     /** Lock around object state */
     protected final Object stateLock = new Object();
 
@@ -92,6 +94,7 @@ public class Rsa extends NativeStruct {
             throws WolfCryptException;
     private native byte[] wc_RsaSSL_Verify(byte[] data)
             throws WolfCryptException;
+    private static native int rsaMinSize();
 
     /**
      * Create new Rsa object
