@@ -17,6 +17,11 @@ rpm/spec
 *.rpm
 wolfcrypt*.tar.gz
 
+# Android
+IDE/Android/.idea/deploymentTargetDropDown.xml
+IDE/Android/app/.cxx/
+IDE/Android/app/src/main/cpp/wolfssl
+
 # Windows
 IDE/WIN/.vs
 IDE/WIN/wolfcryptjni.vcxproj.user
