@@ -103,6 +103,25 @@ jobs:
       jdk_version: ${{ matrix.jdk_version }}
       wolfssl_configure: ${{ matrix.wolfssl_configure }}
 
+  # ------------------ RSA 1024 min size sanity check -------------------
+  # Only check one Linux and Mac JDK version as a sanity check. Using Zulu,
+  # but this can be expanded if needed.
+  # wolfSSL ./configure:
+  #     --enable-jni CFLAGS="-DRSA_MIN_SIZE=1024
+  linux-zulu-rsa-min-size:
+    strategy:
+      matrix:
+        os: [ 'ubuntu-latest', 'macos-latest' ]
+        jdk_version: [ '11' ]
+        wolfssl_configure: [ '--enable-jni CFLAGS="-DRSA_MIN_SIZE=1024"' ]
+    name: ${{ matrix.os }} (Zulu JDK ${{ matrix.jdk_version }}, ${{ matrix.wolfssl_configure}})
+    uses: ./.github/workflows/linux-common.yml
+    with:
+      os: ${{ matrix.os }}
+      jdk_distro: "zulu"
+      jdk_version: ${{ matrix.jdk_version }}
+      wolfssl_configure: ${{ matrix.wolfssl_configure }}
+
   # ------------------ Facebook Infer static analysis -------------------
   # Run Facebook infer over PR code, only running on Linux with one
   # JDK/version for now.

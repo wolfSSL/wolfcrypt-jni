@@ -81,12 +81,20 @@ public class RsaTest {
     }
 
     @Test
+    public void testGetMinRsaSize() {
+
+        int minRsaSize = Rsa.RSA_MIN_SIZE;
+        assertTrue(minRsaSize > 0);
+    }
+
+    @Test
     public void testMakeKey() {
 
         Rsa key = null;
 
         /* FIPS after 2425 doesn't allow 1024-bit RSA key gen */
-        if (Fips.enabled && Fips.fipsVersion < 5) {
+        if ((Fips.enabled && Fips.fipsVersion < 5) ||
+            (!Fips.enabled && Rsa.RSA_MIN_SIZE <= 1024)) {
             key = new Rsa();
             key.makeKey(1024, 65537, rng);
             key.releaseNativeStruct();
@@ -237,7 +245,8 @@ public class RsaTest {
               + "be35abca5ce7935334a1455d1339654246a19fcdf5bf");
 
         /* FIPS after 2425 doesn't allow 1024-bit RSA key gen */
-        if (Fips.enabled && Fips.fipsVersion >= 5) {
+        if ((Fips.enabled && Fips.fipsVersion >= 5) ||
+            (Rsa.RSA_MIN_SIZE > 1024)) {
             /* skip */
             return;
         }
