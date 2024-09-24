@@ -37,9 +37,6 @@ public final class WolfCryptMessageDigestSha256
     /* internal reference to wolfCrypt JNI Sha object */
     private Sha256 sha;
 
-    /* for debug logging */
-    private WolfCryptDebug debug;
-
     /**
      * Create new WolfCryptMessageDigestSha256 object
      */
@@ -72,8 +69,7 @@ public final class WolfCryptMessageDigestSha256
             throw new RuntimeException(e.getMessage());
         }
 
-        if (debug.DEBUG)
-            log("generated final digest, len: " + digest.length);
+        log("generated final digest, len: " + digest.length);
 
         return digest;
     }
@@ -83,8 +79,7 @@ public final class WolfCryptMessageDigestSha256
 
         this.sha.init();
 
-        if (debug.DEBUG)
-            log("engine reset");
+        log("engine reset");
     }
 
     @Override
@@ -95,8 +90,7 @@ public final class WolfCryptMessageDigestSha256
 
         this.sha.update(tmp, 1);
 
-        if (debug.DEBUG)
-            log("update with single byte");
+        log("update with single byte");
     }
 
     @Override
@@ -104,8 +98,7 @@ public final class WolfCryptMessageDigestSha256
 
         this.sha.update(input, offset, len);
 
-        if (debug.DEBUG)
-            log("update, offset: " + offset + ", len: " + len);
+        log("update, offset: " + offset + ", len: " + len);
     }
 
     @Override
@@ -114,7 +107,7 @@ public final class WolfCryptMessageDigestSha256
     }
 
     private void log(String msg) {
-        debug.print("[MessageDigest, SHA256] " + msg);
+        WolfCryptDebug.print("[MessageDigest, SHA256] " + msg);
     }
 
     @Override

@@ -103,7 +103,6 @@ public class WolfCryptCipher extends CipherSpi {
     private Rng  rng      = null;
 
     /* for debug logging */
-    private WolfCryptDebug debug;
     private String algString;
     private String algMode;
 
@@ -147,7 +146,7 @@ public class WolfCryptCipher extends CipherSpi {
                 break;
         }
 
-        if (debug.DEBUG) {
+        if (WolfCryptDebug.DEBUG) {
             algString = typeToString(cipherType);
             algMode = modeToString(cipherMode);
         }
@@ -208,9 +207,7 @@ public class WolfCryptCipher extends CipherSpi {
                 cipherMode = CipherMode.WC_ECB;
                 supported = 1;
 
-                if (debug.DEBUG) {
-                    log("set mode to ECB");
-                }
+                log("set mode to ECB");
             }
 
         } else if (mode.equals("CBC")) {
@@ -221,9 +218,7 @@ public class WolfCryptCipher extends CipherSpi {
                 cipherMode = CipherMode.WC_CBC;
                 supported = 1;
 
-                if (debug.DEBUG) {
-                    log("set mode to CBC");
-                }
+                log("set mode to CBC");
             }
 
         } else if (mode.equals("GCM")) {
@@ -233,9 +228,7 @@ public class WolfCryptCipher extends CipherSpi {
                 cipherMode = CipherMode.WC_GCM;
                 supported = 1;
 
-                if (debug.DEBUG) {
-                    log("set mode to GCM");
-                }
+                log("set mode to GCM");
             }
         }
 
@@ -259,9 +252,7 @@ public class WolfCryptCipher extends CipherSpi {
                 paddingType = PaddingType.WC_NONE;
                 supported = 1;
 
-                if (debug.DEBUG) {
-                    log("set padding to NoPadding");
-                }
+                log("set padding to NoPadding");
             }
 
         } else if (padding.equals("PKCS1Padding")) {
@@ -270,9 +261,7 @@ public class WolfCryptCipher extends CipherSpi {
                 paddingType = PaddingType.WC_PKCS1;
                 supported = 1;
 
-                if (debug.DEBUG) {
-                    log("set padding to PKCS1Padding");
-                }
+                log("set padding to PKCS1Padding");
             }
 
         } else if (padding.equals("PKCS5Padding")) {
@@ -283,9 +272,7 @@ public class WolfCryptCipher extends CipherSpi {
                 paddingType = PaddingType.WC_PKCS5;
                 supported = 1;
 
-                if (debug.DEBUG) {
-                    log("set padding to PKCS5Padding");
-                }
+                log("set padding to PKCS5Padding");
             }
         }
 
@@ -564,9 +551,7 @@ public class WolfCryptCipher extends CipherSpi {
 
             wolfCryptCipherInit(opmode, key, null, random);
 
-            if (debug.DEBUG) {
-                log("initialized with key");
-            }
+            log("initialized with key");
 
         } catch (InvalidAlgorithmParameterException iape) {
             throw new InvalidKeyException("Invalid algorithm parameters");
@@ -580,9 +565,7 @@ public class WolfCryptCipher extends CipherSpi {
 
         wolfCryptCipherInit(opmode, key, params, random);
 
-        if (debug.DEBUG) {
-            log("initialized with key and AlgorithmParameterSpec");
-        }
+        log("initialized with key and AlgorithmParameterSpec");
     }
 
     @Override
@@ -601,9 +584,7 @@ public class WolfCryptCipher extends CipherSpi {
                 spec = params.getParameterSpec(IvParameterSpec.class);
             }
 
-            if (debug.DEBUG) {
-                log("initialized with key and AlgorithmParameters");
-            }
+            log("initialized with key and AlgorithmParameters");
 
         } catch (InvalidParameterSpecException ipe) {
             throw new InvalidAlgorithmParameterException(ipe);
@@ -902,9 +883,7 @@ public class WolfCryptCipher extends CipherSpi {
                 "Cipher has not been initialized yet");
         }
 
-        if (debug.DEBUG)
-            log("update (offset: " + inputOffset + ", len: " +
-                inputLen + ")");
+        log("update (offset: " + inputOffset + ", len: " + inputLen + ")");
 
         output = wolfCryptUpdate(input, inputOffset, inputLen);
 
@@ -923,9 +902,8 @@ public class WolfCryptCipher extends CipherSpi {
                 "Cipher has not been initialized yet");
         }
 
-        if (debug.DEBUG)
-            log("update (in offset: " + inputOffset + ", len: " +
-                inputLen + ", out offset: " + outputOffset + ")");
+        log("update (in offset: " + inputOffset + ", len: " +
+            inputLen + ", out offset: " + outputOffset + ")");
 
         tmpOut = wolfCryptUpdate(input, inputOffset, inputLen);
         if (tmpOut == null) {
@@ -957,9 +935,7 @@ public class WolfCryptCipher extends CipherSpi {
                 "Cipher has not been initialized yet");
         }
 
-        if (debug.DEBUG)
-            log("final (offset: " + inputOffset + ", len: " +
-                inputLen + ")");
+        log("final (offset: " + inputOffset + ", len: " + inputLen + ")");
 
         return wolfCryptFinal(input, inputOffset, inputLen);
     }
@@ -977,9 +953,8 @@ public class WolfCryptCipher extends CipherSpi {
                 "Cipher has not been initialized yet");
         }
 
-        if (debug.DEBUG)
-            log("final (in offset: " + inputOffset + ", len: " +
-                inputLen + ", out offset: " + outputOffset + ")");
+        log("final (in offset: " + inputOffset + ", len: " +
+            inputLen + ", out offset: " + outputOffset + ")");
 
         tmpOut = wolfCryptFinal(input, inputOffset, inputLen);
 
@@ -1113,7 +1088,8 @@ public class WolfCryptCipher extends CipherSpi {
     }
 
     private void log(String msg) {
-        debug.print("[Cipher, " + algString + "-" + algMode + "] " + msg);
+        WolfCryptDebug.print("[Cipher, " + algString + "-" +
+            algMode + "] " + msg);
     }
 
     @SuppressWarnings("deprecation")

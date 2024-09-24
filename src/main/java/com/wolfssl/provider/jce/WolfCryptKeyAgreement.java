@@ -77,8 +77,6 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
     private KeyAgreeType type;
     private EngineState state = EngineState.WC_UNINITIALIZED;
-
-    private WolfCryptDebug debug;
     private String algString;
 
     private WolfCryptKeyAgreement(KeyAgreeType type) {
@@ -97,8 +95,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 break;
         };
 
-        if (debug.DEBUG)
+        if (WolfCryptDebug.DEBUG) {
             algString = typeToString(type);
+        }
 
         this.state = EngineState.WC_INIT_DONE;
     }
@@ -109,8 +108,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
         byte[] pubKey = null;
 
-        if (debug.DEBUG)
-            log("engineDoPhase, lastPhase: " + lastPhase);
+        log("engineDoPhase, lastPhase: " + lastPhase);
 
         if (this.state != EngineState.WC_PRIVKEY_DONE)
             throw new IllegalStateException(
@@ -188,8 +186,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
             len = engineGenerateSecret(tmp, 0);
 
-            if (debug.DEBUG)
-                log("generated secret, len: " + len);
+            log("generated secret, len: " + len);
 
             /* may need to truncate */
             secret = new byte[len];
@@ -322,8 +319,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
         if (tmp != null) {
 
-            if (debug.DEBUG)
-                log("generated secret, len: " + tmp.length);
+            log("generated secret, len: " + tmp.length);
 
             zeroArray(tmp);
             return tmp.length;
@@ -339,8 +335,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
         byte secret[] = engineGenerateSecret();
 
-        if (debug.DEBUG)
-            log("generating SecretKey for " + algorithm);
+        log("generating SecretKey for " + algorithm);
 
         if (algorithm.equals("DES")) {
             return (SecretKey)new DESKeySpec(secret);
@@ -450,19 +445,16 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             /* look up curve size */
             this.curveSize = this.ecPrivate.getCurveSizeFromName(
                                                 this.curveName);
-            if (debug.DEBUG)
-                log("curveName: " + curveName + ", curveSize: " + curveSize);
+            log("curveName: " + curveName + ", curveSize: " + curveSize);
 
         } else if (spec instanceof ECParameterSpec) {
 
             ECParameterSpec espec = (ECParameterSpec)spec;
 
             this.curveName = this.ecPrivate.getCurveName(espec);
-
             this.curveSize = this.ecPrivate.getCurveSizeFromName(
                                                 this.curveName);
-            if (debug.DEBUG)
-                log("curveName: " + curveName + ", curveSize: " + curveSize);
+            log("curveName: " + curveName + ", curveSize: " + curveSize);
 
         } else {
             throw new InvalidAlgorithmParameterException(
@@ -527,8 +519,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             SecureRandom random)
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
-        if (debug.DEBUG)
-            log("initialized with key and AlgorithmParameterSpec");
+        log("initialized with key and AlgorithmParameterSpec");
 
         wcKeyAgreementInit(key, params, random);
 
@@ -540,9 +531,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         throws InvalidKeyException {
 
         try {
-
-            if (debug.DEBUG)
-                log("initialized with key");
+            log("initialized with key");
 
             wcKeyAgreementInit(key, null, random);
 
@@ -575,7 +564,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
     }
 
     private void log(String msg) {
-        debug.print("[KeyAgreement, " + algString + "] " + msg);
+        WolfCryptDebug.print("[KeyAgreement, " + algString + "] " + msg);
     }
 
     @SuppressWarnings("deprecation")

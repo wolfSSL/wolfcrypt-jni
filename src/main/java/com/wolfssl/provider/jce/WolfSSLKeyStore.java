@@ -169,8 +169,6 @@ import com.wolfssl.provider.jce.WolfCryptDebug;
  */
 public class WolfSSLKeyStore extends KeyStoreSpi {
 
-    private static WolfCryptDebug debug;
-
     /* RNG used for generating random IVs and salts */
     private SecureRandom rand = null;
     private static final Object randLock = new Object();
@@ -1823,9 +1821,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      * @param msg message to be logged
      */
     private static synchronized void log(String msg) {
-        if (debug.DEBUG) {
-            debug.print("[WolfSSLKeyStore] " + msg);
-        }
+        WolfCryptDebug.print("[WolfSSLKeyStore] " + msg);
     }
 
     /**

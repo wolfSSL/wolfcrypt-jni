@@ -34,9 +34,6 @@ public final class WolfCryptRandom extends SecureRandomSpi {
     /** internal reference to wolfCrypt JNI RNG object */
     private Rng rng;
 
-    /** for debug logging */
-    private WolfCryptDebug debug;
-
     /**
      * Create new WolfCryptRandom object
      */
@@ -44,8 +41,7 @@ public final class WolfCryptRandom extends SecureRandomSpi {
         this.rng = new Rng();
         this.rng.init();
 
-        if (debug.DEBUG)
-            log("initialized new object");
+        log("initialized new object");
     }
 
     @Override
@@ -63,12 +59,11 @@ public final class WolfCryptRandom extends SecureRandomSpi {
     @Override
     protected void engineSetSeed(byte[] seed) {
         /* wolfCrypt reseeds internally automatically */
-        if (debug.DEBUG)
-            log("setSeed() not supported by wolfJCE");
+        log("setSeed() not supported by wolfJCE");
     }
 
     private void log(String msg) {
-        debug.print("[Random] " + msg);
+        WolfCryptDebug.print("[Random] " + msg);
     }
 
     @SuppressWarnings("deprecation")

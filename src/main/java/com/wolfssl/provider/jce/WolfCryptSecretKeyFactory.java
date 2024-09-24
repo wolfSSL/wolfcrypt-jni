@@ -64,8 +64,6 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
     /* wolfCrypt int representing hash used in this factory */
     private int hashType;
 
-    private WolfCryptDebug debug;
-
     private WolfCryptSecretKeyFactory(FactoryType type)
         throws NoSuchAlgorithmException {
 
@@ -124,9 +122,7 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
      * @param msg message to be logged
      */
     private void log(String msg) {
-        if (debug.DEBUG) {
-            debug.print("[SecretKeyFactory, " + typeString + "] " + msg);
-        }
+        WolfCryptDebug.print("[SecretKeyFactory, " + typeString + "] " + msg);
     }
 
     /**
