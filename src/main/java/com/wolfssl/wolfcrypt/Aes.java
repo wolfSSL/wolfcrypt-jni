@@ -24,7 +24,7 @@ package com.wolfssl.wolfcrypt;
 import java.nio.ByteBuffer;
 
 /**
- * Wrapper for the native WolfCrypt Aes implementation.
+ * Wrapper for the native WolfCrypt AES implementation.
  *
  * @author wolfSSL Inc.
  */
@@ -47,7 +47,7 @@ public class Aes extends BlockCipher {
 
     private int opmode;
 
-    /* native JNI methods, internally reach back and grab/use pointer from
+    /* Native JNI methods, internally reach back and grab/use pointer from
      * NativeStruct.java. We wrap calls to these below in order to
      * synchronize access to native pointer between threads */
     private native long mallocNativeStruct_internal() throws OutOfMemoryError;
@@ -133,9 +133,16 @@ public class Aes extends BlockCipher {
     }
 
     /**
-     * Create new Aes object
+     * Create new Aes object.
+     *
+     * @throws WolfCryptException if AES has not been compiled into native
+     *         wolfCrypt library.
      */
     public Aes() {
+        if (!FeatureDetect.AesEnabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
     }
 
     /**
@@ -144,9 +151,23 @@ public class Aes extends BlockCipher {
      * @param key AES key
      * @param iv AES initialization vector (IV)
      * @param opmode AES mode: Aes.ENCRYPT_MODE or Aes.DECRYPT_MODE
+     *
+     * @throws WolfCryptException to indicate this constructor has been
+     *         deprecated, along with instructions on what API to call
+     *
+     * @deprecated This constructor has been deprecated to avoid storage
+     *             of the AES key inside this Aes class at the Java level.
+     *             Please refactor existing code to call
+     *             Aes.setKey(byte[] key, byte[] iv, int opmode) after this
+     *             object has been created with the default Aes() constructor.
      */
+    @Deprecated
     public Aes(byte[] key, byte[] iv, int opmode) {
-        setKey(key, iv, opmode);
+
+        throw new WolfCryptException(
+            "Constructor deprecated, use " +
+            "Aes.setKey(byte[] key, byte[] iv, int opmode) " +
+            "after object creation with Aes()");
     }
 }
 

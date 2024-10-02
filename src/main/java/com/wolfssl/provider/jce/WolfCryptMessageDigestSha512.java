@@ -112,7 +112,7 @@ public final class WolfCryptMessageDigestSha512
 
     @Override
     public Object clone() {
-        Sha512 shaCopy = new Sha512(this.sha);
+        Sha512 shaCopy = (Sha512)this.sha.clone();
         return new WolfCryptMessageDigestSha512(shaCopy);
     }
 

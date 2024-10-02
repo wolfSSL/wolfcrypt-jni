@@ -409,7 +409,7 @@ public class WolfCryptSignature extends SignatureSpi {
             case WC_RSA:
 
                 /* DER encode digest */
-                encodedSz = (int)asn.encodeSignature(encDigest, digest,
+                encodedSz = (int)Asn.encodeSignature(encDigest, digest,
                                 digest.length, this.internalHashSum);
 
                 if (encodedSz < 0) {
@@ -534,7 +534,7 @@ public class WolfCryptSignature extends SignatureSpi {
             case WC_RSA:
 
                 /* DER encode digest */
-                encodedSz = asn.encodeSignature(encDigest, digest,
+                encodedSz = Asn.encodeSignature(encDigest, digest,
                                 digest.length, this.internalHashSum);
 
                 if (encodedSz < 0) {

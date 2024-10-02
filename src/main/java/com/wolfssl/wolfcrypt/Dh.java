@@ -31,14 +31,25 @@ public class Dh extends NativeStruct {
     private byte[] publicKey = null;
     private int pSize = 0;
 
+    /* DH parameters to init with, will reset to null after initialized */
+    private byte[] paramP = null;
+    private byte[] paramG = null;
+
     /** Lock around object state */
     protected final Object stateLock = new Object();
 
     /**
-     * Create new Dh object
+     * Create new Dh object.
+     *
+     * @throws WolfCryptException if DH has not been compiled into native
+     *         wolfCrypt library.
      */
     public Dh() {
-        init();
+        if (!FeatureDetect.DhEnabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
     }
 
     /**
@@ -46,17 +57,38 @@ public class Dh extends NativeStruct {
      *
      * @param p DH p parameter
      * @param g DH g parameter
+     *
+     * @throws WolfCryptException if DH has not been compiled into native
+     *         wolfCrypt library.
      */
     public Dh(byte[] p, byte[] g) {
-        init();
-        setParams(p, g);
+        if (!FeatureDetect.DhEnabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+
+        /* Internal state is initialized on first use */
+        this.paramP = p.clone();
+        this.paramG = g.clone();
     }
 
     @Override
     public synchronized void releaseNativeStruct() {
-        free();
 
-        super.releaseNativeStruct();
+        synchronized (stateLock) {
+            if ((state != WolfCryptState.UNINITIALIZED) &&
+                (state != WolfCryptState.RELEASED)) {
+
+                synchronized (pointerLock) {
+                    wc_FreeDhKey();
+                }
+                setPrivateKey(new byte[0]);
+                setPublicKey(new byte[0]);
+
+                super.releaseNativeStruct();
+                state = WolfCryptState.RELEASED;
+            }
+        }
     }
 
     private native long mallocNativeStruct_internal() throws OutOfMemoryError;
@@ -81,39 +113,48 @@ public class Dh extends NativeStruct {
         }
     }
 
-
-    /** Initialize Dh object */
-    protected void init() {
+    /**
+     * Internal helper method to initialize object if/when needed.
+     *
+     * @throws IllegalStateException on failure to initialize properly, or
+     *         if releaseNativeStruct() has been called and object has been
+     *         released
+     */
+    private synchronized void checkStateAndInitialize()
+        throws IllegalStateException {
 
         synchronized (stateLock) {
-            if (state == WolfCryptState.UNINITIALIZED) {
+            if (state == WolfCryptState.RELEASED) {
+                throw new IllegalStateException("Object has been released");
+            }
 
-                synchronized (pointerLock) {
-                    wc_InitDhKey();
+            if (state == WolfCryptState.UNINITIALIZED) {
+                init();
+
+                if (this.paramP != null && this.paramG != null) {
+                    setParams(this.paramP, this.paramG);
+                    this.paramP = null;
+                    this.paramG = null;
                 }
-                state = WolfCryptState.INITIALIZED;
-            } else {
-                throw new IllegalStateException(
-                    "Native resources already initialized");
+            }
+
+            if (state == WolfCryptState.UNINITIALIZED) {
+                throw new IllegalStateException("Failed to initialize Object");
             }
         }
     }
 
-    /** Free Dh object */
-    protected synchronized void free() {
+    /**
+     * Initialize Dh object.
+     */
+    private void init() {
 
-        synchronized (stateLock) {
-            if (state != WolfCryptState.UNINITIALIZED) {
-
-                synchronized (pointerLock) {
-                    wc_FreeDhKey();
-                }
-                setPrivateKey(new byte[0]);
-                setPublicKey(new byte[0]);
-
-                state = WolfCryptState.UNINITIALIZED;
-            }
+        synchronized (pointerLock) {
+            /* Allocate native struct pointer from NativeStruct */
+            initNativeStruct();
+            wc_InitDhKey();
         }
+        state = WolfCryptState.INITIALIZED;
     }
 
     /**
@@ -121,25 +162,22 @@ public class Dh extends NativeStruct {
      *
      * @param priv private key array
      *
-     * @throws IllegalStateException if object uninitialized
+     * @throws IllegalStateException if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released.
      */
     public synchronized void setPrivateKey(byte[] priv)
         throws IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state != WolfCryptState.UNINITIALIZED) {
-                if (privateKey != null) {
-                    for (int i = 0; i < privateKey.length; i++) {
-                        privateKey[i] = 0;
-                    }
-                }
+        checkStateAndInitialize();
 
-                privateKey = priv.clone();
-            } else {
-                throw new IllegalStateException(
-                    "No available parameters to perform operation");
+        if (privateKey != null) {
+            for (int i = 0; i < privateKey.length; i++) {
+                privateKey[i] = 0;
             }
         }
+
+        privateKey = priv.clone();
     }
 
     /**
@@ -147,24 +185,21 @@ public class Dh extends NativeStruct {
      *
      * @param pub public key array
      *
-     * @throws IllegalStateException if object uninitialized
+     * @throws IllegalStateException if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released.
      */
     public synchronized void setPublicKey(byte[] pub) {
 
-        synchronized (stateLock) {
-            if (state != WolfCryptState.UNINITIALIZED) {
-                if (publicKey != null) {
-                    for (int i = 0; i < publicKey.length; i++) {
-                        publicKey[i] = 0;
-                    }
-                }
+        checkStateAndInitialize();
 
-                publicKey = pub.clone();
-            } else {
-                throw new IllegalStateException(
-                    "No available parameters to perform operation");
+        if (publicKey != null) {
+            for (int i = 0; i < publicKey.length; i++) {
+                publicKey[i] = 0;
             }
         }
+
+        publicKey = pub.clone();
     }
 
     /**
@@ -192,24 +227,20 @@ public class Dh extends NativeStruct {
      * @param g DH g parameter
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already initialized
+     * @throws IllegalStateException if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released.
      */
     public synchronized void setParams(byte[] p, byte[] g)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.INITIALIZED) {
+        checkStateAndInitialize();
 
-                synchronized (pointerLock) {
-                    wc_DhSetKey(p, g);
-                }
-                this.pSize = p.length;
-                state = WolfCryptState.READY;
-            } else {
-                throw new IllegalStateException(
-                    "Object already has parameters");
-            }
+        synchronized (pointerLock) {
+            wc_DhSetKey(p, g);
         }
+        this.pSize = p.length;
+        state = WolfCryptState.READY;
     }
 
     /**
@@ -218,10 +249,14 @@ public class Dh extends NativeStruct {
      * @param rng initialized Rng object
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already has a key
+     * @throws IllegalStateException if object already has a key, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized void makeKey(Rng rng)
         throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
 
         if (privateKey == null) {
             /* use size of P to allocate key buffer size */
@@ -240,14 +275,19 @@ public class Dh extends NativeStruct {
      * @return shared secret as byte array
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if this object has no stored private
-     *         and public keys
+     * @throws IllegalStateException if object has no stored private and
+     *         public keys, if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released.
      */
     public synchronized byte[] makeSharedSecret()
         throws WolfCryptException, IllegalStateException {
 
-        byte[] publicKey = getPublicKey();
+        byte[] publicKey = null;
 
+        checkStateAndInitialize();
+
+        publicKey = getPublicKey();
         if (publicKey == null) {
             throw new IllegalStateException(
                 "Dh object has no public key");
@@ -264,7 +304,9 @@ public class Dh extends NativeStruct {
      * @return shared secret as byte array
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if object has no key, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized byte[] makeSharedSecret(Dh pubKey)
         throws WolfCryptException, IllegalStateException {
@@ -275,6 +317,8 @@ public class Dh extends NativeStruct {
             throw new IllegalStateException(
                 "Provided public key is null");
         }
+
+        checkStateAndInitialize();
 
         return makeSharedSecret(pubKey.getPublicKey());
     }
@@ -288,7 +332,9 @@ public class Dh extends NativeStruct {
      * @return shared secret as byte array
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if object has no key, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized byte[] makeSharedSecret(byte[] pubKey)
         throws WolfCryptException, IllegalStateException {
@@ -302,6 +348,8 @@ public class Dh extends NativeStruct {
             throw new IllegalStateException(
                 "Dh object has no private key");
         }
+
+        checkStateAndInitialize();
 
         synchronized (pointerLock) {
             return wc_DhAgree(this.privateKey, pubKey);

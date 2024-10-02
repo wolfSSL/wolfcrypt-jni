@@ -22,7 +22,7 @@
 package com.wolfssl.wolfcrypt.test;
 
 public class Util {
-    public static byte[] h2b(String s) {
+    public static synchronized byte[] h2b(String s) {
         int len = s.length();
         byte[] data = new byte[len / 2];
 
@@ -36,7 +36,7 @@ public class Util {
 
     final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
 
-    public static String b2h(byte[] bytes) {
+    public static synchronized String b2h(byte[] bytes) {
         char[] hexChars = new char[bytes.length * 2];
 
         for (int j = 0; j < bytes.length; j++) {

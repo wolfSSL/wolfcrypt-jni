@@ -76,8 +76,25 @@ public class RsaTest {
     }
 
     @Test
-    public void constructorShouldInitializeNativeStruct() {
-        assertNotEquals(NativeStruct.NULL, new Rsa().getNativeStruct());
+    public void constructorShouldNotInitializeNativeStruct() {
+        assertEquals(NativeStruct.NULL, new Rsa().getNativeStruct());
+    }
+
+    @Test
+    public void deprecatedConstructorThrows() {
+        try {
+            Rsa rsa = new Rsa( new byte[] {0x00} );
+            fail("Failed to throw expected exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        try {
+            Rsa rsa = new Rsa( new byte[] {0x00}, new byte[] {0x00} );
+            fail("Failed to throw expected exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
     }
 
     @Test
@@ -337,7 +354,15 @@ public class RsaTest {
 
     @Test
     public void rsaOperations() {
-        Rsa priv = new Rsa(Util
+        Rsa priv = new Rsa();
+        byte[] n_out = new byte[256];
+        byte[] e_out = new byte[3];
+        long[] n_len = new long[1];
+        long[] e_len = new long[1];
+        n_len[0] = n_out.length;
+        e_len[0] = e_out.length;
+
+        priv.decodePrivateKey(Util
                 .h2b("308204a40201000282010100c303d12bfe39a432453b53c8842b2a7c"
                         + "749abdaa2a520747d6a636b207328ed0ba697bc6c3449ed48148"
                         + "fd2d68a28b67bba175c8362c4ad21bf78bbacf0df9efecf1811e"
@@ -385,17 +410,11 @@ public class RsaTest {
                         + "3a458fe69640eb63f919863a51dd894bb0f3f99f5d289538be35"
                         + "abca5ce7935334a1455d1339654246a19fcdf5bf"));
 
-        byte[] n_out = new byte[256];
-        byte[] e_out = new byte[3];
-        long[] n_len = new long[1];
-        long[] e_len = new long[1];
-        n_len[0] = n_out.length;
-        e_len[0] = e_out.length;
-
         priv.exportRawPublicKey(n_out, n_len, e_out, e_len);
         priv.setRng(rng);
 
-        Rsa pub = new Rsa(n_out, e_out);
+        Rsa pub = new Rsa();
+        pub.decodeRawPublicKey(n_out, e_out);
 
         byte[] plaintext = "Now is the time for all".getBytes();
 
@@ -485,11 +504,13 @@ public class RsaTest {
                     e_len[0] = e_out.length;
 
                     try {
-                        priv = new Rsa(prvKey);
+                        priv = new Rsa();
+                        priv.decodePrivateKey(prvKey);
                         priv.exportRawPublicKey(n_out, n_len, e_out, e_len);
                         priv.setRng(rng);
 
-                        pub = new Rsa(n_out, e_out);
+                        pub = new Rsa();
+                        pub.decodeRawPublicKey(n_out, e_out);
 
                         byte[] ciphertext = pub.encrypt(plaintext, rng);
 

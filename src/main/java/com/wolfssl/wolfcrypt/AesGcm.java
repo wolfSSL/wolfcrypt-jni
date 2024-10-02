@@ -45,20 +45,38 @@ public class AesGcm extends NativeStruct {
         byte[] authTag, byte[] authIn);
 
     /**
-     * Create and initialize new AesGcm object
+     * Create a new AesGcm object.
+     *
+     * @throws WolfCryptException if AES-GCM has not been compiled into native
+     *         wolfCrypt library.
      */
     public AesGcm() {
-        init();
+        if (!FeatureDetect.AesGcmEnabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
     }
 
     /**
-     * Create and initialize new AesGcm object using provided key.
+     * Create a new AesGcm object using provided key.
      *
      * @param key AES-GCM key to be used with this object
+     *
+     * @throws WolfCryptException to indicate this constructor has been
+     *         deprecated, along with instructions on what API to call
+     *
+     * @deprecated This constructor has been deprecated to avoid storage
+     *             of the AES key inside this AesGcm class at the Java level.
+     *             Please refactor existing code to call
+     *             AesGcm.setKey(byte[] key) after this object has been
+     *             created with the default AesGcm() constructor.
      */
+    @Deprecated
     public AesGcm(byte[] key) {
-        init();
-        setKey(key);
+        throw new WolfCryptException(
+            "Constructor deprecated, use AesGcm.setKey(byte[] key) " +
+            "after object creation with AesGcm()");
     }
 
     /**
@@ -85,37 +103,81 @@ public class AesGcm extends NativeStruct {
      */
     @Override
     public synchronized void releaseNativeStruct() {
-        free();
-        super.releaseNativeStruct();
-    }
-
-    /** Initialize AesGcm object and underlying native Aes structure */
-    protected void init() {
 
         synchronized (stateLock) {
-            if (state == WolfCryptState.UNINITIALIZED) {
-                synchronized (pointerLock) {
-                    wc_AesInit();
-                }
-                state = WolfCryptState.INITIALIZED;
-            } else {
-                throw new IllegalStateException(
-                    "Native resources already initialized");
-            }
-        }
-    }
-
-    /** Free AesGcm object and underlying native Aes structure */
-    protected synchronized void free() {
-
-        synchronized (stateLock) {
-            if (state != WolfCryptState.UNINITIALIZED) {
+            if ((state != WolfCryptState.UNINITIALIZED) &&
+                (state != WolfCryptState.RELEASED)) {
                 synchronized (pointerLock) {
                     wc_AesFree();
                 }
-                state = WolfCryptState.UNINITIALIZED;
+                super.releaseNativeStruct();
+                state = WolfCryptState.RELEASED;
             }
         }
+    }
+
+    /**
+     * Internal helper method to initialize object if/when needed.
+     *
+     * @throws IllegalStateException on failure to initialize properly
+     * @throws IllegalStateException if releaseNativeStruct() has been called
+     *         and object has been released
+     */
+    private synchronized void checkStateAndInitialize()
+        throws IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state == WolfCryptState.RELEASED) {
+                throw new IllegalStateException("Object has been released");
+            }
+
+            if (state == WolfCryptState.UNINITIALIZED) {
+                init();
+                if (state != WolfCryptState.INITIALIZED) {
+                    throw new IllegalStateException(
+                        "Failed to initialize Object");
+                }
+            }
+        }
+    }
+
+    /**
+     * Throw exception if AES key has been loaded into this object.
+     *
+     * @throws IllegalStateException if key has been loaded already
+     */
+    private void throwIfKeyExists() throws IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+                throw new IllegalStateException("Object already has a key");
+            }
+        }
+    }
+
+    /**
+     * Throw exception if AES key has not been loaded into this object.
+     *
+     * @throws IllegalStateException if key has not been loaded
+     */
+    private void throwIfKeyNotLoaded() throws IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state != WolfCryptState.READY) {
+                throw new IllegalStateException("No AES key loaded");
+            }
+        }
+    }
+
+    /** Initialize AesGcm object and underlying native Aes structure */
+    private synchronized void init() {
+
+        synchronized (pointerLock) {
+            /* Allocate native struct pointer from NativeStruct */
+            initNativeStruct();
+            wc_AesInit();
+        }
+        state = WolfCryptState.INITIALIZED;
     }
 
     /**
@@ -127,23 +189,20 @@ public class AesGcm extends NativeStruct {
      *        32 bytes (256-bit)
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if key has already been set
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized void setKey(byte[] key)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.INITIALIZED) {
-                synchronized (pointerLock) {
-                    wc_AesGcmSetKey(key);
-                }
-                state = WolfCryptState.READY;
-            } else {
-                throw new IllegalStateException(
-                    "Key has already been set for this AesGcm object, " +
-                    "or object not initialized");
-            }
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (pointerLock) {
+            wc_AesGcmSetKey(key);
         }
+        state = WolfCryptState.READY;
     }
 
     /**
@@ -162,7 +221,9 @@ public class AesGcm extends NativeStruct {
      * @return encrypted cipertext buffer
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if key has already been set
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized byte[] encrypt(byte[] input, byte[] iv,
         byte[] authTagOut, byte[] authIn)
@@ -170,19 +231,14 @@ public class AesGcm extends NativeStruct {
 
         byte[] output = null;
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
-                synchronized (pointerLock) {
-                    output = wc_AesGcmEncrypt(input, iv, authTagOut, authIn);
-                }
-            }
-            else {
-                throw new IllegalStateException(
-                    "Object has not bee initialized or set up");
-            }
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
 
-            return output;
+        synchronized (pointerLock) {
+            output = wc_AesGcmEncrypt(input, iv, authTagOut, authIn);
         }
+
+        return output;
     }
 
     /**
@@ -196,26 +252,23 @@ public class AesGcm extends NativeStruct {
      * @return decrypted plaintext buffer
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if key has already been set
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized byte[] decrypt(byte[] input, byte[] iv, byte[] authTag,
         byte[] authIn) throws IllegalStateException, WolfCryptException {
 
         byte[] output = null;
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
-                synchronized (pointerLock) {
-                    output = wc_AesGcmDecrypt(input, iv, authTag, authIn);
-                }
-            }
-            else {
-                throw new IllegalStateException(
-                    "Object has not been initialized or set up");
-            }
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
 
-            return output;
+        synchronized (pointerLock) {
+            output = wc_AesGcmDecrypt(input, iv, authTag, authIn);
         }
+
+        return output;
     }
 }
 

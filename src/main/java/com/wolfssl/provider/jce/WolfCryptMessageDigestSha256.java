@@ -112,7 +112,7 @@ public final class WolfCryptMessageDigestSha256
 
     @Override
     public Object clone() {
-        Sha256 shaCopy = new Sha256(this.sha);
+        Sha256 shaCopy = (Sha256)this.sha.clone();
         return new WolfCryptMessageDigestSha256(shaCopy);
     }
 

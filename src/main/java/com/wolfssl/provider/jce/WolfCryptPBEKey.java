@@ -52,7 +52,7 @@ public class WolfCryptPBEKey implements PBEKey, Destroyable {
     private boolean destroyed = false;
 
     /** Lock around use of destroyed boolean */
-    private final Object destroyedLock = new Object();
+    private transient final Object destroyedLock = new Object();
 
     /**
      * Create new WolfCryptPBEKey object.

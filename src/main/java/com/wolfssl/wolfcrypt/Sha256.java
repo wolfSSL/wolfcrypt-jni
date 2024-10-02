@@ -26,12 +26,15 @@ import java.nio.ByteBuffer;
 /**
  * Wrapper for the native WolfCrypt SHA2-256 implementation
  */
-public class Sha256 extends MessageDigest {
+public class Sha256 extends MessageDigest implements Cloneable {
 
     /** SHA2-256 hash type */
     public static final int TYPE = 2; /* hash type unique */
     /** SHA2-256 digest size */
     public static final int DIGEST_SIZE = 32;
+
+    /** Array to init Sha256 with, will be reset to null once initialized */
+    private byte[] initialData = null;
 
     /* native JNI methods, internally reach back and grab/use pointer
      * from NativeStruct.java. We wrap calls to these below in order to
@@ -71,6 +74,12 @@ public class Sha256 extends MessageDigest {
 
         synchronized (pointerLock) {
             native_init_internal();
+
+            /* Check if we need to init with passed in data */
+            if (this.initialData != null) {
+                update(this.initialData);
+                this.initialData = null;
+            }
         }
     }
 
@@ -156,10 +165,17 @@ public class Sha256 extends MessageDigest {
     }
 
     /**
-     * Create new SHA2-256 object
+     * Create new SHA2-256 object.
+     *
+     * @throws WolfCryptException if SHA-256 has not been compiled into native
+     *         wolfCrypt library.
      */
     public Sha256() {
-        init();
+        if (!FeatureDetect.Sha256Enabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
     }
 
     /**
@@ -167,21 +183,38 @@ public class Sha256 extends MessageDigest {
      *
      * @param sha256 Initialized/created Sha256 object to be copied
      *
-     * @throws WolfCryptException if native operation fails
+     * @throws WolfCryptException to indicate this constructor has been
+     *         deprecated, along with instructions on what API to call
+     *
+     * @deprecated This constructor has been deprecated to avoid storage
+     *             of a second Sha256 object inside this Sha256 object, and to
+     *             avoid potential incomplete object creation issues between
+     *             subclass/superclasses. Please refactor existing code to
+     *             call Sha256.clone() to get a copy of an existing Sha256
+     *             object.
      */
+    @Deprecated
     public Sha256(Sha256 sha256) {
-        init();
-        native_copy(sha256);
+        throw new WolfCryptException(
+            "Constructor deprecated, use Sha256.clone() to duplicate " +
+            "Sha256 object");
     }
 
     /**
-     * Create new SHA2-256 object
+     * Create new SHA2-256 object.
      *
      * @param data input data to hash
+     *
+     * @throws WolfCryptException if SHA-256 has not been compiled into native
+     *         wolfCrypt library.
      */
     public Sha256(byte[] data) {
-        init();
-        update(data);
+        if (!FeatureDetect.Sha256Enabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
+        this.initialData = data.clone();
     }
 
     /**
@@ -191,6 +224,17 @@ public class Sha256 extends MessageDigest {
      */
     public int digestSize() {
         return DIGEST_SIZE;
+    }
+
+    @Override
+    public Object clone() {
+
+        Sha256 shaCopy = new Sha256();
+        /* Initialize NativeStruct, since is done on first use */
+        shaCopy.checkStateAndInitialize();
+        shaCopy.native_copy(this);
+
+        return shaCopy;
     }
 }
 

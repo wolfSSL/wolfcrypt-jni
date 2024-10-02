@@ -30,6 +30,8 @@ import com.wolfssl.wolfcrypt.Fips;
  */
 public final class WolfCryptProvider extends Provider {
 
+    private static final long serialVersionUID = 1L;
+
     /**
      * Create new WolfCryptProvider object
      */

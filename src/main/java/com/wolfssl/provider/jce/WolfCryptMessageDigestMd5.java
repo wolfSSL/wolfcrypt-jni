@@ -112,7 +112,7 @@ public final class WolfCryptMessageDigestMd5
 
     @Override
     public Object clone() {
-        Md5 md5Copy = new Md5(this.md5);
+        Md5 md5Copy = (Md5)this.md5.clone();
         return new WolfCryptMessageDigestMd5(md5Copy);
     }
 

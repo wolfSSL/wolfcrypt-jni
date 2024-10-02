@@ -70,6 +70,13 @@ public class FeatureDetect {
     public static native boolean Sha512Enabled();
 
     /**
+     * Tests if AES is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesEnabled();
+
+    /**
      * Tests if AES-128 is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.
@@ -119,6 +126,20 @@ public class FeatureDetect {
      * @return true if enabled, otherwise false if not compiled in.
      */
     public static native boolean Des3Enabled();
+
+    /**
+     * Tests if ChaCha is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean ChaChaEnabled();
+
+    /**
+     * Tests if HMAC is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false.
+     */
+    public static native boolean HmacEnabled();
 
     /**
      * Tests if HMAC-MD5 is compiled into the native wolfSSL library and
@@ -261,6 +282,20 @@ public class FeatureDetect {
      * @return true if enabled, otherwise false if not compiled in.
      */
     public static native boolean EccDheEnabled();
+
+    /**
+     * Tests if Curve25519 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Curve25519Enabled();
+
+    /**
+     * Tests if Ed25519 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Ed25519Enabled();
 
     /**
      * Loads JNI library.

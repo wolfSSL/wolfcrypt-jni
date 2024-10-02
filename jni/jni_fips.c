@@ -185,7 +185,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_getFipsVersion
 }
 
 /*
- * ### FIPS Aprooved Security Methods ##########################################
+ * ### FIPS Approved Security Methods ##########################################
  */
 
 /*

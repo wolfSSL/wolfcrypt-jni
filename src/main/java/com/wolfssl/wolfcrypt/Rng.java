@@ -50,7 +50,8 @@ public class Rng extends NativeStruct {
     private final Object rngLock = new Object();
 
     /** Default Rng constructor */
-    public Rng() { }
+    public Rng() {
+    }
 
     @Override
     public synchronized void releaseNativeStruct() {
@@ -64,6 +65,9 @@ public class Rng extends NativeStruct {
     public synchronized void init() {
         synchronized (rngLock) {
             if (state == WolfCryptState.UNINITIALIZED) {
+                /* Allocate native struct pointer from NativeStruct */
+                initNativeStruct();
+
                 initRng();
                 state = WolfCryptState.INITIALIZED;
             }

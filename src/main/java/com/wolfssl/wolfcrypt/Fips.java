@@ -26,7 +26,23 @@ import java.nio.ByteBuffer;
 import com.wolfssl.wolfcrypt.Aes;
 
 /**
- * Main wrapper for the native WolfCrypt FIPS 140-2/3 implementation
+ * Thin JNI wrapper for the native WolfCrypt FIPS 140-2/3 specific APIs.
+ *
+ * -----------------------------------------------------------------------------
+ * THREADING / SYNCHRONIZATION NOTE:
+ * -----------------------------------------------------------------------------
+ * If being used in a multi-threaded environment, please use the main
+ * wolfCrypt JNI interface (com.wolfssl.wolfcrypt.*). The main wolfCrypt JNI
+ * interface will call down to wolfCrypt FIPS internally when compiled against
+ * a wolfSSL FIPS distribution. This class (com.wolfssl.wolfcrypt.Fips)
+ * contains a very thin JNI wrapper around the FIPS-specific named APIs from
+ * wolfCrypt, but currently lacks threading synchronization protections.
+ *
+ * This class should be used for the more generic FIPS handling and behavior.
+ * For example Fips.enabled, functionality to get the core hash, and set the
+ * FIPS error callback - regardless of if using the crypto APIs in this class
+ * or the ones in the general wolfCrypt JNI classes.
+ * -----------------------------------------------------------------------------
  */
 public class Fips extends WolfObject {
 
@@ -333,7 +349,8 @@ public class Fips extends WolfObject {
      */
     public static native int AesGcmEncrypt_fips(Aes aes, ByteBuffer out,
             ByteBuffer in, long sz, ByteBuffer iv, long ivSz,
-            ByteBuffer authTag, long authTagSz, ByteBuffer authIn, long authInSz);
+            ByteBuffer authTag, long authTagSz, ByteBuffer authIn,
+            long authInSz);
 
     /**
      * Performs aes GCM Encryption.

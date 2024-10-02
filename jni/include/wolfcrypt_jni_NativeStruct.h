@@ -38,6 +38,7 @@ void setDirectBufferLimit(JNIEnv* env, jobject buffer, jint limit);
 byte* getByteArray(JNIEnv* env, jbyteArray array);
 void releaseByteArray(JNIEnv* env, jbyteArray array, byte* elements, jint abort);
 word32 getByteArrayLength(JNIEnv* env, jbyteArray array);
+void initializeNativeStruct(JNIEnv* env, jobject obj);
 
 #ifdef __cplusplus
 }

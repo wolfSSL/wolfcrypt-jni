@@ -344,6 +344,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                 if (entry instanceof WKSSecretKey) {
                     return entry;
                 }
+                break;
             default:
                 break;
         }

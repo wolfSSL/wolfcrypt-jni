@@ -69,8 +69,8 @@ public class HmacTest {
     }
 
     @Test
-    public void constructorShouldInitializeNativeStruct() {
-        assertNotEquals(NativeStruct.NULL, new Hmac().getNativeStruct());
+    public void constructorShouldNotInitializeNativeStruct() {
+        assertEquals(NativeStruct.NULL, new Hmac().getNativeStruct());
     }
 
     @Test
@@ -146,10 +146,11 @@ public class HmacTest {
 
         for (int i = 0; i < dataVector.length; i++) {
             try {
-                Hmac hmac = new Hmac(Hmac.SHA256, Util.h2b(keyVector[i]));
                 byte[] data = Util.h2b(dataVector[i]);
                 byte[] expected = Util.h2b(hashVector[i]);
+                Hmac hmac = new Hmac();
 
+                hmac.setKey(Hmac.SHA256, Util.h2b(keyVector[i]));
                 hmac.update(data);
 
                 assertArrayEquals(expected, hmac.doFinal());
