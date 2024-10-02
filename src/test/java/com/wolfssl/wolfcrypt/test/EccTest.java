@@ -84,8 +84,8 @@ public class EccTest {
     }
 
     @Test
-    public void constructorShouldInitializeNativeStruct() {
-        assertNotEquals(NativeStruct.NULL, new Ecc().getNativeStruct());
+    public void constructorShouldNotInitializeNativeStruct() {
+        assertEquals(NativeStruct.NULL, new Ecc().getNativeStruct());
     }
 
     @Test
@@ -497,10 +497,22 @@ public class EccTest {
                         failed = 1;
 
                     } finally {
-                        alice.releaseNativeStruct();
-                        alice2.releaseNativeStruct();
-                        aliceX963.releaseNativeStruct();
-                        bob.releaseNativeStruct();
+                        if (alice != null) {
+                            alice.releaseNativeStruct();
+                            alice = null;
+                        }
+                        if (alice2 != null) {
+                            alice2.releaseNativeStruct();
+                            alice2 = null;
+                        }
+                        if (aliceX963 != null) {
+                            aliceX963.releaseNativeStruct();
+                            aliceX963 = null;
+                        }
+                        if (bob != null) {
+                            bob.releaseNativeStruct();
+                            bob = null;
+                        }
                         latch.countDown();
                     }
 

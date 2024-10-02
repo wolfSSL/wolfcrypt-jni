@@ -93,6 +93,12 @@ public class FipsStatusTest extends FipsTest {
 
     @Test
     public void getCoreHashShouldNotRaise() {
-        System.out.println(Fips.wolfCrypt_GetCoreHash_fips());
+        String coreHash = Fips.wolfCrypt_GetCoreHash_fips();
+        if (coreHash != null) {
+            System.out.println("\tFIPS core hash: " + coreHash);
+        }
+        else {
+            System.out.println("\tFIPS core hash was null");
+        }
     }
 }

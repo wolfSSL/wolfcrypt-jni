@@ -443,17 +443,15 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             this.curveName = gs.getName();
 
             /* look up curve size */
-            this.curveSize = this.ecPrivate.getCurveSizeFromName(
-                                                this.curveName);
+            this.curveSize = Ecc.getCurveSizeFromName(this.curveName);
             log("curveName: " + curveName + ", curveSize: " + curveSize);
 
         } else if (spec instanceof ECParameterSpec) {
 
             ECParameterSpec espec = (ECParameterSpec)spec;
 
-            this.curveName = this.ecPrivate.getCurveName(espec);
-            this.curveSize = this.ecPrivate.getCurveSizeFromName(
-                                                this.curveName);
+            this.curveName = Ecc.getCurveName(espec);
+            this.curveSize = Ecc.getCurveSizeFromName(this.curveName);
             log("curveName: " + curveName + ", curveSize: " + curveSize);
 
         } else {

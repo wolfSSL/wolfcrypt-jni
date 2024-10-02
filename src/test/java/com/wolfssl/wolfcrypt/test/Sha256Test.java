@@ -72,8 +72,8 @@ public class Sha256Test {
     }
 
     @Test
-    public void constructorShouldInitializeNativeStruct() {
-        assertNotEquals(NativeStruct.NULL, new Sha256().getNativeStruct());
+    public void constructorShouldNotInitializeNativeStruct() {
+        assertEquals(NativeStruct.NULL, new Sha256().getNativeStruct());
     }
 
     @Test
@@ -194,7 +194,7 @@ public class Sha256Test {
         sha.update(data);
 
         /* test making copy of Sha256, should retain same state */
-        shaCopy = new Sha256(sha);
+        shaCopy = (Sha256)sha.clone();
 
         result = sha.digest();
         result2 = shaCopy.digest();

@@ -245,11 +245,21 @@ public class AesGcmTest {
     }
 
     /**
-     * AesGcm() constructor should initialize internal NativeStruct object
+     * AesGcm() constructor should not initialize internal NativeStruct object
      */
     @Test
-    public void constructorShouldInitializeNativeStruct() {
-        assertNotEquals(NativeStruct.NULL, new AesGcm().getNativeStruct());
+    public void constructorShouldNotInitializeNativeStruct() {
+        assertEquals(NativeStruct.NULL, new AesGcm().getNativeStruct());
+    }
+
+    @Test
+    public void deprecatedConstructorThrows() {
+        try {
+            AesGcm aes = new AesGcm(new byte[] {0x0});
+            fail("Failed to throw expected exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
     }
 
     /**
@@ -262,8 +272,9 @@ public class AesGcmTest {
 
         /* Setting null key in constructor should fail */
         try {
-            aes = new AesGcm(null);
-            fail("AesGcm(null) should throw exception");
+            aes = new AesGcm();
+            aes.setKey(null);
+            fail("AesGcm.setKey(null) should throw exception");
         } catch (WolfCryptException e) {
             /* expected */
         }
@@ -560,8 +571,11 @@ public class AesGcmTest {
             return;
         }
 
-        AesGcm enc = new AesGcm(k3);
-        AesGcm dec = new AesGcm(k3);
+        AesGcm enc = new AesGcm();
+        AesGcm dec = new AesGcm();
+
+        enc.setKey(k3);
+        dec.setKey(k3);
 
         cipher = enc.encrypt(p3, iv3, tag, a3);
         assertArrayEquals(c3, cipher);
@@ -575,8 +589,11 @@ public class AesGcmTest {
         dec.releaseNativeStruct();
 
         /* try to re-init and re-use them */
-        enc = new AesGcm(k3);
-        dec = new AesGcm(k3);
+        enc = new AesGcm();
+        dec = new AesGcm();
+
+        enc.setKey(k3);
+        dec.setKey(k3);
 
         cipher = enc.encrypt(p3, iv3, tag, a3);
         assertArrayEquals(c3, cipher);
@@ -603,8 +620,11 @@ public class AesGcmTest {
             return;
         }
 
-        AesGcm enc = new AesGcm(k2);
-        AesGcm dec = new AesGcm(k2);
+        AesGcm enc = new AesGcm();
+        AesGcm dec = new AesGcm();
+
+        enc.setKey(k2);
+        dec.setKey(k2);
 
         cipher = enc.encrypt(p, iv2, tag, a);
         assertNotNull(cipher);
@@ -620,8 +640,11 @@ public class AesGcmTest {
         dec.releaseNativeStruct();
 
         /* try to re-init and re-use them */
-        enc = new AesGcm(k2);
-        dec = new AesGcm(k2);
+        enc = new AesGcm();
+        dec = new AesGcm();
+
+        enc.setKey(k2);
+        dec.setKey(k2);
 
         cipher = enc.encrypt(p, iv2, tag, a);
         assertNotNull(cipher);
@@ -649,8 +672,11 @@ public class AesGcmTest {
             return;
         }
 
-        AesGcm enc = new AesGcm(k1);
-        AesGcm dec = new AesGcm(k1);
+        AesGcm enc = new AesGcm();
+        AesGcm dec = new AesGcm();
+
+        enc.setKey(k1);
+        dec.setKey(k1);
 
         cipher = enc.encrypt(p, iv1, tag, a);
         assertNotNull(cipher);
@@ -666,8 +692,11 @@ public class AesGcmTest {
         dec.releaseNativeStruct();
 
         /* try to re-init and re-use them */
-        enc = new AesGcm(k1);
-        dec = new AesGcm(k1);
+        enc = new AesGcm();
+        dec = new AesGcm();
+
+        enc.setKey(k1);
+        dec.setKey(k1);
 
         cipher = enc.encrypt(p, iv1, tag, a);
         assertNotNull(cipher);
@@ -695,8 +724,11 @@ public class AesGcmTest {
             return;
         }
 
-        AesGcm enc = new AesGcm(k3);
-        AesGcm dec = new AesGcm(k3);
+        AesGcm enc = new AesGcm();
+        AesGcm dec = new AesGcm();
+
+        enc.setKey(k3);
+        dec.setKey(k3);
 
         cipher = enc.encrypt(p3, iv3, tag, a3);
         assertArrayEquals(c3, cipher);
@@ -731,8 +763,11 @@ public class AesGcmTest {
             return;
         }
 
-        AesGcm enc = new AesGcm(k2);
-        AesGcm dec = new AesGcm(k2);
+        AesGcm enc = new AesGcm();
+        AesGcm dec = new AesGcm();
+
+        enc.setKey(k2);
+        dec.setKey(k2);
 
         cipher = enc.encrypt(p, iv2, tag, a);
         assertNotNull(cipher);
@@ -770,8 +805,11 @@ public class AesGcmTest {
             return;
         }
 
-        AesGcm enc = new AesGcm(k1);
-        AesGcm dec = new AesGcm(k1);
+        AesGcm enc = new AesGcm();
+        AesGcm dec = new AesGcm();
+
+        enc.setKey(k1);
+        dec.setKey(k1);
 
         cipher = enc.encrypt(p, iv1, tag, a);
         assertNotNull(cipher);
@@ -820,13 +858,16 @@ public class AesGcmTest {
                 @Override public void run() {
 
                     int ret = 0;
-                    AesGcm enc = new AesGcm(k3);
-                    AesGcm dec = new AesGcm(k3);
+                    AesGcm enc = new AesGcm();
+                    AesGcm dec = new AesGcm();
                     byte[] cipher = new byte[2048];
                     byte[] plain = new byte[2048];
                     byte[] tag = new byte[t3.length];
 
                     try {
+                        enc.setKey(k3);
+                        dec.setKey(k3);
+
                         cipher = enc.encrypt(rand2kBuf, iv3, tag, null);
                         plain = dec.decrypt(cipher, iv3, tag, null);
 
@@ -889,13 +930,16 @@ public class AesGcmTest {
                 @Override public void run() {
 
                     int ret = 0;
-                    AesGcm enc = new AesGcm(k2);
-                    AesGcm dec = new AesGcm(k2);
+                    AesGcm enc = new AesGcm();
+                    AesGcm dec = new AesGcm();
                     byte[] cipher = new byte[2048];
                     byte[] plain = new byte[2048];
                     byte[] tag = new byte[t2.length];
 
                     try {
+                        enc.setKey(k2);
+                        dec.setKey(k2);
+
                         cipher = enc.encrypt(rand2kBuf, iv2, tag, null);
                         plain = dec.decrypt(cipher, iv2, tag, null);
 
@@ -957,13 +1001,16 @@ public class AesGcmTest {
                 @Override public void run() {
 
                     int ret = 0;
-                    AesGcm enc = new AesGcm(k1);
-                    AesGcm dec = new AesGcm(k1);
+                    AesGcm enc = new AesGcm();
+                    AesGcm dec = new AesGcm();
                     byte[] cipher = new byte[2048];
                     byte[] plain = new byte[2048];
                     byte[] tag = new byte[t1.length];
 
                     try {
+                        enc.setKey(k1);
+                        dec.setKey(k1);
+
                         cipher = enc.encrypt(rand2kBuf, iv1, tag, null);
                         plain = dec.decrypt(cipher, iv1, tag, null);
 

@@ -22,7 +22,6 @@
 package com.wolfssl.wolfcrypt;
 
 import java.nio.ByteBuffer;
-
 import javax.crypto.ShortBufferException;
 
 /**
@@ -50,7 +49,7 @@ public abstract class MessageDigest extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      */
     protected abstract void native_update(ByteBuffer data, int offset,
-            int length);
+        int length);
 
     /**
      * Native update
@@ -93,8 +92,29 @@ public abstract class MessageDigest extends NativeStruct {
      * Initialize object
      */
     public synchronized void init() {
+        /* Allocate native struct pointer from NativeStruct */
+        initNativeStruct();
+
+        /* Initialize native struct and set READY state */
         native_init();
         state = WolfCryptState.READY;
+    }
+
+    /**
+     * Internal helper method to initialize object if/when needed.
+     *
+     * @throws IllegalStateException on failure to initialize properly
+     */
+    protected synchronized void checkStateAndInitialize()
+        throws IllegalStateException {
+
+        if (state == WolfCryptState.UNINITIALIZED) {
+            init();
+        }
+
+        if (state != WolfCryptState.READY) {
+            throw new IllegalStateException("Failed to initialize Object");
+        }
     }
 
     /**
@@ -104,20 +124,17 @@ public abstract class MessageDigest extends NativeStruct {
      * @param length length of input data
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException object not initialized
+     * @throws IllegalStateException object fails to initialize properly
      */
     public synchronized void update(ByteBuffer data, int length)
         throws WolfCryptException, IllegalStateException {
 
-        if (state == WolfCryptState.READY) {
-            length = Math.min(length, data.remaining());
+        checkStateAndInitialize();
 
-            native_update(data, data.position(), length);
-            data.position(data.position() + length);
-        } else {
-            throw new IllegalStateException(
-                    "Object must be initialized before use");
-        }
+        length = Math.min(length, data.remaining());
+
+        native_update(data, data.position(), length);
+        data.position(data.position() + length);
     }
 
     /**
@@ -126,10 +143,12 @@ public abstract class MessageDigest extends NativeStruct {
      * @param data input data, use all data.remaining()
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException object not initialized
+     * @throws IllegalStateException object fails to initialize properly
      */
     public synchronized void update(ByteBuffer data)
         throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
 
         update(data, data.remaining());
     }
@@ -142,23 +161,20 @@ public abstract class MessageDigest extends NativeStruct {
      * @param len length of input data
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException object not initialized
+     * @throws IllegalStateException object fails to initialize properly
      */
     public synchronized void update(byte[] data, int offset, int len)
         throws WolfCryptException, IllegalStateException {
 
-        if (state == WolfCryptState.READY) {
-            if (offset >= data.length || offset < 0 || len < 0)
-                return;
+        checkStateAndInitialize();
 
-            if (data.length - offset < len)
-                len = data.length - offset;
+        if (offset >= data.length || offset < 0 || len < 0)
+            return;
 
-            native_update(data, offset, len);
-        } else {
-            throw new IllegalStateException(
-                    "Object must be initialized before use");
-        }
+        if (data.length - offset < len)
+            len = data.length - offset;
+
+        native_update(data, offset, len);
     }
 
     /**
@@ -168,10 +184,12 @@ public abstract class MessageDigest extends NativeStruct {
      * @param len length of input data
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException object not initialized
+     * @throws IllegalStateException object fails to initialize properly
      */
     public synchronized void update(byte[] data, int len)
         throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
 
         update(data, 0, len);
     }
@@ -182,10 +200,12 @@ public abstract class MessageDigest extends NativeStruct {
      * @param data input data, use all data.length
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException object not initialized
+     * @throws IllegalStateException object fails to initialize properly
      */
     public synchronized void update(byte[] data)
         throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
 
         update(data, 0, data.length);
     }
@@ -197,22 +217,20 @@ public abstract class MessageDigest extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      * @throws ShortBufferException if input buffer is too small
-     * @throws IllegalStateException object not initialized
+     * @throws IllegalStateException object fails to initialize properly
      */
     public synchronized void digest(ByteBuffer hash)
         throws ShortBufferException, WolfCryptException, IllegalStateException {
 
-        if (state == WolfCryptState.READY) {
-            if (hash.remaining() < digestSize())
-                throw new ShortBufferException(
-                        "Input buffer is too small for digest size");
+        checkStateAndInitialize();
 
-            native_final(hash, hash.position());
-            hash.position(hash.position() + digestSize());
-        } else {
-            throw new IllegalStateException(
-                    "Object must be initialized before use");
+        if (hash.remaining() < digestSize()) {
+            throw new ShortBufferException(
+                "Input buffer is too small for digest size");
         }
+
+        native_final(hash, hash.position());
+        hash.position(hash.position() + digestSize());
     }
 
     /**
@@ -222,21 +240,19 @@ public abstract class MessageDigest extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      * @throws ShortBufferException if input buffer is too small
-     * @throws IllegalStateException object not initialized
+     * @throws IllegalStateException object fails to initialize properly
      */
     public synchronized void digest(byte[] hash)
         throws ShortBufferException, WolfCryptException, IllegalStateException {
 
-        if (state == WolfCryptState.READY) {
-            if (hash.length < digestSize())
-                throw new ShortBufferException(
-                        "Input buffer is too small for digest size");
-
-            native_final(hash);
-        } else {
-            throw new IllegalStateException(
-                    "Object must be initialized before use");
+        checkStateAndInitialize();
+ 
+        if (hash.length < digestSize()) {
+            throw new ShortBufferException(
+                "Input buffer is too small for digest size");
         }
+
+        native_final(hash);
     }
 
     /**
@@ -245,21 +261,18 @@ public abstract class MessageDigest extends NativeStruct {
      * @return resulting message digest
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException object not initialized
+     * @throws IllegalStateException object fails to initialize properly
      */
     public synchronized byte[] digest()
         throws WolfCryptException, IllegalStateException {
 
-        if (state == WolfCryptState.READY) {
-            byte[] hash = new byte[digestSize()];
+        byte[] hash = new byte[digestSize()];
 
-            native_final(hash);
+        checkStateAndInitialize();
 
-            return hash;
-        } else {
-            throw new IllegalStateException(
-                    "Object must be initialized before use");
-        }
+        native_final(hash);
+
+        return hash;
     }
 
     @Override
@@ -267,7 +280,7 @@ public abstract class MessageDigest extends NativeStruct {
 
         /* reset state first, then free */
         state = WolfCryptState.UNINITIALIZED;
-        setNativeStruct(NULL);
+        super.releaseNativeStruct();
     }
 }
 

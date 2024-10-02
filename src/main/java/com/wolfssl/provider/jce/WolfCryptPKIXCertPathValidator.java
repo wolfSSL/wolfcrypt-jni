@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.Collection;
+import java.util.ArrayList;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
@@ -647,9 +648,15 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                     "CertPathValidator implementation yet");
             }
 
-            /* Get List of Certificate objects in CertPath */
-            certs = (List<X509Certificate>)certPath.getCertificates();
-            if (certs == null || certs.size() == 0) {
+            /* Get List of Certificate objects in CertPath, sanity check
+             * that they are X509Certificate instances. */
+            certs = new ArrayList<>();
+            for (Certificate cert : certPath.getCertificates()) {
+                if (cert instanceof X509Certificate) {
+                    certs.add((X509Certificate) cert);
+                }
+            }
+            if (certs.size() == 0) {
                 throw new CertPathValidatorException(
                     "No Certificate objects in CertPath");
             }
