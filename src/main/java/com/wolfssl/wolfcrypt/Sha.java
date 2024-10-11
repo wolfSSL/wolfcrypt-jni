@@ -26,12 +26,15 @@ import java.nio.ByteBuffer;
 /**
  * Wrapper for the native WolfCrypt SHA-1 implementation
  */
-public class Sha extends MessageDigest {
+public class Sha extends MessageDigest implements Cloneable {
 
     /** SHA-1 hash type */
     public static final int TYPE = 1; /* hash type unique */
     /** SHA-1 digest size */
     public static final int DIGEST_SIZE = 20;
+
+    /** Array to init Sha with, will be reset to null once initialized */
+    private byte[] initialData = null;
 
     /* native JNI methods, internally reach back and grab/use pointer from
      * NativeStruct.java. We wrap calls to these below in order to
@@ -71,6 +74,12 @@ public class Sha extends MessageDigest {
 
         synchronized (pointerLock) {
             native_init_internal();
+
+            /* Check if we need to init with passed in data */
+            if (this.initialData != null) {
+                update(this.initialData);
+                this.initialData = null;
+            }
         }
     }
 
@@ -157,9 +166,16 @@ public class Sha extends MessageDigest {
 
     /**
      * Create new SHA-1 object
+     *
+     * @throws WolfCryptException if SHA-1 has not been compiled into native
+     *         wolfCrypt library.
      */
     public Sha() {
-        init();
+        if (!FeatureDetect.ShaEnabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
     }
 
     /**
@@ -167,21 +183,36 @@ public class Sha extends MessageDigest {
      *
      * @param sha Initialized/created Sha object to be copied
      *
-     * @throws WolfCryptException if native operation fails
+     * @throws WolfCryptException to indicate this constructor has been
+     *         deprecated, along with instructions on what API to call
+     *
+     * @deprecated This constructor has been deprecated to avoid storage
+     *             of a second Sha object inside this Sha object, and to avoid
+     *             potential incomplete object creation issues between
+     *             subclass/superclasses. Please refactor existing code to
+     *             call Sha.clone() to get a copy of an existing Sha object.
      */
+    @Deprecated
     public Sha(Sha sha) {
-        init();
-        native_copy(sha);
+        throw new WolfCryptException(
+            "Constructor deprecated, use Sha.clone() to duplicate Sha object");
     }
 
     /**
      * Create new SHA-1 object
      *
      * @param data input data to hash
+     *
+     * @throws WolfCryptException if SHA-1 has not been compiled into native
+     *         wolfCrypt library.
      */
     public Sha(byte[] data) {
-        init();
-        update(data);
+        if (!FeatureDetect.ShaEnabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
+        this.initialData = data.clone();
     }
 
     /**
@@ -191,6 +222,17 @@ public class Sha extends MessageDigest {
      */
     public int digestSize() {
         return DIGEST_SIZE;
+    }
+
+    @Override
+    public Object clone() {
+
+        Sha shaCopy = new Sha();
+        /* Initialize NativeStruct, since is done on first use */
+        shaCopy.checkStateAndInitialize();
+        shaCopy.native_copy(this);
+
+        return shaCopy;
     }
 }
 

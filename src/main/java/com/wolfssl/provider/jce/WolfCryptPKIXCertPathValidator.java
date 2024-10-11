@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.Collection;
+import java.util.ArrayList;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
@@ -71,15 +72,11 @@ import com.wolfssl.provider.jce.WolfCryptDebug;
  */
 public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
 
-    private WolfCryptDebug debug;
-
     /**
      * Create new WolfCryptPKIXCertPathValidator object.
      */
     public WolfCryptPKIXCertPathValidator() {
-        if (debug.DEBUG) {
-            log("created new WolfCryptPKIXCertPathValidator");
-        }
+        log("created new WolfCryptPKIXCertPathValidator");
     }
 
     /**
@@ -93,9 +90,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
     private void sanitizeCertPathParameters(CertPathParameters params)
         throws InvalidAlgorithmParameterException {
 
-        if (debug.DEBUG) {
-            log("sanitizing CertPathParameters");
-        }
+        log("sanitizing CertPathParameters");
 
         if (params == null) {
             throw new InvalidAlgorithmParameterException(
@@ -123,9 +118,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         boolean pkiPathEncodingSupported = false;
         Iterator<String> supportedCertEncodings = null;
 
-        if (debug.DEBUG) {
-            log("sanitizing CertPath");
-        }
+        log("sanitizing CertPath");
 
         /* Verify CertPath type is X.509 */
         if (!path.getType().equals("X.509")) {
@@ -167,9 +160,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         /* Use CertSelector to check target cert */
         selector = params.getTargetCertConstraints();
         if (selector != null) {
-            if (debug.DEBUG) {
-                log("checking target cert constraints against CertSelector");
-            }
+            log("checking target cert constraints against CertSelector");
 
             if (!(selector instanceof X509CertSelector)) {
                 throw new CertPathValidatorException(
@@ -183,9 +174,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             }
         }
         else {
-            if (debug.DEBUG) {
-                log("no cert constraints in params, not checking CertSelector");
-            }
+            log("no cert constraints in params, not checking CertSelector");
         }
     }
 
@@ -204,13 +193,11 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 "not empty");
         }
 
-        if (debug.DEBUG) {
-            /* Ignored, but log for debugging */
-            log("PKIXParameters.getPolicyQualifiersRejected(): " +
-                params.getPolicyQualifiersRejected());
-            log("PKIXParameters.isPolicyMappingInhibited(): " +
-                params.isPolicyMappingInhibited());
-        }
+        /* Ignored, but log for debugging */
+        log("PKIXParameters.getPolicyQualifiersRejected(): " +
+            params.getPolicyQualifiersRejected());
+        log("PKIXParameters.isPolicyMappingInhibited(): " +
+            params.isPolicyMappingInhibited());
 
         /* Should the any policy OID be processed if it is included in
          * a certificate? Default is false, don't allow enablement since
@@ -296,9 +283,8 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         }
 
         for (i = 0; i < pathCheckers.size(); i++) {
-            if (debug.DEBUG) {
-                log("calling CertPathChecker: " + pathCheckers.get(i));
-            }
+            log("calling CertPathChecker: " + pathCheckers.get(i));
+
             /* Throws CertPathValidatorException on error */
             pathCheckers.get(i).check((Certificate)cert);
         }
@@ -320,9 +306,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         Set<TrustAnchor> trustAnchors = null;
         Iterator<TrustAnchor> trustIterator = null;
 
-        if (debug.DEBUG) {
-            log("loading TrustAnchors into native WolfSSLCertManager");
-        }
+        log("loading TrustAnchors into native WolfSSLCertManager");
 
         if (params == null || cm == null) {
             throw new CertPathValidatorException(
@@ -346,10 +330,9 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 try {
                     cm.CertManagerLoadCA(anchorCert);
 
-                    if (debug.DEBUG) {
-                        log("loaded TrustAnchor: " +
-                            anchorCert.getSubjectX500Principal().getName());
-                    }
+                    log("loaded TrustAnchor: " +
+                        anchorCert.getSubjectX500Principal().getName());
+
                 } catch (WolfCryptException e) {
                     throw new CertPathValidatorException(e);
                 }
@@ -374,10 +357,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 "Input args to verifyCertChain are null");
         }
 
-        if (debug.DEBUG) {
-            log("verifying certificate chain (chain size: " +
-                certs.size() + ")");
-        }
+        log("verifying certificate chain (chain size: " + certs.size() + ")");
 
         /* Process certs from List in reverse order (top to peer) */
         for (i = certs.size()-1; i >= 0; i--) {
@@ -387,16 +367,13 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 /* Try to verify cert */
                 cm.CertManagerVerify(cert);
 
-                if (debug.DEBUG) {
-                    log("verified chain [" + i + "]: " +
-                        cert.getSubjectX500Principal().getName());
-                }
+                log("verified chain [" + i + "]: " +
+                    cert.getSubjectX500Principal().getName());
 
             } catch (WolfCryptException e) {
-                if (debug.DEBUG) {
-                    log("failed verification chain [" + i + "]: " +
-                        cert.getSubjectX500Principal().getName());
-                }
+                log("failed verification chain [" + i + "]: " +
+                    cert.getSubjectX500Principal().getName());
+
                 throw new CertPathValidatorException(
                     "Failed verification on certificate", e, path, i);
             }
@@ -407,16 +384,12 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 try {
                     cm.CertManagerLoadCA(cert);
 
-                    if (debug.DEBUG) {
-                        log("chain [" + i + "] is intermediate, " +
-                            "loading as root");
-                    }
+                    log("chain [" + i + "] is intermediate, loading as root");
+
                 } catch (WolfCryptException e) {
 
-                    if (debug.DEBUG) {
-                        log("chain [" + i + "] is CA, but failed " +
-                            "to load as trusted root, not loading");
-                    }
+                    log("chain [" + i + "] is CA, but failed to load as " +
+                        "trusted root, not loading");
                 }
             }
         }
@@ -544,10 +517,8 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         }
 
         if (params.isRevocationEnabled()) {
-            if (debug.DEBUG) {
-                log("revocation enabled in PKIXParameters, checking " +
-                    "for CRLs to load");
-            }
+            log("revocation enabled in PKIXParameters, checking " +
+                "for CRLs to load");
 
             if (!WolfCrypt.CrlEnabled()) {
                 throw new CertPathValidatorException(
@@ -558,15 +529,11 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             /* Enable CRL in native WolfSSLCertManager */
             cm.CertManagerEnableCRL(WolfCrypt.WOLFSSL_CRL_CHECK);
 
-            if (debug.DEBUG) {
-                log("CRL support enabled in native WolfSSLCertManager");
-            }
+            log("CRL support enabled in native WolfSSLCertManager");
 
             stores = params.getCertStores();
             if (stores == null || stores.isEmpty()) {
-                if (debug.DEBUG) {
-                    log("no CertStores in PKIXParameters to load CRLs");
-                }
+                log("no CertStores in PKIXParameters to load CRLs");
                 return;
             }
 
@@ -589,14 +556,10 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 throw new CertPathValidatorException(e);
             }
 
-            if (debug.DEBUG) {
-                log("loaded " + loadedCount + " CRLs into WolfSSLCertManager");
-            }
+            log("loaded " + loadedCount + " CRLs into WolfSSLCertManager");
         }
         else {
-            if (debug.DEBUG) {
-                log("revocation not enabled in PKIXParameters");
-            }
+            log("revocation not enabled in PKIXParameters");
         }
     }
 
@@ -644,9 +607,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         WolfSSLCertManager cm = null;
         TrustAnchor trustAnchor = null;
 
-        if (debug.DEBUG) {
-            log("entered engineValidate(), FIPS enabled: " + Fips.enabled);
-        }
+        log("entered engineValidate(), FIPS enabled: " + Fips.enabled);
 
         sanitizeCertPathParameters(params);
         sanitizeCertPath(certPath);
@@ -687,9 +648,15 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                     "CertPathValidator implementation yet");
             }
 
-            /* Get List of Certificate objects in CertPath */
-            certs = (List<X509Certificate>)certPath.getCertificates();
-            if (certs == null || certs.size() == 0) {
+            /* Get List of Certificate objects in CertPath, sanity check
+             * that they are X509Certificate instances. */
+            certs = new ArrayList<>();
+            for (Certificate cert : certPath.getCertificates()) {
+                if (cert instanceof X509Certificate) {
+                    certs.add((X509Certificate) cert);
+                }
+            }
+            if (certs.size() == 0) {
                 throw new CertPathValidatorException(
                     "No Certificate objects in CertPath");
             }
@@ -752,7 +719,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
      * @param msg Log message to be printed
      */
     private void log(String msg) {
-        debug.print("[CertPathValidator] " + msg);
+        WolfCryptDebug.print("[CertPathValidator] " + msg);
     }
 }
 

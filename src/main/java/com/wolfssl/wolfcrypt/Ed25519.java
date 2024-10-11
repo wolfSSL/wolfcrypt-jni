@@ -30,18 +30,36 @@ public class Ed25519 extends NativeStruct {
 
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
+    /** Lock around object state */
+    protected final Object stateLock = new Object();
+
     /**
-     * Create new Ed25519 object
+     * Create new Ed25519 object.
+     *
+     * @throws WolfCryptException if Ed25519 has not been compiled into native
+     *         wolfCrypt library.
      */
     public Ed25519() {
-        init();
+        if (!FeatureDetect.Ed25519Enabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
     }
 
     @Override
     public void releaseNativeStruct() {
-        free();
+        synchronized (stateLock) {
+            if ((state != WolfCryptState.UNINITIALIZED) &&
+                (state != WolfCryptState.RELEASED)) {
 
-        super.releaseNativeStruct();
+                synchronized (pointerLock) {
+                    wc_ed25519_free();
+                }
+                super.releaseNativeStruct();
+                state = WolfCryptState.RELEASED;
+            }
+        }
     }
 
     /**
@@ -67,190 +85,267 @@ public class Ed25519 extends NativeStruct {
     private native byte[] wc_ed25519_export_public();
 
     /**
+     * Internal helper method to initialize object if/when needed.
+     *
+     * @throws IllegalStateException on failure to initialize properly or
+     *         if releaseNativeStruct() has been called and object has been
+     *         released
+     */
+    private synchronized void checkStateAndInitialize()
+        throws IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state == WolfCryptState.RELEASED) {
+                throw new IllegalStateException("Object has been released");
+            }
+
+            if (state == WolfCryptState.UNINITIALIZED) {
+                init();
+                if (state != WolfCryptState.INITIALIZED) {
+                    throw new IllegalStateException(
+                        "Failed to initialize Object");
+                }
+            }
+        }
+    }
+
+    /**
      * Initialize Ed25519 object
      */
-    protected void init() {
-        if (state == WolfCryptState.UNINITIALIZED) {
+    private void init() {
+        synchronized (pointerLock) {
+            /* Allocate native struct pointer from NativeStruct */
+            initNativeStruct();
             wc_ed25519_init();
-            state = WolfCryptState.INITIALIZED;
-        } else {
-            throw new IllegalStateException(
-                    "Native resources already initialized.");
         }
+        state = WolfCryptState.INITIALIZED;
     }
 
     /**
-     * Free Ed25519 object
+     * Throw exception if key has been loaded already.
+     *
+     * @throws IllegalStateException if key has been loaded already
      */
-    protected void free() {
-        if (state != WolfCryptState.UNINITIALIZED) {
-            wc_ed25519_free();
-            state = WolfCryptState.UNINITIALIZED;
+    private void throwIfKeyExists() throws IllegalStateException {
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+                throw new IllegalStateException("Object already has a key");
+            }
         }
     }
 
     /**
-     * Generate Ed25519 key
+     * Throw exception if key has not been loaded.
+     *
+     * @throws IllegalStateException if key has not been loaded
+     */
+    private void throwIfKeyNotLoaded() throws IllegalStateException {
+        synchronized (stateLock) {
+            if (state != WolfCryptState.READY) {
+                throw new IllegalStateException(
+                    "No key available to perform the operation");
+            }
+        }
+    }
+
+    /**
+     * Generate Ed25519 key.
      *
      * @param rng initialized Rng object
      * @param size key size
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already has a key
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public void makeKey(Rng rng, int size) {
-        if (state == WolfCryptState.INITIALIZED) {
+    public void makeKey(Rng rng, int size)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (pointerLock) {
             wc_ed25519_make_key(rng, size);
-            state = WolfCryptState.READY;
-        } else {
-            throw new IllegalStateException("Object already has a key.");
         }
+        state = WolfCryptState.READY;
     }
 
     /**
-     * Check correctness of Ed25519 key
+     * Check correctness of Ed25519 key.
      *
      * @throws WolfCryptException if native operation fails or key is
      *         incorrect or invalid
-     * @throws IllegalStateException if object does not have a key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public void checkKey() {
-        if (state == WolfCryptState.READY) {
+    public void checkKey()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
             wc_ed25519_check_key();
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
         }
     }
 
     /**
-     * Import private and public Ed25519 key
+     * Import private and public Ed25519 key.
      *
      * @param privKey byte array holding private key
      * @param Key byte array holding public key
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already has a key
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public void importPrivate(byte[] privKey, byte[] Key) {
-        if (state == WolfCryptState.INITIALIZED) {
+    public void importPrivate(byte[] privKey, byte[] Key)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (pointerLock) {
             wc_ed25519_import_private(privKey, Key);
-            state = WolfCryptState.READY;
-        } else {
-            throw new IllegalStateException("Object already has a key.");
         }
+        state = WolfCryptState.READY;
     }
 
     /**
-     * Import only private Ed25519 key
+     * Import only private Ed25519 key.
      *
      * @param privKey byte array holding private key
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already has a key
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public void importPrivateOnly(byte[] privKey) {
-        if (state == WolfCryptState.INITIALIZED) {
+    public void importPrivateOnly(byte[] privKey)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (pointerLock) {
             wc_ed25519_import_private_only(privKey);
-            state = WolfCryptState.READY;
-        } else {
-            throw new IllegalStateException("Object already has a key.");
         }
+        state = WolfCryptState.READY;
     }
 
     /**
-     * Import only public Ed25519 key
+     * Import only public Ed25519 key.
      *
      * @param Key byte array holding public key
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already has a key
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public void importPublic(byte[] Key) {
-        if (state == WolfCryptState.INITIALIZED) {
+    public void importPublic(byte[] Key)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (pointerLock) {
             wc_ed25519_import_public(Key);
-            state = WolfCryptState.READY;
-        } else {
-            throw new IllegalStateException("Object already has a key.");
         }
+        state = WolfCryptState.READY;
     }
 
     /**
-     * Export raw private Ed25519 key including public part
+     * Export raw private Ed25519 key including public part.
      *
      * @return private key as byte array, including public part
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public byte[] exportPrivate() {
-        if (state == WolfCryptState.READY) {
+    public byte[] exportPrivate()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
             return wc_ed25519_export_private();
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
         }
     }
 
     /**
-     * Export only raw private Ed25519 key
+     * Export only raw private Ed25519 key.
      *
      * @return private key as byte array
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public byte[] exportPrivateOnly() {
-        if (state == WolfCryptState.READY) {
+    public byte[] exportPrivateOnly()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
             return wc_ed25519_export_private_only();
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
         }
     }
 
     /**
-     * Export only raw public Ed25519 key
+     * Export only raw public Ed25519 key.
      *
      * @return public key as byte array
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public byte[] exportPublic() {
-        if (state == WolfCryptState.READY) {
+    public byte[] exportPublic()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
             return wc_ed25519_export_public();
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
         }
     }
 
     /**
-     * Generate Ed25519 signature
+     * Generate Ed25519 signature.
      *
      * @param msg_in input data to be signed
      *
      * @return signature as byte array
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public byte[] sign_msg(byte[] msg_in) {
+    public byte[] sign_msg(byte[] msg_in)
+        throws WolfCryptException, IllegalStateException {
 
-        byte[] msg_out = null;
-        if (state == WolfCryptState.READY) {
-            msg_out = wc_ed25519_sign_msg(msg_in);
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
+            return wc_ed25519_sign_msg(msg_in);
         }
-
-        return msg_out;
     }
 
     /**
-     * Verify Ed25519 signature
+     * Verify Ed25519 signature.
      *
      * @param msg input data to be verified
      * @param signature input signature to verify
@@ -258,19 +353,19 @@ public class Ed25519 extends NativeStruct {
      * @return true if signature verified, otherwise false
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public boolean verify_msg(byte[] msg, byte[] signature) {
-        boolean result = false;
+    public boolean verify_msg(byte[] msg, byte[] signature)
+        throws WolfCryptException, IllegalStateException {
 
-        if (state == WolfCryptState.READY) {
-            result = wc_ed25519_verify_msg(signature, msg);
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
+            return wc_ed25519_verify_msg(signature, msg);
         }
-
-        return result;
     }
 }
 

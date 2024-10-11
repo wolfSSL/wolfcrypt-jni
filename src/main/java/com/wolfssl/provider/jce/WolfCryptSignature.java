@@ -97,7 +97,6 @@ public class WolfCryptSignature extends SignatureSpi {
     private int digestSz;           /* digest size in bytes */
 
     /* for debug logging */
-    private WolfCryptDebug debug;
     private String keyString;
     private String digestString;
 
@@ -162,7 +161,7 @@ public class WolfCryptSignature extends SignatureSpi {
                     "Unsupported signature algorithm digest type");
         }
 
-        if (debug.DEBUG) {
+        if (WolfCryptDebug.DEBUG) {
             keyString = typeToString(ktype);
             digestString = digestToString(dtype);
         }
@@ -287,8 +286,7 @@ public class WolfCryptSignature extends SignatureSpi {
                 break;
         }
 
-        if (debug.DEBUG)
-            log("init sign with PrivateKey");
+        log("init sign with PrivateKey");
     }
 
     @Override
@@ -356,8 +354,7 @@ public class WolfCryptSignature extends SignatureSpi {
                 break;
         }
 
-        if (debug.DEBUG)
-            log("init verify with PublicKey");
+        log("init verify with PublicKey");
     }
 
     @Deprecated
@@ -412,7 +409,7 @@ public class WolfCryptSignature extends SignatureSpi {
             case WC_RSA:
 
                 /* DER encode digest */
-                encodedSz = (int)asn.encodeSignature(encDigest, digest,
+                encodedSz = (int)Asn.encodeSignature(encDigest, digest,
                                 digest.length, this.internalHashSum);
 
                 if (encodedSz < 0) {
@@ -443,12 +440,10 @@ public class WolfCryptSignature extends SignatureSpi {
                     "Invalid signature algorithm type");
         }
 
-        if (debug.DEBUG) {
-            if (signature != null) {
-                log("generated signature, len: " + signature.length);
-            } else {
-                log("generated signature was null");
-            }
+        if (signature != null) {
+            log("generated signature, len: " + signature.length);
+        } else {
+            log("generated signature was null");
         }
 
         return signature;
@@ -462,8 +457,7 @@ public class WolfCryptSignature extends SignatureSpi {
 
         engineUpdate(tmp, 0, 1);
 
-        if (debug.DEBUG)
-            log("update with single byte");
+        log("update with single byte");
     }
 
     @Override
@@ -492,8 +486,7 @@ public class WolfCryptSignature extends SignatureSpi {
                 break;
         }
 
-        if (debug.DEBUG)
-            log("update, offset: " + off + ", len: " + len);
+        log("update, offset: " + off + ", len: " + len);
     }
 
     @Override
@@ -541,7 +534,7 @@ public class WolfCryptSignature extends SignatureSpi {
             case WC_RSA:
 
                 /* DER encode digest */
-                encodedSz = asn.encodeSignature(encDigest, digest,
+                encodedSz = Asn.encodeSignature(encDigest, digest,
                                 digest.length, this.internalHashSum);
 
                 if (encodedSz < 0) {
@@ -575,11 +568,9 @@ public class WolfCryptSignature extends SignatureSpi {
                 break;
         }
 
-        if (debug.DEBUG) {
-            if (sigBytes != null) {
-                log("finished verify of sig len: " + sigBytes.length +
-                    ", verified: " + verified);
-            }
+        if (sigBytes != null) {
+            log("finished verify of sig len: " + sigBytes.length +
+                ", verified: " + verified);
         }
 
         return verified;
@@ -624,8 +615,8 @@ public class WolfCryptSignature extends SignatureSpi {
     }
 
     private void log(String msg) {
-        debug.print("[Signature, " + keyString + "-" +
-                    digestString + "] " + msg);
+        WolfCryptDebug.print("[Signature, " + keyString + "-" +
+            digestString + "] " + msg);
     }
 
     @SuppressWarnings("deprecation")

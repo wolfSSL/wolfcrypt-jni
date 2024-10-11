@@ -21,6 +21,9 @@
 
 package com.wolfssl.provider.jce;
 
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.IOException;
 import java.security.SecureRandomSpi;
 
 import com.wolfssl.wolfcrypt.Rng;
@@ -31,21 +34,22 @@ import com.wolfssl.provider.jce.WolfCryptDebug;
  */
 public final class WolfCryptRandom extends SecureRandomSpi {
 
-    /** internal reference to wolfCrypt JNI RNG object */
-    private Rng rng;
+    private static final long serialVersionUID = 1L;
 
-    /** for debug logging */
-    private WolfCryptDebug debug;
+    /** Internal reference to wolfCrypt JNI RNG object.
+     * Marked as transient since this is not serializable. When class
+     * is reloaded, this object will be initialized back to null. */
+    private transient Rng rng = null;
 
     /**
      * Create new WolfCryptRandom object
      */
     public WolfCryptRandom() {
+
         this.rng = new Rng();
         this.rng.init();
 
-        if (debug.DEBUG)
-            log("initialized new object");
+        log("initialized new object");
     }
 
     @Override
@@ -63,12 +67,11 @@ public final class WolfCryptRandom extends SecureRandomSpi {
     @Override
     protected void engineSetSeed(byte[] seed) {
         /* wolfCrypt reseeds internally automatically */
-        if (debug.DEBUG)
-            log("setSeed() not supported by wolfJCE");
+        log("setSeed() not supported by wolfJCE");
     }
 
     private void log(String msg) {
-        debug.print("[Random] " + msg);
+        WolfCryptDebug.print("[Random] " + msg);
     }
 
     @SuppressWarnings("deprecation")
@@ -84,6 +87,47 @@ public final class WolfCryptRandom extends SecureRandomSpi {
         } finally {
             super.finalize();
         }
+    }
+
+    /**
+     * Called when object is being serialized.
+     *
+     * Since Rng class variable is transient, we want to free that memory
+     * before serializaing.
+     *
+     * @param out output stream written to during serialization of this object
+     *
+     * @throws IOException on error writing to ObjectOutputStream
+     */
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        if (this.rng != null) {
+            this.rng.free();
+            this.rng.releaseNativeStruct();
+            this.rng = null;
+        }
+
+        out.defaultWriteObject();
+    }
+
+    /**
+     * Called when object is being deserialized.
+     *
+     * When loading back in, we want to instantiate the Rng class variable
+     * again.
+     *
+     * @param in input stream read during deserialization of this object
+     * @throws IOException on error reading from ObjectInputStream
+     * @throws ClassNotFoundException if object class not found
+     */
+    private void readObject(ObjectInputStream in)
+        throws IOException, ClassNotFoundException {
+
+        if (rng == null) {
+            this.rng = new Rng();
+            this.rng.init();
+        }
+
+        in.defaultReadObject();
     }
 }
 

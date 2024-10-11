@@ -37,9 +37,6 @@ public final class WolfCryptMessageDigestMd5
     /* internal reference to wolfCrypt JNI Md5 object */
     private Md5 md5;
 
-    /* for debug logging */
-    private WolfCryptDebug debug;
-
     /**
      * Create new WolfCryptMessageDigestMd5 object
      */
@@ -72,8 +69,7 @@ public final class WolfCryptMessageDigestMd5
             throw new RuntimeException(e.getMessage());
         }
 
-        if (debug.DEBUG)
-            log("generated final digest, len: " + digest.length);
+        log("generated final digest, len: " + digest.length);
 
         return digest;
     }
@@ -83,8 +79,7 @@ public final class WolfCryptMessageDigestMd5
 
         this.md5.init();
 
-        if (debug.DEBUG)
-            log("engine reset");
+        log("engine reset");
     }
 
     @Override
@@ -95,8 +90,7 @@ public final class WolfCryptMessageDigestMd5
 
         this.md5.update(tmp, 1);
 
-        if (debug.DEBUG)
-            log("update with single byte");
+        log("update with single byte");
     }
 
     @Override
@@ -104,12 +98,11 @@ public final class WolfCryptMessageDigestMd5
 
         this.md5.update(input, offset, len);
 
-        if (debug.DEBUG)
-            log("update, offset: " + offset + ", len: " + len);
+        log("update, offset: " + offset + ", len: " + len);
     }
 
     private void log(String msg) {
-        debug.print("[MessageDigest, MD5] " + msg);
+        WolfCryptDebug.print("[MessageDigest, MD5] " + msg);
     }
 
     @Override
@@ -119,7 +112,7 @@ public final class WolfCryptMessageDigestMd5
 
     @Override
     public Object clone() {
-        Md5 md5Copy = new Md5(this.md5);
+        Md5 md5Copy = (Md5)this.md5.clone();
         return new WolfCryptMessageDigestMd5(md5Copy);
     }
 

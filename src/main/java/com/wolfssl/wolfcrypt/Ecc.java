@@ -48,31 +48,62 @@ public class Ecc extends NativeStruct {
     /** Lock around object state */
     protected final Object stateLock = new Object();
 
-
     /**
-     * Create new Ecc object
+     * Create new Ecc object.
+     *
+     * @throws WolfCryptException if ECC has not been compiled into native
+     *         wolfCrypt library.
      */
     public Ecc() {
-        init();
+        if (!FeatureDetect.EccEnabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
     }
 
     /**
      * Create new Ecc object with existing Rng object.
      *
      * @param rng initialized com.wolfssl.wolfcrypt.Rng object
+     *
+     * @throws WolfCryptException if ECC has not been compiled into native
+     *         wolfCrypt library.
      */
     public Ecc(Rng rng) {
+        if (!FeatureDetect.EccEnabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+
+        /* Internal state is initialized on first use */
         this.rng = rng;
         weOwnRng = false;
-
-        init();
     }
 
     @Override
     public synchronized void releaseNativeStruct() {
-        free();
 
-        super.releaseNativeStruct();
+        synchronized (stateLock) {
+            if ((state != WolfCryptState.UNINITIALIZED) &&
+                (state != WolfCryptState.RELEASED)) {
+
+                synchronized (pointerLock) {
+                    wc_ecc_free();
+                }
+
+                synchronized (rngLock) {
+                    if (this.weOwnRng && this.rng != null) {
+                        rng.free();
+                        rng.releaseNativeStruct();
+                        rng = null;
+                    }
+                }
+
+                super.releaseNativeStruct();
+                state = WolfCryptState.RELEASED;
+            }
+        }
     }
 
     /**
@@ -109,52 +140,75 @@ public class Ecc extends NativeStruct {
             byte[] Gx, byte[] Gy, int cofactor);
 
     /**
-     * Initialize Ecc object
+     * Internal helper method to initialize object if/when needed.
+     *
+     * @throws IllegalStateException on failure to initialize properly or
+     *         if releaseNativeStruct() has been called and object has been
+     *         released
      */
-    protected void init() {
+    private synchronized void checkStateAndInitialize()
+        throws IllegalStateException {
+
         synchronized (stateLock) {
+            if (state == WolfCryptState.RELEASED) {
+                throw new IllegalStateException("Object has been released");
+            }
+
             if (state == WolfCryptState.UNINITIALIZED) {
-
-                synchronized (pointerLock) {
-                    wc_ecc_init();
+                init();
+                if (state != WolfCryptState.INITIALIZED) {
+                    throw new IllegalStateException(
+                        "Failed to initialize Object");
                 }
-
-                /* used with native wc_ecc_set_rng() */
-                synchronized (rngLock) {
-                    if (rng == null) {
-                        rng = new Rng();
-                        rng.init();
-                        weOwnRng = true;
-                    }
-                }
-
-                state = WolfCryptState.INITIALIZED;
-            } else {
-                throw new IllegalStateException(
-                        "Native resources already initialized.");
             }
         }
     }
 
     /**
-     * Free Ecc object
+     * Initialize Ecc object
      */
-    protected void free() {
+    private void init() {
+        /* Allocate native struct pointer from NativeStruct */
+        initNativeStruct();
+        synchronized (pointerLock) {
+            wc_ecc_init();
+        }
+
+        /* used with native wc_ecc_set_rng() */
+        synchronized (rngLock) {
+            if (rng == null) {
+                rng = new Rng();
+                rng.init();
+                weOwnRng = true;
+            }
+        }
+
+        state = WolfCryptState.INITIALIZED;
+    }
+
+    /**
+     * Throw exception if key has been loaded already.
+     *
+     * @throws IllegalStateException if key has been loaded already
+     */
+    private void throwIfKeyExists() throws IllegalStateException {
         synchronized (stateLock) {
-            if (state != WolfCryptState.UNINITIALIZED) {
+            if (state == WolfCryptState.READY) {
+                throw new IllegalStateException("Object already has a key");
+            }
+        }
+    }
 
-                synchronized (pointerLock) {
-                    wc_ecc_free();
-                }
-
-                synchronized (rngLock) {
-                    if (this.weOwnRng && this.rng != null) {
-                        rng.free();
-                        rng.releaseNativeStruct();
-                    }
-                }
-
-                state = WolfCryptState.UNINITIALIZED;
+    /**
+     * Throw exception if key has not been loaded.
+     *
+     * @throws IllegalStateException if key has not been loaded
+     */
+    private void throwIfKeyNotLoaded() throws IllegalStateException {
+        synchronized (stateLock) {
+            if (state != WolfCryptState.READY) {
+                throw new IllegalStateException(
+                    "No key available to perform the operation");
             }
         }
     }
@@ -166,22 +220,20 @@ public class Ecc extends NativeStruct {
      * @param size size of key to generate
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already has a key
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized void makeKey(Rng rng, int size)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.INITIALIZED) {
+        checkStateAndInitialize();
+        throwIfKeyExists();
 
-                synchronized (pointerLock) {
-                    wc_ecc_make_key(rng, size);
-                }
-                state = WolfCryptState.READY;
-            } else {
-                throw new IllegalStateException("Object already has a key.");
-            }
+        synchronized (pointerLock) {
+            wc_ecc_make_key(rng, size);
         }
+        state = WolfCryptState.READY;
     }
 
     /**
@@ -192,22 +244,20 @@ public class Ecc extends NativeStruct {
      * @param curveName name of ECC curve on which to generate key
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already has a key
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized void makeKeyOnCurve(Rng rng, int size, String curveName)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.INITIALIZED) {
+        checkStateAndInitialize();
+        throwIfKeyExists();
 
-                synchronized (pointerLock) {
-                    wc_ecc_make_key_ex(rng, size, curveName.toUpperCase());
-                }
-                state = WolfCryptState.READY;
-            } else {
-                throw new IllegalStateException("Object already has a key.");
-            }
+        synchronized (pointerLock) {
+            wc_ecc_make_key_ex(rng, size, curveName.toUpperCase());
         }
+        state = WolfCryptState.READY;
     }
 
     /**
@@ -215,21 +265,18 @@ public class Ecc extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails or key is
      *         incorrect or invalid
-     * @throws IllegalStateException if object does not have a key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized void checkKey()
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    wc_ecc_check_key();
-                }
-            } else {
-                throw new IllegalStateException(
-                        "No available key to perform the operation.");
-            }
+        synchronized (pointerLock) {
+            wc_ecc_check_key();
         }
     }
 
@@ -240,22 +287,20 @@ public class Ecc extends NativeStruct {
      * @param x963Key byte array holding public key
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already has a key
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized void importPrivate(byte[] privKey, byte[] x963Key)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.INITIALIZED) {
+        checkStateAndInitialize();
+        throwIfKeyExists();
 
-                synchronized (pointerLock) {
-                    wc_ecc_import_private(privKey, x963Key, null);
-                }
-                state = WolfCryptState.READY;
-            } else {
-                throw new IllegalStateException("Object already has a key.");
-            }
+        synchronized (pointerLock) {
+            wc_ecc_import_private(privKey, x963Key, null);
         }
+        state = WolfCryptState.READY;
     }
 
     /**
@@ -266,23 +311,21 @@ public class Ecc extends NativeStruct {
      * @param curveName name of ECC curve key is on
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already has a key
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized void importPrivateOnCurve(byte[] privKey,
         byte[] x963Key, String curveName)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.INITIALIZED) {
+        checkStateAndInitialize();
+        throwIfKeyExists();
 
-                synchronized (pointerLock) {
-                    wc_ecc_import_private(privKey, x963Key, curveName);
-                }
-                state = WolfCryptState.READY;
-            } else {
-                throw new IllegalStateException("Object already has a key.");
-            }
+        synchronized (pointerLock) {
+            wc_ecc_import_private(privKey, x963Key, curveName);
         }
+        state = WolfCryptState.READY;
     }
 
     /**
@@ -291,21 +334,18 @@ public class Ecc extends NativeStruct {
      * @return byte array with private key
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized byte[] exportPrivate()
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    return wc_ecc_export_private();
-                }
-            } else {
-                throw new IllegalStateException(
-                        "No available key to perform the operation.");
-            }
+        synchronized (pointerLock) {
+            return wc_ecc_export_private();
         }
     }
 
@@ -315,22 +355,20 @@ public class Ecc extends NativeStruct {
      * @param key public key in X9.63 format
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already has a key
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized void importX963(byte[] key)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.INITIALIZED) {
+        checkStateAndInitialize();
+        throwIfKeyExists();
 
-                synchronized (pointerLock) {
-                    wc_ecc_import_x963(key);
-                }
-                state = WolfCryptState.READY;
-            } else {
-                throw new IllegalStateException("Object already has a key.");
-            }
+        synchronized (pointerLock) {
+            wc_ecc_import_x963(key);
         }
+        state = WolfCryptState.READY;
     }
 
     /**
@@ -339,21 +377,18 @@ public class Ecc extends NativeStruct {
      * @return public key in X9.63 format
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized byte[] exportX963()
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    return wc_ecc_export_x963();
-                }
-            } else {
-                throw new IllegalStateException(
-                        "No available key to perform the operation.");
-            }
+        synchronized (pointerLock) {
+            return wc_ecc_export_x963();
         }
     }
 
@@ -363,22 +398,20 @@ public class Ecc extends NativeStruct {
      * @param key private key array
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already has a key
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized void privateKeyDecode(byte[] key)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.INITIALIZED) {
+        checkStateAndInitialize();
+        throwIfKeyExists();
 
-                synchronized (pointerLock) {
-                    wc_EccPrivateKeyDecode(key);
-                }
-                state = WolfCryptState.READY;
-            } else {
-                throw new IllegalStateException("Object already has a key.");
-            }
+        synchronized (pointerLock) {
+            wc_EccPrivateKeyDecode(key);
         }
+        state = WolfCryptState.READY;
     }
 
     /**
@@ -387,21 +420,18 @@ public class Ecc extends NativeStruct {
      * @return private key byte array
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized byte[] privateKeyEncode()
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    return wc_EccKeyToDer();
-                }
-            } else {
-                throw new IllegalStateException(
-                        "No available key to perform the operation.");
-            }
+        synchronized (pointerLock) {
+            return wc_EccKeyToDer();
         }
     }
 
@@ -411,22 +441,20 @@ public class Ecc extends NativeStruct {
      * @param key public key array
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object already has a key
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized void publicKeyDecode(byte[] key)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.INITIALIZED) {
+        checkStateAndInitialize();
+        throwIfKeyExists();
 
-                synchronized (pointerLock) {
-                    wc_EccPublicKeyDecode(key);
-                }
-                state = WolfCryptState.READY;
-            } else {
-                throw new IllegalStateException("Object already has a key.");
-            }
+        synchronized (pointerLock) {
+            wc_EccPublicKeyDecode(key);
         }
+        state = WolfCryptState.READY;
     }
 
     /**
@@ -435,21 +463,18 @@ public class Ecc extends NativeStruct {
      * @return public key byte array
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized byte[] publicKeyEncode()
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    return wc_EccPublicKeyToDer();
-                }
-            } else {
-                throw new IllegalStateException(
-                        "No available key to perform the operation.");
-            }
+        synchronized (pointerLock) {
+            return wc_EccPublicKeyToDer();
         }
     }
 
@@ -461,22 +486,19 @@ public class Ecc extends NativeStruct {
      * @return generated shared secret byte array
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized byte[] makeSharedSecret(Ecc pubKey)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    synchronized (rngLock) {
-                        return wc_ecc_shared_secret(pubKey, this.rng);
-                    }
-                }
-            } else {
-                throw new IllegalStateException(
-                        "No available key to perform the operation.");
+        synchronized (pointerLock) {
+            synchronized (rngLock) {
+                return wc_ecc_shared_secret(pubKey, this.rng);
             }
         }
     }
@@ -490,23 +512,21 @@ public class Ecc extends NativeStruct {
      * @return ECDSA signature of input data
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized byte[] sign(byte[] hash, Rng rng)
         throws WolfCryptException, IllegalStateException {
 
-        byte[] signature = new byte[0];
+        byte[] signature = null;
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
-                synchronized (pointerLock) {
-                    synchronized (rngLock) {
-                        signature = wc_ecc_sign_hash(hash, rng);
-                    }
-                }
-            } else {
-                throw new IllegalStateException(
-                        "No available key to perform the operation.");
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
+            synchronized (rngLock) {
+                signature = wc_ecc_sign_hash(hash, rng);
             }
         }
 
@@ -522,23 +542,20 @@ public class Ecc extends NativeStruct {
      * @return true if signature verified, otherwise false
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized boolean verify(byte[] hash, byte[] signature)
         throws WolfCryptException, IllegalStateException {
 
         boolean result = false;
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    result = wc_ecc_verify_hash(hash, signature);
-                }
-            } else {
-                throw new IllegalStateException(
-                        "No available key to perform the operation.");
-            }
+        synchronized (pointerLock) {
+            result = wc_ecc_verify_hash(hash, signature);
         }
 
         return result;
@@ -568,21 +585,18 @@ public class Ecc extends NativeStruct {
      * @return encoded private key as byte array
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized byte[] privateKeyEncodePKCS8()
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    return wc_ecc_private_key_to_pkcs8();
-                }
-            } else {
-                throw new IllegalStateException(
-                        "No available key to perform the operation.");
-            }
+        synchronized (pointerLock) {
+            return wc_ecc_private_key_to_pkcs8();
         }
     }
 

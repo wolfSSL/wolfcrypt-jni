@@ -30,5 +30,7 @@ public enum WolfCryptState {
     /** Object initialized */
     INITIALIZED,
     /** Object ready for use */
-    READY;
+    READY,
+    /** Object released */
+    RELEASED;
 }

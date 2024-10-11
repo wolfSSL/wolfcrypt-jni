@@ -69,8 +69,18 @@ public class Des3Test {
     }
 
     @Test
-    public void constructorShouldInitializeNativeStruct() {
-        assertNotEquals(NativeStruct.NULL, new Des3().getNativeStruct());
+    public void constructorShouldNotInitializeNativeStruct() {
+        assertEquals(NativeStruct.NULL, new Des3().getNativeStruct());
+    }
+
+    @Test
+    public void deprecatedConstructorThrows() {
+        try {
+            Des3 des = new Des3(null, null, Des3.ENCRYPT_MODE);
+            fail("Failed to throw expected exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
     }
 
     @Test(expected=ShortBufferException.class)
@@ -94,10 +104,11 @@ public class Des3Test {
         ByteBuffer cipher = ByteBuffer.allocateDirect(Des3.BLOCK_SIZE);
 
         for (int i = 0; i < inputs.length; i++) {
-            Des3 enc = new Des3(Util.h2b(keys[i]), Util.h2b(ivs[i]),
-                    Des3.ENCRYPT_MODE);
-            Des3 dec = new Des3(Util.h2b(keys[i]), Util.h2b(ivs[i]),
-                    Des3.DECRYPT_MODE);
+            Des3 enc = new Des3();
+            Des3 dec = new Des3();
+
+            enc.setKey(Util.h2b(keys[i]), Util.h2b(ivs[i]), Des3.ENCRYPT_MODE);
+            dec.setKey(Util.h2b(keys[i]), Util.h2b(ivs[i]), Des3.DECRYPT_MODE);
 
             input.put(Util.h2b(inputs[i])).rewind();
             output.put(Util.h2b(outputs[i])).rewind();
@@ -150,15 +161,16 @@ public class Des3Test {
                 "b7f1fd226680a6ee", "f50d41fc9fe9ba71", "5e124bc1d28414e7" };
 
         for (int i = 0; i < inputs.length; i++) {
-            Des3 enc = new Des3(Util.h2b(keys[i]), Util.h2b(ivs[i]),
-                    Des3.ENCRYPT_MODE);
-            Des3 dec = new Des3(Util.h2b(keys[i]), Util.h2b(ivs[i]),
-                    Des3.DECRYPT_MODE);
-
             byte[] input = Util.h2b(inputs[i]);
             byte[] output = Util.h2b(outputs[i]);
             byte[] cipher = new byte[Des3.BLOCK_SIZE];
             byte[] plain = new byte[Des3.BLOCK_SIZE];
+
+            Des3 enc = new Des3();
+            Des3 dec = new Des3();
+
+            enc.setKey(Util.h2b(keys[i]), Util.h2b(ivs[i]), Des3.ENCRYPT_MODE);
+            dec.setKey(Util.h2b(keys[i]), Util.h2b(ivs[i]), Des3.DECRYPT_MODE);
 
             if (i % 2 == 0) {
                 cipher = enc.update(input, 0, input.length);
@@ -196,11 +208,13 @@ public class Des3Test {
         byte[] cipher = null;
         byte[] plain = null;
 
-        Des3 enc = new Des3(key, iv, Des3.ENCRYPT_MODE);
+        Des3 enc = new Des3();
+        enc.setKey(key, iv, Des3.ENCRYPT_MODE);
         cipher = enc.update(in, 0, in.length);
         assertArrayEquals(expected, cipher);
 
-        Des3 dec = new Des3(key, iv, Des3.DECRYPT_MODE);
+        Des3 dec = new Des3();
+        dec.setKey(key, iv, Des3.DECRYPT_MODE);
         plain = dec.update(cipher, 0, cipher.length);
         assertArrayEquals(in, plain);
 
@@ -209,11 +223,13 @@ public class Des3Test {
         dec.releaseNativeStruct();
 
         /* try to re-init and re-use them */
-        enc = new Des3(key, iv, Des3.ENCRYPT_MODE);
+        enc = new Des3();
+        enc.setKey(key, iv, Des3.ENCRYPT_MODE);
         cipher = enc.update(in, 0, in.length);
         assertArrayEquals(expected, cipher);
 
-        dec = new Des3(key, iv, Des3.DECRYPT_MODE);
+        dec = new Des3();
+        dec.setKey(key, iv, Des3.DECRYPT_MODE);
         plain = dec.update(cipher, 0, cipher.length);
         assertArrayEquals(in, plain);
 
@@ -236,11 +252,13 @@ public class Des3Test {
         byte[] cipher = null;
         byte[] plain = null;
 
-        Des3 enc = new Des3(key, iv, Des3.ENCRYPT_MODE);
+        Des3 enc = new Des3();
+        enc.setKey(key, iv, Des3.ENCRYPT_MODE);
         cipher = enc.update(in, 0, in.length);
         assertArrayEquals(expected, cipher);
 
-        Des3 dec = new Des3(key, iv, Des3.DECRYPT_MODE);
+        Des3 dec = new Des3();
+        dec.setKey(key, iv, Des3.DECRYPT_MODE);
         plain = dec.update(cipher, 0, cipher.length);
         assertArrayEquals(in, plain);
 
@@ -277,12 +295,15 @@ public class Des3Test {
                 @Override public void run() {
 
                     int ret = 0;
-                    Des3 enc = new Des3(key, iv, Des3.ENCRYPT_MODE);
-                    Des3 dec = new Des3(key, iv, Des3.DECRYPT_MODE);
                     byte[] encrypted = new byte[2048];
                     byte[] plaintext = new byte[2048];
+                    Des3 enc = new Des3();
+                    Des3 dec = new Des3();
 
                     try {
+                        enc.setKey(key, iv, Des3.ENCRYPT_MODE);
+                        dec.setKey(key, iv, Des3.DECRYPT_MODE);
+
                         /* encrypt in 128-byte chunks */
                         Arrays.fill(encrypted, (byte)0);
                         for (int j = 0; j < rand2kBuf.length; j+= 128) {

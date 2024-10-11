@@ -37,7 +37,9 @@ class WolfCryptDebug {
     }
 
     public static void print(String string) {
-        System.out.println("wolfJCE: " + string);
+        if (DEBUG) {
+            System.out.println("wolfJCE: " + string);
+        }
     }
 }
 

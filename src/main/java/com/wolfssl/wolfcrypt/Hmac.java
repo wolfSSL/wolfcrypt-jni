@@ -54,9 +54,16 @@ public class Hmac extends NativeStruct {
     protected final Object stateLock = new Object();
 
     /**
-     * Create new Hmac object
+     * Create new Hmac object.
+     *
+     * @throws WolfCryptException if HMAC has not been compiled into native
+     *         wolfCrypt library.
      */
     public Hmac() {
+        if (!FeatureDetect.HmacEnabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
     }
 
     /**
@@ -64,9 +71,22 @@ public class Hmac extends NativeStruct {
      *
      * @param type HMAC type (Hmac.SHA, Hmac.SHA256, etc)
      * @param key HMAC key
+     *
+     * @throws WolfCryptException to indicate this constructor has been
+     *         deprecated, along with instructions on what API to call
+     *
+     * @deprecated This constructor has been deprecated to avoid storage
+     *             of the HMAC key inside this Hmac class at the Java level.
+     *             Please refactor existing code to call
+     *             Hmac.setKey(int type, byte[] key) after this object has been
+     *             created with the default Hmac() constructor.
      */
+    @Deprecated
     public Hmac(int type, byte[] key) {
-        setKey(type, key);
+
+        throw new WolfCryptException(
+            "Constructor deprecated, use Hmac.setKey(int type, byte[] key) " +
+            "after object creation with Hmac()");
     }
 
     private native void wc_HmacSetKey(int type, byte[] key);
@@ -91,14 +111,33 @@ public class Hmac extends NativeStruct {
      */
     protected native long mallocNativeStruct() throws OutOfMemoryError;
 
-    /* check if type is -1, if so that type is not compiled in at native
-     * wolfSSL level. Throw exception if so. */
+    /**
+     * Check if type is -1, if so that type is not compiled in at native
+     * wolfSSL level.
+     *
+     * @throws WolfCryptException if hash type is not compiled in at native
+     *         wolfSSL level.
+     */
     private void checkHashTypeCompiledIn(int type)
         throws WolfCryptException {
 
         WolfCryptError notCompiledIn = WolfCryptError.NOT_COMPILED_IN;
         if (type == -1) {
             throw new WolfCryptException(notCompiledIn.getCode());
+        }
+    }
+
+    /**
+     * Throw exception if HMAC key has not been loaded into this object.
+     *
+     * @throws IllegalStateException if key has not been loaded
+     */
+    private void throwIfKeyNotLoaded() throws IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state != WolfCryptState.READY) {
+                throw new IllegalStateException("No HMAC key loaded");
+            }
         }
     }
 
@@ -118,6 +157,12 @@ public class Hmac extends NativeStruct {
             checkHashTypeCompiledIn(type);
 
             synchronized (pointerLock) {
+                /* Release native struct in case previously set */
+                releaseNativeStruct();
+
+                /* Allocate native struct pointer from NativeStruct */
+                initNativeStruct();
+
                 wc_HmacSetKey(type, key);
             }
             this.type = type;
@@ -136,14 +181,9 @@ public class Hmac extends NativeStruct {
     public synchronized void reset()
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
-                setKey(type, key);
-            } else {
-                throw new IllegalStateException(
-                    "No available key to perform the operation");
-            }
-        }
+        throwIfKeyNotLoaded();
+
+        setKey(type, key);
     }
 
     /**
@@ -157,16 +197,10 @@ public class Hmac extends NativeStruct {
     public synchronized void update(byte data)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    wc_HmacUpdate(data);
-                }
-            } else {
-                throw new IllegalStateException(
-                    "No available key to perform the operation");
-            }
+        synchronized (pointerLock) {
+            wc_HmacUpdate(data);
         }
     }
 
@@ -181,16 +215,10 @@ public class Hmac extends NativeStruct {
     public void update(byte[] data)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    wc_HmacUpdate(data, 0, data.length);
-                }
-            } else {
-                throw new IllegalStateException(
-                    "No available key to perform the operation");
-            }
+        synchronized (pointerLock) {
+            wc_HmacUpdate(data, 0, data.length);
         }
     }
 
@@ -207,16 +235,10 @@ public class Hmac extends NativeStruct {
     public synchronized void update(byte[] data, int offset, int length)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    wc_HmacUpdate(data, offset, length);
-                }
-            } else {
-                throw new IllegalStateException(
-                    "No available key to perform the operation");
-            }
+        synchronized (pointerLock) {
+            wc_HmacUpdate(data, offset, length);
         }
     }
 
@@ -231,21 +253,16 @@ public class Hmac extends NativeStruct {
     public synchronized void update(ByteBuffer data)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
-                int offset = data.position();
-                int length = data.remaining();
+        int offset = data.position();
+        int length = data.remaining();
 
-                synchronized (pointerLock) {
-                    wc_HmacUpdate(data, offset, length);
-                }
+        throwIfKeyNotLoaded();
 
-                data.position(offset + length);
-            } else {
-                throw new IllegalStateException(
-                    "No available key to perform the operation");
-            }
+        synchronized (pointerLock) {
+            wc_HmacUpdate(data, offset, length);
         }
+
+        data.position(offset + length);
     }
 
     /**
@@ -259,16 +276,10 @@ public class Hmac extends NativeStruct {
     public synchronized byte[] doFinal()
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    return wc_HmacFinal();
-                }
-            } else {
-                throw new IllegalStateException(
-                    "No available key to perform the operation");
-            }
+        synchronized (pointerLock) {
+            return wc_HmacFinal();
         }
     }
 
@@ -285,17 +296,12 @@ public class Hmac extends NativeStruct {
     public synchronized byte[] doFinal(byte[] data)
         throws WolfCryptException, IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
-                update(data);
+        throwIfKeyNotLoaded();
 
-                synchronized (pointerLock) {
-                    return wc_HmacFinal();
-                }
-            } else {
-                throw new IllegalStateException(
-                    "No available key to perform the operation");
-            }
+        update(data);
+
+        synchronized (pointerLock) {
+            return wc_HmacFinal();
         }
     }
 
@@ -309,27 +315,22 @@ public class Hmac extends NativeStruct {
     public synchronized String getAlgorithm()
         throws IllegalStateException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
-                if (type == MD5) {
-                    return "HmacMD5";
-                }
-                else if (type == SHA256) {
-                    return "HmacSHA256";
-                }
-                else if (type == SHA384) {
-                    return "HmacSHA384";
-                }
-                else if (type == SHA512) {
-                    return "HmacSHA512";
-                }
-                else {
-                    return "";
-                }
-            } else {
-                throw new IllegalStateException(
-                    "No available key to perform the operation");
-            }
+        throwIfKeyNotLoaded();
+
+        if (type == MD5) {
+            return "HmacMD5";
+        }
+        else if (type == SHA256) {
+            return "HmacSHA256";
+        }
+        else if (type == SHA384) {
+            return "HmacSHA384";
+        }
+        else if (type == SHA512) {
+            return "HmacSHA512";
+        }
+        else {
+            return "";
         }
     }
 
@@ -339,21 +340,11 @@ public class Hmac extends NativeStruct {
      * @return HMAC length
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if object has no key
      */
-    public synchronized int getMacLength()
-        throws WolfCryptException, IllegalStateException {
+    public synchronized int getMacLength() throws WolfCryptException {
 
-        synchronized (stateLock) {
-            if (state == WolfCryptState.READY) {
-                /* Does not use Hmac poiner, no need to lock */
-                return wc_HmacSizeByType(type);
-
-            } else {
-                throw new IllegalStateException(
-                    "No available key to perform the operation");
-            }
-        }
+        /* Does not use Hmac poiner, no need to lock or check state */
+        return wc_HmacSizeByType(type);
     }
 
     /**

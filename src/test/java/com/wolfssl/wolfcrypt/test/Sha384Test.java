@@ -72,8 +72,8 @@ public class Sha384Test {
     }
 
     @Test
-    public void constructorShouldInitializeNativeStruct() {
-        assertNotEquals(NativeStruct.NULL, new Sha384().getNativeStruct());
+    public void constructorShouldNotInitializeNativeStruct() {
+        assertEquals(NativeStruct.NULL, new Sha384().getNativeStruct());
     }
 
     @Test
@@ -206,7 +206,7 @@ public class Sha384Test {
         sha.update(data);
 
         /* test making copy of Sha384, should retain same state */
-        shaCopy = new Sha384(sha);
+        shaCopy = (Sha384)sha.clone();
 
         result = sha.digest();
         result2 = shaCopy.digest();

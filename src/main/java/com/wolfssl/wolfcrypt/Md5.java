@@ -24,14 +24,17 @@ package com.wolfssl.wolfcrypt;
 import java.nio.ByteBuffer;
 
 /**
- * Wrapper for the native WolfCrypt Md5 implementation
+ * Wrapper for the native WolfCrypt MD5 implementation
  */
-public class Md5 extends MessageDigest {
+public class Md5 extends MessageDigest implements Cloneable {
 
     /** MD5 hash type */
     public static final int TYPE = 0; /* hash type unique */
     /** MD5 digest size */
     public static final int DIGEST_SIZE = 16;
+
+    /** Array to init Md5 with, will be reset to null once initialized */
+    private byte[] initialData = null;
 
     /* native JNI methods, internally reach back and grab/use pointer from
      * NativeStruct.java. We wrap calls to these below in order to
@@ -71,6 +74,12 @@ public class Md5 extends MessageDigest {
 
         synchronized (pointerLock) {
             native_init_internal();
+
+            /* Check if we need to init with passed in data */
+            if (this.initialData != null) {
+                update(this.initialData);
+                this.initialData = null;
+            }
         }
     }
 
@@ -82,7 +91,7 @@ public class Md5 extends MessageDigest {
      *
      * @throws WolfCryptException if native operation fails
      */
-    protected void native_copy(Md5 toBeCopied)
+    private void native_copy(Md5 toBeCopied)
         throws WolfCryptException {
 
         synchronized (pointerLock) {
@@ -156,10 +165,17 @@ public class Md5 extends MessageDigest {
     }
 
     /**
-     * Create new Md5 object
+     * Create new Md5 object.
+     *
+     * @throws WolfCryptException if MD5 has not been compiled into native
+     *         wolfCrypt library.
      */
     public Md5() {
-        init();
+        if (!FeatureDetect.Md5Enabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
     }
 
     /**
@@ -167,30 +183,56 @@ public class Md5 extends MessageDigest {
      *
      * @param md5 Initialized/created Md5 object to be copied
      *
-     * @throws WolfCryptException if native operation fails
+     * @throws WolfCryptException to indicate this constructor has been
+     *         deprecated, along with instructions on what API to call
+     *
+     * @deprecated This constructor has been deprecated to avoid storage
+     *             of a second Md5 object inside this Md5 object, and to avoid
+     *             potential incomplete object creation issues between
+     *             subclass/superclasses. Please refactor existing code to
+     *             call Md5.clone() to get a copy of an existing Md5 object.
      */
+    @Deprecated
     public Md5(Md5 md5) {
-        init();
-        native_copy(md5);
+        throw new WolfCryptException(
+            "Constructor deprecated, use Md5.clone() to duplicate Md5 object");
     }
 
     /**
-     * Create new Md5 object
+     * Create new Md5 object.
      *
      * @param data input data to hash
+     *
+     * @throws WolfCryptException if MD5 has not been compiled into native
+     *         wolfCrypt library.
      */
     public Md5(byte[] data) {
-        init();
-        update(data);
+        if (!FeatureDetect.Md5Enabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
+        this.initialData = data.clone();
     }
 
     /**
-     * Get MD5 digest size
+     * Get MD5 digest size.
      *
      * @return MD5 digest size
      */
     public int digestSize() {
         return DIGEST_SIZE;
+    }
+
+    @Override
+    public Object clone() {
+
+        Md5 md5Copy = new Md5();
+        /* Initialize NativeStruct, since is done on first use */
+        md5Copy.checkStateAndInitialize();
+        md5Copy.native_copy(this);
+
+        return md5Copy;
     }
 }
 
