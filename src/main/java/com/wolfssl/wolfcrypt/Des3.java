@@ -120,8 +120,15 @@ public class Des3 extends BlockCipher {
 
     /**
      * Create new Des3 object
+     *
+     * @throws WolfCryptException if 3DES has not been compiled into native
+     *         wolfCrypt library.
      */
     public Des3() {
+        if (!FeatureDetect.Des3Enabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
     }
 
     /**
@@ -130,9 +137,23 @@ public class Des3 extends BlockCipher {
      * @param key 3DES key
      * @param iv 3DES initialization vector (IV)
      * @param opmode 3DES mode: Des3.ENCRYPT_MODE or Des3.DECRYPT_MODE
+     *
+     * @throws WolfCryptException to indicate this constructor has been
+     *         deprecated, along with instructions on what API to call
+     *
+     * @deprecated This constructor has been deprecated to avoid storage
+     *             of the 3DES key inside this Des3 class at the Java level.
+     *             Please refactor existing code to call
+     *             Des3.setKey(byte[] key, byte[] iv, int opmode) after this
+     *             object has been created with the default Des3() constructor.
      */
+    @Deprecated
     public Des3(byte[] key, byte[] iv, int opmode) {
-        setKey(key, iv, opmode);
+
+        throw new WolfCryptException(
+            "Constructor deprecated, use " +
+            "Des3.setKey(byte[] key, byte[] iv, int opmode) " +
+            "after object creation with Des3()");
     }
 }
 

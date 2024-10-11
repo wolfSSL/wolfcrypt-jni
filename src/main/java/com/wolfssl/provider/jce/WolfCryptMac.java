@@ -58,7 +58,6 @@ public class WolfCryptMac extends MacSpi {
     private int digestSize = 0;
 
     /* for debug logging */
-    private WolfCryptDebug debug;
     private String algString;
 
     private WolfCryptMac(HmacType type)
@@ -98,8 +97,9 @@ public class WolfCryptMac extends MacSpi {
                     "Unsupported HMAC type");
         }
 
-        if (debug.DEBUG)
+        if (WolfCryptDebug.DEBUG) {
             algString = typeToString(type);
+        }
     }
 
     @Override
@@ -107,12 +107,11 @@ public class WolfCryptMac extends MacSpi {
 
         byte[] out = this.hmac.doFinal();
 
-        if (debug.DEBUG)
-            if (out != null) {
-                log("final digest generated, len: " + out.length);
-            } else {
-                log("final digest was null");
-            }
+        if (out != null) {
+            log("final digest generated, len: " + out.length);
+        } else {
+            log("final digest was null");
+        }
 
         return out;
     }
@@ -140,32 +139,28 @@ public class WolfCryptMac extends MacSpi {
 
         this.hmac.setKey(nativeHmacType, encodedKey);
 
-        if (debug.DEBUG)
-            log("init with key and spec");
+        log("init with key and spec");
     }
 
     @Override
     protected void engineReset() {
         this.hmac.reset();
 
-        if (debug.DEBUG)
-            log("engine reset");
+        log("engine reset");
     }
 
     @Override
     protected void engineUpdate(byte input) {
         this.hmac.update(input);
 
-        if (debug.DEBUG)
-            log("update with single byte");
+        log("update with single byte");
     }
 
     @Override
     protected void engineUpdate(byte[] input, int offset, int len) {
         this.hmac.update(input, offset, len);
 
-        if (debug.DEBUG)
-            log("update, offset: " + offset + ", len: " + len);
+        log("update, offset: " + offset + ", len: " + len);
     }
 
     private String typeToString(HmacType type) {
@@ -186,7 +181,7 @@ public class WolfCryptMac extends MacSpi {
     }
 
     private void log(String msg) {
-        debug.print("[Mac, " + algString + "] " + msg);
+        WolfCryptDebug.print("[Mac, " + algString + "] " + msg);
     }
 
     @SuppressWarnings("deprecation")

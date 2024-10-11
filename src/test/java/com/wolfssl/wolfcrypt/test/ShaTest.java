@@ -72,8 +72,8 @@ public class ShaTest {
     }
 
     @Test
-    public void constructorShouldInitializeNativeStruct() {
-        assertNotEquals(NativeStruct.NULL, new Sha().getNativeStruct());
+    public void constructorShouldNotInitializeNativeStruct() {
+        assertEquals(NativeStruct.NULL, new Sha().getNativeStruct());
     }
 
     @Test
@@ -192,7 +192,7 @@ public class ShaTest {
         sha.update(data);
 
         /* test making copy of Sha, should retain same state */
-        shaCopy = new Sha(sha);
+        shaCopy = (Sha)sha.clone();
 
         result = sha.digest();
         result2 = shaCopy.digest();

@@ -27,24 +27,42 @@ import java.security.spec.ECParameterSpec;
 import java.security.spec.ECFieldFp;
 
 /**
- * Wrapper for the native WolfCrypt curve25519 implementation.
+ * Wrapper for the native WolfCrypt Curve25519 implementation.
  */
 public class Curve25519 extends NativeStruct {
 
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
+    /** Lock around object state */
+    protected final Object stateLock = new Object();
+
     /**
-     * Create new Curve25519 object
+     * Create new Curve25519 object.
+     *
+     * @throws WolfCryptException if Curve25519 has not been compiled into
+     *         native wolfCrypt library.
      */
     public Curve25519() {
-        init();
+        if (!FeatureDetect.Curve25519Enabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
     }
 
     @Override
     public void releaseNativeStruct() {
-        free();
+        synchronized (stateLock) {
+            if ((state != WolfCryptState.UNINITIALIZED) &&
+                (state != WolfCryptState.RELEASED)) {
 
-        super.releaseNativeStruct();
+                synchronized (pointerLock) {
+                    wc_curve25519_free();
+                }
+                super.releaseNativeStruct();
+                state = WolfCryptState.RELEASED;
+            }
+        }
     }
 
     /**
@@ -69,176 +87,261 @@ public class Curve25519 extends NativeStruct {
     private native byte[] wc_curve25519_export_public();
 
     /**
-     * Initialize Curve25519 object
+     * Internal helper method to initialize object if/when needed.
+     *
+     * @throws IllegalStateException on failure to initialize properly, or
+     *         if releaseNativeStruct() has been called and object has been
+     *         released
      */
-    protected void init() {
-        if (state == WolfCryptState.UNINITIALIZED) {
+    private synchronized void checkStateAndInitialize()
+        throws IllegalStateException {
+
+        synchronized (stateLock) {
+            if (state == WolfCryptState.RELEASED) {
+                throw new IllegalStateException("Object has been released");
+            }
+
+            if (state == WolfCryptState.UNINITIALIZED) {
+                init();
+                if (state != WolfCryptState.INITIALIZED) {
+                    throw new IllegalStateException(
+                        "Failed to initialize Object");
+                }
+            }
+        }
+    }
+
+    /**
+     * Initialize Curve25519 object.
+     */
+    private void init() {
+        synchronized (pointerLock) {
+            /* Allocate native struct pointer from NativeStruct */
+            initNativeStruct();
             wc_curve25519_init();
-            state = WolfCryptState.INITIALIZED;
-        } else {
-            throw new IllegalStateException(
-                    "Native resources already initialized.");
         }
+
+        state = WolfCryptState.INITIALIZED;
     }
 
     /**
-     * Free Curve25519 object
+     * Throw exception if key has been loaded already.
+     *
+     * @throws IllegalStateException if key has been loaded already
      */
-    protected void free() {
-        if (state != WolfCryptState.UNINITIALIZED) {
-            wc_curve25519_free();
-            state = WolfCryptState.UNINITIALIZED;
+    private void throwIfKeyExists() throws IllegalStateException {
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+                throw new IllegalStateException("Object already has a key");
+            }
         }
     }
 
     /**
-     * Generate new Curve25519 key
+     * Throw exception if key has not been loaded.
+     *
+     * @throws IllegalStateException if key has not been loaded
+     */
+    private void throwIfKeyNotLoaded() throws IllegalStateException {
+        synchronized (stateLock) {
+            if (state != WolfCryptState.READY) {
+                throw new IllegalStateException(
+                    "No key available to perform the operation");
+            }
+        }
+    }
+
+    /**
+     * Generate new Curve25519 key.
      *
      * @param rng Initialized Rng object to use for randomness
      * @param size size of key to generate
+     *
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public void makeKey(Rng rng, int size) {
-        if (state == WolfCryptState.INITIALIZED) {
+    public void makeKey(Rng rng, int size) throws IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (pointerLock) {
             wc_curve25519_make_key(rng, size);
-            state = WolfCryptState.READY;
-        } else {
-            throw new IllegalStateException("Object already has a key.");
         }
+        state = WolfCryptState.READY;
     }
 
     /**
-     * Generate new Curve25519 key with specified endianness
+     * Generate new Curve25519 key with specified endianness.
      *
      * @param rng initialized Rng object to use for randomness
      * @param size size of key to generate
      * @param endian endianness of key
+     *
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public void makeKeyWithEndian(Rng rng, int size, int endian) {
-        if (state == WolfCryptState.INITIALIZED) {
+    public void makeKeyWithEndian(Rng rng, int size, int endian)
+        throws IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (pointerLock) {
             wc_curve25519_make_key_ex(rng, size, endian);
-            state = WolfCryptState.READY;
-        } else {
-            throw new IllegalStateException("Object already has a key.");
         }
+        state = WolfCryptState.READY;
     }
 
     /**
-     * Check Curve25519 key for correctness
+     * Check Curve25519 key for correctness.
      *
      * @throws WolfCryptException if key is not correct
-     * @throws IllegalStateException if no key available
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public void checkKey() {
-        if (state == WolfCryptState.READY) {
+    public void checkKey() throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
             wc_curve25519_check_key();
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
         }
     }
 
     /**
-     * Import private and public key
+     * Import private and public key.
      *
      * @param privKey private Curve25519 key array
      * @param xKey public Curve25519 key array
      *
      * @throws WolfCryptException if error occurs during key import
-     * @throws IllegalArgumentException if object is already initialized
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public void importPrivate(byte[] privKey, byte[] xKey) {
-        if (state == WolfCryptState.INITIALIZED) {
+    public void importPrivate(byte[] privKey, byte[] xKey)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (pointerLock) {
             wc_curve25519_import_private(privKey, xKey);
-            state = WolfCryptState.READY;
-        } else {
-            throw new IllegalStateException("Object already has a key.");
         }
+        state = WolfCryptState.READY;
     }
 
     /**
-     * Import private key
+     * Import private key from byte array.
      *
-     * @param privKey private Curve25519 key array
+     * @param privKey byte array containing private Curve25519 key
      *
      * @throws WolfCryptException if error occurs during key import
-     * @throws IllegalArgumentException if object is already initialized
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public void importPrivateOnly(byte[] privKey) {
-        if (state == WolfCryptState.INITIALIZED) {
+    public void importPrivateOnly(byte[] privKey)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (pointerLock) {
             wc_curve25519_import_private_only(privKey);
-            state = WolfCryptState.READY;
-        } else {
-            throw new IllegalStateException("Object already has a key.");
         }
+        state = WolfCryptState.READY;
     }
 
     /**
-     * Import public key
+     * Import public key from byte array.
      *
      * @param pubKey public Curve25519 key array
      *
      * @throws WolfCryptException if error occurs during key import
-     * @throws IllegalArgumentException if object is already initialized
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public void importPublic(byte[] pubKey) {
-        if (state == WolfCryptState.INITIALIZED) {
+    public void importPublic(byte[] pubKey)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (pointerLock) {
             wc_curve25519_import_public(pubKey);
-            state = WolfCryptState.READY;
-        } else {
-            throw new IllegalStateException("Object already has a key.");
         }
+        state = WolfCryptState.READY;
     }
 
     /**
-     * Export private key
+     * Export private key as byte array.
      *
      * @return byte array of private Curve25519 key
      *
      * @throws WolfCryptException if error occurs during key export
-     * @throws IllegalArgumentException if object has no key to export
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public byte[] exportPrivate() {
-        if (state == WolfCryptState.READY) {
+    public byte[] exportPrivate()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
             return wc_curve25519_export_private();
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
         }
     }
 
     /**
-     * Export public key
+     * Export public key as byte array.
      *
      * @return byte array of public Curve25519 key
      *
      * @throws WolfCryptException if error occurs during key export
-     * @throws IllegalArgumentException if object has no key to export
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public byte[] exportPublic() {
-        if (state == WolfCryptState.READY) {
+    public byte[] exportPublic()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
             return wc_curve25519_export_public();
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
         }
     }
 
     /**
-     * Generate shared secret between this object and specified public key
+     * Generate shared secret between this object and specified public key.
      *
      * @param pubKey public key to use for secret generation
      *
      * @return shared secret as byte array
      *
      * @throws WolfCryptException if error occurs during secret generation
-     * @throws IllegalArgumentException if object has no key
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public byte[] makeSharedSecret(Curve25519 pubKey) {
-        if (state == WolfCryptState.READY) {
+    public byte[] makeSharedSecret(Curve25519 pubKey)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
             return wc_curve25519_make_shared_secret(pubKey);
-        } else {
-            throw new IllegalStateException(
-                    "No available key to perform the operation.");
         }
     }
 }

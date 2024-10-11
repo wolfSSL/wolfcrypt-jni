@@ -72,8 +72,8 @@ public class Md5Test {
     }
 
     @Test
-    public void constructorShouldInitializeNativeStruct() {
-        assertNotEquals(NativeStruct.NULL, new Md5().getNativeStruct());
+    public void constructorShouldNotInitializeNativeStruct() {
+        assertEquals(NativeStruct.NULL, new Md5().getNativeStruct());
     }
 
     @Test
@@ -210,7 +210,7 @@ public class Md5Test {
         md5.update(data);
 
         /* test making copy of Md5, should retain same state */
-        md5Copy = new Md5(md5);
+        md5Copy = (Md5)md5.clone();
 
         result = md5.digest();
         result2 = md5Copy.digest();

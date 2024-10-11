@@ -33,7 +33,7 @@ public abstract class NativeStruct extends WolfObject {
      * Create new NativeStruct object
      */
     protected NativeStruct() {
-        setNativeStruct(mallocNativeStruct());
+        /* Native struct allocated in initNativeStruct() upon subclass init */
     }
 
     /* points to the internal native structure */
@@ -41,6 +41,17 @@ public abstract class NativeStruct extends WolfObject {
 
     /** Lock around native pointer use */
     protected final Object pointerLock = new Object();
+
+    /**
+     * Allocate and initialize native struct.
+     */
+    protected void initNativeStruct() {
+        synchronized (pointerLock) {
+            if (pointer == 0) {
+                setNativeStruct(mallocNativeStruct());
+            }
+        }
+    }
 
     /**
      * Get pointer to wrapped native structure
@@ -61,19 +72,18 @@ public abstract class NativeStruct extends WolfObject {
      * Set pointer to native structure
      *
      * If NativeStruct already holds pointer, old pointer will be free()'d
-     * before resetting to new pointer.
+     * before resetting to new pointer. Callers of this method should
+     * synchronize on 'pointerLock' before calling this method.
      *
      * @param nativeStruct pointer to initialized native structure
      */
-    protected void setNativeStruct(long nativeStruct) {
+    private void setNativeStruct(long nativeStruct) {
 
-        synchronized (pointerLock) {
-            if (this.pointer != NULL) {
-                xfree(this.pointer);
-            }
-
-            this.pointer = nativeStruct;
+        if (this.pointer != NULL) {
+            xfree(this.pointer);
         }
+
+        this.pointer = nativeStruct;
     }
 
     /**
@@ -85,7 +95,9 @@ public abstract class NativeStruct extends WolfObject {
      * this method to call that function.
      */
     public void releaseNativeStruct() {
-        setNativeStruct(NULL);
+        synchronized (pointerLock) {
+            setNativeStruct(NULL);
+        }
     }
 
     /**

@@ -84,15 +84,15 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     private final Object rngLock = new Object();
 
     /* for debug logging */
-    private WolfCryptDebug debug;
     private String algString;
 
     private WolfCryptKeyPairGenerator(KeyType type) {
 
         this.type = type;
 
-        if (debug.DEBUG)
+        if (WolfCryptDebug.DEBUG) {
             algString = typeToString(type);
+        }
     }
 
     @Override
@@ -118,8 +118,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
             }
         }
 
-        if (debug.DEBUG)
-            log("init with keysize: " + keysize);
+        log("init with keysize: " + keysize);
     }
 
     @Override
@@ -161,10 +160,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                         "RSA public exponent value larger than long");
                 }
 
-                if (debug.DEBUG) {
-                    log("init with RSA spec, keysize = " + keysize +
-                        ", public exponent = " + publicExponent);
-                }
+                log("init with RSA spec, keysize = " + keysize +
+                    ", public exponent = " + publicExponent);
 
                 break;
 
@@ -189,9 +186,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 this.curve = curveName;
                 this.keysize = curvesize;
 
-                if (debug.DEBUG)
-                    log("init with spec, curve: " + curveName +
-                        ", keysize: " + curvesize);
+                log("init with spec, curve: " + curveName +
+                    ", keysize: " + curvesize);
 
                 break;
 
@@ -211,8 +207,9 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                         "Invalid parameters, either p or g is null");
                 }
 
-                if ((this.dhP != null) && debug.DEBUG)
+                if (this.dhP != null) {
                     log("init with spec, prime len: " + this.dhP.length);
+                }
 
                 break;
 
@@ -285,9 +282,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     throw new RuntimeException(e);
                 }
 
-                if (debug.DEBUG) {
-                    log("generated RSA KeyPair");
-                }
+                log("generated RSA KeyPair");
 
                 break;
 
@@ -344,8 +339,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     throw new RuntimeException(e);
                 }
 
-                if (debug.DEBUG)
-                    log("generated ECC KeyPair");
+                log("generated ECC KeyPair");
 
                 break;
 
@@ -394,8 +388,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     throw new RuntimeException(e.getMessage());
                 }
 
-                if (debug.DEBUG)
-                    log("generated DH KeyPair");
+                log("generated DH KeyPair");
 
                 break;
 
@@ -421,7 +414,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     }
 
     private void log(String msg) {
-        debug.print("[KeyPairGenerator, " + algString + "] " + msg);
+        WolfCryptDebug.print("[KeyPairGenerator, " + algString + "] " + msg);
     }
 
     @SuppressWarnings("deprecation")

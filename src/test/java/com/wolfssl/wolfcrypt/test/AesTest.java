@@ -74,14 +74,24 @@ public class AesTest {
     }
 
     @Test
-    public void constructorShouldInitializeNativeStruct() {
-        assertNotEquals(NativeStruct.NULL, new Aes().getNativeStruct());
+    public void constructorShouldNotInitializeNativeStruct() {
+        assertEquals(NativeStruct.NULL, new Aes().getNativeStruct());
+    }
+
+    @Test
+    public void deprecatedConstructorThrows() {
+        try {
+            Aes aes = new Aes(null, null, Aes.ENCRYPT_MODE);
+            fail("Failed to throw expected exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
     }
 
     @Test
     public void checkSetKeyParams() {
         /* iv is optional, should not raise. */
-        Aes aes = new Aes(KEY, null, Aes.ENCRYPT_MODE);
+        Aes aes = new Aes();
 
         try {
             aes.setKey(null, IV, Aes.ENCRYPT_MODE);
@@ -95,18 +105,22 @@ public class AesTest {
 
         try {
             aes.setKey(KEY, IV, Aes.ENCRYPT_MODE);
-            fail("native struct should not be null.");
-        } catch (WolfCryptException e) {
+            fail("setKey() after release should throw exception");
+        } catch (IllegalStateException e) {
             /* test must throw */
         }
     }
 
     @Test
     public void checkUpdateParams() throws ShortBufferException {
-        Aes enc = new Aes(KEY, IV, Aes.ENCRYPT_MODE);
-        Aes dec = new Aes(KEY, IV, Aes.DECRYPT_MODE);
         byte[] input = new byte[Aes.BLOCK_SIZE];
         byte[] output = new byte[Aes.BLOCK_SIZE];
+
+        Aes enc = new Aes();
+        Aes dec = new Aes();
+
+        enc.setKey(KEY, IV, Aes.ENCRYPT_MODE);
+        dec.setKey(KEY, IV, Aes.DECRYPT_MODE);
 
         enc.update(input);
         dec.update(input);
@@ -160,7 +174,7 @@ public class AesTest {
         }
     }
 
-    @Test(expected = WolfCryptException.class)
+    @Test(expected = IllegalStateException.class)
     public void inputShouldNotBeNull() {
         Aes aes = new Aes();
 
@@ -236,10 +250,11 @@ public class AesTest {
         ByteBuffer cipher = ByteBuffer.allocateDirect(Aes.BLOCK_SIZE);
 
         for (int i = 0; i < inputs.length; i++) {
-            Aes enc = new Aes(Util.h2b(keys[i]), Util.h2b(ivs[i]),
-                    Aes.ENCRYPT_MODE);
-            Aes dec = new Aes(Util.h2b(keys[i]), Util.h2b(ivs[i]),
-                    Aes.DECRYPT_MODE);
+            Aes enc = new Aes();
+            Aes dec = new Aes();
+
+            enc.setKey(Util.h2b(keys[i]), Util.h2b(ivs[i]), Aes.ENCRYPT_MODE);
+            dec.setKey(Util.h2b(keys[i]), Util.h2b(ivs[i]), Aes.DECRYPT_MODE);
 
             input.put(Util.h2b(inputs[i])).rewind();
             output.put(Util.h2b(outputs[i])).rewind();
@@ -333,15 +348,16 @@ public class AesTest {
                 "b2eb05e2c39be9fcda6c19078c6a9d1b" };
 
         for (int i = 0; i < inputs.length; i++) {
-            Aes enc = new Aes(Util.h2b(keys[i]), Util.h2b(ivs[i]),
-                    Aes.ENCRYPT_MODE);
-            Aes dec = new Aes(Util.h2b(keys[i]), Util.h2b(ivs[i]),
-                    Aes.DECRYPT_MODE);
-
             byte[] input = Util.h2b(inputs[i]);
             byte[] output = Util.h2b(outputs[i]);
             byte[] cipher = new byte[Aes.BLOCK_SIZE];
             byte[] plain = new byte[Aes.BLOCK_SIZE];
+
+            Aes enc = new Aes();
+            Aes dec = new Aes();
+
+            enc.setKey(Util.h2b(keys[i]), Util.h2b(ivs[i]), Aes.ENCRYPT_MODE);
+            dec.setKey(Util.h2b(keys[i]), Util.h2b(ivs[i]), Aes.DECRYPT_MODE);
 
             if (i % 2 == 0) {
                 cipher = enc.update(input, 0, input.length);
@@ -378,11 +394,13 @@ public class AesTest {
         byte[] cipher = null;
         byte[] plain = null;
 
-        Aes enc = new Aes(key, iv, Aes.ENCRYPT_MODE);
+        Aes enc = new Aes();
+        enc.setKey(key, iv, Aes.ENCRYPT_MODE);
         cipher = enc.update(in, 0, in.length);
         assertArrayEquals(expected, cipher);
 
-        Aes dec = new Aes(key, iv, Aes.DECRYPT_MODE);
+        Aes dec = new Aes();
+        dec.setKey(key, iv, Aes.DECRYPT_MODE);
         plain = dec.update(cipher, 0, cipher.length);
         assertArrayEquals(in, plain);
 
@@ -391,11 +409,13 @@ public class AesTest {
         dec.releaseNativeStruct();
 
         /* try to re-init and re-use them */
-        enc = new Aes(key, iv, Aes.ENCRYPT_MODE);
+        enc = new Aes();
+        enc.setKey(key, iv, Aes.ENCRYPT_MODE);
         cipher = enc.update(in, 0, in.length);
         assertArrayEquals(expected, cipher);
 
-        dec = new Aes(key, iv, Aes.DECRYPT_MODE);
+        dec = new Aes();
+        dec.setKey(key, iv, Aes.DECRYPT_MODE);
         plain = dec.update(cipher, 0, cipher.length);
         assertArrayEquals(in, plain);
 
@@ -417,11 +437,13 @@ public class AesTest {
         byte[] cipher = null;
         byte[] plain = null;
 
-        Aes enc = new Aes(key, iv, Aes.ENCRYPT_MODE);
+        Aes enc = new Aes();
+        enc.setKey(key, iv, Aes.ENCRYPT_MODE);
         cipher = enc.update(in, 0, in.length);
         assertArrayEquals(expected, cipher);
 
-        Aes dec = new Aes(key, iv, Aes.DECRYPT_MODE);
+        Aes dec = new Aes();
+        dec.setKey(key, iv, Aes.DECRYPT_MODE);
         plain = dec.update(cipher, 0, cipher.length);
         assertArrayEquals(in, plain);
 
@@ -556,10 +578,13 @@ public class AesTest {
                 @Override public void run() {
 
                     int ret = 0;
-                    Aes enc = new Aes(key, iv, Aes.ENCRYPT_MODE);
-                    Aes dec = new Aes(key, iv, Aes.DECRYPT_MODE);
                     byte[] encrypted = new byte[2048];
                     byte[] plaintext = new byte[2048];
+
+                    Aes enc = new Aes();
+                    Aes dec = new Aes();
+                    enc.setKey(key, iv, Aes.ENCRYPT_MODE);
+                    dec.setKey(key, iv, Aes.DECRYPT_MODE);
 
                     try {
                         /* encrypt in 128-byte chunks */

@@ -37,9 +37,6 @@ public final class WolfCryptMessageDigestSha
     /* internal reference to wolfCrypt JNI Sha object */
     private Sha sha;
 
-    /* for debug logging */
-    private WolfCryptDebug debug;
-
     /**
      * Create new WolfCryptMessageDigestSha object
      */
@@ -72,8 +69,7 @@ public final class WolfCryptMessageDigestSha
             throw new RuntimeException(e.getMessage());
         }
 
-        if (debug.DEBUG)
-            log("generated final digest, len: " + digest.length);
+        log("generated final digest, len: " + digest.length);
 
         return digest;
     }
@@ -83,8 +79,7 @@ public final class WolfCryptMessageDigestSha
 
         this.sha.init();
 
-        if (debug.DEBUG)
-            log("engine reset");
+        log("engine reset");
     }
 
     @Override
@@ -95,8 +90,7 @@ public final class WolfCryptMessageDigestSha
 
         this.sha.update(tmp, 1);
 
-        if (debug.DEBUG)
-            log("update with single byte");
+        log("update with single byte");
     }
 
     @Override
@@ -104,12 +98,11 @@ public final class WolfCryptMessageDigestSha
 
         this.sha.update(input, offset, len);
 
-        if (debug.DEBUG)
-            log("update, offset: " + offset + ", len: " + len);
+        log("update, offset: " + offset + ", len: " + len);
     }
 
     private void log(String msg) {
-        debug.print("[MessageDigest, SHA] " + msg);
+        WolfCryptDebug.print("[MessageDigest, SHA] " + msg);
     }
 
     @Override
@@ -119,7 +112,7 @@ public final class WolfCryptMessageDigestSha
 
     @Override
     public Object clone() {
-        Sha shaCopy = new Sha(this.sha);
+        Sha shaCopy = (Sha)this.sha.clone();
         return new WolfCryptMessageDigestSha(shaCopy);
     }
 

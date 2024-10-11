@@ -78,8 +78,17 @@ void* getNativeStruct(JNIEnv* env, jobject this)
             nativeStruct = (*env)->GetLongField(env, this, field);
         }
 
-        if (!nativeStruct)
-            throwWolfCryptException(env, "Failed to retrieve native struct");
+        if (nativeStruct == 0) {
+            /* Try to initialize Java NativeStruct */
+            initializeNativeStruct(env, this);
+
+            /* Try to get again, sanity check */
+            nativeStruct = (*env)->GetLongField(env, this, field);
+            if (nativeStruct == 0) {
+                throwWolfCryptException(env,
+                    "Failed to retrieve native struct");
+            }
+        }
 
         return (void*)(uintptr_t)nativeStruct;
     }
@@ -161,3 +170,28 @@ word32 getByteArrayLength(JNIEnv* env, jbyteArray array)
 {
     return array ? (*env)->GetArrayLength(env, array) : 0;
 }
+
+void initializeNativeStruct(JNIEnv* env, jobject obj)
+{
+    jclass class;
+    jmethodID methId;
+
+    if (obj == NULL) {
+        return;
+    }
+
+    class = (*env)->GetObjectClass(env, obj);
+    methId = (*env)->GetMethodID(env, class, "initNativeStruct", "()V");
+
+    /* GetMethodID may throw exception */
+    if ((*env)->ExceptionOccurred(env)) {
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+        throwWolfCryptException(env,
+            "Failed to find initNativeStruct() method from JNI");
+    }
+    else {
+        (*env)->CallVoidMethod(env, obj, methId);
+    }
+}
+

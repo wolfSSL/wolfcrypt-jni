@@ -26,12 +26,15 @@ import java.nio.ByteBuffer;
 /**
  * Wrapper for the native WolfCrypt SHA2-384 implementation
  */
-public class Sha384 extends MessageDigest {
+public class Sha384 extends MessageDigest implements Cloneable {
 
     /** SHA2-384 hash type */
     public static final int TYPE = 5; /* hash type unique */
     /** SHA2-384 digest size */
     public static final int DIGEST_SIZE = 48;
+
+    /** Array to init Sha384 with, will be reset to null once initialized */
+    private byte[] initialData = null;
 
     /* native JNI methods, internally reach back and grab/use pointer from
      * NativeStruct.java. We wrap calls to these below in order to
@@ -71,6 +74,12 @@ public class Sha384 extends MessageDigest {
 
         synchronized (pointerLock) {
             native_init_internal();
+
+            /* Check if we need to init with passed in data */
+            if (this.initialData != null) {
+                update(this.initialData);
+                this.initialData = null;
+            }
         }
     }
 
@@ -156,10 +165,17 @@ public class Sha384 extends MessageDigest {
     }
 
     /**
-     * Create new SHA2-384 object
+     * Create new SHA2-384 object.
+     *
+     * @throws WolfCryptException if SHA-384 has not been compiled into native
+     *         wolfCrypt library.
      */
     public Sha384() {
-        init();
+        if (!FeatureDetect.Sha384Enabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
     }
 
     /**
@@ -167,21 +183,38 @@ public class Sha384 extends MessageDigest {
      *
      * @param sha384 Initialized/created Sha384 object to be copied
      *
-     * @throws WolfCryptException if native operation fails
+     * @throws WolfCryptException to indicate this constructor has been
+     *         deprecated, along with instructions on what API to call
+     *
+     * @deprecated This constructor has been deprecated to avoid storage
+     *             of a second Sha384 object inside this Sha384 object, and to
+     *             avoid potential incomplete object creation issues between
+     *             subclass/superclasses. Please refactor existing code to
+     *             call Sha384.clone() to get a copy of an existing Sha384
+     *             object.
      */
+    @Deprecated
     public Sha384(Sha384 sha384) {
-        init();
-        native_copy(sha384);
+        throw new WolfCryptException(
+            "Constructor deprecated, use Sha384.clone() to duplicate " +
+            "Sha384 object");
     }
 
     /**
-     * Create new SHA2-384 object
+     * Create new SHA2-384 object.
      *
      * @param data input data to hash
+     *
+     * @throws WolfCryptException if SHA-384 has not been compiled into native
+     *         wolfCrypt library.
      */
     public Sha384(byte[] data) {
-        init();
-        update(data);
+        if (!FeatureDetect.Sha384Enabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+        /* Internal state is initialized on first use */
+        this.initialData = data.clone();
     }
 
     /**
@@ -191,6 +224,17 @@ public class Sha384 extends MessageDigest {
      */
     public int digestSize() {
         return DIGEST_SIZE;
+    }
+
+    @Override
+    public Object clone() {
+
+        Sha384 shaCopy = new Sha384();
+        /* Initialize NativeStruct, since is done on first use */
+        shaCopy.checkStateAndInitialize();
+        shaCopy.native_copy(this);
+
+        return shaCopy;
     }
 }
 

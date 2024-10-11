@@ -35,8 +35,12 @@ public abstract class BlockCipher extends NativeStruct {
 
     private int opmode;
 
-    /** Default BlockCipher constructor */
-    public BlockCipher() { }
+    /** Lock around object state */
+    protected final Object stateLock = new Object();
+
+    /** Create a new BlockCipher */
+    public BlockCipher() {
+    }
 
     /**
      * Set block cipher key, IV, and mode
@@ -78,13 +82,65 @@ public abstract class BlockCipher extends NativeStruct {
             int offset, int length, ByteBuffer output, int outputOffset);
 
     /**
+     * Initialize BlockCipher object and underlying native structure.
+     *
+     * @throws IllegalStateException if releaseNativeStruct() has been
+     *         called on this object.
+     */
+    private synchronized void checkStateAndInitialize() {
+        if (state == WolfCryptState.RELEASED) {
+            throw new IllegalStateException("Object has been released");
+        }
+        if (state == WolfCryptState.UNINITIALIZED) {
+            /* Initialize native struct */
+            initNativeStruct();
+            state = WolfCryptState.INITIALIZED;
+        }
+    }
+
+    /**
+     * Throw exception if key has been loaded already.
+     *
+     * @throws IllegalStateException if key has been loaded already
+     */
+    private void throwIfKeyExists() throws IllegalStateException {
+        synchronized (stateLock) {
+            if (state == WolfCryptState.READY) {
+                throw new IllegalStateException("Object already has a key");
+            }
+        }
+    }
+
+    /**
+     * Throw exception if key has not been loaded.
+     *
+     * @throws IllegalStateException if key has not been loaded
+     */
+    private void throwIfKeyNotLoaded() throws IllegalStateException {
+        synchronized (stateLock) {
+            if (state != WolfCryptState.READY) {
+                throw new IllegalStateException(
+                    "No key available to perform the operation");
+            }
+        }
+    }
+
+    /**
      * Set block cipher key, IV, and mode
      *
      * @param key block cipher key array
      * @param iv block cipher initialization vector (IV) array
      * @param opmode block cipher operation mode, dependent on subclass type
+     *
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public synchronized void setKey(byte[] key, byte[] iv, int opmode) {
+    public synchronized void setKey(byte[] key, byte[] iv, int opmode)
+        throws IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
 
         native_set_key(key, iv, opmode);
 
@@ -93,25 +149,18 @@ public abstract class BlockCipher extends NativeStruct {
     }
 
     /**
-     * Throws IllegalStateException if key not usable
-     *
-     * @throws IllegalStateException if algorithm or key not usable
-     */
-    public synchronized void willUseKey() {
-
-        if (state != WolfCryptState.READY)
-            throw new IllegalStateException(
-                    "No available key to perform the opperation.");
-    }
-
-    /**
      * Block cipher update operation
      *
      * @param input input data for update
      *
      * @return output data array from update operation
+     *
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public synchronized byte[] update(byte[] input) {
+    public synchronized byte[] update(byte[] input)
+        throws IllegalStateException {
 
         return update(input, 0, input.length);
     }
@@ -124,10 +173,16 @@ public abstract class BlockCipher extends NativeStruct {
      * @param length length of data to process
      *
      * @return output data array from update operation
+     *
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
-    public synchronized byte[] update(byte[] input, int offset, int length) {
+    public synchronized byte[] update(byte[] input, int offset, int length)
+        throws IllegalStateException {
 
-        willUseKey();
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
 
         byte[] output = new byte[input.length];
 
@@ -148,15 +203,21 @@ public abstract class BlockCipher extends NativeStruct {
      * @return number of bytes written to output
      *
      * @throws ShortBufferException if output buffer is too small
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized int update(byte[] input, int offset, int length,
-        byte[] output, int outputOffset) throws ShortBufferException {
+        byte[] output, int outputOffset)
+        throws ShortBufferException, IllegalStateException {
 
-        willUseKey();
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
 
-        if (outputOffset + length > output.length)
+        if (outputOffset + length > output.length) {
             throw new ShortBufferException(
-                    "output buffer is too small to hold the result.");
+                "output buffer is too small to hold the result.");
+        }
 
         return native_update(opmode, input, offset, length, output,
                 outputOffset);
@@ -171,17 +232,22 @@ public abstract class BlockCipher extends NativeStruct {
      * @return number of bytes written to output
      *
      * @throws ShortBufferException if output buffer is not large enough
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
      */
     public synchronized int update(ByteBuffer input, ByteBuffer output)
-        throws ShortBufferException {
-
-        willUseKey();
+        throws ShortBufferException, IllegalStateException {
 
         int ret = 0;
 
-        if (output.remaining() < input.remaining())
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        if (output.remaining() < input.remaining()) {
             throw new ShortBufferException(
-                    "output buffer is too small to hold the result.");
+                "output buffer is too small to hold the result.");
+        }
 
         ret = native_update(opmode, input, input.position(), input.remaining(),
                 output, output.position());
@@ -194,10 +260,13 @@ public abstract class BlockCipher extends NativeStruct {
 
     @Override
     public synchronized void releaseNativeStruct() {
-
-        /* reset state first, then free */
-        state = WolfCryptState.UNINITIALIZED;
-        setNativeStruct(NULL);
+        synchronized (stateLock) {
+            if ((state != WolfCryptState.UNINITIALIZED) &&
+                (state != WolfCryptState.RELEASED)) {
+                super.releaseNativeStruct();
+                state = WolfCryptState.RELEASED;
+            }
+        }
     }
 
     /**
