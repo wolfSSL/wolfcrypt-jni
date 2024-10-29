@@ -42,6 +42,7 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_provider_jce_WolfSSLKeyStore_X509Che
     int keyDerSz = 0;
     byte* certDer = NULL;
     byte* keyDer = NULL;
+    byte* pkcs8KeyDer = NULL;
     WOLFSSL_X509* x509 = NULL;
     WOLFSSL_EVP_PKEY* key = NULL;
     WOLFSSL_PKCS8_PRIV_KEY_INFO* keyInfo = NULL;
@@ -58,6 +59,9 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_provider_jce_WolfSSLKeyStore_X509Che
 
     keyDer = (byte*)(*env)->GetByteArrayElements(env, pkcs8KeyDerArr, NULL);
     keyDerSz = (*env)->GetArrayLength(env, pkcs8KeyDerArr);
+    /* Keep original keyDer pointer for free later, wolfSSL_d2i_PKCS8_PKEY
+     * will change/advance the pointer. */
+    pkcs8KeyDer = keyDer;
 
     if (certDer == NULL || certDerSz <= 0 || keyDer == NULL || keyDerSz <= 0) {
         fprintf(stderr, "Native X509CheckPrivateKey() bad args");
@@ -75,7 +79,8 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_provider_jce_WolfSSLKeyStore_X509Che
     }
 
     if (ret == WOLFSSL_SUCCESS) {
-        keyInfo = wolfSSL_d2i_PKCS8_PKEY(NULL, (const byte**)&keyDer, keyDerSz);
+        keyInfo = wolfSSL_d2i_PKCS8_PKEY(NULL, (const byte**)&pkcs8KeyDer,
+                                         keyDerSz);
         if (keyInfo == NULL) {
             fprintf(stderr, "Native wolfSSL_d2i_PKCS8_PKEY() failed");
             ret = WOLFSSL_FAILURE;
