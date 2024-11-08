@@ -179,6 +179,17 @@ public class WolfSSLKeyStoreTest {
     }
 
     /**
+     * Test if this environment is Windows.
+     * @return true if Windows, otherwise false.
+     */
+    private static boolean isWindows() {
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Read in and convert DER private key into PrivateKey object.
      *
      * @param derFilePath file path to DER-encoded private key
@@ -1438,6 +1449,10 @@ public class WolfSSLKeyStoreTest {
         /* Skip running this test on Android, since directory structure
          * and cacert gen script won't be there. */
         Assume.assumeTrue(!isAndroid());
+
+        /* Skip running this test on Windows until portabiliy of running
+         * above script is figured out. */
+        Assume.assumeTrue(!isWindows());
 
         /* Skip of wolfcrypt-jni.jar does not exist. This can happen if we
          * are running via 'mvn test' and the jar has not been created yet */
