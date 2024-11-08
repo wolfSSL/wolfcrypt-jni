@@ -165,10 +165,12 @@ public class Ed25519 extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyExists();
 
-        synchronized (pointerLock) {
-            wc_ed25519_make_key(rng, size);
+        synchronized (stateLock) {
+            synchronized (pointerLock) {
+                wc_ed25519_make_key(rng, size);
+            }
+            state = WolfCryptState.READY;
         }
-        state = WolfCryptState.READY;
     }
 
     /**
@@ -208,10 +210,12 @@ public class Ed25519 extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyExists();
 
-        synchronized (pointerLock) {
-            wc_ed25519_import_private(privKey, Key);
+        synchronized (stateLock) {
+            synchronized (pointerLock) {
+                wc_ed25519_import_private(privKey, Key);
+            }
+            state = WolfCryptState.READY;
         }
-        state = WolfCryptState.READY;
     }
 
     /**
@@ -230,10 +234,12 @@ public class Ed25519 extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyExists();
 
-        synchronized (pointerLock) {
-            wc_ed25519_import_private_only(privKey);
+        synchronized (stateLock) {
+            synchronized (pointerLock) {
+                wc_ed25519_import_private_only(privKey);
+            }
+            state = WolfCryptState.READY;
         }
-        state = WolfCryptState.READY;
     }
 
     /**
@@ -252,10 +258,12 @@ public class Ed25519 extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyExists();
 
-        synchronized (pointerLock) {
-            wc_ed25519_import_public(Key);
+        synchronized (stateLock) {
+            synchronized (pointerLock) {
+                wc_ed25519_import_public(Key);
+            }
+            state = WolfCryptState.READY;
         }
-        state = WolfCryptState.READY;
     }
 
     /**

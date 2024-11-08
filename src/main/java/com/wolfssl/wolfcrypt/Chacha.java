@@ -150,10 +150,12 @@ public class Chacha extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyExists();
 
-        synchronized (pointerLock) {
-            wc_Chacha_setKey(Key);
+        synchronized (stateLock) {
+            synchronized (pointerLock) {
+                wc_Chacha_setKey(Key);
+            }
+            state = WolfCryptState.READY;
         }
-        state = WolfCryptState.READY;
     }
 
     /**
