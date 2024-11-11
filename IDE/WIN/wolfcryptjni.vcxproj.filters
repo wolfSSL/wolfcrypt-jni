@@ -170,5 +170,8 @@
     <ClCompile Include="..\..\jni\jni_wolfssl_cert_manager.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\jni\jni_jce_wolfsslkeystore.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

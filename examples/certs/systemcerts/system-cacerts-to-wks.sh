@@ -29,9 +29,19 @@ export DYLD_LIBRARY_PATH=../../../lib:$DYLD_LIBRARY_PATH
 
 OUTDIR=`pwd`
 
+# First argument can be passed in to represent path to
+# wolfcrypt-jni.jar provider JAR. If not given, use default.
+if [ -z "$1" ]; then
+    # default wolfcrypt-jni.jar path
+    PROVIDER_PATH="../../../lib/wolfcrypt-jni.jar"
+else
+    # use custom provider path
+    PROVIDER_PATH=$1
+fi
+
 # ARGS: <input-keystore-name> <output-keystore-name> <in-password> <out-password> <java home>
 jks_to_wks() {
-    ${5}/bin/keytool -importkeystore -srckeystore ${1} -destkeystore ${2}.wks -srcstoretype JKS -deststoretype WKS -srcstorepass "$3" -deststorepass "$3" -deststorepass "$4" -provider com.wolfssl.provider.jce.WolfCryptProvider --providerpath ../../../lib/wolfcrypt-jni.jar &> /dev/null
+    ${5}/bin/keytool -importkeystore -srckeystore ${1} -destkeystore ${2}.wks -srcstoretype JKS -deststoretype WKS -srcstorepass "$3" -deststorepass "$3" -deststorepass "$4" -provider com.wolfssl.provider.jce.WolfCryptProvider --providerpath "$PROVIDER_PATH"
     if [ $? -ne 0 ]; then
         printf "Failed to convert JKS to WKS!"
         exit 1
@@ -57,6 +67,8 @@ else
     echo "JAVA_HOME already set = $JAVA_HOME"
     javaHome="$JAVA_HOME"
 fi
+
+echo "PROVIDER_PATH: $PROVIDER_PATH"
 
 # Set up Java include and library paths for OS X and Linux
 # NOTE: you may need to modify these if your platform uses different locations

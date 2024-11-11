@@ -96,9 +96,11 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_provider_jce_WolfSSLKeyStore_X509Che
     }
 
     if (ret == WOLFSSL_SUCCESS) {
+        PRIVATE_KEY_UNLOCK();
         ret = wolfSSL_X509_check_private_key(x509, key);
+        PRIVATE_KEY_LOCK();
         if (ret != WOLFSSL_SUCCESS) {
-            fprintf(stderr, "Native wolfSSL_X509_check_private_key() failed");
+            fprintf(stderr, "Native wolfSSL_X509_check_private_key() failed: %d", ret);
         }
     }
 

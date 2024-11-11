@@ -208,7 +208,7 @@ on the current release):
         <dependency>
             <groupId>com.wolfssl</groupId>
             <artifactId>wolfcrypt-jni</artifactId>
-            <version>1.6.0-SNAPSHOT</version>
+            <version>1.7.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
     ...

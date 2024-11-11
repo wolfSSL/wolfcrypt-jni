@@ -338,7 +338,9 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private(
     }
 
     if (ret == 0) {
+        PRIVATE_KEY_UNLOCK();
         ret = wc_ecc_export_private_only(ecc, output, &outputSz);
+        PRIVATE_KEY_LOCK();
     }
 
     if (ret == 0) {
@@ -1054,7 +1056,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1ke
     }
 
     if (ret == 0) {
+        PRIVATE_KEY_UNLOCK();
         ret = wc_EccPrivateKeyToDer(ecc, derKey, derKeySz);
+        PRIVATE_KEY_LOCK();
         if (ret >= 0) {
             derKeySz = ret;
             ret = 0;
