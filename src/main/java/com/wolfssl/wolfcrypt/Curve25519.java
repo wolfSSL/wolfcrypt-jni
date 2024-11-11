@@ -166,10 +166,12 @@ public class Curve25519 extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyExists();
 
-        synchronized (pointerLock) {
-            wc_curve25519_make_key(rng, size);
+        synchronized (stateLock) {
+            synchronized (pointerLock) {
+                wc_curve25519_make_key(rng, size);
+            }
+            state = WolfCryptState.READY;
         }
-        state = WolfCryptState.READY;
     }
 
     /**
@@ -189,10 +191,12 @@ public class Curve25519 extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyExists();
 
-        synchronized (pointerLock) {
-            wc_curve25519_make_key_ex(rng, size, endian);
+        synchronized (stateLock) {
+            synchronized (pointerLock) {
+                wc_curve25519_make_key_ex(rng, size, endian);
+            }
+            state = WolfCryptState.READY;
         }
-        state = WolfCryptState.READY;
     }
 
     /**
@@ -230,10 +234,12 @@ public class Curve25519 extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyExists();
 
-        synchronized (pointerLock) {
-            wc_curve25519_import_private(privKey, xKey);
+        synchronized (stateLock) {
+            synchronized (pointerLock) {
+                wc_curve25519_import_private(privKey, xKey);
+            }
+            state = WolfCryptState.READY;
         }
-        state = WolfCryptState.READY;
     }
 
     /**
@@ -252,10 +258,12 @@ public class Curve25519 extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyExists();
 
-        synchronized (pointerLock) {
-            wc_curve25519_import_private_only(privKey);
+        synchronized (stateLock) {
+            synchronized (pointerLock) {
+                wc_curve25519_import_private_only(privKey);
+            }
+            state = WolfCryptState.READY;
         }
-        state = WolfCryptState.READY;
     }
 
     /**
@@ -274,10 +282,12 @@ public class Curve25519 extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyExists();
 
-        synchronized (pointerLock) {
-            wc_curve25519_import_public(pubKey);
+        synchronized (stateLock) {
+            synchronized (pointerLock) {
+                wc_curve25519_import_public(pubKey);
+            }
+            state = WolfCryptState.READY;
         }
-        state = WolfCryptState.READY;
     }
 
     /**

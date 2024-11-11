@@ -1,3 +1,27 @@
+### wolfCrypt JNI Release 1.7.0 (11/11/2024)
+
+Release 1.7.0 of wolfCrypt JNI and JCE has bug fixes and new features including:
+
+**New JCE Functionality:**
+- New WolfSSLKeyStore (WKS) KeyStore implementation for FIPS 140-2/3 compliance (PR 67)
+
+**JNI and JCE Changes:**
+- Remove call to BigInteger.longValueExact(), not available on some Java versions (PR 76)
+- Detect `RSA_MIN_SIZE` in tests, add `Rsa.RSA_MIN_SIZE` helper (PR 77)
+- Fix pointer use in native `X509CheckPrivateKey()` (PR 80)
+
+**Example Changes:**
+- Set keytool path correctly in `system-cacerts-to-wks.sh` (PR 78)
+- Add example Android Studio project (IDE/Android) (PR 79)
+
+**Testing Changes:**
+- Run Facebook Infer on pull requests with GitHub Actions (PR 74)
+- Add Android Gradle build with GitHub Actions to run on all pull requests (PR 79)
+
+The wolfCrypt JNI/JCE Manual is available at:
+https://www.wolfssl.com/documentation/manuals/wolfcryptjni/. For build
+instructions and more details comments, please check the manual.
+
 ### wolfCrypt JNI Release 1.6.0 (4/17/2024)
 
 Release 1.6.0 of wolfCrypt JNI and JCE has bug fixes and new features including:

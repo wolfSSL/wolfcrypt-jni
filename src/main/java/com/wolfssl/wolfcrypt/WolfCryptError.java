@@ -341,8 +341,11 @@ public enum WolfCryptError {
     /** DH KAT failure */
     DH_KAT_FIPS_E        (-256),
 
+    /** Cannot export private key */
+    FIPS_PRIVATE_KEY_LOCKED_E (-287),
+
     /** Update this to indicate last error */
-    WC_LAST_E            (-256),
+    WC_LAST_E            (-299),
 
     /** errors -101 - -299 */
     MIN_CODE_E           (-300);

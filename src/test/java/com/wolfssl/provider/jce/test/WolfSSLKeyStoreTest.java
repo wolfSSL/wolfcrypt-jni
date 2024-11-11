@@ -66,6 +66,11 @@ import java.security.spec.InvalidKeySpecException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintStream;
+
 import com.wolfssl.provider.jce.WolfCryptProvider;
 
 public class WolfSSLKeyStoreTest {
@@ -168,6 +173,17 @@ public class WolfSSLKeyStoreTest {
      */
     private static boolean isAndroid() {
         if (System.getProperty("java.runtime.name").contains("Android")) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Test if this environment is Windows.
+     * @return true if Windows, otherwise false.
+     */
+    private static boolean isWindows() {
+        if (System.getProperty("os.name").startsWith("Windows")) {
             return true;
         }
         return false;
@@ -1423,7 +1439,9 @@ public class WolfSSLKeyStoreTest {
         String scriptName = "system-cacerts-to-wks.sh";
         String cacertsWKS = "cacerts.wks";
         String jssecacertsWKS = "jssecacerts.wks";
-        String cmd = "cd " + userDir + scriptDir + " && /bin/sh " + scriptName;
+        String providerJARPath = "/lib/wolfcrypt-jni.jar";
+        String cmd = "cd " + userDir + scriptDir + " && /bin/sh " + scriptName +
+            " " + userDir + providerJARPath;
         KeyStore store = null;
         String cacertsPass = "changeitchangeit";
         File cacertFile = null;
@@ -1431,6 +1449,15 @@ public class WolfSSLKeyStoreTest {
         /* Skip running this test on Android, since directory structure
          * and cacert gen script won't be there. */
         Assume.assumeTrue(!isAndroid());
+
+        /* Skip running this test on Windows until portabiliy of running
+         * above script is figured out. */
+        Assume.assumeTrue(!isWindows());
+
+        /* Skip of wolfcrypt-jni.jar does not exist. This can happen if we
+         * are running via 'mvn test' and the jar has not been created yet */
+        File jarFile = new File(userDir + providerJARPath);
+        Assume.assumeTrue(jarFile.exists());
 
         assertNotNull(userDir);
 

@@ -78,6 +78,7 @@
     <ClCompile Include="..\..\jni\jni_feature_detect.c" />
     <ClCompile Include="..\..\jni\jni_fips.c" />
     <ClCompile Include="..\..\jni\jni_hmac.c" />
+    <ClCompile Include="..\..\jni\jni_jce_wolfsslkeystore.c" />
     <ClCompile Include="..\..\jni\jni_logging.c" />
     <ClCompile Include="..\..\jni\jni_md5.c" />
     <ClCompile Include="..\..\jni\jni_native_struct.c" />

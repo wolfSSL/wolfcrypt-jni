@@ -137,7 +137,11 @@ section titled `/* Configuration */`:
 ```
 #define WOLFSSL_KEY_GEN
 #define HAVE_CRL
+#define OPENSSL_ALL
 ```
+
+If also building wolfSSL JNI/JSSE, additional defines may be needed. Please
+reference the Windows build documentation for wolfSSL JNI/JSSE if so.
 
 After editing and saving the `user_settings.h` file, select one of the following
 DLL Library configurations and build the wolfSSL library solution:
@@ -204,7 +208,11 @@ and set the values for `HAVE_FIPS`, `HAVE_FIPS_VERSION`, and
 ```
 #define WOLFSSL_KEY_GEN
 #define HAVE_CRL
+#define OPENSSL_ALL
 ```
+
+If also building wolfSSL JNI/JSSE, additional defines may be needed. Please
+reference the Windows build documentation for wolfSSL JNI/JSSE if so.
 
 6. Build the `wolfssl-fips` project, which will create a DLL in one of the
 following locations:
@@ -230,19 +238,20 @@ in the wolfCrypt tests successfully running.
 See the FIPS User Guide for more details on the FIPS verifyCore hash, or
 email support@wolfssl.com.
 
-## wolfSSL FIPS 140-3 (Upcoming)
+## wolfSSL FIPS 140-3 (Certificate #4718)
 
-To build a version of wolfSSL that has been submitted for FIPS 140-3, use
-the Visual Studio solution file under the `IDE\WIN10` directory inside the
-wolfSSL package:
+To build a wolfSSL FIPS 140-3 variant for use with FIPS 140-3 certificate
+#4718, use the Visual Studio solution file located in the `IDE/WIN10`
+directory inside the wolfSSL package:
 
 ```
 <wolfssl>\IDE\WIN10\wolfssl-fips.sln
 ```
 
 Follow instructions in the above section for 140-2 / 3389, except use the
-following values for `HAVE_FIPS`, `HAVE_FIPS_VERSION`, and
-`HAVE_FIPS_VERSION_MINOR` in `user_settings.h`:
+following values for `HAVE_FIPS`, `HAVE_FIPS_VERSION`,
+`HAVE_FIPS_VERSION_MAJOR`, `HAVE_FIPS_VERSION_MINOR`, and
+`HAVE_FIPS_VERSION_PATCH` in `user_settings.h`:
 
 ```
 #if 1
@@ -250,8 +259,12 @@ following values for `HAVE_FIPS`, `HAVE_FIPS_VERSION`, and
 #define HAVE_FIPS
 #undef HAVE_FIPS_VERSION
 #define HAVE_FIPS_VERSION 5
+#undef HAVE_FIPS_VERSION_MAJOR
+#define HAVE_FIPS_VERSION_MAJOR 5
 #undef HAVE_FIPS_VERSION_MINOR
-#define HAVE_FIPS_VERSION_MINOR 1
+#define HAVE_FIPS_VERSION_MINOR 2
+#undef HAVE_FIPS_VERSION_PATCH
+#define HAVE_FIPS_VERSION_PATCH 0
 #endif
 ```
 
@@ -261,7 +274,11 @@ The following additional defines will also need to be added to
 ```
 #define WOLFSSL_KEY_GEN
 #define HAVE_CRL
+#define OPENSSL_ALL
 ```
+
+If also building wolfSSL JNI/JSSE, additional defines may be needed. Please
+reference the Windows build documentation for wolfSSL JNI/JSSE if so.
 
 For additional help, contact support@wolfssl.com.
 
