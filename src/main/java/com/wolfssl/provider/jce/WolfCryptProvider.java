@@ -22,6 +22,7 @@
 package com.wolfssl.provider.jce;
 
 import java.security.Provider;
+import java.security.Security;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Fips;
 
@@ -37,6 +38,27 @@ public final class WolfCryptProvider extends Provider {
      */
     public WolfCryptProvider() {
         super("wolfJCE", 1.7, "wolfCrypt JCE Provider");
+        registerServices();
+    }
+
+    /**
+     * Refresh the services provided by this JCE provider.
+     *
+     * This is required when one of the Security properties has been changed
+     * that affect the services offered by this provider. For example:
+     *     wolfjce.mapJKStoWKS
+     *     wolfjce.mapPKCS12toWKS
+     */
+    public void refreshServices() {
+        registerServices();
+    }
+
+    /**
+     * Register services provided by wolfJCE, called by class constructor.
+     */
+    private void registerServices() {
+        String mapJksToWks = null;
+        String mapPkcs12ToWks = null;
 
         /* MessageDigest */
         if (FeatureDetect.Md5Enabled()) {
@@ -221,6 +243,32 @@ public final class WolfCryptProvider extends Provider {
         /* KeyStore */
         put("KeyStore.WKS",
                 "com.wolfssl.provider.jce.WolfSSLKeyStore");
+
+        /* Fake mapping of JKS to WKS type. Use with caution! This is
+         * usually used when FIPS compliance is needed but code cannot be
+         * changed that creates a JKS KeyStore object type. Any files loaded
+         * into this fake JKS KeyStore MUST be of actual type WKS or failures
+         * will happen. Remove service first here in case of refresh. */
+        remove("KeyStore.JKS");
+        mapJksToWks = Security.getProperty("wolfjce.mapJKStoWKS");
+        if (mapJksToWks != null && !mapJksToWks.isEmpty() &&
+            mapJksToWks.equalsIgnoreCase("true")) {
+            put("KeyStore.JKS",
+                "com.wolfssl.provider.jce.WolfSSLKeyStore");
+        }
+
+        /* Fake mapping of PKCS12 to WKS type. Use with caution! This is
+         * usually used when FIPS compliance is needed but code cannot be
+         * changed that creates a JKS KeyStore object type. Any files loaded
+         * into this fake JKS KeyStore MUST be of actual type WKS or failures
+         * will happen. Remove service first here in case of refresh. */
+        remove("KeyStore.PKCS12");
+        mapPkcs12ToWks = Security.getProperty("wolfjce.mapPKCS12toWKS");
+        if (mapPkcs12ToWks != null && !mapPkcs12ToWks.isEmpty() &&
+            mapPkcs12ToWks.equalsIgnoreCase("true")) {
+            put("KeyStore.PKCS12",
+                "com.wolfssl.provider.jce.WolfSSLKeyStore");
+        }
 
         /* If using a FIPS version of wolfCrypt, allow private key to be
          * exported for use. Only applicable to FIPS 140-3 */

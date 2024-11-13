@@ -36,6 +36,40 @@ file for JCE provider customization:
 | --- | --- | --- | --- |
 | wolfjce.wks.iterationCount | 210,000 | Numeric | PBKDF2 iteration count (10,000 minimum) |
 | wolfjce.wks.maxCertChainLength | 100 | Integer | Max cert chain length |
+| wolfjce.mapJKStoWKS | UNSET | true | Register fake JKS KeyStore service mapped to WKS |
+| wolfjce.mapPKCS12toWKS | UNSET | true | Register fake PKCS12 KeyStore service mapped to WKS |
+
+**wolfjce.mapJKStoWKS** - this Security property should be used with caution.
+When enabled, this will register a "JKS" KeyStore type in wolfJCE, which means
+calling applications using `KeyStore.getInstance("JKS")` will get a KeyStore
+implementation from wolfJCE. BUT, this KeyStore type will actually be a
+WolfSSLKeyStore (WKS) type internally. Loading actual JKS files will fail.
+This can be helpful when FIPS compliance is required, but existing code gets
+a JKS KeyStore instance - and this assumes the caller has the flexibility to
+actually load a real WKS KeyStore file into this KeyStore object. If this
+property is being set at runtime programatically, the wolfJCE provider services
+will need to be refreshed / reloaded, by doing:
+
+```
+WolfCryptProvider prov = (WolfCryptProvider)Security.getProvider("wolfJCE");
+prov.refreshServices();
+```
+
+**wolfjce.mapPKCS12toWKS** - this Security property should be used with caution.
+When enabled, this will register a "PKCS12" KeyStore type in wolfJCE, which
+means calling applications using `KeyStore.getInstance("PKCS12")` will get a
+KeyStore implementation from wolfJCE. BUT, this KeyStore type will actually be a
+WolfSSLKeyStore (WKS) type internally. Loading actual PKCS12 files will fail.
+This can be helpful when FIPS compliance is required, but existing code gets
+a PKCS12 KeyStore instance - and this assumes the caller has the flexibility to
+actually load a real WKS KeyStore file into this KeyStore object. If this
+property is being set at runtime programatically, the wolfJCE provider services
+will need to be refreshed / reloaded, by doing:
+
+```
+WolfCryptProvider prov = (WolfCryptProvider)Security.getProvider("wolfJCE");
+prov.refreshServices();
+```
 
 #### System Property Support
 

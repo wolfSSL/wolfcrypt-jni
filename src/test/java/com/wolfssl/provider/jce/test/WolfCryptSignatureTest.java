@@ -93,7 +93,7 @@ public class WolfCryptSignatureTest {
         System.out.println("JCE WolfCryptSignature Class");
 
         /* install wolfJCE provider at runtime */
-        Security.addProvider(new WolfCryptProvider());
+        Security.insertProviderAt(new WolfCryptProvider(), 1);
 
         Provider p = Security.getProvider("wolfJCE");
         assertNotNull(p);
