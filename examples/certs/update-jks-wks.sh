@@ -50,19 +50,19 @@ CERT_LOCATION=$1
 export LD_LIBRARY_PATH=../../lib:$LD_LIBRARY_PATH
 export DYLD_LIBRARY_PATH=../../lib:$DYLD_LIBRARY_PATH
 
-# ARGS: <keystore-name> <cert file> <alias> <password>
+# ARGS: <keystore-name> <keystore-type> <cert file> <alias> <password>
 add_cert() {
-    keytool -import -keystore "$1" -file "$CERT_LOCATION/$2" -alias "$3" -noprompt -trustcacerts -deststoretype JKS -storepass "$4" &> /dev/null
+    keytool -import -keystore "$1" -file "$CERT_LOCATION/$3" -alias "$4" -noprompt -trustcacerts -deststoretype "$2" -storepass "$5" &> /dev/null
     if [ $? -ne 0 ]; then
         printf "fail"
         exit 1
     fi
 }
 
-# ARGS: <keystore-name> <cert file> <key file> <alias> <password>
+# ARGS: <keystore-name> <keystore-type> <cert file> <key file> <alias> <password>
 add_cert_key() {
-    openssl pkcs12 -export -in "$CERT_LOCATION/$2" -inkey "$CERT_LOCATION/$3" -out tmp.p12 -passin pass:"$5" -passout pass:"$5" -name "$4" &> /dev/null
-    keytool -importkeystore -deststorepass "$5" -destkeystore "$1" -deststoretype JKS -srckeystore tmp.p12 -srcstoretype PKCS12 -srcstorepass "$5" -alias "$4" &> /dev/null
+    openssl pkcs12 -export -in "$CERT_LOCATION/$3" -inkey "$CERT_LOCATION/$4" -out tmp.p12 -passin pass:"$6" -passout pass:"$6" -name "$5" &> /dev/null
+    keytool -importkeystore -deststorepass "$6" -destkeystore "$1" -deststoretype "$2" -srckeystore tmp.p12 -srcstoretype PKCS12 -srcstorepass "$6" -alias "$5" &> /dev/null
     if [ $? -ne 0 ]; then
         printf "fail"
         exit 1
@@ -85,26 +85,32 @@ jks_to_wks() {
 # Client cert: both RSA 2048-bit and ECC
 printf "\tCreating client.jks ..."
 rm client.jks &> /dev/null
-add_cert_key "client.jks" "/client-cert.pem" "/client-key.pem" "client" "wolfsslpassword"
-add_cert_key "client.jks" "/client-ecc-cert.pem" "/ecc-client-key.pem" "client-ecc" "wolfsslpassword"
+add_cert_key "client.jks" "JKS" "/client-cert.pem" "/client-key.pem" "client" "wolfsslpassword"
+add_cert_key "client.jks" "JKS" "/client-ecc-cert.pem" "/ecc-client-key.pem" "client-ecc" "wolfsslpassword"
+printf "done\n"
+
+printf "\tCreating client.p12 ..."
+rm client.p12 &> /dev/null
+add_cert_key "client.p12" "PKCS12" "/client-cert.pem" "/client-key.pem" "client" "wolfsslpassword"
+add_cert_key "client.p12" "PKCS12" "/client-ecc-cert.pem" "/ecc-client-key.pem" "client-ecc" "wolfsslpassword"
 printf "done\n"
 
 # Client cert: RSA, 1024-bit only
 printf "\tCreating client-rsa-1024.jks ..."
 rm client-rsa-1024.jks &> /dev/null
-add_cert_key "client-rsa-1024.jks" "/1024/client-cert.pem" "/1024/client-key.pem" "client-rsa-1024" "wolfsslpassword"
+add_cert_key "client-rsa-1024.jks" "JKS" "/1024/client-cert.pem" "/1024/client-key.pem" "client-rsa-1024" "wolfsslpassword"
 printf "done\n"
 
 # Client cert: RSA 2048-bit only
 printf "\tCreating client-rsa.jks ..."
 rm client-rsa.jks &> /dev/null
-add_cert_key "client-rsa.jks" "/client-cert.pem" "/client-key.pem" "client-rsa" "wolfsslpassword"
+add_cert_key "client-rsa.jks" "JKS" "/client-cert.pem" "/client-key.pem" "client-rsa" "wolfsslpassword"
 printf "done\n"
 
 # Client cert: ECC only
 printf "\tCreating client-ecc.jks ..."
 rm client-ecc.jks &> /dev/null
-add_cert_key "client-ecc.jks" "/client-ecc-cert.pem" "/ecc-client-key.pem" "client-ecc" "wolfsslpassword"
+add_cert_key "client-ecc.jks" "JKS" "/client-ecc-cert.pem" "/ecc-client-key.pem" "client-ecc" "wolfsslpassword"
 printf "done\n"
 
 #################### SERVER KEYSTORES ####################
@@ -112,26 +118,26 @@ printf "done\n"
 # Server cert: both RSA 2048-bit and ECC
 printf "\tCreating server.jks ..."
 rm server.jks &> /dev/null
-add_cert_key "server.jks" "/server-cert.pem" "/server-key.pem" "server" "wolfsslpassword"
-add_cert_key "server.jks" "/server-ecc.pem" "/ecc-key.pem" "server-ecc" "wolfsslpassword"
+add_cert_key "server.jks" "JKS" "/server-cert.pem" "/server-key.pem" "server" "wolfsslpassword"
+add_cert_key "server.jks" "JKS" "/server-ecc.pem" "/ecc-key.pem" "server-ecc" "wolfsslpassword"
 printf "done\n"
 
 # Server cert: RSA, 1024-bit only
 printf "\tCreating server-rsa-1024.jks ..."
 rm server-rsa-1024.jks &> /dev/null
-add_cert_key "server-rsa-1024.jks" "/1024/server-cert.pem" "/1024/server-key.pem" "server-1024" "wolfsslpassword"
+add_cert_key "server-rsa-1024.jks" "JKS" "/1024/server-cert.pem" "/1024/server-key.pem" "server-1024" "wolfsslpassword"
 printf "done\n"
 
 # Server cert: RSA, 2048-bit only
 printf "\tCreating server-rsa.jks ..."
 rm server-rsa.jks &> /dev/null
-add_cert_key "server-rsa.jks" "/server-cert.pem" "/server-key.pem" "server-rsa" "wolfsslpassword"
+add_cert_key "server-rsa.jks" "JKS" "/server-cert.pem" "/server-key.pem" "server-rsa" "wolfsslpassword"
 printf "done\n"
 
 # Server cert: ECC only
 printf "\tCreating server-ecc.jks ..."
 rm server-ecc.jks &> /dev/null
-add_cert_key "server-ecc.jks" "/server-ecc.pem" "/ecc-key.pem" "server-ecc" "wolfsslpassword"
+add_cert_key "server-ecc.jks" "JKS" "/server-ecc.pem" "/ecc-key.pem" "server-ecc" "wolfsslpassword"
 printf "done\n"
 
 #################### CA CERT KEYSTORES ###################
@@ -139,12 +145,12 @@ printf "done\n"
 # Contains all CA certs (RSA and ECC), verifies both client and server certs
 printf "\tCreating cacerts.jks ..."
 rm cacerts.jks &> /dev/null
-add_cert_key "cacerts.jks" "/ca-cert.pem" "/ca-key.pem" "cacert" "wolfsslpassword"
-add_cert_key "cacerts.jks" "/client-cert.pem" "/client-key.pem" "client-rsa" "wolfsslpassword"
-add_cert_key "cacerts.jks" "/client-ecc-cert.pem" "/ecc-client-key.pem" "client-ecc" "wolfsslpassword"
-add_cert_key "cacerts.jks" "/ca-cert.pem" "/ca-key.pem" "ca-rsa" "wolfsslpassword"
-add_cert_key "cacerts.jks" "/ca-ecc-cert.pem" "/ca-ecc-key.pem" "ca-ecc" "wolfsslpassword"
-add_cert_key "cacerts.jks" "/1024/ca-cert.pem" "/1024/ca-key.pem" "ca-1024" "wolfsslpassword"
+add_cert_key "cacerts.jks" "JKS" "/ca-cert.pem" "/ca-key.pem" "cacert" "wolfsslpassword"
+add_cert_key "cacerts.jks" "JKS" "/client-cert.pem" "/client-key.pem" "client-rsa" "wolfsslpassword"
+add_cert_key "cacerts.jks" "JKS" "/client-ecc-cert.pem" "/ecc-client-key.pem" "client-ecc" "wolfsslpassword"
+add_cert_key "cacerts.jks" "JKS" "/ca-cert.pem" "/ca-key.pem" "ca-rsa" "wolfsslpassword"
+add_cert_key "cacerts.jks" "JKS" "/ca-ecc-cert.pem" "/ca-ecc-key.pem" "ca-ecc" "wolfsslpassword"
+add_cert_key "cacerts.jks" "JKS" "/1024/ca-cert.pem" "/1024/ca-key.pem" "ca-1024" "wolfsslpassword"
 printf "done\n"
 
 # Contains CA certs used to verify client certs:
@@ -152,8 +158,8 @@ printf "done\n"
 # client-ecc-cert.pem verifies itself (self signed)
 printf "\tCreating ca-client.jks ..."
 rm ca-client.jks &> /dev/null
-add_cert_key "ca-client.jks" "/client-cert.pem" "/client-key.pem" "client-rsa" "wolfsslpassword"
-add_cert_key "ca-client.jks" "/client-ecc-cert.pem" "/ecc-client-key.pem" "client-ecc" "wolfsslpassword"
+add_cert_key "ca-client.jks" "JKS" "/client-cert.pem" "/client-key.pem" "client-rsa" "wolfsslpassword"
+add_cert_key "ca-client.jks" "JKS" "/client-ecc-cert.pem" "/ecc-client-key.pem" "client-ecc" "wolfsslpassword"
 printf "done\n"
 
 # Contains CA certs used to verify server certs:
@@ -161,24 +167,22 @@ printf "done\n"
 # ca-ecc-cert.pem verifies server-ecc.pem
 printf "\tCreating ca-server.jks ..."
 rm ca-server.jks &> /dev/null
-add_cert_key "ca-server.jks" "/ca-cert.pem" "/ca-key.pem" "ca-rsa" "wolfsslpassword"
-add_cert_key "ca-server.jks" "/ca-ecc-cert.pem" "/ca-ecc-key.pem" "ca-ecc" "wolfsslpassword"
+add_cert_key "ca-server.jks" "JKS" "/ca-cert.pem" "/ca-key.pem" "ca-rsa" "wolfsslpassword"
+add_cert_key "ca-server.jks" "JKS" "/ca-ecc-cert.pem" "/ca-ecc-key.pem" "ca-ecc" "wolfsslpassword"
 printf "done\n"
 
 # Contains CA cert used to verify RSA 2048-bit server cert:
 # ca-cert.pem verifies server-cert.pem
 printf "\tCreating ca-server-rsa-2048.jks ..."
 rm ca-server-rsa-2048.jks &> /dev/null
-#add_cert_key "ca-server-rsa-2048.jks" "/ca-cert.pem" "/ca-key.pem" "ca-rsa" "wolfsslpassword"
-add_cert "ca-server-rsa-2048.jks" "/ca-cert.pem" "ca-rsa" "wolfsslpassword"
+add_cert "ca-server-rsa-2048.jks" "JKS" "/ca-cert.pem" "ca-rsa" "wolfsslpassword"
 printf "done\n"
 
 # Contains CA cert used to verify ECC P-256 server cert:
 # ca-ecc-cert.pem verifies server-ecc.pem
 printf "\tCreating ca-server-ecc-256.jks ..."
 rm ca-server-ecc-256.jks &> /dev/null
-#add_cert_key "ca-server-ecc-256.jks" "/ca-ecc-cert.pem" "/ca-ecc-key.pem" "ca-ecc" "wolfsslpassword"
-add_cert "ca-server-ecc-256.jks" "/ca-ecc-cert.pem" "ca-ecc" "wolfsslpassword"
+add_cert "ca-server-ecc-256.jks" "JKS" "/ca-ecc-cert.pem" "ca-ecc" "wolfsslpassword"
 printf "done\n"
 
 ################### CONVERT JKS TO WKS ###################
