@@ -52,6 +52,13 @@ public class Fips extends WolfObject {
     /** Native wolfCrypt FIPS version (HAVE_FIPS_VERSION) */
     public static final int fipsVersion = Fips.getFipsVersion();
 
+    /* Internal flag to keep track of if FIPS CAST has already been run and
+     * passed successfully. */
+    private static volatile boolean fipsCastRunSuccessfully = false;
+
+    /* Lock around fipsCastRunSuccessfully */
+    private static final Object fipsCastLock = new Object();
+
     private Fips() {
     }
 
@@ -118,6 +125,55 @@ public class Fips extends WolfObject {
      * @return 1 if able to read private key material, otherwise 0
      */
     public static native int getPrivateKeyReadEnable(int keyType);
+
+    /**
+     * Native JNI wrapper around running FIPS CASTs.
+     *
+     * Called by public runAllCast_fips() in this class.
+     *
+     * @return 0 on success, otherwise greater than zero if some algorithm
+     *         self tests have failed. The count of tests failed will be
+     *         returned on error.
+     */
+    private static native int wc_runAllCast_fips();
+
+    /**
+     * Run all FIPS Conditional Algorithm Self Tests (CAST).
+     *
+     * In wolfCrypt FIPS 140-3, the algorithm self tests are Conditional (CAST),
+     * meaning they will run on-demand per algorithm the first time that
+     * algorithm is used. This can be convienent for startup time if on a
+     * single threaded application, but can introduce potentially unwanted
+     * errors at runtime if operating in a multi threaded environment where
+     * multiple threads will be using wolfCrypt cryptography in parallel. If
+     * one thread is actively running an algorithm CAST and another thread
+     * tries to use the algorithm, it may return a FIPS not allowed error.
+     *
+     * To avoid multi threaded errors at runtime due to the above, this method
+     * can be called once up front when an application starts. It will run
+     * all algorithm CASTS, and if run before threaded operations start will
+     * avoid the FIPS not allowed errors which may occur otherwise.
+     *
+     * @return 0 on success, otherwise greater than zero if some algorithm
+     *         self tests have failed. The count of tests failed will be
+     *         returned on error.
+     */
+    public static int runAllCast_fips() {
+
+        int ret = 0;
+
+        synchronized (fipsCastLock) {
+            if (!fipsCastRunSuccessfully) {
+                ret = wc_runAllCast_fips();
+                if (ret == 0) {
+                    /* Only forcefully run FIPS CAST once */
+                    fipsCastRunSuccessfully = true;
+                }
+            }
+        }
+
+        return ret;
+    }
 
     private static native int getFipsVersion();
 
