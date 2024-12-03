@@ -60,6 +60,11 @@ public final class WolfCryptProvider extends Provider {
         String mapJksToWks = null;
         String mapPkcs12ToWks = null;
 
+        /* Run FIPS algorithm self tests (CASTs) if needed */
+        if (Fips.enabled) {
+            Fips.runAllCast_fips();
+        }
+
         /* MessageDigest */
         if (FeatureDetect.Md5Enabled()) {
             put("MessageDigest.MD5",

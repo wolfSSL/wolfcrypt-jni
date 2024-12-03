@@ -51,6 +51,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_getPrivateKeyReadEnable
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Fips
+ * Method:    wc_runAllCast_fips
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1runAllCast_1fips
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Fips
  * Method:    getFipsVersion
  * Signature: ()I
  */
