@@ -80,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
     public void testFindProvider(TextView tv)
             throws NoSuchProviderException, NoSuchAlgorithmException {
 
-        Security.addProvider(new WolfCryptProvider());
+        Security.insertProviderAt(new WolfCryptProvider(), 1);
 
         Provider p = Security.getProvider("wolfJCE");
         if (p == null) {

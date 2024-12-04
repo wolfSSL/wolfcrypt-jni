@@ -136,6 +136,12 @@ public class WolfSSLKeyStoreTest {
     private static Certificate[] eccServerChain = null; /* ECC chain */
     private static Certificate[] invalidChain = null;
 
+    /* Example .jks KeyStore file paths */
+    private static String clientJKS = null;          /* client.jks */
+
+    /* Examnple .p12 KeyStore file paths */
+    private static String clientP12 = null;          /* client.p12 */
+
     /* Example .wks KeyStore file paths */
     private static String clientWKS = null;          /* client.wks */
     private static String clientRsa1024WKS = null;   /* client-rsa-1024.wks */
@@ -380,6 +386,14 @@ public class WolfSSLKeyStoreTest {
             certPre.concat("examples/certs/intermediate/ca-int-ecc-cert.der");
         intEccInt2CertDer =
             certPre.concat("examples/certs/intermediate/ca-int2-ecc-cert.der");
+
+        /* Set paths to example JKS KeyStore files */
+        clientJKS =
+            certPre.concat("examples/certs/client.jks");
+
+        /* Set paths to example PKCS12 KeyStore files */
+        clientP12 =
+            certPre.concat("examples/certs/client.p12");
 
         /* Set paths to example WKS KeyStore files */
         clientWKS =
@@ -1424,6 +1438,139 @@ public class WolfSSLKeyStoreTest {
         store.load(new FileInputStream(caServerEcc256WKS),
                    storePass.toCharArray());
         assertEquals(1, store.size());
+    }
+
+    //CHRIS
+    @Test
+    public void testLoadWKSasJKSFromFile()
+        throws KeyStoreException, IOException, FileNotFoundException,
+               NoSuchProviderException, NoSuchAlgorithmException,
+               CertificateException, InvalidKeySpecException,
+               UnrecoverableKeyException {
+
+        WolfCryptProvider prov = null;
+        KeyStore store = null;
+
+        /* Use client.wks (clientWKS) to test. Any WKS KeyStore could be used,
+         * this was just picked since was first used/tested in test above. */
+
+        /* If Security property "wolfjce.mapJKStoWKS=true" has been set,
+         * WolfSSLKeyStore should be able to load a WKS file when using a
+         * "JKS" KeyStore type. */
+        String origProperty = Security.getProperty("wolfjce.mapJKStoWKS");
+
+        /* The wolfJCE service list needs to be refreshed after changing
+         * Security properties that will adjust the services we register */
+        Security.setProperty("wolfjce.mapJKStoWKS", "true");
+        prov = (WolfCryptProvider)Security.getProvider("wolfJCE");
+        prov.refreshServices();
+
+        /* Load WKS as JKS, should work w/o exception */
+        store = KeyStore.getInstance("JKS");
+        assertNotNull(store);
+        assertNotNull(store.getProvider());
+        assertTrue(store.getProvider().contains("wolfJCE"));
+        store.load(new FileInputStream(clientWKS), storePass.toCharArray());
+        assertEquals(2, store.size());
+
+        /* Load JKS as JKS when this is set should fail, since using WKS
+         * implementation underneath fake JKS mapping */
+        try {
+            store.load(new FileInputStream(clientJKS), storePass.toCharArray());
+            fail("Loaded JKS as JKS, but shouldn't with fake mapping set");
+        } catch (IOException e) {
+            /* expected */
+        }
+
+        /* Set mapping to false, loading a WKS as JKS should throw exception */
+        Security.setProperty("wolfjce.mapJKStoWKS", "false");
+        prov = (WolfCryptProvider)Security.getProvider("wolfJCE");
+        prov.refreshServices();
+        store = KeyStore.getInstance("JKS");
+        assertTrue(!store.getProvider().contains("wolfJCE"));
+        try {
+            store.load(new FileInputStream(clientWKS), storePass.toCharArray());
+            fail("Loaded WKS as JKS, but shouldn't have been able to");
+        } catch (IOException e) {
+            /* expected */
+        }
+
+        /* Loading JKS as JKS should work when mapping not set */
+        store.load(new FileInputStream(clientJKS), storePass.toCharArray());
+
+        /* Restore Security property */
+        if (origProperty == null) {
+            Security.setProperty("wolfjce.mapJKStoWKS", "");
+        }
+        else {
+            Security.setProperty("wolfjce.mapJKStoWKS", origProperty);
+        }
+    }
+
+    @Test
+    public void testLoadWKSasPKCS12FromFile()
+        throws KeyStoreException, IOException, FileNotFoundException,
+               NoSuchProviderException, NoSuchAlgorithmException,
+               CertificateException, InvalidKeySpecException,
+               UnrecoverableKeyException {
+
+        WolfCryptProvider prov = null;
+        KeyStore store = null;
+
+        /* Use client.wks (clientWKS) to test. Any WKS KeyStore could be used,
+         * this was just picked since was first used/tested in test above. */
+
+        /* If Security property "wolfjce.mapPKCS12toWKS=true" has been set,
+         * WolfSSLKeyStore should be able to load a WKS file when using a
+         * "PKCS12" KeyStore type. */
+        String origProperty = Security.getProperty("wolfjce.mapPKCS12toWKS");
+
+        /* The wolfJCE service list needs to be refreshed after changing
+         * Security properties that will adjust the services we register */
+        Security.setProperty("wolfjce.mapPKCS12toWKS", "true");
+        prov = (WolfCryptProvider)Security.getProvider("wolfJCE");
+        prov.refreshServices();
+
+        /* Load WKS as PKCS12, should work w/o exception */
+        store = KeyStore.getInstance("PKCS12");
+        assertNotNull(store);
+        assertNotNull(store.getProvider());
+        assertTrue(store.getProvider().contains("wolfJCE"));
+        store.load(new FileInputStream(clientWKS), storePass.toCharArray());
+        assertEquals(2, store.size());
+
+        /* Load PKCS12 as PKCS12 when this is set should fail, since using WKS
+         * implementation underneath fake PKCS12 mapping */
+        try {
+            store.load(new FileInputStream(clientP12), storePass.toCharArray());
+            fail("Loaded PKCS12 as PKCS12, but shouldn't with fake mapping set");
+        } catch (IOException e) {
+            /* expected */
+        }
+
+        /* Set mapping to false, loading WKS as PKCS12 should throw exception */
+        Security.setProperty("wolfjce.mapPKCS12toWKS", "false");
+        prov = (WolfCryptProvider)Security.getProvider("wolfJCE");
+        prov.refreshServices();
+        store = KeyStore.getInstance("PKCS12");
+        assertTrue(!store.getProvider().contains("wolfJCE"));
+        try {
+            store.load(new FileInputStream(clientWKS), storePass.toCharArray());
+            fail("Loaded WKS as PKCS12, but shouldn't have been able to");
+        } catch (IOException e) {
+            /* expected */
+        }
+
+        /* Loading PKCS12 as PKCS12 should work when mapping not set */
+        store.load(new FileInputStream(clientP12), storePass.toCharArray());
+
+        /* Restore Security property */
+        if (origProperty == null) {
+            Security.setProperty("wolfjce.mapPKCS12toWKS", "");
+        }
+        else {
+            Security.setProperty("wolfjce.mapPKCS12toWKS", origProperty);
+        }
     }
 
     @Test

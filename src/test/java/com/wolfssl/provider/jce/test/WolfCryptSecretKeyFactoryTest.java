@@ -95,7 +95,7 @@ public class WolfCryptSecretKeyFactoryTest {
         /* Install wolfJCE provider at runtime. Not registering as top priority
          * provider so we can still likely get SunJCE or platform provider
          * when not specifying wolfJCE explicitly. */
-        Security.addProvider(new WolfCryptProvider());
+        Security.insertProviderAt(new WolfCryptProvider(), 1);
 
         Provider p = Security.getProvider(provider);
         assertNotNull(p);
