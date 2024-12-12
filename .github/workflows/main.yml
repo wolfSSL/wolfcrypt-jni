@@ -171,3 +171,76 @@ jobs:
       jdk_version: ${{ matrix.jdk_version }}
       wolfssl_configure: ${{ matrix.wolfssl_configure }}
 
+  # --------------------- FIPS build tests ------------------------------
+  # Build wolfcryptjni against wolfSSL FIPS Ready, v2, v5, v6
+  # Only testing one Linux for starters, with one JDK/version
+  # Once fips_check.sh script gets modified to work with bash < 4, which
+  # is the default for MacOS, MacOS targets will be added here.
+  fips-ready-build:
+    strategy:
+      matrix:
+        os: [ 'ubuntu-latest' ]
+        jdk_version: [ '21' ]
+        wolfssl_configure: [ '--enable-fips=ready --enable-jni' ]
+    name: FIPS Ready Build (${{ matrix.os }} Zulu JDK ${{ matrix.jdk_version }})
+    uses: ./.github/workflows/fips.yml
+    with:
+      os: ${{ matrix.os }}
+      jdk_distro: "zulu"
+      jdk_version: ${{ matrix.jdk_version }}
+      wolfssl_configure: ${{ matrix.wolfssl_configure }}
+      fips_check_variant: "fips-ready"
+    secrets:
+      fips_repo_ssh_key: ${{ secrets.FIPS_REPO_SSH_KEY }}
+
+  fipsv2-build:
+    strategy:
+      matrix:
+        os: [ 'ubuntu-latest' ]
+        jdk_version: [ '21' ]
+        wolfssl_configure: [ '--enable-fips=v2 --enable-jni' ]
+    name: FIPSv2 Build (${{ matrix.os }} Zulu JDK ${{ matrix.jdk_version }})
+    uses: ./.github/workflows/fips.yml
+    with:
+      os: ${{ matrix.os }}
+      jdk_distro: "zulu"
+      jdk_version: ${{ matrix.jdk_version }}
+      wolfssl_configure: ${{ matrix.wolfssl_configure }}
+      fips_check_variant: "linuxv2"
+    secrets:
+      fips_repo_ssh_key: ${{ secrets.FIPS_REPO_SSH_KEY }}
+
+  fipsv5-build:
+    strategy:
+      matrix:
+        os: [ 'ubuntu-latest' ]
+        jdk_version: [ '21' ]
+        wolfssl_configure: [ '--enable-fips=v5 --enable-jni' ]
+    name: FIPSv5 Build (${{ matrix.os }} Zulu JDK ${{ matrix.jdk_version }})
+    uses: ./.github/workflows/fips.yml
+    with:
+      os: ${{ matrix.os }}
+      jdk_distro: "zulu"
+      jdk_version: ${{ matrix.jdk_version }}
+      wolfssl_configure: ${{ matrix.wolfssl_configure }}
+      fips_check_variant: "linuxv5"
+    secrets:
+      fips_repo_ssh_key: ${{ secrets.FIPS_REPO_SSH_KEY }}
+
+  fipsv6-build:
+    strategy:
+      matrix:
+        os: [ 'ubuntu-latest' ]
+        jdk_version: [ '21' ]
+        wolfssl_configure: [ '--enable-fips=v6 --enable-jni' ]
+    name: FIPSv6 Build (${{ matrix.os }} Zulu JDK ${{ matrix.jdk_version }})
+    uses: ./.github/workflows/fips.yml
+    with:
+      os: ${{ matrix.os }}
+      jdk_distro: "zulu"
+      jdk_version: ${{ matrix.jdk_version }}
+      wolfssl_configure: ${{ matrix.wolfssl_configure }}
+      fips_check_variant: "v6.0.0"
+    secrets:
+      fips_repo_ssh_key: ${{ secrets.FIPS_REPO_SSH_KEY }}
+
