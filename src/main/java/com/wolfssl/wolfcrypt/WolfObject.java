@@ -21,6 +21,8 @@
 
 package com.wolfssl.wolfcrypt;
 
+import com.wolfssl.wolfcrypt.Fips;
+
 /**
  * Loader for the native WolfCrypt implementation.
  * All classes in this package must inherit from it.
@@ -61,6 +63,12 @@ public class WolfObject {
 
         /* Load wolfcryptjni library */
         System.loadLibrary("wolfcryptjni");
+
+        /* Run FIPS CAST if we are in FIPS mode. Will only forcefully
+         * be run once - Fips class keeps track of a successful run. */
+        if (Fips.enabled) {
+            Fips.runAllCast_fips();
+        }
 
         /* initialize native wolfCrypt library */
         init();
