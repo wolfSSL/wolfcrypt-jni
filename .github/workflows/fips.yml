@@ -1,0 +1,155 @@
+name: wolfSSL FIPS Ready Test
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      jdk_distro:
+        required: true
+        type: string
+      jdk_version:
+        required: true
+        type: string
+      wolfssl_configure:
+        required: true
+        type: string
+      fips_check_variant:
+        required: true
+        type: string
+    secrets:
+      fips_repo_ssh_key:
+        required: true
+
+jobs:
+  build_wolfcryptjni:
+    runs-on: ${{ inputs.os }}
+    steps:
+      # Add SSH key for fips repo access
+      - uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.fips_repo_ssh_key }}
+
+      # Clone wolfcryptjni
+      - uses: actions/checkout@v4
+
+      # Clone wolfssl
+      - uses: actions/checkout@v4
+        with:
+          repository: wolfssl/wolfssl
+          ref: master
+          fetch-depth: 1
+          path: wolfssl
+
+      # Install dependencies (automake, libtool)
+      - shell: bash
+        if: runner.os == 'macOS'
+        run: brew install automake libtool
+
+      # Get junit/hamcrest jars
+      - name: Download junit-4.13.2.jar
+        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar
+      - name: Download hamcrest-all-1.3.jar
+        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/org/hamcrest/hamcrest-all/1.3/hamcrest-all-1.3.jar
+
+      # Run autogen.sh
+      - shell: bash
+        working-directory: wolfssl
+        run: ./autogen.sh
+
+      # Build FIPS Ready directory
+      - shell: bash
+        working-directory: wolfssl
+        run: ./fips-check.sh ${{ inputs.fips_check_variant }} keep
+
+      # Configure wolfssl
+      - shell: bash
+        working-directory: wolfssl/XXX-fips-test
+        run: ./configure --prefix=$GITHUB_WORKSPACE/build-dir ${{ inputs.wolfssl_configure }}
+
+      # make wolfssl
+      - shell: bash
+        working-directory: wolfssl/XXX-fips-test
+        run: make
+
+      # update verifyCore[] in fips_test.c
+      - shell: bash
+        working-directory: wolfssl/XXX-fips-test
+        run: ./fips-hash.sh
+
+      # re-make/check wolfssl with new hash
+      - shell: bash
+        working-directory: wolfssl/XXX-fips-test
+        run: make check
+
+      # install wolfssl
+      - shell: bash
+        working-directory: wolfssl/XXX-fips-test
+        run: make install
+
+      - name: Setup java
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ inputs.jdk_distro }}
+          java-version: ${{ inputs.jdk_version }}
+
+      - name: Set JUNIT_HOME
+        run: |
+          echo "JUNIT_HOME=$GITHUB_WORKSPACE/junit" >> "$GITHUB_ENV"
+      - name: Set LD_LIBRARY_PATH
+        run: |
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$GITHUB_WORKSPACE/build-dir/lib" >> "$GITHUB_ENV"
+
+      # Only copy appropriate makefile for platform currently being tested
+      - name: Copy makefile
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+              cp makefile.linux makefile
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+              cp makefile.macosx makefile
+          else
+            echo "$RUNNER_OS not supported"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Build JNI library
+        run: PREFIX=$GITHUB_WORKSPACE/build-dir make
+
+      # ant build-jni-debug
+      - name: Build jce-debug JAR (ant build-jni-debug)
+        run: ant build-jni-debug
+      - name: Run Java tests (ant test)
+        run: ant test
+      - name: Clean JAR
+        run: ant clean
+
+      # ant build-jni-release
+      - name: Build jce-debug JAR (ant build-jni-release)
+        run: ant build-jni-release
+      - name: Run Java tests (ant test)
+        run: ant test
+      - name: Clean JAR
+        run: ant clean
+
+      # ant build-jce-debug
+      - name: Build jce-debug JAR (ant build-jce-debug)
+        run: ant build-jce-debug
+      - name: Run Java tests (ant test)
+        run: ant test
+      - name: Clean JAR
+        run: ant clean
+
+      # ant build-jce-release
+      - name: Build jce-debug JAR (ant build-jce-release)
+        run: ant build-jce-release
+      - name: Run Java tests (ant test)
+        run: ant test
+      - name: Clean JAR
+        run: ant clean
+
+      - name: Show logs on failure
+        if: failure() || cancelled()
+        run: |
+          cat build/reports/*.txt
