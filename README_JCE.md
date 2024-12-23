@@ -292,6 +292,20 @@ The example can then be run using:
 ```
 $ ./examples/provider/ProviderTest.sh
 ```
+**CryptoBenchmark**
+
+This example benchmarks the performance of cryptographic operations using the wolfJCE provider. It tests AES-CBC with 256-bit key encryption/decryption operations.
+
+Build and run:
+```
+# From wolfcrypt-jni root directory
+make                      # Build native library
+ant build-jce-release     # Build JCE JAR
+
+# Run benchmark
+./examples/provider/CryptoBenchmark.sh
+```
+This script requires for JAVA_HOME to be set.
 
 ### JAR Code Signing
 ---------
