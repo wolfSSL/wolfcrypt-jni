@@ -1,11 +1,45 @@
-name: PR Target Test
+name: Build FIPS zips
 
 on:
   pull_request_target
 
 jobs:
-  pr_target:
+  buildFIPSReady:
+    name: Build wolfSSL FIPS Ready ZIP
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Hello from PR Target Test"
+
+      # Set up SSH key so fips-check.sh can clone from fips repo
+      - uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.FIPS_REPO_SSH_KEY }}
+
+      # Clone wolfssl
+      - uses: actions/checkout@v4
+        with:
+          repository: wolfssl/wolfssl
+          ref: master
+          fetch-depth: 1
+          path: wolfssl
+
+      # Install dependencies (automake, libtool)
+      - shell: bash
+        if: runner.os == 'macOS'
+        run: brew install automake libtool
+
+      # Build FIPS Ready directory
+      - shell: bash
+        working-directory: wolfssl
+        run: ./fips-check.sh fips-ready keep noautogen
+
+      # zip newly generated FIPS directory
+      - shell: bash
+        run: zip -r wolfssl-master-fips-ready.zip XXX-fips-test
+
+      # Upload artifact to make it available to later workflows
+      - name: Upload wolfssl-master-fips-ready.zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: wolfssl-master-fips-ready.zip
+          path: wolfssl-master-fips-ready.zip
 
