@@ -1,0 +1,11 @@
+name: PR Target Test
+
+on:
+  pull_request_target
+
+jobs:
+  pr_target:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Hello from PR Target Test"
+
