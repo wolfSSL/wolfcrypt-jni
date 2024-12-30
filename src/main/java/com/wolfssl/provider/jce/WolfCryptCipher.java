@@ -56,7 +56,7 @@ import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
- * wolfCrypt JCE Cipher (AES, 3DES) wrapper
+ * wolfCrypt JCE Cipher (AES, 3DES, RSA) wrapper
  */
 public class WolfCryptCipher extends CipherSpi {
 
