@@ -190,7 +190,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1runAllCast_1fips
 #endif
 
 #if defined(HAVE_FIPS) && defined(HAVE_FIPS_VERSION) && \
-    (HAVE_FIPS_VERSION >= 7)
+    (HAVE_FIPS_VERSION >= 6)
 
     failCount = wc_RunAllCast_fips();
     if (failCount != 0) {
