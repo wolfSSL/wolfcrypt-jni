@@ -14,17 +14,15 @@ import com.wolfssl.provider.jce.WolfCryptProvider;
 public class CryptoBenchmark {
     /* Constants for benchmark configuration */
     private static final int WARMUP_ITERATIONS = 1000;
-    private static final int TEST_ITERATIONS = 10000;
-    private static final int ENCRYPT_SIZE = 64 * 1024;     /* 64 KiB */
-    private static final int DECRYPT_SIZE = 32 * 1024;     /* 32 KiB */
+    private static final int TEST_ITERATIONS = 5;  /* Number of iterations */
+    private static final int ENCRYPT_SIZE = 1024 * 1024;
+    private static final int DECRYPT_SIZE = 1024 * 1024;
     private static final int AES_BLOCK_SIZE = 16;
-    private static final int GCM_TAG_LENGTH = 128;         /* GCM auth tag length in bits */
+    private static final int GCM_TAG_LENGTH = 128;               /* GCM auth tag length in bits */
     private static final int AES_KEY_SIZE = 256;
 
-    private static byte[] generateRandomData(int size) {
-        byte[] data = new byte[size];
-        new SecureRandom().nextBytes(data);
-        return data;
+    private static byte[] generateTestData(int size) {
+        return new byte[size]; /* Creates array initialized with zeros */
     }
 
     private static void runBenchmark(String algorithm, String mode) throws Exception {
@@ -34,8 +32,8 @@ public class CryptoBenchmark {
         
         /* IV/Nonce generation variables */
         byte[] ivBytes;
-        AlgorithmParameterSpec params;  // Using specific type instead of Object
-        
+        /* Using specific type instead of Object */
+        AlgorithmParameterSpec params;
         /* Test data variables */
         byte[] encryptTestData;
         byte[] decryptTestData;
@@ -71,9 +69,9 @@ public class CryptoBenchmark {
             params = new IvParameterSpec(ivBytes);
         }
 
-        /* Generate random test data */
-        encryptTestData = generateRandomData(ENCRYPT_SIZE);
-        decryptTestData = generateRandomData(DECRYPT_SIZE);
+        /* Generate test data filled with zeros */
+        encryptTestData = generateTestData(ENCRYPT_SIZE);
+        decryptTestData = encryptTestData; /* Reuse the same data for decryption test */
 
         /* Initialize cipher */
         cipher = Cipher.getInstance(algorithm);
@@ -134,7 +132,7 @@ public class CryptoBenchmark {
             Security.insertProviderAt(new WolfCryptProvider(), 1);
 
             System.out.println("------------------------------------------------------------------------------");
-            System.out.println(" wolfJCE Crypto Benchmark");
+            System.out.println(" JCE Crypto Benchmark");
             System.out.println("------------------------------------------------------------------------------");
 
             /* Run benchmarks for different algorithms */
