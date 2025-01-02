@@ -35,12 +35,9 @@ public class CryptoBenchmark {
         /* Using specific type instead of Object */
         AlgorithmParameterSpec params;
         /* Test data variables */
-        byte[] encryptTestData;
-        byte[] decryptTestData;
-        byte[] encryptedData;
-        byte[] encrypted;
-        double encryptDataSizeMiB;
-        double decryptDataSizeMiB;
+        byte[] testData;
+        byte[] encryptedData = null;
+        double dataSizeMiB;
         
         /* Cipher variables */
         Cipher cipher;
@@ -70,8 +67,7 @@ public class CryptoBenchmark {
         }
 
         /* Generate test data filled with zeros */
-        encryptTestData = generateTestData(ENCRYPT_SIZE);
-        decryptTestData = encryptTestData; /* Reuse the same data for decryption test */
+        testData = generateTestData(ENCRYPT_SIZE);
 
         /* Initialize cipher */
         cipher = Cipher.getInstance(algorithm);
@@ -79,25 +75,22 @@ public class CryptoBenchmark {
         /* Warm up phase */
         for (int i = 0; i < WARMUP_ITERATIONS; i++) {
             cipher.init(Cipher.ENCRYPT_MODE, key, params);
-            encrypted = cipher.doFinal(encryptTestData);
+            encryptedData = cipher.doFinal(testData);
             
             cipher.init(Cipher.DECRYPT_MODE, key, params);
-            cipher.doFinal(encrypted);
+            cipher.doFinal(encryptedData);
         }
 
         /* Benchmark encryption */
         startTime = System.nanoTime();
         for (int i = 0; i < TEST_ITERATIONS; i++) {
             cipher.init(Cipher.ENCRYPT_MODE, key, params);
-            cipher.doFinal(encryptTestData);
+            encryptedData = cipher.doFinal(testData);  // Save the last encrypted result
         }
         endTime = System.nanoTime();
         encryptTime = (endTime - startTime) / TEST_ITERATIONS;
 
-        /* Benchmark decryption */
-        cipher.init(Cipher.ENCRYPT_MODE, key, params);
-        encryptedData = cipher.doFinal(decryptTestData);
-        
+        /* Benchmark decryption using the encrypted data from encryption benchmark */
         startTime = System.nanoTime();
         for (int i = 0; i < TEST_ITERATIONS; i++) {
             cipher.init(Cipher.DECRYPT_MODE, key, params);
@@ -106,9 +99,8 @@ public class CryptoBenchmark {
         endTime = System.nanoTime();
         decryptTime = (endTime - startTime) / TEST_ITERATIONS;
 
-        /* Calculate data sizes in MiB */
-        encryptDataSizeMiB = ENCRYPT_SIZE / (1024.0 * 1024.0);
-        decryptDataSizeMiB = DECRYPT_SIZE / (1024.0 * 1024.0);
+        /* Calculate data size in MiB */
+        dataSizeMiB = ENCRYPT_SIZE / (1024.0 * 1024.0);
 
         /* Calculate time in milliseconds */
         encryptTimeMS = encryptTime / 1000000.0;
@@ -121,9 +113,9 @@ public class CryptoBenchmark {
         /* Print results */
         String testName = "AES-256-" + mode;
         System.out.printf("%s-enc      %4.2f MiB took %1.3f ms, %8.3f MiB/s%n",
-            testName, encryptDataSizeMiB, encryptTimeMS, encryptThroughput);
+            testName, dataSizeMiB, encryptTimeMS, encryptThroughput);
         System.out.printf("%s-dec      %4.2f MiB took %1.3f ms, %8.3f MiB/s%n",
-            testName, decryptDataSizeMiB, decryptTimeMS, decryptThroughput);
+            testName, dataSizeMiB, decryptTimeMS, decryptThroughput);
     }
 
     public static void main(String[] args) {
