@@ -14,10 +14,10 @@ import com.wolfssl.provider.jce.WolfCryptProvider;
 public class CryptoBenchmark {
     /* Constants for benchmark configuration */
     private static final int WARMUP_ITERATIONS = 1000;
-    private static final int TEST_ITERATIONS = 5;  /* Number of iterations */
+    private static final int TEST_ITERATIONS = 5;      /* Number of iterations */
     private static final int DATA_SIZE = 1024 * 1024;
     private static final int AES_BLOCK_SIZE = 16;
-    private static final int GCM_TAG_LENGTH = 128;               /* GCM auth tag length in bits */
+    private static final int GCM_TAG_LENGTH = 128;     /* GCM auth tag length in bits */
     private static final int AES_KEY_SIZE = 256;
 
     private static byte[] generateTestData(int size) {
@@ -84,7 +84,7 @@ public class CryptoBenchmark {
         startTime = System.nanoTime();
         for (int i = 0; i < TEST_ITERATIONS; i++) {
             cipher.init(Cipher.ENCRYPT_MODE, key, params);
-            encryptedData = cipher.doFinal(testData);  // Save the last encrypted result
+            encryptedData = cipher.doFinal(testData);
         }
         endTime = System.nanoTime();
         encryptTime = (endTime - startTime) / TEST_ITERATIONS;
