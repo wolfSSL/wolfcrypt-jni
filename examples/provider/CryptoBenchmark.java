@@ -15,8 +15,7 @@ public class CryptoBenchmark {
     /* Constants for benchmark configuration */
     private static final int WARMUP_ITERATIONS = 1000;
     private static final int TEST_ITERATIONS = 5;  /* Number of iterations */
-    private static final int ENCRYPT_SIZE = 1024 * 1024;
-    private static final int DECRYPT_SIZE = 1024 * 1024;
+    private static final int DATA_SIZE = 1024 * 1024;
     private static final int AES_BLOCK_SIZE = 16;
     private static final int GCM_TAG_LENGTH = 128;               /* GCM auth tag length in bits */
     private static final int AES_KEY_SIZE = 256;
@@ -67,7 +66,7 @@ public class CryptoBenchmark {
         }
 
         /* Generate test data filled with zeros */
-        testData = generateTestData(ENCRYPT_SIZE);
+        testData = generateTestData(DATA_SIZE);
 
         /* Initialize cipher */
         cipher = Cipher.getInstance(algorithm);
@@ -100,15 +99,15 @@ public class CryptoBenchmark {
         decryptTime = (endTime - startTime) / TEST_ITERATIONS;
 
         /* Calculate data size in MiB */
-        dataSizeMiB = ENCRYPT_SIZE / (1024.0 * 1024.0);
+        dataSizeMiB = DATA_SIZE / (1024.0 * 1024.0);
 
         /* Calculate time in milliseconds */
         encryptTimeMS = encryptTime / 1000000.0;
         decryptTimeMS = decryptTime / 1000000.0;
 
         /* Calculate throughput using seconds for MiB/s */
-        encryptThroughput = (ENCRYPT_SIZE / (encryptTime / 1000000000.0)) / (1024.0 * 1024.0);
-        decryptThroughput = (DECRYPT_SIZE / (decryptTime / 1000000000.0)) / (1024.0 * 1024.0);
+        encryptThroughput = (DATA_SIZE / (encryptTime / 1000000000.0)) / (1024.0 * 1024.0);
+        decryptThroughput = (DATA_SIZE / (decryptTime / 1000000000.0)) / (1024.0 * 1024.0);
 
         /* Print results */
         String testName = "AES-256-" + mode;
