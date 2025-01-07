@@ -21,7 +21,7 @@ public class CryptoBenchmark {
     private static final int GCM_TAG_LENGTH = 128;     /* GCM auth tag length in bits */
     private static final int AES_KEY_SIZE = 256;
 
-    /* Static key and IV buffers */
+    /* Static key buffer */
     private static final byte[] STATIC_KEY = new byte[] {
         (byte)0x01, (byte)0x23, (byte)0x45, (byte)0x67,
         (byte)0x89, (byte)0xab, (byte)0xcd, (byte)0xef,
@@ -33,18 +33,11 @@ public class CryptoBenchmark {
         (byte)0xf4, (byte)0xf5, (byte)0xf6, (byte)0xf7
     };
 
-    private static final byte[] STATIC_IV = new byte[] {
-        (byte)0x12, (byte)0x34, (byte)0x56, (byte)0x78,
-        (byte)0x90, (byte)0xab, (byte)0xcd, (byte)0xef,
-        (byte)0x01, (byte)0x01, (byte)0x01, (byte)0x01,
-        (byte)0x01, (byte)0x01, (byte)0x01, (byte)0x01
-    };
-
     private static byte[] generateTestData(int size) {
         return new byte[size]; /* Creates array initialized with zeros */
     }
 
-    private static void runBenchmark(String algorithm, String mode) throws Exception {
+    private static void runBenchmark(String algorithm, String mode, String providerName) throws Exception {
         /* Key generation variables */
         SecretKey key;
         
@@ -73,8 +66,11 @@ public class CryptoBenchmark {
         /* Use static pre-made key */
         key = new SecretKeySpec(STATIC_KEY, "AES");
         
-        /* Use static pre-made IV */
-        ivBytes = STATIC_IV;
+        /* Generate random IV */
+        SecureRandom secureRandom = new SecureRandom();
+        ivBytes = new byte[AES_BLOCK_SIZE];
+        secureRandom.nextBytes(ivBytes);
+
         if (mode.equals("GCM")) {
             params = new GCMParameterSpec(GCM_TAG_LENGTH, ivBytes);
         } else {
@@ -84,14 +80,20 @@ public class CryptoBenchmark {
         /* Generate test data filled with zeros */
         testData = generateTestData(DATA_SIZE);
 
-        /* Initialize cipher */
-        cipher = Cipher.getInstance(algorithm);
+        /* Initialize cipher with specific provider */
+        cipher = Cipher.getInstance(algorithm, providerName);
         
         /* Warm up phase */
         for (int i = 0; i < WARMUP_ITERATIONS; i++) {
+            /* Generate fresh IV for each warmup iteration when using GCM */
+            if (mode.equals("GCM")) {
+                secureRandom.nextBytes(ivBytes);
+                params = new GCMParameterSpec(GCM_TAG_LENGTH, ivBytes);
+            }
             cipher.init(Cipher.ENCRYPT_MODE, key, params);
             encryptedData = cipher.doFinal(testData);
             
+            /* Use the same params for decryption since we're decrypting what we just encrypted */
             cipher.init(Cipher.DECRYPT_MODE, key, params);
             cipher.doFinal(encryptedData);
         }
@@ -99,6 +101,11 @@ public class CryptoBenchmark {
         /* Benchmark encryption */
         startTime = System.nanoTime();
         for (int i = 0; i < TEST_ITERATIONS; i++) {
+            /* Generate fresh IV for each iteration when using GCM */
+            if (mode.equals("GCM")) {
+                secureRandom.nextBytes(ivBytes);
+                params = new GCMParameterSpec(GCM_TAG_LENGTH, ivBytes);
+            }
             cipher.init(Cipher.ENCRYPT_MODE, key, params);
             encryptedData = cipher.doFinal(testData);
         }
@@ -114,14 +121,16 @@ public class CryptoBenchmark {
         /* Calculate throughput using seconds for MiB/s */
         encryptThroughput = (DATA_SIZE / (encryptTime / 1000000000.0)) / (1024.0 * 1024.0);
 
-        /* Print encryption results immediately */
-        String testName = "AES-256-" + mode;
-        System.out.printf("%s-enc      %4.2f MiB took %1.3f ms, %8.3f MiB/s%n",
-            testName, dataSizeMiB, encryptTimeMS, encryptThroughput);
+        /* Store encryption results */
+        String testName = String.format("AES-256-%s (%s)", mode, providerName);
+        System.out.printf("| %-40s | %8.3f | %8.3f | %8.3f |%n",
+            testName + " enc", dataSizeMiB, encryptTimeMS, encryptThroughput);
 
         /* Benchmark decryption using the encrypted data from encryption benchmark */
         startTime = System.nanoTime();
         for (int i = 0; i < TEST_ITERATIONS; i++) {
+            /* Note: For decryption, we use the last IV/params from encryption 
+               since we're decrypting the last encrypted data */
             cipher.init(Cipher.DECRYPT_MODE, key, params);
             cipher.doFinal(encryptedData);
         }
@@ -134,23 +143,71 @@ public class CryptoBenchmark {
         /* Calculate throughput using seconds for MiB/s */
         decryptThroughput = (DATA_SIZE / (decryptTime / 1000000000.0)) / (1024.0 * 1024.0);
 
-        /* Print decryption results immediately */
-        System.out.printf("%s-dec      %4.2f MiB took %1.3f ms, %8.3f MiB/s%n",
-            testName, dataSizeMiB, decryptTimeMS, decryptThroughput);
+        /* Store decryption results */
+        System.out.printf("| %-40s | %8.3f | %8.3f | %8.3f |%n",
+            testName + " dec", dataSizeMiB, decryptTimeMS, decryptThroughput);
     }
 
     public static void main(String[] args) {
         try {
-            /* Register wolfJCE as the default provider */
-            Security.insertProviderAt(new WolfCryptProvider(), 1);
+            /* Check if Bouncy Castle is available */
+            boolean hasBouncyCastle = false;
+            Provider bcProvider = null;
+            try {
+                Class<?> bcClass = Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider");
+                bcProvider = (Provider) bcClass.getDeclaredConstructor().newInstance();
+                hasBouncyCastle = true;
+            } catch (Exception e) {
+                // Bouncy Castle not available
+            }
 
-            System.out.println("------------------------------------------------------------------------------");
-            System.out.println(" JCE Crypto Benchmark");
-            System.out.println("------------------------------------------------------------------------------");
+            /* Create provider list based on availability */
+            java.util.List<Provider> providerList = new java.util.ArrayList<>();
+            java.util.List<String> providerNameList = new java.util.ArrayList<>();
+            
+            /* Always add wolfJCE first */
+            providerList.add(new WolfCryptProvider());
+            providerNameList.add("wolfJCE");
+            
+            /* Always add SunJCE second */
+            providerList.add(new com.sun.crypto.provider.SunJCE());
+            providerNameList.add("SunJCE");
+            
+            /* Add Bouncy Castle if available */
+            if (hasBouncyCastle && bcProvider != null) {
+                providerList.add(bcProvider);
+                providerNameList.add("BC");
+            }
+            
+            Provider[] providers = providerList.toArray(new Provider[0]);
+            String[] providerNames = providerNameList.toArray(new String[0]);
 
-            /* Run benchmarks for different algorithms */
-            runBenchmark("AES/CBC/PKCS5Padding", "CBC");
-            runBenchmark("AES/GCM/NoPadding", "GCM");
+            System.out.println("-----------------------------------------------------------------------------");
+            System.out.println(" JCE Crypto Provider Benchmark");
+            System.out.println("-----------------------------------------------------------------------------");
+            
+            /* Print table header */
+            System.out.println("| Operation                                | Size MiB |    ms    |    MiB/s |");
+            System.out.println("|------------------------------------------|----------|----------|----------|");
+
+            /* Test each provider */
+            for (int i = 0; i < providers.length; i++) {
+                Security.insertProviderAt(providers[i], 1);
+                
+                /* Run benchmarks for different algorithms */
+                runBenchmark("AES/CBC/PKCS5Padding", "CBC", providerNames[i]);
+                runBenchmark("AES/GCM/NoPadding", "GCM", providerNames[i]);
+                
+                /* Add separator between providers */
+                if (i < providers.length - 1) {
+                    System.out.println("|------------------------------------------|----------|----------|----------|");
+                }
+                
+                /* Reset provider after each test */
+                Security.removeProvider(providers[i].getName());
+            }
+            
+            System.out.println("-----------------------------------------------------------------------------");
 
         } catch (Exception e) {
             System.err.println("Benchmark failed: " + e.getMessage());
