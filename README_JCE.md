@@ -307,6 +307,29 @@ ant build-jce-release     # Build JCE JAR
 ```
 This script requires for JAVA_HOME to be set.
 
+For Bouncy Castle comparison testing:
+
+CryptoBenchmark.sh will prompt with the following:
+
+```
+Would you like to download Bouncy Castle JARs? (y/n)
+```
+If you respond with 'y', the script will download the Bouncy Castle JARs and run the benchmark with Bouncy Castle. At the end of the benchmark, the script will prompt whether or not to remove the Bouncy Castle JAR files.
+
+If you prefer to download the JARs manually, follow the instructions below:
+
+Visit [bouncy-castle-java](https://www.bouncycastle.org/download/bouncy-castle-java/)
+Download:
+```
+bcprov-jdk18on-1.79.jar # Bouncy Castle Provider
+bctls-jdk18on-1.79.jar  # Bouncy Castle DTLS/TLS API/JSSE Provider
+```
+Copy jar files to wolfcrypt-jni/lib/:
+```
+cp bcprov-jdk18on-1.79.jar wolfcrypt-jni/lib
+cp bctls-jdk18on-1.79.jar wolfcrypt-jni/lib
+```
+
 ### JAR Code Signing
 ---------
 
