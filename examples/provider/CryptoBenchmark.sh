@@ -80,10 +80,10 @@ fi
 # Run the benchmark
 java -classpath $CLASSPATH -Dsun.boot.library.path=../../../lib/ CryptoBenchmark $@
 
-# After benchmark completion, ask about cleanup if we downloaded the files
-if [ "$BC_DOWNLOADED" = true ]; then
+# Always prompt for cleanup after benchmark completion if Bouncy Castle files exist
+if [ -f "../../../lib/bcprov-jdk18on-1.79.jar" ] && [ -f "../../../lib/bctls-jdk18on-1.79.jar" ]; then
   echo
-  read -p "Would you like to remove the downloaded Bouncy Castle JARs? (y/n) " -n 1 -r
+  read -p "Would you like to remove the Bouncy Castle JARs? (y/n) " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     cleanup_bc_jars
