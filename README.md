@@ -35,7 +35,16 @@ $ make check
 $ sudo make install
 ```
 
-**wolfSSL FIPSv2 Build**:
+**wolfSSL FIPSv2 (FIPS 140-2 Cert 3389) Build**:
+
+```
+$ cd wolfssl-x.x.x-commercial-fips
+$ ./configure --enable-fips=v2 --enable-jni
+$ make check
+$ sudo make install
+```
+
+**wolfSSL FIPSv5 (FIPS 140-3 Cert 4718) Build**:
 
 ```
 $ cd wolfssl-x.x.x-commercial-fips
@@ -62,7 +71,7 @@ on building with Maven. Continue reading here for instructions to build with
 ant.
 
 1) Compile the native wolfCrypt JNI object files. Two makefiles are distributed,
-one for Linux (`makefile.linux`) and one for Mac OSX (`makefile.macosx`). First
+one for Linux (`makefile.linux`) and one for macOS (`makefile.macosx`). First
 copy the makefile for your platform to a file called `makefile`:
 
 ```
@@ -208,7 +217,7 @@ on the current release):
         <dependency>
             <groupId>com.wolfssl</groupId>
             <artifactId>wolfcrypt-jni</artifactId>
-            <version>1.7.0-SNAPSHOT</version>
+            <version>1.8.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
     ...
