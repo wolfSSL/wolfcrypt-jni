@@ -292,11 +292,15 @@ The example can then be run using:
 ```
 $ ./examples/provider/ProviderTest.sh
 ```
+
 **CryptoBenchmark**
 
-This example benchmarks the performance of cryptographic operations using the wolfJCE provider. It tests AES-CBC with 256-bit key encryption/decryption operations.
+This example benchmarks the performance of cryptographic operations using the
+wolfJCE provider. It tests AES-CBC with 256-bit key encryption/decryption
+operations.
 
 Build and run:
+
 ```
 # From wolfcrypt-jni root directory
 make                      # Build native library
@@ -305,7 +309,8 @@ ant build-jce-release     # Build JCE JAR
 # Run benchmark
 ./examples/provider/CryptoBenchmark.sh
 ```
-This script requires for JAVA_HOME to be set.
+
+This script requires for `JAVA_HOME` to be set.
 
 For Bouncy Castle comparison testing:
 
@@ -314,17 +319,24 @@ CryptoBenchmark.sh will prompt with the following:
 ```
 Would you like to download Bouncy Castle JARs? (y/n)
 ```
-If you respond with 'y', the script will download the Bouncy Castle JARs and run the benchmark with Bouncy Castle. At the end of the benchmark, the script will prompt whether or not to remove the Bouncy Castle JAR files.
+
+If you respond with 'y', the script will download the Bouncy Castle JARs and
+run the benchmark with Bouncy Castle. At the end of the benchmark, the script
+will prompt whether or not to remove the Bouncy Castle JAR files.
 
 If you prefer to download the JARs manually, follow the instructions below:
 
 Visit [bouncy-castle-java](https://www.bouncycastle.org/download/bouncy-castle-java/)
+
 Download:
+
 ```
 bcprov-jdk18on-1.79.jar # Bouncy Castle Provider
 bctls-jdk18on-1.79.jar  # Bouncy Castle DTLS/TLS API/JSSE Provider
 ```
+
 Copy jar files to wolfcrypt-jni/lib/:
+
 ```
 cp bcprov-jdk18on-1.79.jar wolfcrypt-jni/lib
 cp bctls-jdk18on-1.79.jar wolfcrypt-jni/lib

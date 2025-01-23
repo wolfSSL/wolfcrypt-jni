@@ -1,3 +1,24 @@
+### wolfCrypt JNI Release 1.8.0 (01/23/2025)
+
+Release 1.8.0 of wolfCrypt JNI and JCE has bug fixes and new features including:
+
+**New JCE Functionality:**
+- Add Java security property support for mapping JKS/PKCS12 to WKS type (PR 83)
+
+**JNI and JCE Changes:**
+- Run FIPS CASTs once up front to prevent threaded app errors (PR 84, 91)
+
+**Example Changes:**
+- Define `WOLFSSL_CUSTOM_CONFIG` in Android Studio project builds (PR 85)
+- Add basic JCE cryptography benchmark app (PR 88, 89, 93, 94)
+
+**Testing Changes:**
+- Add GitHub Action testing Maven (pom.xml) build on macOS and Linux (PR 82)
+
+The wolfCrypt JNI/JCE Manual is available at:
+https://www.wolfssl.com/documentation/manuals/wolfcryptjni/. For build
+instructions and more details comments, please check the manual.
+
 ### wolfCrypt JNI Release 1.7.0 (11/11/2024)
 
 Release 1.7.0 of wolfCrypt JNI and JCE has bug fixes and new features including:

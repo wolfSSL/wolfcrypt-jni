@@ -37,7 +37,7 @@ public final class WolfCryptProvider extends Provider {
      * Create new WolfCryptProvider object
      */
     public WolfCryptProvider() {
-        super("wolfJCE", 1.7, "wolfCrypt JCE Provider");
+        super("wolfJCE", 1.8, "wolfCrypt JCE Provider");
         registerServices();
     }
 
