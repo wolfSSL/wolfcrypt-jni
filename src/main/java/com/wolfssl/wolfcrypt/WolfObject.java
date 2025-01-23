@@ -64,14 +64,14 @@ public class WolfObject {
         /* Load wolfcryptjni library */
         System.loadLibrary("wolfcryptjni");
 
+        /* initialize native wolfCrypt library */
+        init();
+
         /* Run FIPS CAST if we are in FIPS mode. Will only forcefully
          * be run once - Fips class keeps track of a successful run. */
         if (Fips.enabled) {
             Fips.runAllCast_fips();
         }
-
-        /* initialize native wolfCrypt library */
-        init();
     }
 
     /**
