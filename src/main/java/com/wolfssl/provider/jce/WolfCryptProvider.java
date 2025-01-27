@@ -186,6 +186,18 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptKeyAgreement$wcECDH");
         }
 
+        /* KeyGenerator */
+        put("KeyGenerator.AES",
+            "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcAESKeyGenerator");
+        put("KeyGenerator.HmacSHA1",
+            "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha1KeyGenerator");
+        put("KeyGenerator.HmacSHA256",
+            "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha256KeyGenerator");
+        put("KeyGenerator.HmacSHA384",
+            "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha384KeyGenerator");
+        put("KeyGenerator.HmacSHA512",
+            "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha512KeyGenerator");
+
         /* KeyPairGenerator */
         if (FeatureDetect.RsaKeyGenEnabled()) {
             put("KeyPairGenerator.RSA",
