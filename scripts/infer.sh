@@ -65,6 +65,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptCipher.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptDebug.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyAgreement.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptKeyGenerator.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyPairGenerator.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMac.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestMd5.java \
@@ -90,8 +91,10 @@ if [ "$RETVAL" == '0' ] && [ "$KEEP" == 'no' ]; then
     rm -r ./infer-out
 fi
 
-if [ "$RETVAL" == '2' ]; then
+if [ "$RETVAL" == '1' ] || [ "$RETVAL" == '2' ]; then
     # GitHub Actions expects return of 1 to mark step as failure
     exit 1
 fi
+
+exit 0
 
