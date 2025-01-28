@@ -127,7 +127,7 @@ public class CryptoBenchmark {
                         deltaPercent = ((wolfSpeed / otherSpeed) - 1.0) * 100;
                     }
                     System.out.printf("| %-40s | %-8s | %+8.2f | %+8.1f |%n",
-                    operation,
+                    operation.replace("RSA", "RSA/ECB/PKCS1Padding RSA"),
                     provider,
                     deltaValue,
                     deltaPercent);
@@ -223,7 +223,7 @@ public class CryptoBenchmark {
         encryptThroughput = (DATA_SIZE / (encryptTime / 1000000000.0)) / (1024.0 * 1024.0);
 
         String testName = String.format("%s (%s)", cipherName, providerName);
-        System.out.printf("| %-40s | %8.3f | %8.3f | %8.3f |%n",
+        System.out.printf(" %-40s  %8.3f MiB %8.3f ms %8.3f MiB/s%n",
           testName + " enc", dataSizeMiB, encryptTimeMS, encryptThroughput);
 
         results.add(new BenchmarkResult(providerName, cipherName + " enc", encryptThroughput));
@@ -240,8 +240,8 @@ public class CryptoBenchmark {
         decryptTimeMS = decryptTime / 1000000.0;
         decryptThroughput = (DATA_SIZE / (decryptTime / 1000000000.0)) / (1024.0 * 1024.0);
 
-        System.out.printf("| %-40s | %8.3f | %8.3f | %8.3f |%n",
-          testName + " dec", dataSizeMiB, decryptTimeMS, decryptThroughput);
+        System.out.printf(" %-40s  %8.3f MiB %8.3f ms %8.3f MiB/s%n",
+          testName + " dec", dataSizeMiB , decryptTimeMS, decryptThroughput);
 
         /* Store decryption result */
         results.add(new BenchmarkResult(providerName, cipherName + " dec", decryptThroughput));
@@ -260,7 +260,7 @@ public class CryptoBenchmark {
 
         /* Print formatted results */
         System.out.printf("%-12s  %-8s %8d ops took %.3f sec, avg %.3f ms, %.3f ops/sec%n",
-            operation,
+            operation + " (" + mode + ")",
             " ",
             operations,
             totalTime,
@@ -268,7 +268,7 @@ public class CryptoBenchmark {
             opsPerSec);
 
         /* Store results for delta table */
-        String fullOperation = String.format("%s (%s)", operation, mode);
+        String fullOperation = operation;
         results.add(new BenchmarkResult(providerName, fullOperation, opsPerSec));
     }
 
@@ -383,9 +383,7 @@ public class CryptoBenchmark {
 
             System.out.println("-----------------------------------------------------------------------------");
             System.out.println(" Symmetric Cipher Benchmark");
-            System.out.println("-----------------------------------------------------------------------------");
-            System.out.println("| Operation                                | Size MiB |    ms    |   MiB/s  |");
-            System.out.println("|------------------------------------------|----------|----------|----------|");
+            System.out.println("-----------------------------------------------------------------------------\n");
 
             /* Run symmetric benchmarks */
             for (int i = 0; i < providers.length; i++) {
@@ -399,17 +397,13 @@ public class CryptoBenchmark {
                     runEncDecBenchmark("DESede", "CBC", "NoPadding", providerNames[i]);
                 }
 
-                if (i < providers.length - 1) {
-                    System.out.println("|------------------------------------------|----------|----------|----------|");
-                }
-
                 Security.removeProvider(providers[i].getName());
             }
 
-            System.out.println("-----------------------------------------------------------------------------");
 
             /* Run RSA benchmarks */
-            System.out.println("\nRSA Benchmark Results");
+            System.out.println("\n-----------------------------------------------------------------------------");
+            System.out.println("RSA Benchmark Results");
             System.out.println("-----------------------------------------------------------------------------");
 
             for (Provider provider : providers) {
