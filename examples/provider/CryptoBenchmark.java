@@ -85,10 +85,10 @@ public class CryptoBenchmark {
         double deltaPercent;
 
         System.out.println("\nPerformance Delta (compared to wolfJCE)");
-        System.out.println("-----------------------------------------------------------------------------");
-        System.out.println("| Operation                                | Provider |  Delta   |   Delta  |");
-        System.out.println("|                                          |          |  Value*  |   (%)    |");
-        System.out.println("|------------------------------------------|----------|----------|----------|");
+        System.out.println("--------------------------------------------------------------------------------");
+        System.out.println("| Operation                                | Provider     |  Delta   |   Delta  |");
+        System.out.println("|                                          |              |  Value*  |   (%)    |");
+        System.out.println("|------------------------------------------|--------------|----------|----------|");
 
         /* Group results by operation */
         groupedResults = new HashMap<>();
@@ -126,16 +126,15 @@ public class CryptoBenchmark {
                         deltaValue = wolfSpeed - otherSpeed;
                         deltaPercent = ((wolfSpeed / otherSpeed) - 1.0) * 100;
                     }
-                    System.out.printf("| %-40s | %-8s | %+8.2f | %+8.1f |%n",
+                    System.out.printf("| %-40s | %-12s | %+8.2f | %+8.1f |%n",
                     operation.replace("RSA", "RSA/ECB/PKCS1Padding RSA"),
                     provider,
                     deltaValue,
                     deltaPercent);
-              }
+                }
             }
         }
-
-        System.out.println("-----------------------------------------------------------------------------");
+        System.out.println("--------------------------------------------------------------------------------");
         System.out.println("* Delta Value: MiB/s for symmetric ciphers, operations/second for RSA");
     }
 
@@ -289,8 +288,14 @@ public class CryptoBenchmark {
         String cipherMode = "RSA/ECB/PKCS1Padding";
 
         /* Initialize key generator and cipher */
-        keyGen = KeyPairGenerator.getInstance("RSA", providerName);
-        cipher = Cipher.getInstance(cipherMode, providerName);
+        if (providerName.equals("SunJCE")) {
+            keyGen = KeyPairGenerator.getInstance("RSA", "SunRsaSign");
+            cipher = Cipher.getInstance(cipherMode, "SunJCE");
+            providerName = "SunRsaSign";
+        } else {
+            keyGen = KeyPairGenerator.getInstance("RSA", providerName);
+            cipher = Cipher.getInstance(cipherMode, providerName);
+        }
         testData = generateTestData(SMALL_MESSAGE_SIZE);
 
         /* Key Generation benchmark */
@@ -407,18 +412,13 @@ public class CryptoBenchmark {
             System.out.println("-----------------------------------------------------------------------------");
 
             for (Provider provider : providers) {
-                if (!provider.getName().equals("SunJCE")) {
-                    Security.insertProviderAt(provider, 1);
-                    System.out.println("\n" + provider.getName() + ":");
-
-                    for (int keySize : RSA_KEY_SIZES) {
-                        runRSABenchmark(provider.getName(), keySize);
-                    }
-
-                    Security.removeProvider(provider.getName());
+                Security.insertProviderAt(provider, 1);
+                System.out.println("\n" + (provider.getName().equals("SunJCE") ? "SunJCE / SunRsaSign" : provider.getName()) + ":");
+                for (int keySize : RSA_KEY_SIZES) {
+                    runRSABenchmark(provider.getName(), keySize);
                 }
+                Security.removeProvider(provider.getName());
             }
-
             System.out.println("-----------------------------------------------------------------------------");
 
             /* Print delta table */
