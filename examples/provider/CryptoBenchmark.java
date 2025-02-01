@@ -56,7 +56,7 @@ public class CryptoBenchmark {
         (byte)0xf4, (byte)0xf5, (byte)0xf6, (byte)0xf7
     };
 
-  /* Static DESede (Triple DES) key buffer */
+    /* Static DESede (Triple DES) key buffer */
     private static final byte[] STATIC_DES3_KEY = new byte[] {
         (byte)0x01, (byte)0x23, (byte)0x45, (byte)0x67,
         (byte)0x89, (byte)0xab, (byte)0xcd, (byte)0xef,
@@ -94,19 +94,19 @@ public class CryptoBenchmark {
         groupedResults = new HashMap<>();
         for (BenchmarkResult result : results) {
             groupedResults
-            .computeIfAbsent(result.operation, k -> new HashMap<>())
-            .put(result.provider, result.throughput);
+                .computeIfAbsent(result.operation, k -> new HashMap<>())
+                .put(result.provider, result.throughput);
         }
 
         /* Sort operations to group RSA operations together */
         List<String> sortedOperations = new ArrayList<>(groupedResults.keySet());
         Collections.sort(sortedOperations, (a, b) -> {
-          boolean aIsRSA = a.startsWith("RSA");
-          boolean bIsRSA = b.startsWith("RSA");
+            boolean aIsRSA = a.startsWith("RSA");
+            boolean bIsRSA = b.startsWith("RSA");
 
-          if (aIsRSA && !bIsRSA) return -1;
-          if (!aIsRSA && bIsRSA) return 1;
-          return a.compareTo(b);
+            if (aIsRSA && !bIsRSA) return -1;
+            if (!aIsRSA && bIsRSA) return 1;
+            return a.compareTo(b);
         });
 
         /* Calculate and print deltas */
@@ -119,6 +119,17 @@ public class CryptoBenchmark {
                 provider = providerEntry.getKey();
                 if (!provider.equals("wolfJCE")) {
                     otherSpeed = providerEntry.getValue();
+
+                    /* Adjust provider name for RSA operations */
+                    String displayProvider = provider;
+                    if (isRSAOperation) {
+                        if (operation.contains("key gen")) {
+                            displayProvider = "SunRsaSign"; // Key generation uses SunRsaSign
+                        } else {
+                            displayProvider = "SunJCE"; // Public/private operations use SunJCE
+                        }
+                    }
+
                     if (isRSAOperation) {
                         deltaValue = wolfSpeed - otherSpeed;
                         deltaPercent = ((wolfSpeed / otherSpeed) - 1.0) * 100;
@@ -126,11 +137,19 @@ public class CryptoBenchmark {
                         deltaValue = wolfSpeed - otherSpeed;
                         deltaPercent = ((wolfSpeed / otherSpeed) - 1.0) * 100;
                     }
-                    System.out.printf("| %-40s | %-12s | %+8.2f | %+8.1f |%n",
-                    operation.replace("RSA", "RSA/ECB/PKCS1Padding RSA"),
-                    provider,
-                    deltaValue,
-                    deltaPercent);
+
+                    /* Ensure unique operation-provider combination */
+                    String uniqueKey = operation + "|" + displayProvider;
+                    if (!groupedResults.containsKey(uniqueKey)) {
+                        System.out.printf("| %-40s | %-12s | %+8.2f | %+8.1f |%n",
+                            operation.replace("RSA", "RSA/ECB/PKCS1Padding RSA"),
+                            displayProvider,
+                            deltaValue,
+                            deltaPercent);
+
+                        /* Mark this combination as processed */
+                        groupedResults.put(uniqueKey, null);
+                    }
                 }
             }
         }
@@ -138,6 +157,7 @@ public class CryptoBenchmark {
         System.out.println("* Delta Value: MiB/s for symmetric ciphers, operations/second for RSA");
     }
 
+    /* Run symmetric encryption/decryption benchmarks */
     private static void runEncDecBenchmark(String algorithm, String mode, String padding,
       String providerName) throws Exception {
         SecretKey key;
