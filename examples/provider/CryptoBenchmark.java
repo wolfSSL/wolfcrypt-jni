@@ -10,6 +10,7 @@ import java.security.spec.AlgorithmParameterSpec;
 import java.util.*;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.spec.ECGenParameterSpec;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.FeatureDetect;
@@ -25,6 +26,7 @@ public class CryptoBenchmark {
     private static final int[] RSA_KEY_SIZES = {2048, 3072, 4096};
     private static final int RSA_MIN_TIME_SECONDS = 1;  /* minimum time to run each test */
     private static final int SMALL_MESSAGE_SIZE = 32;   /* small message size for RSA ops */
+    private static final String[] ECC_CURVES = {"secp256r1"}; /* Can add more curves benchmark.c only uses secp256r1 */
 
     /* Class to store benchmark results */
     private static class BenchmarkResult {
@@ -267,7 +269,7 @@ public class CryptoBenchmark {
     }
 
     /* Print RSA results in simpler format */
-    private static void printRSAResults(int operations, double totalTime, String operation,
+    private static void printKeyGenResults(int operations, double totalTime, String operation,
         String providerName, String mode) {
         /* Variables for result calculations */
         double avgTimeMs;
@@ -332,7 +334,7 @@ public class CryptoBenchmark {
         } while (elapsedTime < RSA_MIN_TIME_SECONDS);
 
         keyGenOp = String.format("RSA %d key gen", keySize);
-        printRSAResults(keyGenOps, elapsedTime, keyGenOp, providerName, cipherMode);
+        printKeyGenResults(keyGenOps, elapsedTime, keyGenOp, providerName, cipherMode);
 
         /* For 2048-bit keys, test public/private operations */
         if (keySize == 2048) {
@@ -350,7 +352,7 @@ public class CryptoBenchmark {
                 elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
             } while (elapsedTime < RSA_MIN_TIME_SECONDS);
 
-            printRSAResults(publicOps, elapsedTime, "RSA 2048 public", providerName, cipherMode);
+            printKeyGenResults(publicOps, elapsedTime, "RSA 2048 public", providerName, cipherMode);
 
             /* Private key operations benchmark */
             cipher.init(Cipher.ENCRYPT_MODE, keyPair.getPublic());
@@ -366,8 +368,39 @@ public class CryptoBenchmark {
                 elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
             } while (elapsedTime < RSA_MIN_TIME_SECONDS);
 
-            printRSAResults(privateOps, elapsedTime, "RSA 2048 private", providerName, cipherMode);
+            printKeyGenResults(privateOps, elapsedTime, "RSA 2048 private", providerName, cipherMode);
         }
+    }
+
+    /* ECC keygen benchmark */
+    private static void runECCBenchmark(String providerName, String curveName) throws Exception {
+        KeyPairGenerator keyGen;
+        int keyGenOps = 0;
+        long startTime;
+        double elapsedTime;
+        
+        /* Initialize key generator */
+        if (providerName.equals("SunJCE")) {
+            keyGen = KeyPairGenerator.getInstance("EC", "SunEC");
+            providerName = "SunEC";
+        } else {
+            keyGen = KeyPairGenerator.getInstance("EC", providerName);
+            keyGen.initialize(new ECGenParameterSpec(curveName));
+        }
+
+        /* Key Generation benchmark */
+        startTime = System.nanoTime();
+        elapsedTime = 0;
+        
+        /* Run key generation benchmark */
+        do {
+            keyGen.generateKeyPair();
+            keyGenOps++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < RSA_MIN_TIME_SECONDS);
+        
+        String keyGenOp = String.format("ECC %s key gen", curveName);
+        printKeyGenResults(keyGenOps, elapsedTime, keyGenOp, providerName, "EC");
     }
 
     public static void main(String[] args) {
@@ -439,7 +472,29 @@ public class CryptoBenchmark {
                 }
                 Security.removeProvider(provider.getName());
             }
+
+            System.out.println("\n-----------------------------------------------------------------------------");
+            System.out.println("ECC Benchmark Results");
             System.out.println("-----------------------------------------------------------------------------");
+
+            for (Provider provider : providers) {
+                if (provider instanceof WolfCryptProvider && !FeatureDetect.EccKeyGenEnabled()) {
+                    continue;
+                }
+                Security.insertProviderAt(provider, 1);
+                                System.out.println("\n" + (provider.getName().equals("SunJCE") ? "SunJCE / SunEC" : provider.getName()) + ":");
+                for (String curve : ECC_CURVES) {
+                    try {
+                        runECCBenchmark(provider.getName(), curve);
+                    } catch (Exception e) {
+                        System.out.printf("Failed to benchmark %s with provider %s: %s%n", 
+                            curve, provider.getName(), e.getMessage());
+                    }
+                }
+                Security.removeProvider(provider.getName());
+            }
+
+            System.out.println("-----------------------------------------------------------------------------\n");
 
             /* Print delta table */
             printDeltaTable();
