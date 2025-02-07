@@ -1,4 +1,6 @@
 import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
@@ -7,10 +9,10 @@ import java.security.Provider;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.security.spec.AlgorithmParameterSpec;
-import java.util.*;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.spec.ECGenParameterSpec;
+import java.util.*;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.FeatureDetect;
@@ -403,6 +405,55 @@ public class CryptoBenchmark {
         printKeyGenResults(keyGenOps, elapsedTime, keyGenOp, providerName, "EC");
     }
 
+    /* HMAC benchmark */
+    private static void runHmacBenchmark(String algorithm, String providerName) throws Exception {
+        Mac mac;
+        byte[] testData;
+        double dataSizeMiB;
+        long startTime;
+        long endTime;
+        long elapsedTime;
+        double throughput;
+
+        /* Generate test data */
+        testData = generateTestData(DATA_SIZE);
+
+        /* Initialize Mac with specific provider */
+        mac = Mac.getInstance(algorithm, providerName);
+
+        /* Initialize Mac with a random key */
+        SecureRandom secureRandom = new SecureRandom();
+        byte[] keyBytes = new byte[64];
+        secureRandom.nextBytes(keyBytes);
+        SecretKeySpec key = new SecretKeySpec(keyBytes, algorithm);
+        mac.init(key);
+
+        /* Warm up phase */
+        for (int i = 0; i < WARMUP_ITERATIONS; i++) {
+            mac.update(testData);
+            mac.doFinal();
+        }
+
+        /* Benchmark */
+        startTime = System.nanoTime();
+        for (int i = 0; i < TEST_ITERATIONS; i++) {
+            mac.update(testData);
+            mac.doFinal();
+        }
+        endTime = System.nanoTime();
+        elapsedTime = (endTime - startTime) / TEST_ITERATIONS;
+
+        dataSizeMiB = (DATA_SIZE * TEST_ITERATIONS) / (1024.0 * 1024.0);
+        throughput = (DATA_SIZE / (elapsedTime / 1000000000.0)) / (1024.0 * 1024.0);
+
+        String testName = String.format("%s (%s)", algorithm, providerName);
+        System.out.printf(" %-40s  %8.3f MiB took %.3f seconds, %8.3f MiB/s%n",
+            testName, dataSizeMiB, elapsedTime / 1_000_000_000.0, throughput);
+
+        /* Store result */
+        results.add(new BenchmarkResult(providerName, algorithm, throughput));
+    }
+
     public static void main(String[] args) {
         try {
             /* Check if Bouncy Castle is available */
@@ -492,6 +543,32 @@ public class CryptoBenchmark {
                     }
                 }
                 Security.removeProvider(provider.getName());
+            }
+
+            System.out.println("\n-----------------------------------------------------------------------------");
+            System.out.println("HMAC Benchmark Results");
+            System.out.println("-----------------------------------------------------------------------------");
+
+            for (int i = 0; i < providers.length; i++) {
+                Security.insertProviderAt(providers[i], 1);
+
+                if (FeatureDetect.HmacMd5Enabled()) {
+                    runHmacBenchmark("HmacMD5", providerNames[i]);
+                }
+                if (FeatureDetect.HmacShaEnabled()) {
+                    runHmacBenchmark("HmacSHA1", providerNames[i]);
+                }
+                if (FeatureDetect.HmacSha256Enabled()) {
+                    runHmacBenchmark("HmacSHA256", providerNames[i]);
+                }
+                if (FeatureDetect.HmacSha384Enabled()) {
+                    runHmacBenchmark("HmacSHA384", providerNames[i]);
+                }
+                if (FeatureDetect.HmacSha512Enabled()) {
+                    runHmacBenchmark("HmacSHA512", providerNames[i]);
+                }
+
+                Security.removeProvider(providers[i].getName());
             }
 
             System.out.println("-----------------------------------------------------------------------------\n");
