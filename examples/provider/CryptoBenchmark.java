@@ -74,6 +74,24 @@ public class CryptoBenchmark {
         return new byte[size];
     }
 
+    private static int getHmacKeySize(String algorithm) {
+        // Key sizes in bytes based on hash block sizes
+        switch (algorithm) {
+            case "HmacMD5":
+                return 64;
+            case "HmacSHA1":
+                return 64;
+            case "HmacSHA256":
+                return 64;
+            case "HmacSHA384":
+                return 128;
+            case "HmacSHA512":
+                return 128;
+            default:
+                throw new IllegalArgumentException("Unsupported HMAC algorithm: " + algorithm);
+        }
+    }
+
     private static void printProviderInfo(Provider provider) {
         System.out.printf("%s version: %.1f%n", provider.getName(), provider.getVersion());
     }
@@ -421,9 +439,10 @@ public class CryptoBenchmark {
         /* Initialize Mac with specific provider */
         mac = Mac.getInstance(algorithm, providerName);
 
-        /* Initialize Mac with a random key */
+        /* Initialize Mac with a random key of appropriate length */
         SecureRandom secureRandom = new SecureRandom();
-        byte[] keyBytes = new byte[64];
+        int keySize = getHmacKeySize(algorithm);
+        byte[] keyBytes = new byte[keySize];
         secureRandom.nextBytes(keyBytes);
         SecretKeySpec key = new SecretKeySpec(keyBytes, algorithm);
         mac.init(key);
