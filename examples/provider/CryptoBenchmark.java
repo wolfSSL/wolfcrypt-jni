@@ -74,19 +74,19 @@ public class CryptoBenchmark {
         return new byte[size];
     }
 
+    /* Bytes sizes from WC_*_DIGEST_SIZE for corresponding algorithm in text.c */
     private static int getHmacKeySize(String algorithm) {
-        // Key sizes in bytes based on hash block sizes
         switch (algorithm) {
             case "HmacMD5":
-                return 64;
+                return 16;
             case "HmacSHA1":
-                return 64;
+                return 20;
             case "HmacSHA256":
-                return 64;
+                return 32;
             case "HmacSHA384":
-                return 128;
+                return 48;
             case "HmacSHA512":
-                return 128;
+                return 64;
             default:
                 throw new IllegalArgumentException("Unsupported HMAC algorithm: " + algorithm);
         }
@@ -176,7 +176,7 @@ public class CryptoBenchmark {
             }
         }
         System.out.println("--------------------------------------------------------------------------------");
-        System.out.println("* Delta Value: MiB/s for symmetric ciphers, operations/second for RSA");
+        System.out.println("* Delta Value: MiB/s for symmetric ciphers, operations/second for RSA and ECC");
     }
 
     /* Run symmetric encryption/decryption benchmarks */
