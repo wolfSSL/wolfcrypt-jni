@@ -30,6 +30,7 @@
 #include <wolfssl/wolfcrypt/sha.h>
 #include <wolfssl/wolfcrypt/sha256.h>
 #include <wolfssl/wolfcrypt/sha512.h>
+#include <wolfssl/wolfcrypt/sha3.h>
 
 #include <com_wolfssl_wolfcrypt_Sha.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -942,6 +943,363 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1final_1internal___3B(
 
     releaseByteArray(env, hash_buffer, hash, ret);
 #else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Sha3_mallocNativeStruct_1internal
+  (JNIEnv* env, jobject this)
+{
+#ifdef WOLFSSL_SHA3
+    wc_Sha3* sha = NULL;
+
+    sha = (wc_Sha3*) XMALLOC(sizeof(wc_Sha3), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (sha == NULL) {
+        throwOutOfMemoryException(env, "Failed to allocate wc_Sha3 object");
+    }
+    else {
+        XMEMSET(sha, 0, sizeof(wc_Sha3));
+    }
+
+    LogStr("new wc_Sha3 = %p\n", sha);
+
+    return (jlong)(uintptr_t)sha;
+#else
+    (void)env;
+    (void)this;
+    throwNotCompiledInException(env);
+    return (jlong)0;
+#endif
+}
+
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1init_1internal
+  (JNIEnv* env, jobject this, jint hashType)
+{
+#ifdef WOLFSSL_SHA3
+    int ret = 0;
+    wc_Sha3* sha = NULL;
+
+    sha = (wc_Sha3*) getNativeStruct(env, this);
+    if (sha == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        switch (hashType) {
+            case WC_HASH_TYPE_SHA3_224:
+                ret = wc_InitSha3_224(sha, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+                break;
+            case WC_HASH_TYPE_SHA3_256:
+                ret = wc_InitSha3_256(sha, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+                break;
+            case WC_HASH_TYPE_SHA3_384:
+                ret = wc_InitSha3_384(sha, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+                break;
+            case WC_HASH_TYPE_SHA3_512:
+                ret = wc_InitSha3_512(sha, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+                break;
+            default:
+                ret = BAD_FUNC_ARG;
+                break;
+        }
+    }
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+#else
+    (void)env;
+    (void)this;
+    (void)hashType;
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1copy_1internal
+  (JNIEnv* env, jobject this, jobject toBeCopied, jint hashType)
+{
+#ifdef WOLFSSL_SHA3
+    int ret = 0;
+    wc_Sha3* sha = NULL;
+    wc_Sha3* tbc = NULL; /* tbc = to be copied */
+
+    if (this == NULL || toBeCopied == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return;
+    }
+
+    sha = (wc_Sha3*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    tbc = (wc_Sha3*) getNativeStruct(env, toBeCopied);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    switch (hashType) {
+        case WC_HASH_TYPE_SHA3_224:
+            ret = wc_Sha3_224_Copy(tbc, sha);
+            break;
+        case WC_HASH_TYPE_SHA3_256:
+            ret = wc_Sha3_256_Copy(tbc, sha);
+            break;
+        case WC_HASH_TYPE_SHA3_384:
+            ret = wc_Sha3_384_Copy(tbc, sha);
+            break;
+        case WC_HASH_TYPE_SHA3_512:
+            ret = wc_Sha3_512_Copy(tbc, sha);
+            break;
+        default:
+            ret = BAD_FUNC_ARG;
+            break;
+    }
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+#else
+    (void)env;
+    (void)this;
+    (void)toBeCopied;
+    (void)hashType;
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1update_1internal__Ljava_nio_ByteBuffer_2III
+  (JNIEnv* env, jobject this, jobject data_buffer, jint offset, jint len, jint hashType)
+{
+#ifdef WOLFSSL_SHA3
+    int ret = 0;
+    byte* data = NULL;
+    wc_Sha3* sha = NULL;
+
+    sha = (wc_Sha3*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    data = getDirectBufferAddress(env, data_buffer);
+
+    if (sha == NULL || data == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        switch (hashType) {
+            case WC_HASH_TYPE_SHA3_224:
+                ret = wc_Sha3_224_Update(sha, data + offset, len);
+                break;
+            case WC_HASH_TYPE_SHA3_256:
+                ret = wc_Sha3_256_Update(sha, data + offset, len);
+                break;
+            case WC_HASH_TYPE_SHA3_384:
+                ret = wc_Sha3_384_Update(sha, data + offset, len);
+                break;
+            case WC_HASH_TYPE_SHA3_512:
+                ret = wc_Sha3_512_Update(sha, data + offset, len);
+                break;
+            default:
+                ret = BAD_FUNC_ARG;
+                break;
+        }
+    }
+
+    if (ret < 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_Sha3_Update(sha=%p, data, len) = %d\n", sha, ret);
+    LogStr("data[%u]: [%p]\n", (word32)len, data);
+    LogHex(data, 0, len);
+#else
+    (void)env;
+    (void)this;
+    (void)data;
+    (void)offset;
+    (void)len;
+    (void)hashType;
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1update_1internal___3BIII
+  (JNIEnv* env, jobject this, jbyteArray data_buffer, jint offset, jint len, jint hashType)
+{
+#ifdef WOLFSSL_SHA3
+    int ret = 0;
+    wc_Sha3* sha = NULL;
+    byte* data = NULL;
+    word32 dataSz = 0;
+
+    sha = (wc_Sha3*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    data   = getByteArray(env, data_buffer);
+    dataSz = getByteArrayLength(env, data_buffer);
+
+    if (sha == NULL || data == NULL ||
+        (word32)(offset + len) > dataSz) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        switch(hashType) {
+            case WC_HASH_TYPE_SHA3_224:
+                ret = wc_Sha3_224_Update(sha, data + offset, len);
+                break;
+            case WC_HASH_TYPE_SHA3_256:
+                ret = wc_Sha3_256_Update(sha, data + offset, len);
+                break;
+            case WC_HASH_TYPE_SHA3_384:
+                ret = wc_Sha3_384_Update(sha, data + offset, len);
+                break;
+            case WC_HASH_TYPE_SHA3_512:
+                ret = wc_Sha3_512_Update(sha, data + offset, len);
+                break;
+            default:
+                ret = BAD_FUNC_ARG;
+                break;
+        }
+    }
+
+    if (ret < 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_Sha3_Update(sha=%p, data, len) = %d\n", sha, ret);
+    LogStr("data[%u]: [%p]\n", (word32)len, data);
+    LogHex(data, offset, len);
+
+    releaseByteArray(env, data_buffer, data, JNI_ABORT);
+#else
+    (void)env;
+    (void)this;
+    (void)data;
+    (void)offset;
+    (void)len;
+    (void)hashType;
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1final_1internal__Ljava_nio_ByteBuffer_2II
+  (JNIEnv* env, jobject this, jobject hash_buffer, jint position, jint hashType)
+{
+#ifdef WOLFSSL_SHA3
+    int ret = 0;
+    wc_Sha3* sha = NULL;
+    byte* hash = NULL;
+
+    sha = (wc_Sha3*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    hash = getDirectBufferAddress(env, hash_buffer);
+
+    if (sha == NULL || hash == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        switch(hashType) {
+            case WC_HASH_TYPE_SHA3_224:
+                ret = wc_Sha3_224_Final(sha, hash + position);
+                break;
+            case WC_HASH_TYPE_SHA3_256:
+                ret = wc_Sha3_256_Final(sha, hash + position);
+                break;
+            case WC_HASH_TYPE_SHA3_384:
+                ret = wc_Sha3_384_Final(sha, hash + position);
+                break;
+            case WC_HASH_TYPE_SHA3_512:
+                ret = wc_Sha3_512_Final(sha, hash + position);
+                break;
+            default:
+                ret = BAD_FUNC_ARG;
+                break;
+        }
+    }
+
+    if (ret < 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_Sha3_Final(sha=%p, hash) = %d\n", sha, ret);
+#else
+    (void)env;
+    (void)this;
+    (void)hash_buffer;
+    (void)position;
+    (void)hashType;
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1final_1internal___3BI
+  (JNIEnv* env, jobject this, jbyteArray hash_buffer, jint hashType)
+{
+#ifdef WOLFSSL_SHA3
+    int ret = 0;
+    wc_Sha3* sha = NULL;
+    byte* hash = NULL;
+
+    sha = (wc_Sha3*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    hash = getByteArray(env, hash_buffer);
+
+    if (sha == NULL || hash == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        switch(hashType) {
+            case WC_HASH_TYPE_SHA3_224:
+                ret = wc_Sha3_224_Final(sha, hash);
+                break;
+            case WC_HASH_TYPE_SHA3_256:
+                ret = wc_Sha3_256_Final(sha, hash);
+                break;
+            case WC_HASH_TYPE_SHA3_384:
+                ret = wc_Sha3_384_Final(sha, hash);
+                break;
+            case WC_HASH_TYPE_SHA3_512:
+                ret = wc_Sha3_512_Final(sha, hash);
+                break;
+            default:
+                ret = BAD_FUNC_ARG;
+                break;
+        }
+    }
+
+    if (ret < 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_Sha3_Final(sha=%p, hash) = %d\n", sha, ret);
+
+    releaseByteArray(env, hash_buffer, hash, ret);
+#else
+    (void)env;
+    (void)this;
+    (void)hash_buffer;
+    (void)hashType;
+
     throwNotCompiledInException(env);
 #endif
 }
