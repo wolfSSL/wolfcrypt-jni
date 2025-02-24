@@ -94,6 +94,16 @@ public final class WolfCryptProvider extends Provider {
             put("MessageDigest.SHA-512",
                     "com.wolfssl.provider.jce.WolfCryptMessageDigestSha512");
         }
+        if (FeatureDetect.Sha3Enabled()) {
+            put("MessageDigest.SHA3-224",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha3$wcSHA3_224");
+            put("MessageDigest.SHA3-256",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha3$wcSHA3_256");
+            put("MessageDigest.SHA3-384",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha3$wcSHA3_384");
+            put("MessageDigest.SHA3-512",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha3$wcSHA3_512");
+        }
 
         /* SecureRandom */
         /* TODO: May need to add "SHA1PRNG" alias, other JCA consumemrs may
