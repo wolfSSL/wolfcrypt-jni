@@ -21,12 +21,10 @@
 
 package com.wolfssl.provider.jce;
 
-import java.util.Arrays;
 import java.security.MessageDigestSpi;
 import javax.crypto.ShortBufferException;
 
 import com.wolfssl.wolfcrypt.Sha;
-import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE SHA-1 MessageDigest wrapper

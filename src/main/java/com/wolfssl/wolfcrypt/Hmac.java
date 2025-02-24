@@ -21,8 +21,6 @@
 
 package com.wolfssl.wolfcrypt;
 
-import com.wolfssl.wolfcrypt.WolfCrypt;
-import com.wolfssl.wolfcrypt.WolfCryptException;
 import java.nio.ByteBuffer;
 
 /**

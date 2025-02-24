@@ -25,7 +25,6 @@ import java.util.Date;
 import java.util.Enumeration;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.ByteArrayInputStream;
@@ -33,7 +32,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.Key;
 import java.security.KeyStoreSpi;
 import java.security.PrivateKey;
@@ -42,7 +40,6 @@ import java.security.KeyFactory;
 import java.security.Security;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
-import java.security.UnrecoverableEntryException;
 import java.security.KeyStoreException;
 import java.security.NoSuchProviderException;
 import java.security.InvalidKeyException;
@@ -57,7 +54,6 @@ import java.security.cert.CertificateEncodingException;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
 import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -72,7 +68,6 @@ import com.wolfssl.wolfcrypt.Pwdbased;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfSSLCertManager;
 import com.wolfssl.wolfcrypt.WolfCryptException;
-import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfSSL KeyStore implementation (WKS).
@@ -638,7 +633,6 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         KeyFactory keyFact = null;
 
         SecretKey sKey = null;
-        SecretKeySpec skSpec = null;
 
         log("returning Key entry for alias: " + alias);
 
@@ -1640,7 +1634,6 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         int saltLen = 0;
         int hmacLen = 0;
         int iterations = 0;
-        byte[] streamBytes = null;
         byte[] encodedEntry = null;
         byte[] salt = null;
         byte[] hmac = null;
@@ -1861,9 +1854,6 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         Certificate[] chain;    /* cert chain matching this private key */
         Date creationDate;      /* creation date for this object */
         byte[] hmacSha512;      /* HMAC calculated over members and lengths */
-
-        protected WKSPrivateKey() {
-        }
 
         /**
          * Create new WKSPrivateKey from plaintext key and certificate chain,
@@ -2336,7 +2326,6 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         protected WKSCertificate(byte[] encoded)
             throws IOException, CertificateException {
 
-            int i;
             int tmp = 0;
             byte[] tmpArr = null;
             String tmpStr = null;
@@ -2344,7 +2333,6 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             ByteArrayInputStream certStream = null;
             DataInputStream dis = null;
             CertificateFactory cf = null;
-            Certificate tmpCert = null;
 
             if (encoded == null || encoded.length == 0) {
                 throw new IllegalArgumentException(
@@ -2406,7 +2394,6 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         protected synchronized byte[] getEncoded()
             throws IOException, CertificateEncodingException {
 
-            int i;
             byte[] out = null;
             ByteArrayOutputStream bos = null;
             DataOutputStream dos = null;
@@ -2471,9 +2458,6 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         String keyAlgo = null;      /* SecretKey.getAlgorithm() */
         Date creationDate = null;   /* creation date for this object */
         byte[] hmacSha512 = null;   /* HMAC over members and lengths */
-
-        protected WKSSecretKey() {
-        }
 
         /**
          * Create new WKSSecretKey from plaintext key, encrypt/protect using
@@ -2595,12 +2579,8 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         protected WKSSecretKey(byte[] encoded)
             throws IOException, CertificateException {
 
-            int i = 0;
             int tmp = 0;
-            byte[] tmpArr = null;
-            String tmpStr = null;
             ByteArrayInputStream bis = null;
-            ByteArrayInputStream certStream = null;
             DataInputStream dis = null;
 
             if (encoded == null || encoded.length == 0) {
@@ -2711,7 +2691,6 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         protected synchronized byte[] getEncoded(boolean withHMAC)
             throws IOException, CertificateEncodingException {
 
-            int i;
             byte[] out = null;
             ByteArrayOutputStream bos = null;
             DataOutputStream dos = null;

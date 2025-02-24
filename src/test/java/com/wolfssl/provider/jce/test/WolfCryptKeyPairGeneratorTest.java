@@ -32,25 +32,18 @@ import org.junit.BeforeClass;
 import java.util.ArrayList;
 import java.math.BigInteger;
 
-import javax.crypto.KeyAgreement;
-import javax.crypto.ShortBufferException;
 import javax.crypto.spec.DHParameterSpec;
 
 import java.security.Security;
 import java.security.Provider;
 import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
-import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.AlgorithmParameters;
-import java.security.AlgorithmParameterGenerator;
-import java.security.SecureRandom;
 import java.security.PublicKey;
 import java.security.PrivateKey;
 import java.security.KeyFactory;
 import java.security.InvalidAlgorithmParameterException;
-import java.security.spec.InvalidParameterSpecException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAKeyGenParameterSpec;
 import java.security.spec.ECGenParameterSpec;
@@ -167,7 +160,6 @@ public class WolfCryptKeyPairGeneratorTest {
 
         /* build list of enabled curves and key sizes,
          * getCurveSizeFromName() will return 0 if curve not found */
-        Ecc tmp = new Ecc();
         String[] curves = null;
 
         if (Fips.enabled && Fips.fipsVersion >= 5) {
@@ -178,7 +170,7 @@ public class WolfCryptKeyPairGeneratorTest {
 
         for (int i = 0; i < curves.length; i++) {
 
-            int size = tmp.getCurveSizeFromName(curves[i].toUpperCase());
+            int size = Ecc.getCurveSizeFromName(curves[i].toUpperCase());
 
             if (size > 0) {
                 enabledCurves.add(curves[i]);
@@ -196,8 +188,11 @@ public class WolfCryptKeyPairGeneratorTest {
 
         KeyPairGenerator kpg;
         kpg = KeyPairGenerator.getInstance("EC", "wolfJCE");
+        assertNotNull(kpg);
         kpg = KeyPairGenerator.getInstance("RSA", "wolfJCE");
+        assertNotNull(kpg);
         kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
+        assertNotNull(kpg);
 
         /* getting a garbage algorithm should throw an exception */
         try {
@@ -271,6 +266,7 @@ public class WolfCryptKeyPairGeneratorTest {
             kpg.initialize(rsaSpec);
 
             KeyPair kp = kpg.generateKeyPair();
+            assertNotNull(kp);
         }
     }
 
@@ -310,6 +306,8 @@ public class WolfCryptKeyPairGeneratorTest {
 
             KeyPair kp1 = kpg.generateKeyPair();
             KeyPair kp2 = kpg.generateKeyPair();
+            assertNotNull(kp1);
+            assertNotNull(kp2);
         }
     }
 
@@ -335,6 +333,8 @@ public class WolfCryptKeyPairGeneratorTest {
                         kp.getPublic().getEncoded()));
             PrivateKey priv = kf.generatePrivate(new PKCS8EncodedKeySpec(
                         kp.getPrivate().getEncoded()));
+            assertNotNull(pub);
+            assertNotNull(priv);
         }
     }
 
@@ -402,6 +402,7 @@ public class WolfCryptKeyPairGeneratorTest {
 
             try {
                 KeyPair kp = kpg.generateKeyPair();
+                assertNotNull(kp);
             } catch (Exception e) {
                 /* Some JDK versions' ECKeyFactory may not support all
                  * wolfCrypt's ECC curves */
@@ -446,6 +447,9 @@ public class WolfCryptKeyPairGeneratorTest {
 
             KeyPair kp1 = kpg.generateKeyPair();
             KeyPair kp2 = kpg.generateKeyPair();
+
+            assertNotNull(kp1);
+            assertNotNull(kp2);
         }
     }
 
@@ -470,6 +474,9 @@ public class WolfCryptKeyPairGeneratorTest {
                         kp.getPublic().getEncoded()));
             PrivateKey priv = kf.generatePrivate(new PKCS8EncodedKeySpec(
                         kp.getPrivate().getEncoded()));
+
+            assertNotNull(pub);
+            assertNotNull(priv);
         }
     }
 
@@ -492,6 +499,8 @@ public class WolfCryptKeyPairGeneratorTest {
 
             kpg.initialize(spec);
             KeyPair pair = kpg.generateKeyPair();
+
+            assertNotNull(pair);
         }
     }
 
@@ -540,6 +549,9 @@ public class WolfCryptKeyPairGeneratorTest {
 
         KeyPair kp1 = kpg.generateKeyPair();
         KeyPair kp2 = kpg.generateKeyPair();
+
+        assertNotNull(kp1);
+        assertNotNull(kp2);
     }
 }
 

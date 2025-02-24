@@ -47,10 +47,6 @@ public class RsaFipsTest extends FipsTest {
             .allocateDirect(WolfCrypt.SIZE_OF_2048_BITS);
     private ByteBuffer plain = ByteBuffer
             .allocateDirect(WolfCrypt.SIZE_OF_1024_BITS);
-    private ByteBuffer n = ByteBuffer
-            .allocateDirect(WolfCrypt.SIZE_OF_2048_BITS);
-    private ByteBuffer e = ByteBuffer
-            .allocateDirect(WolfCrypt.SIZE_OF_2048_BITS);
     private ByteBuffer message = ByteBuffer
             .allocateDirect(WolfCrypt.SIZE_OF_1024_BITS);
     private ByteBuffer signature = ByteBuffer

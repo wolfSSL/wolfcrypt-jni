@@ -72,6 +72,8 @@ public class WolfCryptMessageDigestMd5Test {
         try {
             MessageDigest md5 = MessageDigest.getInstance("MD5",
                                                           "wolfJCE");
+            assertNotNull(md5);
+
         } catch (NoSuchAlgorithmException e) {
             /* if we also detect algo is compiled out, skip tests */
             if (FeatureDetect.Md5Enabled() == false) {

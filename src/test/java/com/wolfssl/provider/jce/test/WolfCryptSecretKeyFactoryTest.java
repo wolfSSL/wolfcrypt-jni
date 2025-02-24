@@ -104,6 +104,7 @@ public class WolfCryptSecretKeyFactoryTest {
         for (int i = 0; i < wolfJCEAlgos.length; i++) {
             try {
                 kf = SecretKeyFactory.getInstance(wolfJCEAlgos[i], provider);
+                assertNotNull(kf);
                 enabledAlgos.add(wolfJCEAlgos[i]);
             } catch (NoSuchAlgorithmException e) {
                 /* algo not compiled in */
@@ -125,6 +126,7 @@ public class WolfCryptSecretKeyFactoryTest {
         /* getting a garbage algorithm should throw an exception */
         try {
             kf = SecretKeyFactory.getInstance("NotValid", provider);
+            assertNotNull(kf);
 
             fail("SecretKeyFactory.getInstance should throw " +
                  "NoSuchAlgorithmException when given bad algorithm value");
@@ -617,16 +619,8 @@ public class WolfCryptSecretKeyFactoryTest {
         throws NoSuchAlgorithmException, InvalidKeySpecException,
                NoSuchProviderException {
 
-        char[] pass = "passwordpassword".toCharArray();
-        byte[] salt = {
-            (byte)0x78, (byte)0x57, (byte)0x8E, (byte)0x5a,
-            (byte)0x5d, (byte)0x63, (byte)0xcb, (byte)0x06
-        };
-        int iterations = 2048;
-        int kLen = 192;
         PBEKeySpec spec = null;
         SecretKeyFactory sf = null;
-        SecretKey key = null;
 
         if (!FeatureDetect.Pbkdf2Enabled() ||
             !FeatureDetect.HmacSha256Enabled() ||
@@ -640,7 +634,7 @@ public class WolfCryptSecretKeyFactoryTest {
 
         /* null KeySpec should throw exception */
         try {
-            key = sf.generateSecret(spec);
+            sf.generateSecret(spec);
             fail("generateSecret() should fail with null KeySpec");
         } catch (InvalidKeySpecException e) {
             /* expected */

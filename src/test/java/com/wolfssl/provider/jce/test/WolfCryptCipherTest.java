@@ -60,7 +60,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
 import java.security.InvalidAlgorithmParameterException;
 
-import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.provider.jce.WolfCryptProvider;
@@ -116,8 +115,7 @@ public class WolfCryptCipherTest {
         /* populate enabledJCEAlgos to test */
         for (int i = 0; i < supportedJCEAlgos.length; i++) {
             try {
-                Cipher c = Cipher.getInstance(
-                    supportedJCEAlgos[i], jceProvider);
+                Cipher.getInstance(supportedJCEAlgos[i], jceProvider);
                 enabledJCEAlgos.add(supportedJCEAlgos[i]);
 
             } catch (NoSuchAlgorithmException e) {
@@ -146,17 +144,15 @@ public class WolfCryptCipherTest {
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException {
 
-        Cipher cipher;
-
         /* try to get all available options we expect to have */
         for (int i = 0; i < enabledJCEAlgos.size(); i++) {
-            cipher = Cipher.getInstance(enabledJCEAlgos.get(i), jceProvider);
+            Cipher.getInstance(enabledJCEAlgos.get(i), jceProvider);
         }
 
         /* getting a garbage algorithm should throw
          * a NoSuchAlgorithmException */
         try {
-            cipher = Cipher.getInstance("NotValid", jceProvider);
+            Cipher.getInstance("NotValid", jceProvider);
 
             fail("Cipher.getInstance should throw NoSuchAlgorithmException " +
                  "when given bad algorithm value");
@@ -2792,8 +2788,6 @@ public class WolfCryptCipherTest {
                BadPaddingException {
 
         byte[] tmp = null;
-        byte[] ciphertext = null;
-        byte[] plaintext = null;
 
         byte[] inputA = new byte[2048];
         byte[] inputB = new byte[100];
@@ -2824,7 +2818,7 @@ public class WolfCryptCipherTest {
         assertEquals(tmp.length, 0);
 
         try {
-            ciphertext = ciph.doFinal();
+            ciph.doFinal();
             fail("Cipher.doFinal should throw exception when data " +
                  "is larger than RSA key size");
         } catch (WolfCryptException | IllegalBlockSizeException e) {
@@ -2843,7 +2837,7 @@ public class WolfCryptCipherTest {
         assertEquals(tmp.length, 0);
 
         try {
-            plaintext = ciph.doFinal();
+            ciph.doFinal();
             fail("Cipher.doFinal should throw exception when data " +
                  "is larger than RSA key size");
         } catch (WolfCryptException | IllegalBlockSizeException e) {
@@ -2862,7 +2856,7 @@ public class WolfCryptCipherTest {
         assertEquals(tmp.length, 0);
 
         try {
-            ciphertext = ciph.doFinal();
+            ciph.doFinal();
             fail("Cipher.doFinal should throw exception when data " +
                  "is larger than RSA key size");
         } catch (WolfCryptException | IllegalBlockSizeException e) {
@@ -2881,7 +2875,7 @@ public class WolfCryptCipherTest {
         assertEquals(tmp.length, 0);
 
         try {
-            plaintext = ciph.doFinal();
+            ciph.doFinal();
             fail("Cipher.doFinal should throw exception when data " +
                  "is larger than RSA key size");
         } catch (WolfCryptException | IllegalBlockSizeException e) {
@@ -3030,30 +3024,6 @@ public class WolfCryptCipherTest {
             this.input = input;
             this.output = output;
             this.tag = tag;
-            this.aad = aad;
-        }
-
-        public void setKey(byte[] key) {
-            this.key = key;
-        }
-
-        public void setIV(byte[] iv) {
-            this.iv = iv;
-        }
-
-        public void setInput(byte[] input) {
-            this.input = input;
-        }
-
-        public void setOutput(byte[] output) {
-            this.output = output;
-        }
-
-        public void setTag(byte[] tag) {
-            this.tag = tag;
-        }
-
-        public void setAad(byte[] aad) {
             this.aad = aad;
         }
 

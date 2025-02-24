@@ -23,10 +23,7 @@ package com.wolfssl.wolfcrypt.test;
 
 import static org.junit.Assert.*;
 
-import java.nio.ByteBuffer;
 import java.util.Arrays;
-
-import javax.crypto.ShortBufferException;
 
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -331,7 +328,6 @@ public class ChachaTest {
         };
 
         int CHACHA_BIG_TEST_SIZE = 1305;
-        byte cipher_big[] = new byte[CHACHA_BIG_TEST_SIZE];
         byte plain_big[] = new byte[CHACHA_BIG_TEST_SIZE];
         byte input_big[] = new byte[CHACHA_BIG_TEST_SIZE];
 
