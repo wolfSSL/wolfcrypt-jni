@@ -21,8 +21,6 @@
 
 package com.wolfssl.wolfcrypt;
 
-import com.wolfssl.wolfcrypt.WolfCryptError;
-
 /**
  * wolfCrypt exception class
  */

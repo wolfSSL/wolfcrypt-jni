@@ -311,8 +311,6 @@ public class Dh extends NativeStruct {
     public synchronized byte[] makeSharedSecret(Dh pubKey)
         throws WolfCryptException, IllegalStateException {
 
-        byte[] publicKey = null;
-
         if (pubKey == null) {
             throw new IllegalStateException(
                 "Provided public key is null");

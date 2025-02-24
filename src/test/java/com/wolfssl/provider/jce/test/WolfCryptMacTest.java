@@ -32,7 +32,6 @@ import org.junit.BeforeClass;
 
 import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.Random;
 import java.util.Iterator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -102,6 +101,7 @@ public class WolfCryptMacTest {
         for (int i = 0; i < wolfJCEAlgos.length; i++) {
             try {
                 mac = Mac.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                assertNotNull(mac);
                 enabledAlgos.add(wolfJCEAlgos[i]);
                 enabledAlgoLengths.add(wolfJCEMacLengths[i]);
             } catch (NoSuchAlgorithmException e) {
@@ -119,6 +119,7 @@ public class WolfCryptMacTest {
         /* try to get all available options we expect to have */
         for (int i = 0; i < enabledAlgos.size(); i++) {
             mac = Mac.getInstance(enabledAlgos.get(i), "wolfJCE");
+            assertNotNull(mac);
         }
 
         /* getting a garbage algorithm should throw an exception */
@@ -961,18 +962,6 @@ public class WolfCryptMacTest {
         public HmacVector(byte[] key, byte[] input, byte[] output) {
             this.key = key;
             this.input = input;
-            this.output = output;
-        }
-
-        public void setKey(byte[] key) {
-            this.key = key;
-        }
-
-        public void setInput(byte[] input) {
-            this.input = input;
-        }
-
-        public void setOutput(byte[] output) {
             this.output = output;
         }
 

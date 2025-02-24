@@ -76,7 +76,7 @@ public class Des3Test {
     @Test
     public void deprecatedConstructorThrows() {
         try {
-            Des3 des = new Des3(null, null, Des3.ENCRYPT_MODE);
+            new Des3(null, null, Des3.ENCRYPT_MODE);
             fail("Failed to throw expected exception");
         } catch (WolfCryptException e) {
             /* expected */

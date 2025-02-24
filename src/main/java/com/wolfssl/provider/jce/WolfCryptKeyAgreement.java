@@ -26,7 +26,6 @@ import javax.crypto.KeyAgreementSpi;
 import javax.crypto.SecretKey;
 import javax.crypto.ShortBufferException;
 import javax.crypto.spec.DHParameterSpec;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.DESKeySpec;
 import javax.crypto.spec.DESedeKeySpec;
@@ -47,8 +46,6 @@ import java.security.interfaces.ECPrivateKey;
 
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Ecc;
-
-import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE Key Agreement wrapper
@@ -236,9 +233,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
     protected int engineGenerateSecret(byte[] sharedSecret, int offset)
         throws IllegalStateException, ShortBufferException {
 
-        int  ret   = 0;
         byte tmp[] = null;
-        long sz[]  = null;
 
         if (this.state != EngineState.WC_PUBKEY_DONE)
             throw new IllegalStateException(
@@ -355,7 +350,6 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
     private void wcInitDHParams(Key key, AlgorithmParameterSpec params)
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
-        int ret = 0;
         byte paramP[] = null;
         byte paramG[] = null;
         byte dhPriv[] = null;
@@ -432,8 +426,6 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
     private void getCurveFromSpec(AlgorithmParameterSpec spec)
         throws InvalidAlgorithmParameterException {
-
-        int fieldSz = 0;
 
         if (spec instanceof ECGenParameterSpec) {
 

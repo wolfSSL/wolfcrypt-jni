@@ -26,8 +26,6 @@ import java.security.spec.EllipticCurve;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.ECFieldFp;
 
-import com.wolfssl.wolfcrypt.Rng;
-
 /**
  * Wrapper for the native WolfCrypt ECC implementation
  */

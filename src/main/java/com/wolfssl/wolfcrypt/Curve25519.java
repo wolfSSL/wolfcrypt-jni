@@ -21,11 +21,6 @@
 
 package com.wolfssl.wolfcrypt;
 
-import java.security.InvalidAlgorithmParameterException;
-import java.security.spec.EllipticCurve;
-import java.security.spec.ECParameterSpec;
-import java.security.spec.ECFieldFp;
-
 /**
  * Wrapper for the native WolfCrypt Curve25519 implementation.
  */

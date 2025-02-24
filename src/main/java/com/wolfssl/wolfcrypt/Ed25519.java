@@ -21,8 +21,6 @@
 
 package com.wolfssl.wolfcrypt;
 
-import java.security.InvalidAlgorithmParameterException;
-
 /**
  * Wrapper for the native WolfCrypt Ed25519 implementation
  */

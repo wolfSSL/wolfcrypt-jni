@@ -34,7 +34,6 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
 import java.util.Arrays;
-import java.util.Random;
 import java.util.Iterator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -83,14 +82,14 @@ public class RsaTest {
     @Test
     public void deprecatedConstructorThrows() {
         try {
-            Rsa rsa = new Rsa( new byte[] {0x00} );
+            new Rsa( new byte[] {0x00} );
             fail("Failed to throw expected exception");
         } catch (WolfCryptException e) {
             /* expected */
         }
 
         try {
-            Rsa rsa = new Rsa( new byte[] {0x00}, new byte[] {0x00} );
+            new Rsa( new byte[] {0x00}, new byte[] {0x00} );
             fail("Failed to throw expected exception");
         } catch (WolfCryptException e) {
             /* expected */
@@ -163,7 +162,6 @@ public class RsaTest {
     public void rsaPrivateToPkcs8() {
         Rsa key = new Rsa();
         byte[] pkcs8;
-        int size;
         byte[] prvKey = Util.h2b(
                 "308204a40201000282010100c303d12bfe39a432453b53c8842b2a7c"
               + "749abdaa2a520747d6a636b207328ed0ba697bc6c3449ed48148"

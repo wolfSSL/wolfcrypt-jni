@@ -62,6 +62,7 @@ public class Md5Test {
     public static void checkMd5IsAvailable() {
         try {
             Md5 md5 = new Md5();
+            assertNotNull(md5);
             System.out.println("JNI Md5 Class");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {

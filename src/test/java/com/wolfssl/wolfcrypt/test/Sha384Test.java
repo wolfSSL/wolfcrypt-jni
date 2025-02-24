@@ -62,6 +62,7 @@ public class Sha384Test {
     public static void checkSha384IsAvailable() {
         try {
             Sha384 sha = new Sha384();
+            assertNotNull(sha);
             System.out.println("JNI Sha384 Class");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
