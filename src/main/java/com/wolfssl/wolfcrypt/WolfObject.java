@@ -21,8 +21,6 @@
 
 package com.wolfssl.wolfcrypt;
 
-import com.wolfssl.wolfcrypt.Fips;
-
 /**
  * Loader for the native WolfCrypt implementation.
  * All classes in this package must inherit from it.

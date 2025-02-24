@@ -21,8 +21,6 @@
 
 package com.wolfssl.provider.jce;
 
-import java.util.Arrays;
-
 import java.security.SignatureSpi;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -38,7 +36,6 @@ import java.security.NoSuchAlgorithmException;
 
 import javax.crypto.ShortBufferException;
 
-import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Asn;
 import com.wolfssl.wolfcrypt.Md5;
 import com.wolfssl.wolfcrypt.Sha;
@@ -49,8 +46,6 @@ import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCryptException;
-
-import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE Signature wrapper
@@ -76,9 +71,6 @@ public class WolfCryptSignature extends SignatureSpi {
     private int SHA256h = 414;
     private int SHA384h = 415;
     private int SHA512h = 416;
-
-    /* internal asn object */
-    private Asn asn = null;
 
     /* internal key objects */
     private Rsa rsa = null;
@@ -120,9 +112,6 @@ public class WolfCryptSignature extends SignatureSpi {
             this.rng = new Rng();
             this.rng.init();
         }
-
-        /* init asn object */
-        asn = new Asn();
 
         /* init hash type */
         switch (dtype) {
@@ -179,9 +168,6 @@ public class WolfCryptSignature extends SignatureSpi {
     private void wolfCryptInitPrivateKey(PrivateKey key, byte[] encodedKey)
         throws InvalidKeyException {
 
-        int ret;
-        long[] idx = {0};
-
         switch (this.keyType) {
 
             case WC_RSA:
@@ -203,9 +189,6 @@ public class WolfCryptSignature extends SignatureSpi {
     private void wolfCryptInitPublicKey(PublicKey key, byte[] encodedKey)
         throws InvalidKeyException {
 
-        int ret;
-        long[] idx = {0};
-
         switch(this.keyType) {
 
             case WC_RSA:
@@ -226,7 +209,6 @@ public class WolfCryptSignature extends SignatureSpi {
     protected synchronized void engineInitSign(PrivateKey privateKey)
         throws InvalidKeyException {
 
-        int    ret;
         byte[] encodedKey;
 
         if (this.keyType == KeyType.WC_RSA &&
@@ -293,9 +275,7 @@ public class WolfCryptSignature extends SignatureSpi {
     protected synchronized void engineInitVerify(PublicKey publicKey)
         throws InvalidKeyException {
 
-        int    ret;
         byte[] encodedKey;
-        long[] idx = {0};
 
         if (this.keyType == KeyType.WC_RSA &&
                 !(publicKey instanceof RSAPublicKey)) {
@@ -369,7 +349,6 @@ public class WolfCryptSignature extends SignatureSpi {
     @Override
     protected synchronized byte[] engineSign() throws SignatureException {
 
-        int ret = 0;
         int encodedSz = 0;
 
         byte[] digest    = new byte[this.digestSz];
@@ -493,7 +472,6 @@ public class WolfCryptSignature extends SignatureSpi {
     protected synchronized boolean engineVerify(byte[] sigBytes)
         throws SignatureException {
 
-        int    ret = 0;
         long   encodedSz = 0;
         boolean verified = true;
 

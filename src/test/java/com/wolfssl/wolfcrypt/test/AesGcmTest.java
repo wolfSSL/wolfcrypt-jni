@@ -30,9 +30,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
-import javax.crypto.ShortBufferException;
-import java.nio.ByteBuffer;
-import javax.crypto.ShortBufferException;
 
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -255,7 +252,7 @@ public class AesGcmTest {
     @Test
     public void deprecatedConstructorThrows() {
         try {
-            AesGcm aes = new AesGcm(new byte[] {0x0});
+            new AesGcm(new byte[] {0x0});
             fail("Failed to throw expected exception");
         } catch (WolfCryptException e) {
             /* expected */
@@ -857,7 +854,6 @@ public class AesGcmTest {
             service.submit(new Runnable() {
                 @Override public void run() {
 
-                    int ret = 0;
                     AesGcm enc = new AesGcm();
                     AesGcm dec = new AesGcm();
                     byte[] cipher = new byte[2048];
@@ -929,7 +925,6 @@ public class AesGcmTest {
             service.submit(new Runnable() {
                 @Override public void run() {
 
-                    int ret = 0;
                     AesGcm enc = new AesGcm();
                     AesGcm dec = new AesGcm();
                     byte[] cipher = new byte[2048];
@@ -1000,7 +995,6 @@ public class AesGcmTest {
             service.submit(new Runnable() {
                 @Override public void run() {
 
-                    int ret = 0;
                     AesGcm enc = new AesGcm();
                     AesGcm dec = new AesGcm();
                     byte[] cipher = new byte[2048];

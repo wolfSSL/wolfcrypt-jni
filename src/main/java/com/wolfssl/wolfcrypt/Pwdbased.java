@@ -21,15 +21,6 @@
 
 package com.wolfssl.wolfcrypt;
 
-import java.util.Enumeration;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
-import java.security.cert.X509CRL;
-import java.security.cert.CRLException;
-import java.security.cert.CertificateEncodingException;
-
 /**
  * Password based key derivation class with wraps native wolfCrypt
  * pwdbased.c/h APIs.

@@ -66,17 +66,11 @@ import java.security.spec.InvalidKeySpecException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintStream;
-
 import com.wolfssl.provider.jce.WolfCryptProvider;
 
 public class WolfSSLKeyStoreTest {
 
     private final String storeType = "WKS";
-    private final String jksExt = ".wks";
     private static final String storeProvider = "wolfJCE";
     /* Example pass is "wolfsslpassword" instead of normal
      * "wolfSSL test" because with wolfCrypt FIPS the HMAC minimum key
@@ -957,12 +951,8 @@ public class WolfSSLKeyStoreTest {
                UnrecoverableKeyException {
 
         KeyStore store = null;
-        PrivateKey keyOut = null;
-        Certificate certOut = null;
-        Certificate[] chainOut = null;
         KeyGenerator kg = null;
         SecretKey aesKey = null;
-        SecretKey sKeyOut = null;
 
         store = KeyStore.getInstance(storeType, storeProvider);
         store.load(null, storePass.toCharArray());
@@ -1684,7 +1674,6 @@ public class WolfSSLKeyStoreTest {
             service.submit(new Runnable() {
                 @Override public void run() {
 
-                    int ret = 0;
                     KeyStore store = null;
                     PrivateKey keyOut = null;
                     Certificate certOut = null;

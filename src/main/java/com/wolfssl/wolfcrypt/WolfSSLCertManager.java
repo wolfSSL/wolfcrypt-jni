@@ -188,7 +188,6 @@ public class WolfSSLCertManager {
     public synchronized void CertManagerLoadCAKeyStore(KeyStore ks)
         throws IllegalStateException, WolfCryptException {
 
-        int ret = 0;
         int loadedCerts = 0;
 
         confirmObjectIsActive();

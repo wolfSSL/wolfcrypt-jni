@@ -46,14 +46,12 @@ import java.security.cert.PKIXCertPathValidatorResult;
 import java.security.cert.CRL;
 import java.security.cert.X509CRL;
 import java.security.cert.X509CRLSelector;
-import java.security.InvalidAlgorithmParameterException;
 import javax.security.auth.x500.X500Principal;
 
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfSSLCertManager;
 import com.wolfssl.wolfcrypt.WolfCryptException;
-import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfJCE implementation of CertPathValidator for PKIX (X.509)
@@ -265,7 +263,6 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
 
         int i = 0;
         List<PKIXCertPathChecker> pathCheckers = null;
-        PKIXCertPathChecker checker = null;
 
         if (cert == null || params == null) {
             throw new CertPathValidatorException(

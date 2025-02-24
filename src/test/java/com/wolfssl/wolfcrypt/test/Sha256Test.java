@@ -62,6 +62,7 @@ public class Sha256Test {
     public static void checkSha256IsAvailable() {
         try {
             Sha256 sha = new Sha256();
+            assertNotNull(sha);
             System.out.println("JNI Sha256 Class");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {

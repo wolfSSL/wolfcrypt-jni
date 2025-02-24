@@ -23,13 +23,12 @@ package com.wolfssl.provider.jce;
 
 import java.util.Arrays;
 import java.security.spec.InvalidKeySpecException;
-import javax.security.auth.Destroyable;
 import javax.crypto.interfaces.PBEKey;
 
 /**
  * wolfCrypt PBEKey implementation.
  */
-public class WolfCryptPBEKey implements PBEKey, Destroyable {
+public class WolfCryptPBEKey implements PBEKey {
 
     private static final long serialVersionUID = 1L;
 

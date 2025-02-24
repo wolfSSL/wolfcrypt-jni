@@ -74,9 +74,11 @@ public class WolfCryptRandomTest {
 
         /* HashDRBG */
         rand = SecureRandom.getInstance("HashDRBG", "wolfJCE");
+        assertNotNull(rand);
 
         /* DEFAULT */
         rand = SecureRandom.getInstance("DEFAULT", "wolfJCE");
+        assertNotNull(rand);
     }
 
     @Test
@@ -214,11 +216,9 @@ public class WolfCryptRandomTest {
         byte[] valuesA = new byte[128];
         byte[] valuesB = new byte[128];
 
-        SecureRandom rand = SecureRandom.getInstance("HashDRBG", "wolfJCE");
-
-        valuesA = rand.getSeed(valuesA.length);
+        valuesA = SecureRandom.getSeed(valuesA.length);
         for (int i = 0; i < 10; i++) {
-            valuesB = rand.getSeed(valuesB.length);
+            valuesB = SecureRandom.getSeed(valuesB.length);
 
             if(Arrays.equals(valuesA, valuesB))
                 fail("SecureRandom generated two equal consecutive arrays");
@@ -236,8 +236,6 @@ public class WolfCryptRandomTest {
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
         final LinkedBlockingQueue<byte[]> results = new LinkedBlockingQueue<>();
-        final SecureRandom rand = SecureRandom.getInstance(
-                                        "HashDRBG", "wolfJCE");
 
         for (int i = 0; i < numThreads; i++) {
             service.submit(new Runnable() {
@@ -246,7 +244,7 @@ public class WolfCryptRandomTest {
 
                     /* generate 1000 random arrays per thread */
                     for (int j = 0; j < 1000; j++) {
-                        tmp = rand.getSeed(tmp.length);
+                        tmp = SecureRandom.getSeed(tmp.length);
                         results.add(tmp.clone());
                     }
                     latch.countDown();

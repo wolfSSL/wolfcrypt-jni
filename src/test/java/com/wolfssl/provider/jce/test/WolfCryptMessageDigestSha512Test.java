@@ -72,6 +72,8 @@ public class WolfCryptMessageDigestSha512Test {
         try {
             MessageDigest sha512 = MessageDigest.getInstance("SHA-512",
                                                              "wolfJCE");
+            assertNotNull(sha512);
+
         } catch (NoSuchAlgorithmException e) {
             /* if we also detect algo is compiled out, skip tests */
             if (FeatureDetect.Sha512Enabled() == false) {
@@ -84,48 +86,6 @@ public class WolfCryptMessageDigestSha512Test {
     @Test
     public void testSha512SingleUpdate()
         throws NoSuchProviderException, NoSuchAlgorithmException {
-
-        final String inputA = "abc";
-        final byte expectedA[] = new byte[] {
-            (byte)0xdd, (byte)0xaf, (byte)0x35, (byte)0xa1,
-            (byte)0x93, (byte)0x61, (byte)0x7a, (byte)0xba,
-            (byte)0xcc, (byte)0x41, (byte)0x73, (byte)0x49,
-            (byte)0xae, (byte)0x20, (byte)0x41, (byte)0x31,
-            (byte)0x12, (byte)0xe6, (byte)0xfa, (byte)0x4e,
-            (byte)0x89, (byte)0xa9, (byte)0x7e, (byte)0xa2,
-            (byte)0x0a, (byte)0x9e, (byte)0xee, (byte)0xe6,
-            (byte)0x4b, (byte)0x55, (byte)0xd3, (byte)0x9a,
-            (byte)0x21, (byte)0x92, (byte)0x99, (byte)0x2a,
-            (byte)0x27, (byte)0x4f, (byte)0xc1, (byte)0xa8,
-            (byte)0x36, (byte)0xba, (byte)0x3c, (byte)0x23,
-            (byte)0xa3, (byte)0xfe, (byte)0xeb, (byte)0xbd,
-            (byte)0x45, (byte)0x4d, (byte)0x44, (byte)0x23,
-            (byte)0x64, (byte)0x3c, (byte)0xe8, (byte)0x0e,
-            (byte)0x2a, (byte)0x9a, (byte)0xc9, (byte)0x4f,
-            (byte)0xa5, (byte)0x4c, (byte)0xa4, (byte)0x9f
-        };
-
-        final String inputB = "abcdefghbcdefghicdefghijdefghijkefgh" +
-                              "ijklfghijklmghijklmnhijklmnoijklmnop" +
-                              "jklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu";
-        final byte expectedB[] = new byte[] {
-            (byte)0x8e, (byte)0x95, (byte)0x9b, (byte)0x75,
-            (byte)0xda, (byte)0xe3, (byte)0x13, (byte)0xda,
-            (byte)0x8c, (byte)0xf4, (byte)0xf7, (byte)0x28,
-            (byte)0x14, (byte)0xfc, (byte)0x14, (byte)0x3f,
-            (byte)0x8f, (byte)0x77, (byte)0x79, (byte)0xc6,
-            (byte)0xeb, (byte)0x9f, (byte)0x7f, (byte)0xa1,
-            (byte)0x72, (byte)0x99, (byte)0xae, (byte)0xad,
-            (byte)0xb6, (byte)0x88, (byte)0x90, (byte)0x18,
-            (byte)0x50, (byte)0x1d, (byte)0x28, (byte)0x9e,
-            (byte)0x49, (byte)0x00, (byte)0xf7, (byte)0xe4,
-            (byte)0x33, (byte)0x1b, (byte)0x99, (byte)0xde,
-            (byte)0xc4, (byte)0xb5, (byte)0x43, (byte)0x3a,
-            (byte)0xc7, (byte)0xd3, (byte)0x29, (byte)0xee,
-            (byte)0xb6, (byte)0xdd, (byte)0x26, (byte)0x54,
-            (byte)0x5e, (byte)0x96, (byte)0xe5, (byte)0x5b,
-            (byte)0x87, (byte)0x4b, (byte)0xe9, (byte)0x09
-        };
 
         DigestVector vectors[] = new DigestVector[] {
             new DigestVector(
