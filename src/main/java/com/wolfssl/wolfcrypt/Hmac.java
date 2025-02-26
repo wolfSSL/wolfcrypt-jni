@@ -21,8 +21,6 @@
 
 package com.wolfssl.wolfcrypt;
 
-import com.wolfssl.wolfcrypt.WolfCrypt;
-import com.wolfssl.wolfcrypt.WolfCryptException;
 import java.nio.ByteBuffer;
 
 /**
@@ -31,7 +29,8 @@ import java.nio.ByteBuffer;
 public class Hmac extends NativeStruct {
 
     private enum hashType {
-        typeMD5, typeSHA, typeSHA256, typeSHA384, typeSHA512;
+        typeMD5, typeSHA, typeSHA256, typeSHA384, typeSHA512,
+        typeSHA3_224, typeSHA3_256, typeSHA3_384, typeSHA3_512;
     }
 
     /* types may be -1 if not compiled in at native level */
@@ -45,6 +44,14 @@ public class Hmac extends NativeStruct {
     public static final int SHA384  = getHashCode(hashType.typeSHA384);
     /** HMAC-SHA2-512 type */
     public static final int SHA512  = getHashCode(hashType.typeSHA512);
+    /** HMAC-SHA3-224 type */
+    public static final int SHA3_224 = getHashCode(hashType.typeSHA3_224);
+    /** HMAC-SHA3-256 type */
+    public static final int SHA3_256 = getHashCode(hashType.typeSHA3_256);
+    /** HMAC-SHA3-384 type */
+    public static final int SHA3_384 = getHashCode(hashType.typeSHA3_384);
+    /** HMAC-SHA3-512 type */
+    public static final int SHA3_512 = getHashCode(hashType.typeSHA3_512);
 
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
     private int type = -1;
@@ -101,6 +108,10 @@ public class Hmac extends NativeStruct {
     private native static int getCodeSha384();
     private native static int getCodeSha512();
     private native static int getCodeBlake2b();
+    private native static int getCodeSha3_224();
+    private native static int getCodeSha3_256();
+    private native static int getCodeSha3_384();
+    private native static int getCodeSha3_512();
 
     /**
      * Malloc native JNI Hmac structure
@@ -329,6 +340,18 @@ public class Hmac extends NativeStruct {
         else if (type == SHA512) {
             return "HmacSHA512";
         }
+        else if (type == SHA3_224) {
+            return "HmacSHA3-224";
+        }
+        else if (type == SHA3_256) {
+            return "HmacSHA3-256";
+        }
+        else if (type == SHA3_384) {
+            return "HmacSHA3-384";
+        }
+        else if (type == SHA3_512) {
+            return "HmacSHA3-512";
+        }
         else {
             return "";
         }
@@ -367,6 +390,14 @@ public class Hmac extends NativeStruct {
                 return getCodeSha384();
             case typeSHA512:
                 return getCodeSha512();
+            case typeSHA3_224:
+                return getCodeSha3_224();
+            case typeSHA3_256:
+                return getCodeSha3_256();
+            case typeSHA3_384:
+                return getCodeSha3_384();
+            case typeSHA3_512:
+                return getCodeSha3_512();
             default:
                 return WolfCrypt.FAILURE;
         }
