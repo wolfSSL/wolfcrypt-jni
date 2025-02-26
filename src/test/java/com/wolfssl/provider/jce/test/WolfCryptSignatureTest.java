@@ -62,11 +62,19 @@ public class WolfCryptSignatureTest {
         "SHA256withRSA",
         "SHA384withRSA",
         "SHA512withRSA",
+        "SHA3-224withRSA",
+        "SHA3-256withRSA",
+        "SHA3-384withRSA",
+        "SHA3-512withRSA",
         "SHA1withECDSA",
         "SHA224withECDSA",
         "SHA256withECDSA",
         "SHA384withECDSA",
-        "SHA512withECDSA"
+        "SHA512withECDSA",
+        "SHA3-224withECDSA",
+        "SHA3-256withECDSA",
+        "SHA3-384withECDSA",
+        "SHA3-512withECDSA"
     };
 
     private static ArrayList<String> enabledAlgos =

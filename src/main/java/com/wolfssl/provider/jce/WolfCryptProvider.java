@@ -148,6 +148,25 @@ public final class WolfCryptProvider extends Provider {
             put("Signature.SHA512withECDSA",
                   "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA512wECDSA");
         }
+        if (FeatureDetect.Sha3Enabled()) {
+            put("Signature.SHA3-224withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_224wRSA");
+            put("Signature.SHA3-256withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_256wRSA");
+            put("Signature.SHA3-384withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_384wRSA");
+            put("Signature.SHA3-512withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_512wRSA");
+
+            put("Signature.SHA3-224withECDSA",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_224wECDSA");
+            put("Signature.SHA3-256withECDSA",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_256wECDSA");
+            put("Signature.SHA3-384withECDSA",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_384wECDSA");
+            put("Signature.SHA3-512withECDSA",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_512wECDSA");
+        }
 
         /* Mac */
         if (FeatureDetect.HmacMd5Enabled()) {
