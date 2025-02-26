@@ -174,6 +174,22 @@ public final class WolfCryptProvider extends Provider {
             put("Mac.HmacSHA512",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA512");
         }
+        if (FeatureDetect.HmacSha3_224Enabled()) {
+            put("Mac.HmacSHA3-224",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA3_224");
+        }
+        if (FeatureDetect.HmacSha3_256Enabled()) {
+            put("Mac.HmacSHA3-256",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA3_256");
+        }
+        if (FeatureDetect.HmacSha3_384Enabled()) {
+            put("Mac.HmacSHA3-384",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA3_384");
+        }
+        if (FeatureDetect.HmacSha3_512Enabled()) {
+            put("Mac.HmacSHA3-512",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA3_512");
+        }
 
         /* Cipher */
         if (FeatureDetect.AesCbcEnabled()) {
