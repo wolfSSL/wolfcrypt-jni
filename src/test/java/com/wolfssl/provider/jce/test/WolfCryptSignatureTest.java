@@ -29,15 +29,11 @@ import org.junit.runner.Description;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
-import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.Random;
-import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import java.security.Security;
@@ -65,10 +61,18 @@ public class WolfCryptSignatureTest {
         "SHA256withRSA",
         "SHA384withRSA",
         "SHA512withRSA",
+        "SHA3-224withRSA",
+        "SHA3-256withRSA",
+        "SHA3-384withRSA",
+        "SHA3-512withRSA",
         "SHA1withECDSA",
         "SHA256withECDSA",
         "SHA384withECDSA",
-        "SHA512withECDSA"
+        "SHA512withECDSA",
+        "SHA3-224withECDSA",
+        "SHA3-256withECDSA",
+        "SHA3-384withECDSA",
+        "SHA3-512withECDSA"
     };
 
     private static ArrayList<String> enabledAlgos =
@@ -88,8 +92,6 @@ public class WolfCryptSignatureTest {
     public static void testProviderInstallationAtRuntime()
         throws NoSuchProviderException {
 
-        Signature sig;
-
         System.out.println("JCE WolfCryptSignature Class");
 
         /* install wolfJCE provider at runtime */
@@ -102,7 +104,7 @@ public class WolfCryptSignatureTest {
          * compiled out */
         for (int i = 0; i < wolfJCEAlgos.length; i++) {
             try {
-                sig = Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
                 enabledAlgos.add(wolfJCEAlgos[i]);
             } catch (NoSuchAlgorithmException e) {
                 /* algo not compiled in */
@@ -114,16 +116,14 @@ public class WolfCryptSignatureTest {
     public void testGetSignatureFromProvider()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 
-        Signature sig;
-
         /* try to get all available options we expect to have */
         for (int i = 0; i < enabledAlgos.size(); i++) {
-            sig = Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
+            Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
         }
 
         /* asking for a bad algo should throw an exception */
         try {
-            sig = Signature.getInstance("invalidalgo", "wolfJCE");
+            Signature.getInstance("invalidalgo", "wolfJCE");
             fail("Requesting an invalid algorithm from Signature " +
                  "object should throw an exception");
         } catch (NoSuchAlgorithmException e) { }
