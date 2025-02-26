@@ -11,6 +11,10 @@ import java.security.Security;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import javax.crypto.KeyAgreement;
+import java.math.BigInteger;
+import javax.crypto.interfaces.DHPublicKey;
+import javax.crypto.spec.DHParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.util.*;
 
@@ -29,6 +33,8 @@ public class CryptoBenchmark {
     private static final int RSA_MIN_TIME_SECONDS = 1;  /* minimum time to run each test */
     private static final int SMALL_MESSAGE_SIZE = 32;   /* small message size for RSA ops */
     private static final String[] ECC_CURVES = {"secp256r1"}; /* Can add more curves benchmark.c only uses secp256r1 */
+    private static final int[] DH_KEY_SIZES = {2048}; /* Can add more key sizes benchmark.c only uses 2048 */
+    private static final String DH_ALGORITHM = "DiffieHellman";
 
     /* Class to store benchmark results */
     private static class BenchmarkResult {
@@ -473,6 +479,78 @@ public class CryptoBenchmark {
         results.add(new BenchmarkResult(providerName, algorithm, throughput));
     }
 
+    /* Run DH benchmarks for specified provider and key size */
+    private static void runDHBenchmark(String providerName, int keySize) throws Exception {
+        /* Variables for benchmark operations */
+        KeyPairGenerator keyGen;
+        KeyAgreement keyAgreement;
+        int keyGenOps;
+        int agreementOps;
+        long startTime;
+        double elapsedTime;
+        KeyPair keyPair1 = null;
+        KeyPair keyPair2 = null;
+
+        /* Standard DH parameters for 2048-bit key from RFC 3526 */
+        BigInteger p = new BigInteger(
+          "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1" +
+          "29024E088A67CC74020BBEA63B139B22514A08798E3404DD" +
+          "EF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245" +
+          "E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED" +
+          "EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3D" +
+          "C2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F" +
+          "83655D23DCA3AD961C62F356208552BB9ED529077096966D" +
+          "670C354E4ABC9804F1746C08CA18217C32905E462E36CE3B" +
+          "E39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9" +
+          "DE2BCBF6955817183995497CEA956AE515D2261898FA0510" +
+          "15728E5A8AACAA68FFFFFFFFFFFFFFFF", 16);
+        BigInteger g = BigInteger.valueOf(2);
+        DHParameterSpec dhParams = new DHParameterSpec(p, g);
+
+        /* Get KeyPairGenerator for DH */
+        keyGen = KeyPairGenerator.getInstance("DH", providerName);
+
+        /* Initialize with parameters */
+        keyGen.initialize(dhParams);
+
+        /* Key Generation benchmark */
+        keyGenOps = 0;
+        startTime = System.nanoTime();
+        elapsedTime = 0;
+
+        /* Run key generation benchmark */
+        do {
+            keyGen.generateKeyPair();
+            keyGenOps++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < RSA_MIN_TIME_SECONDS);
+
+        String keyGenOp = String.format("DH %d key gen", keySize);
+        printKeyGenResults(keyGenOps, elapsedTime, keyGenOp, providerName, DH_ALGORITHM);
+
+        /* Generate key pairs for agreement operations */
+        keyPair1 = keyGen.generateKeyPair();
+        keyPair2 = keyGen.generateKeyPair();
+
+        /* Key Agreement benchmark */
+        keyAgreement = KeyAgreement.getInstance("DH", providerName);
+        agreementOps = 0;
+        startTime = System.nanoTime();
+        elapsedTime = 0;
+
+        /* Run key agreement benchmark */
+        do {
+          keyAgreement.init(keyPair1.getPrivate());
+          keyAgreement.doPhase(keyPair2.getPublic(), true);
+          keyAgreement.generateSecret();
+          agreementOps++;
+          elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < RSA_MIN_TIME_SECONDS);
+
+        String agreementOp = String.format("DH %d agree", keySize);
+        printKeyGenResults(agreementOps, elapsedTime, agreementOp, providerName, DH_ALGORITHM);
+    }
+
     public static void main(String[] args) {
         try {
             /* Check if Bouncy Castle is available */
@@ -524,10 +602,27 @@ public class CryptoBenchmark {
                 if (FeatureDetect.Des3Enabled()) {
                     runEncDecBenchmark("DESede", "CBC", "NoPadding", providerNames[i]);
                 }
-
-                Security.removeProvider(providers[i].getName());
             }
 
+            System.out.println("\n-----------------------------------------------------------------------------");
+            System.out.println("DH Benchmark Results");
+            System.out.println("-----------------------------------------------------------------------------");
+
+            for (Provider provider : providers) {
+                if (provider instanceof WolfCryptProvider && !FeatureDetect.DhEnabled()) {
+                    continue;
+                }
+                Security.insertProviderAt(provider, 1);
+                System.out.println("\n" + provider.getName() + ":");
+                for (int keySize : DH_KEY_SIZES) {
+                    try {
+                        runDHBenchmark(provider.getName(), keySize);
+                    } catch (Exception e) {
+                        System.out.printf("Failed to benchmark DH %d with provider %s: %s%n", 
+                            keySize, provider.getName(), e.getMessage());
+                    }
+                }
+            }
 
             /* Run RSA benchmarks */
             System.out.println("\n-----------------------------------------------------------------------------");
