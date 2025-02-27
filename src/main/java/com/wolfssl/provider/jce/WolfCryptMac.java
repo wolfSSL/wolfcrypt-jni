@@ -29,15 +29,13 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.SecretKey;
 
-import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Md5;
 import com.wolfssl.wolfcrypt.Sha;
 import com.wolfssl.wolfcrypt.Sha256;
 import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.Sha512;
+import com.wolfssl.wolfcrypt.Sha3;
 import com.wolfssl.wolfcrypt.Hmac;
-
-import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE Mac wrapper
@@ -49,11 +47,14 @@ public class WolfCryptMac extends MacSpi {
         WC_HMAC_SHA,
         WC_HMAC_SHA256,
         WC_HMAC_SHA384,
-        WC_HMAC_SHA512
+        WC_HMAC_SHA512,
+        WC_HMAC_SHA3_224,
+        WC_HMAC_SHA3_256,
+        WC_HMAC_SHA3_384,
+        WC_HMAC_SHA3_512
     }
 
     private Hmac hmac = null;
-    private HmacType hmacType = null;
     private int nativeHmacType = 0;
     private int digestSize = 0;
 
@@ -63,7 +64,6 @@ public class WolfCryptMac extends MacSpi {
     private WolfCryptMac(HmacType type)
         throws NoSuchAlgorithmException {
 
-        this.hmacType = type;
         hmac = new Hmac();
 
         switch (type) {
@@ -90,6 +90,26 @@ public class WolfCryptMac extends MacSpi {
             case WC_HMAC_SHA512:
                 this.digestSize = Sha512.DIGEST_SIZE;
                 this.nativeHmacType = Hmac.SHA512;
+                break;
+
+            case WC_HMAC_SHA3_224:
+                this.digestSize = Sha3.DIGEST_SIZE_224;
+                this.nativeHmacType = Hmac.SHA3_224;
+                break;
+
+            case WC_HMAC_SHA3_256:
+                this.digestSize = Sha3.DIGEST_SIZE_256;
+                this.nativeHmacType = Hmac.SHA3_256;
+                break;
+
+            case WC_HMAC_SHA3_384:
+                this.digestSize = Sha3.DIGEST_SIZE_384;
+                this.nativeHmacType = Hmac.SHA3_384;
+                break;
+
+            case WC_HMAC_SHA3_512:
+                this.digestSize = Sha3.DIGEST_SIZE_512;
+                this.nativeHmacType = Hmac.SHA3_512;
                 break;
 
             default:
@@ -125,7 +145,6 @@ public class WolfCryptMac extends MacSpi {
     protected void engineInit(Key key, AlgorithmParameterSpec params)
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
-        int ret = 0;
         byte[] encodedKey;
 
         /* key must be of type SecretKey */
@@ -175,6 +194,12 @@ public class WolfCryptMac extends MacSpi {
                 return "SHA384";
             case WC_HMAC_SHA512:
                 return "SHA512";
+            case WC_HMAC_SHA3_224:
+                return "SHA3-224";
+            case WC_HMAC_SHA3_256:
+                return "SHA3-256";
+            case WC_HMAC_SHA3_384:
+                return "SHA3-384";
             default:
                 return "None";
         }
@@ -269,5 +294,64 @@ public class WolfCryptMac extends MacSpi {
             super(HmacType.WC_HMAC_SHA512);
         }
     }
-}
 
+    /**
+     * wolfJCE HMAC-SHA3-224 class
+     */
+    public static final class wcHmacSHA3_224 extends WolfCryptMac {
+        /**
+         * Create new wcHmacSHA3_224 object
+         *
+         * @throws NoSuchAlgorithmException if HMAC-SHA3-224 is not available at
+         *         native wolfCrypt level.
+         */
+        public wcHmacSHA3_224() throws NoSuchAlgorithmException {
+            super(HmacType.WC_HMAC_SHA3_224);
+        }
+    }
+
+    /**
+     * wolfJCE HMAC-SHA3-256 class
+     */
+    public static final class wcHmacSHA3_256 extends WolfCryptMac {
+        /**
+         * Create new wcHmacSHA3_256 object
+         *
+         * @throws NoSuchAlgorithmException if HMAC-SHA3-256 is not available at
+         *         native wolfCrypt level.
+         */
+        public wcHmacSHA3_256() throws NoSuchAlgorithmException {
+            super(HmacType.WC_HMAC_SHA3_256);
+        }
+    }
+
+    /**
+     * wolfJCE HMAC-SHA3-384 class
+     */
+    public static final class wcHmacSHA3_384 extends WolfCryptMac {
+        /**
+         * Create new wcHmacSHA3_384 object
+         *
+         * @throws NoSuchAlgorithmException if HMAC-SHA3-384 is not available at
+         *         native wolfCrypt level.
+         */
+        public wcHmacSHA3_384() throws NoSuchAlgorithmException {
+            super(HmacType.WC_HMAC_SHA3_384);
+        }
+    }
+
+    /**
+     * wolfJCE HMAC-SHA3-512 class
+     */
+    public static final class wcHmacSHA3_512 extends WolfCryptMac {
+        /**
+         * Create new wcHmacSHA3_512 object
+         *
+         * @throws NoSuchAlgorithmException if HMAC-SHA3-512 is not available at
+         *         native wolfCrypt level.
+         */
+        public wcHmacSHA3_512() throws NoSuchAlgorithmException {
+            super(HmacType.WC_HMAC_SHA3_512);
+        }
+    }
+}

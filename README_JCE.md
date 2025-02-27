@@ -91,6 +91,10 @@ The JCE provider currently supports the following algorithms:
         SHA-256
         SHA-384
         SHA-512
+        SHA3-224
+        SHA3-256
+        SHA3-384
+        SHA3-512
 
     SecureRandom Class
         DEFAULT (maps to HashDRBG)
@@ -110,6 +114,10 @@ The JCE provider currently supports the following algorithms:
         HmacSHA256
         HmacSHA384
         HmacSHA512
+        HmacSHA3-224
+        HmacSHA3-256
+        HmacSHA3-384
+        HmacSHA3-512
 
     Signature Class
         MD5withRSA
@@ -117,10 +125,18 @@ The JCE provider currently supports the following algorithms:
         SHA256withRSA
         SHA384withRSA
         SHA512withRSA
+        SHA3-224withRSA
+        SHA3-256withRSA
+        SHA3-384withRSA
+        SHA3-512withRSA
         SHA1withECDSA
         SHA256withECDSA
         SHA384withECDSA
         SHA512withECDSA
+        SHA3-224withECDSA
+        SHA3-256withECDSA
+        SHA3-384withECDSA
+        SHA3-512withECDSA
 
     KeyAgreement Class
         DiffieHellman

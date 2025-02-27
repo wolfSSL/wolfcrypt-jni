@@ -62,49 +62,59 @@
 static WC_INLINE int GetHashSizeByType(int type)
 {
     if (!(type == WC_MD5 || type == WC_SHA || type == WC_SHA256
-            || type == WC_SHA384 || type == WC_SHA512))
+            || type == WC_SHA384 || type == WC_SHA512 || type == WC_SHA3_224
+            || type == WC_SHA3_256 || type == WC_SHA3_384
+            || type == WC_SHA3_512)) {
         return BAD_FUNC_ARG;
+    }
 
     switch (type) {
         #ifndef NO_MD5
         case WC_MD5:
             return MD5_DIGEST_SIZE;
-        break;
         #endif
 
         #ifndef NO_SHA
         case WC_SHA:
             return SHA_DIGEST_SIZE;
-        break;
         #endif
 
         #ifndef NO_SHA256
         case WC_SHA256:
             return SHA256_DIGEST_SIZE;
-        break;
         #endif
 
         #if defined(CYASSL_SHA384) || defined(WOLFSSL_SHA384)
         case WC_SHA384:
             return SHA384_DIGEST_SIZE;
-        break;
         #endif
 
         #if defined(CYASSL_SHA512) || defined(WOLFSSL_SHA512)
         case WC_SHA512:
             return SHA512_DIGEST_SIZE;
-        break;
+        #endif
+
+        #if defined(WOLFSSL_SHA3)
+        case WC_SHA3_224:
+            return WC_SHA3_224_DIGEST_SIZE;
+
+        case WC_SHA3_256:
+            return WC_SHA3_256_DIGEST_SIZE;
+
+        case WC_SHA3_384:
+            return WC_SHA3_384_DIGEST_SIZE;
+
+        case WC_SHA3_512:
+            return WC_SHA3_512_DIGEST_SIZE;
         #endif
 
         default:
             return BAD_FUNC_ARG;
-        break;
     }
 }
 
-JNIEXPORT jlong JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_mallocNativeStruct(
-    JNIEnv* env, jobject this)
+JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Hmac_mallocNativeStruct
+    (JNIEnv* env, jobject this)
 {
 #ifndef NO_HMAC
     Hmac* hmac = NULL;
@@ -128,9 +138,8 @@ Java_com_wolfssl_wolfcrypt_Hmac_mallocNativeStruct(
 #endif
 }
 
-JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSetKey(
-    JNIEnv* env, jobject this, jint type, jbyteArray key_object)
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSetKey
+    (JNIEnv* env, jobject this, jint type, jbyteArray key_object)
 {
 #ifndef NO_HMAC
     int ret = 0;
@@ -162,9 +171,8 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSetKey(
 #endif
 }
 
-JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__B(
-    JNIEnv* env, jobject this, jbyte data)
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__B
+    (JNIEnv* env, jobject this, jbyte data)
 {
 #ifndef NO_HMAC
     int ret = 0;
@@ -188,9 +196,8 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__B(
 #endif
 }
 
-JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII(
-    JNIEnv* env, jobject this, jbyteArray data_object, jint offset, jint length)
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII
+    (JNIEnv* env, jobject this, jbyteArray data_object, jint offset, jint length)
 {
 #ifndef NO_HMAC
     int ret = 0;
@@ -222,9 +229,8 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII(
 #endif
 }
 
-JNIEXPORT void JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio_ByteBuffer_2II(
-    JNIEnv* env, jobject this, jobject data_object, jint offset, jint length)
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio_ByteBuffer_2II
+    (JNIEnv* env, jobject this, jobject data_object, jint offset, jint length)
 {
 #ifndef NO_HMAC
     int ret = 0;
@@ -254,9 +260,8 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio_ByteBuffer_2II(
 #endif
 }
 
-JNIEXPORT jbyteArray JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal(
-    JNIEnv* env, jobject this)
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal
+    (JNIEnv* env, jobject this)
 {
     jbyteArray result = NULL;
 
@@ -305,9 +310,8 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal(
     return result;
 }
 
-JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSizeByType(
-    JNIEnv* env, jobject this, jint type)
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSizeByType
+    (JNIEnv* env, jobject this, jint type)
 {
     jint result = 0;
 
@@ -327,9 +331,8 @@ Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSizeByType(
     return result;
 }
 
-JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_getCodeMd5(
-        JNIEnv* env, jobject this)
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeMd5
+    (JNIEnv* env, jobject this)
 {
 #ifndef NO_MD5
     jint result = WC_MD5;
@@ -341,9 +344,8 @@ Java_com_wolfssl_wolfcrypt_Hmac_getCodeMd5(
 #endif
 }
 
-JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha(
-        JNIEnv* env, jobject this)
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha
+    (JNIEnv* env, jobject this)
 {
 #ifndef NO_SHA
     jint result = WC_SHA;
@@ -355,9 +357,8 @@ Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha(
 #endif
 }
 
-JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha256(
-        JNIEnv* env, jobject this)
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha256
+    (JNIEnv* env, jobject this)
 {
 #ifndef NO_SHA256
     jint result = WC_SHA256;
@@ -369,9 +370,8 @@ Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha256(
 #endif
 }
 
-JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha384(
-        JNIEnv* env, jobject this)
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha384
+    (JNIEnv* env, jobject this)
 {
 #ifdef WOLFSSL_SHA384
     jint result = WC_SHA384;
@@ -383,13 +383,64 @@ Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha384(
 #endif
 }
 
-JNIEXPORT jint JNICALL
-Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha512(
-        JNIEnv* env, jobject this)
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha512
+    (JNIEnv* env, jobject this)
 {
 #ifdef WOLFSSL_SHA512
     jint result = WC_SHA512;
     LogStr("WC_SHA512 = %d\n", result);
+    return result;
+#else
+    /* not compiled in */
+    return (jint) -1;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha3_1224
+  (JNIEnv* env, jclass this)
+{
+#ifdef WOLFSSL_SHA3
+    jint result = WC_SHA3_224;
+    LogStr("WC_SHA3_224 = %d\n", result);
+    return result;
+#else
+    /* not compiled in */
+    return (jint) -1;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha3_1256
+  (JNIEnv* env, jclass this)
+{
+#ifdef WOLFSSL_SHA3
+    jint result = WC_SHA3_256;
+    LogStr("WC_SHA3_256 = %d\n", result);
+    return result;
+#else
+    /* not compiled in */
+    return (jint) -1;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha3_1384
+  (JNIEnv* env, jclass this)
+{
+#ifdef WOLFSSL_SHA3
+    jint result = WC_SHA3_384;
+    LogStr("WC_SHA3_384 = %d\n", result);
+    return result;
+#else
+    /* not compiled in */
+    return (jint) -1;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha3_1512
+  (JNIEnv* env, jclass this)
+{
+#ifdef WOLFSSL_SHA3
+    jint result = WC_SHA3_512;
+    LogStr("WC_SHA3_512 = %d\n", result);
     return result;
 #else
     /* not compiled in */
