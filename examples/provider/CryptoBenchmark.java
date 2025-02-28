@@ -604,26 +604,6 @@ public class CryptoBenchmark {
                 }
             }
 
-            System.out.println("\n-----------------------------------------------------------------------------");
-            System.out.println("DH Benchmark Results");
-            System.out.println("-----------------------------------------------------------------------------");
-
-            for (Provider provider : providers) {
-                if (provider instanceof WolfCryptProvider && !FeatureDetect.DhEnabled()) {
-                    continue;
-                }
-                Security.insertProviderAt(provider, 1);
-                System.out.println("\n" + provider.getName() + ":");
-                for (int keySize : DH_KEY_SIZES) {
-                    try {
-                        runDHBenchmark(provider.getName(), keySize);
-                    } catch (Exception e) {
-                        System.out.printf("Failed to benchmark DH %d with provider %s: %s%n", 
-                            keySize, provider.getName(), e.getMessage());
-                    }
-                }
-            }
-
             /* Run RSA benchmarks */
             System.out.println("\n-----------------------------------------------------------------------------");
             System.out.println("RSA Benchmark Results");
@@ -656,7 +636,6 @@ public class CryptoBenchmark {
                             curve, provider.getName(), e.getMessage());
                     }
                 }
-                Security.removeProvider(provider.getName());
             }
 
             System.out.println("\n-----------------------------------------------------------------------------");
@@ -681,8 +660,26 @@ public class CryptoBenchmark {
                 if (FeatureDetect.HmacSha512Enabled()) {
                     runHmacBenchmark("HmacSHA512", providerNames[i]);
                 }
+            }
 
-                Security.removeProvider(providers[i].getName());
+            System.out.println("\n-----------------------------------------------------------------------------");
+            System.out.println("DH Benchmark Results");
+            System.out.println("-----------------------------------------------------------------------------");
+
+            for (Provider provider : providers) {
+                if (provider instanceof WolfCryptProvider && !FeatureDetect.DhEnabled()) {
+                    continue;
+                }
+                Security.insertProviderAt(provider, 1);
+                System.out.println("\n" + provider.getName() + ":");
+                for (int keySize : DH_KEY_SIZES) {
+                    try {
+                        runDHBenchmark(provider.getName(), keySize);
+                    } catch (Exception e) {
+                        System.out.printf("Failed to benchmark DH %d with provider %s: %s%n", 
+                            keySize, provider.getName(), e.getMessage());
+                    }
+                }
             }
 
             System.out.println("-----------------------------------------------------------------------------\n");
