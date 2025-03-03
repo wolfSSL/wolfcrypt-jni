@@ -46,6 +46,9 @@
     #ifndef NO_SHA
         #define SHA_DIGEST_SIZE WC_SHA_DIGEST_SIZE
     #endif
+    #ifdef WOLFSSL_SHA224
+        #define SHA224_DIGEST_SIZE WC_SHA224_DIGEST_SIZE
+    #endif
     #ifndef NO_SHA256
         #define SHA256_DIGEST_SIZE WC_SHA256_DIGEST_SIZE
     #endif
@@ -61,44 +64,44 @@
 /* copy from cyassl/hmac.c */
 static WC_INLINE int GetHashSizeByType(int type)
 {
-    if (!(type == WC_MD5 || type == WC_SHA || type == WC_SHA256
-            || type == WC_SHA384 || type == WC_SHA512))
+    if (!(type == WC_MD5 || type == WC_SHA || type == WC_SHA224
+            || type == WC_SHA256 || type == WC_SHA384 || type == WC_SHA512)) {
         return BAD_FUNC_ARG;
+    }
 
     switch (type) {
         #ifndef NO_MD5
         case WC_MD5:
             return MD5_DIGEST_SIZE;
-        break;
         #endif
 
         #ifndef NO_SHA
         case WC_SHA:
             return SHA_DIGEST_SIZE;
-        break;
+        #endif
+
+        #ifdef WOLFSSL_SHA224
+        case WC_SHA224:
+            return SHA224_DIGEST_SIZE;
         #endif
 
         #ifndef NO_SHA256
         case WC_SHA256:
             return SHA256_DIGEST_SIZE;
-        break;
         #endif
 
         #if defined(CYASSL_SHA384) || defined(WOLFSSL_SHA384)
         case WC_SHA384:
             return SHA384_DIGEST_SIZE;
-        break;
         #endif
 
         #if defined(CYASSL_SHA512) || defined(WOLFSSL_SHA512)
         case WC_SHA512:
             return SHA512_DIGEST_SIZE;
-        break;
         #endif
 
         default:
             return BAD_FUNC_ARG;
-        break;
     }
 }
 
@@ -348,6 +351,20 @@ Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha(
 #ifndef NO_SHA
     jint result = WC_SHA;
     LogStr("WC_SHA = %d\n", result);
+    return result;
+#else
+    /* not compiled in */
+    return (jint) -1;
+#endif
+}
+
+JNIEXPORT jint JNICALL
+Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha224(
+        JNIEnv* env, jobject this)
+{
+#ifdef WOLFSSL_SHA224
+    jint result = WC_SHA224;
+    LogStr("WC_SHA224 = %d\n", result);
     return result;
 #else
     /* not compiled in */

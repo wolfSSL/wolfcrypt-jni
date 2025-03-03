@@ -31,6 +31,7 @@ import javax.crypto.SecretKey;
 
 import com.wolfssl.wolfcrypt.Md5;
 import com.wolfssl.wolfcrypt.Sha;
+import com.wolfssl.wolfcrypt.Sha224;
 import com.wolfssl.wolfcrypt.Sha256;
 import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.Sha512;
@@ -44,6 +45,7 @@ public class WolfCryptMac extends MacSpi {
     enum HmacType {
         WC_HMAC_MD5,
         WC_HMAC_SHA,
+        WC_HMAC_SHA224,
         WC_HMAC_SHA256,
         WC_HMAC_SHA384,
         WC_HMAC_SHA512
@@ -70,6 +72,11 @@ public class WolfCryptMac extends MacSpi {
             case WC_HMAC_SHA:
                 this.digestSize = Sha.DIGEST_SIZE;
                 this.nativeHmacType = Hmac.SHA;
+                break;
+
+            case WC_HMAC_SHA224:
+                this.digestSize = Sha224.DIGEST_SIZE;
+                this.nativeHmacType = Hmac.SHA224;
                 break;
 
             case WC_HMAC_SHA256:
@@ -163,6 +170,8 @@ public class WolfCryptMac extends MacSpi {
                 return "MD5";
             case WC_HMAC_SHA:
                 return "SHA";
+            case WC_HMAC_SHA224:
+                return "SHA224";
             case WC_HMAC_SHA256:
                 return "SHA256";
             case WC_HMAC_SHA384:
@@ -216,6 +225,21 @@ public class WolfCryptMac extends MacSpi {
          */
         public wcHmacSHA1() throws NoSuchAlgorithmException {
             super(HmacType.WC_HMAC_SHA);
+        }
+    }
+
+    /**
+     * wolfJCE HMAC-SHA2-224 class
+     */
+    public static final class wcHmacSHA224 extends WolfCryptMac {
+        /**
+         * Create new wcHmacSHA224 object
+         *
+         * @throws NoSuchAlgorithmException if HMAC-SHA2-224 is not available at
+         *         native wolfCrypt level.
+         */
+        public wcHmacSHA224() throws NoSuchAlgorithmException {
+            super(HmacType.WC_HMAC_SHA224);
         }
     }
 
