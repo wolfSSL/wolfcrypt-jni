@@ -23,6 +23,7 @@ package com.wolfssl.provider.jce;
 
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.Aes;
+import com.wolfssl.wolfcrypt.Sha224;
 import com.wolfssl.wolfcrypt.Sha256;
 import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.Sha512;
@@ -45,6 +46,7 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
         WC_INVALID,
         WC_AES,
         WC_HMAC_SHA1,
+        WC_HMAC_SHA224,
         WC_HMAC_SHA256,
         WC_HMAC_SHA384,
         WC_HMAC_SHA512
@@ -54,7 +56,6 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
     private String algString = null;
 
     private int keySizeBits = 0;
-    private AlgorithmParameterSpec algoParams = null;
     private SecureRandom random = null;
 
     /**
@@ -74,6 +75,10 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
                 this.algString = "HmacSHA1";
                 /* SunJCE default key size for HmacSHA1 is 64 bytes */
                 this.keySizeBits = (Sha512.DIGEST_SIZE * 8);
+                break;
+            case WC_HMAC_SHA224:
+                this.algString = "HmacSHA224";
+                this.keySizeBits = (Sha224.DIGEST_SIZE * 8);
                 break;
             case WC_HMAC_SHA256:
                 this.algString = "HmacSHA256";
@@ -222,6 +227,7 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
         switch (this.algoType) {
             case WC_AES:
             case WC_HMAC_SHA1:
+            case WC_HMAC_SHA224:
             case WC_HMAC_SHA256:
             case WC_HMAC_SHA384:
             case WC_HMAC_SHA512:
@@ -256,6 +262,20 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
          */
         public wcHMACSha1KeyGenerator() {
             super(AlgoType.WC_HMAC_SHA1);
+        }
+    }
+
+    /**
+     * KeyGenerator(HmacSHA224) class, called by WolfCryptProvider.
+     */
+    public static final class wcHMACSha224KeyGenerator
+        extends WolfCryptKeyGenerator {
+
+        /**
+         * Constructor for wcHMACSha224KeyGenerator.
+         */
+        public wcHMACSha224KeyGenerator() {
+            super(AlgoType.WC_HMAC_SHA224);
         }
     }
 

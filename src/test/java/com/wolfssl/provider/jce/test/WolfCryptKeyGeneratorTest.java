@@ -42,6 +42,7 @@ import javax.crypto.SecretKey;
 
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.Aes;
+import com.wolfssl.wolfcrypt.Sha224;
 import com.wolfssl.wolfcrypt.Sha256;
 import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.Sha512;
@@ -52,6 +53,7 @@ public class WolfCryptKeyGeneratorTest {
     private static String[] keyAlgorithms = {
         "AES",
         "HmacSHA1",
+        "HmacSHA224",
         "HmacSHA256",
         "HmacSHA384",
         "HmacSHA512"
@@ -119,6 +121,14 @@ public class WolfCryptKeyGeneratorTest {
         testKeyGeneration("HmacSHA1", new int[] { 160 });
         /* SunJCE default key size for HmacSHA1 is 64 bytes, we match theirs */
         testKeyGenerationDefaultKeySize("HmacSHA1", Sha512.DIGEST_SIZE * 8);
+    }
+
+    @Test
+    public void testHmacSHA224KeyGeneration()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        testKeyGeneration("HmacSHA224", new int[] { 224 });
+        testKeyGenerationDefaultKeySize("HmacSHA224", Sha224.DIGEST_SIZE * 8);
     }
 
     @Test
