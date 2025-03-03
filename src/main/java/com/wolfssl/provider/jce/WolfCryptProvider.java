@@ -201,16 +201,30 @@ public final class WolfCryptProvider extends Provider {
         }
 
         /* KeyGenerator */
-        put("KeyGenerator.AES",
-            "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcAESKeyGenerator");
-        put("KeyGenerator.HmacSHA1",
-            "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha1KeyGenerator");
-        put("KeyGenerator.HmacSHA256",
-            "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha256KeyGenerator");
-        put("KeyGenerator.HmacSHA384",
-            "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha384KeyGenerator");
-        put("KeyGenerator.HmacSHA512",
-            "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha512KeyGenerator");
+        if (FeatureDetect.AesEnabled()) {
+            put("KeyGenerator.AES",
+                "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcAESKeyGenerator");
+        }
+        if (FeatureDetect.HmacShaEnabled()) {
+            put("KeyGenerator.HmacSHA1",
+                "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha1KeyGenerator");
+        }
+        if (FeatureDetect.HmacSha224Enabled()) {
+            put("KeyGenerator.HmacSHA224",
+                "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha224KeyGenerator");
+        }
+        if (FeatureDetect.HmacSha256Enabled()) {
+            put("KeyGenerator.HmacSHA256",
+                "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha256KeyGenerator");
+        }
+        if (FeatureDetect.HmacSha384Enabled()) {
+            put("KeyGenerator.HmacSHA384",
+                "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha384KeyGenerator");
+        }
+        if (FeatureDetect.HmacSha512Enabled()) {
+            put("KeyGenerator.HmacSHA512",
+                "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha512KeyGenerator");
+        }
 
         /* KeyPairGenerator */
         if (FeatureDetect.RsaKeyGenEnabled()) {
