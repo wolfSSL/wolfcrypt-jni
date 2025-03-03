@@ -88,6 +88,7 @@ The JCE provider currently supports the following algorithms:
     MessageDigest Class
         MD5
         SHA-1
+        SHA-224
         SHA-256
         SHA-384
         SHA-512
