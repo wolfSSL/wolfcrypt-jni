@@ -116,10 +116,12 @@ The JCE provider currently supports the following algorithms:
     Signature Class
         MD5withRSA
         SHA1withRSA
+        SHA224withRSA
         SHA256withRSA
         SHA384withRSA
         SHA512withRSA
         SHA1withECDSA
+        SHA224withECDSA
         SHA256withECDSA
         SHA384withECDSA
         SHA512withECDSA

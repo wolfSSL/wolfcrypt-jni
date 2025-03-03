@@ -58,10 +58,12 @@ public class WolfCryptSignatureTest {
 
     private static String wolfJCEAlgos[] = {
         "SHA1withRSA",
+        "SHA224withRSA",
         "SHA256withRSA",
         "SHA384withRSA",
         "SHA512withRSA",
         "SHA1withECDSA",
+        "SHA224withECDSA",
         "SHA256withECDSA",
         "SHA384withECDSA",
         "SHA512withECDSA"
@@ -84,8 +86,6 @@ public class WolfCryptSignatureTest {
     public static void testProviderInstallationAtRuntime()
         throws NoSuchProviderException {
 
-        Signature sig;
-
         System.out.println("JCE WolfCryptSignature Class");
 
         /* install wolfJCE provider at runtime */
@@ -98,7 +98,8 @@ public class WolfCryptSignatureTest {
          * compiled out */
         for (int i = 0; i < wolfJCEAlgos.length; i++) {
             try {
-                sig = Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                Signature sig =
+                    Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
                 assertNotNull(sig);
                 enabledAlgos.add(wolfJCEAlgos[i]);
             } catch (NoSuchAlgorithmException e) {
@@ -111,17 +112,16 @@ public class WolfCryptSignatureTest {
     public void testGetSignatureFromProvider()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 
-        Signature sig;
-
         /* try to get all available options we expect to have */
         for (int i = 0; i < enabledAlgos.size(); i++) {
-            sig = Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
+            Signature sig =
+                Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
             assertNotNull(sig);
         }
 
         /* asking for a bad algo should throw an exception */
         try {
-            sig = Signature.getInstance("invalidalgo", "wolfJCE");
+            Signature.getInstance("invalidalgo", "wolfJCE");
             fail("Requesting an invalid algorithm from Signature " +
                  "object should throw an exception");
         } catch (NoSuchAlgorithmException e) { }

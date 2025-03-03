@@ -114,6 +114,12 @@ public final class WolfCryptProvider extends Provider {
             put("Signature.SHA1withECDSA",
                     "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA1wECDSA");
         }
+        if (FeatureDetect.Sha224Enabled()) {
+            put("Signature.SHA224withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA224wRSA");
+            put("Signature.SHA224withECDSA",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA224wECDSA");
+        }
         if (FeatureDetect.Sha256Enabled()) {
             put("Signature.SHA256withRSA",
                     "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA256wRSA");
