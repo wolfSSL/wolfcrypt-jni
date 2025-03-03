@@ -142,6 +142,10 @@ public final class WolfCryptProvider extends Provider {
             put("Mac.HmacSHA1",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA1");
         }
+        if (FeatureDetect.HmacSha224Enabled()) {
+            put("Mac.HmacSHA224",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA224");
+        }
         if (FeatureDetect.HmacSha256Enabled()) {
             put("Mac.HmacSHA256",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA256");

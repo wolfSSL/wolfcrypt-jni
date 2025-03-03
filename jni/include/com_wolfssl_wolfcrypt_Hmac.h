@@ -75,6 +75,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    getCodeSha224
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha224
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
  * Method:    getCodeSha256
  * Signature: ()I
  */
