@@ -30,7 +30,7 @@ public class CryptoBenchmark {
     private static final int DES3_BLOCK_SIZE = 8;
     private static final int GCM_TAG_LENGTH = 128;
     private static final int[] RSA_KEY_SIZES = {2048, 3072, 4096};
-    private static final int RSA_MIN_TIME_SECONDS = 1;  /* minimum time to run each test */
+    private static final int TEST_MIN_TIME_SECONDS = 1;  /* minimum time to run each test */
     private static final int SMALL_MESSAGE_SIZE = 32;   /* small message size for RSA ops */
     private static final String[] ECC_CURVES = {"secp256r1"}; /* Can add more curves benchmark.c only uses secp256r1 */
     private static final int[] DH_KEY_SIZES = {2048}; /* Can add more key sizes benchmark.c only uses 2048 */
@@ -357,7 +357,7 @@ public class CryptoBenchmark {
             keyGen.generateKeyPair();
             keyGenOps++;
             elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
-        } while (elapsedTime < RSA_MIN_TIME_SECONDS);
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
 
         keyGenOp = String.format("RSA %d key gen", keySize);
         printKeyGenResults(keyGenOps, elapsedTime, keyGenOp, providerName, cipherMode);
@@ -376,7 +376,7 @@ public class CryptoBenchmark {
                 cipher.doFinal(testData);
                 publicOps++;
                 elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
-            } while (elapsedTime < RSA_MIN_TIME_SECONDS);
+            } while (elapsedTime < TEST_MIN_TIME_SECONDS);
 
             printKeyGenResults(publicOps, elapsedTime, "RSA 2048 public", providerName, cipherMode);
 
@@ -392,7 +392,7 @@ public class CryptoBenchmark {
                 cipher.doFinal(encrypted);
                 privateOps++;
                 elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
-            } while (elapsedTime < RSA_MIN_TIME_SECONDS);
+            } while (elapsedTime < TEST_MIN_TIME_SECONDS);
 
             printKeyGenResults(privateOps, elapsedTime, "RSA 2048 private", providerName, cipherMode);
         }
@@ -423,7 +423,7 @@ public class CryptoBenchmark {
             keyGen.generateKeyPair();
             keyGenOps++;
             elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
-        } while (elapsedTime < RSA_MIN_TIME_SECONDS);
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
         
         String keyGenOp = String.format("ECC %s key gen", curveName);
         printKeyGenResults(keyGenOps, elapsedTime, keyGenOp, providerName, "EC");
@@ -523,7 +523,7 @@ public class CryptoBenchmark {
             keyGen.generateKeyPair();
             keyGenOps++;
             elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
-        } while (elapsedTime < RSA_MIN_TIME_SECONDS);
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
 
         String keyGenOp = String.format("DH %d key gen", keySize);
         printKeyGenResults(keyGenOps, elapsedTime, keyGenOp, providerName, DH_ALGORITHM);
@@ -545,7 +545,7 @@ public class CryptoBenchmark {
           keyAgreement.generateSecret();
           agreementOps++;
           elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
-        } while (elapsedTime < RSA_MIN_TIME_SECONDS);
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
 
         String agreementOp = String.format("DH %d agree", keySize);
         printKeyGenResults(agreementOps, elapsedTime, agreementOp, providerName, DH_ALGORITHM);
