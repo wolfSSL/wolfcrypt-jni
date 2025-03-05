@@ -22,7 +22,6 @@
 package com.wolfssl.wolfcrypt;
 
 import java.nio.ByteBuffer;
-import com.wolfssl.wolfcrypt.Aes;
 
 /**
  * Thin JNI wrapper for the native WolfCrypt FIPS 140-2/3 specific APIs.

@@ -29,15 +29,12 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.SecretKey;
 
-import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Md5;
 import com.wolfssl.wolfcrypt.Sha;
 import com.wolfssl.wolfcrypt.Sha256;
 import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.Sha512;
 import com.wolfssl.wolfcrypt.Hmac;
-
-import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE Mac wrapper
@@ -53,7 +50,6 @@ public class WolfCryptMac extends MacSpi {
     }
 
     private Hmac hmac = null;
-    private HmacType hmacType = null;
     private int nativeHmacType = 0;
     private int digestSize = 0;
 
@@ -63,7 +59,6 @@ public class WolfCryptMac extends MacSpi {
     private WolfCryptMac(HmacType type)
         throws NoSuchAlgorithmException {
 
-        this.hmacType = type;
         hmac = new Hmac();
 
         switch (type) {
@@ -125,7 +120,6 @@ public class WolfCryptMac extends MacSpi {
     protected void engineInit(Key key, AlgorithmParameterSpec params)
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
-        int ret = 0;
         byte[] encodedKey;
 
         /* key must be of type SecretKey */

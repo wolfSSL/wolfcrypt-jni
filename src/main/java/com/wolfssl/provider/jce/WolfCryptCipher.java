@@ -45,15 +45,11 @@ import java.security.InvalidKeyException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 
-import com.wolfssl.wolfcrypt.WolfCrypt;
-import com.wolfssl.wolfcrypt.Asn;
 import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.AesGcm;
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Rng;
-
-import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE Cipher (AES, 3DES) wrapper
@@ -143,6 +139,9 @@ public class WolfCryptCipher extends CipherSpi {
 
             case WC_DES3:
                 blockSize = Des3.BLOCK_SIZE;
+                break;
+
+            case WC_RSA:
                 break;
         }
 
@@ -450,8 +449,6 @@ public class WolfCryptCipher extends CipherSpi {
     private void wolfCryptSetKey(Key key)
         throws InvalidKeyException {
 
-        int ret = 0;
-        long[] idx = {0};
         byte[] encodedKey;
 
         /* validate key class type */
@@ -611,27 +608,10 @@ public class WolfCryptCipher extends CipherSpi {
         return isBlockCipher;
     }
 
-    /* return 1 if cipher is a block cipher and lenth is a block
-     * length multiple, otherwise 0 */
-    private int isValidBlockLength(int length) {
-
-        /* skip if not a block cipher */
-        if (isBlockCipher() == false) {
-            return 1;
-        }
-
-        if ((length % this.blockSize) != 0) {
-            return 0;
-        }
-
-        return 1;
-    }
-
     private byte[] wolfCryptUpdate(byte[] input, int inputOffset, int len)
         throws IllegalArgumentException {
 
         int  blocks    = 0;
-        int  remaining = 0;
         int  bytesToProcess = 0;
         byte[] output  = null;
         byte[] tmpIn   = null;
@@ -666,7 +646,6 @@ public class WolfCryptCipher extends CipherSpi {
 
         /* calculate blocks and partial non-block size remaining */
         blocks    = buffered.length / blockSize;
-        remaining = buffered.length % blockSize;
         bytesToProcess = blocks * blockSize;
 
         /* if PKCS#5/7 padding, and decrypting, hold on to last block for

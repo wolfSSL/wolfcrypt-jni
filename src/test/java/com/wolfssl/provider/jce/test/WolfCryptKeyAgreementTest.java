@@ -31,8 +31,6 @@ import org.junit.BeforeClass;
 
 import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.Random;
-import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -108,7 +106,7 @@ public class WolfCryptKeyAgreementTest {
     /* One static SecureRandom to share */
     private static SecureRandom secureRandom = new SecureRandom();
 
-    private static void printDisabledCurves() {
+    /*private static void printDisabledCurves() {
 
         if (disabledCurves.size() > 0)
             System.out.print("KeyAgreement: skipping disabled ECC curves:\n\t");
@@ -123,7 +121,7 @@ public class WolfCryptKeyAgreementTest {
         }
 
         System.out.println("");
-    }
+    }*/
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = new TestWatcher() {
@@ -135,8 +133,6 @@ public class WolfCryptKeyAgreementTest {
     @BeforeClass
     public static void testProviderInstallationAtRuntime() {
 
-        int disabledCount = 0;
-
         System.out.println("JCE WolfCryptKeyAgreementTest Class");
 
         /* install wolfJCE provider at runtime */
@@ -147,10 +143,9 @@ public class WolfCryptKeyAgreementTest {
 
         /* build list of enabled curves and key sizes,
          * getCurveSizeFromName() will return 0 if curve not found */
-        Ecc tmp = new Ecc();
         for (int i = 0; i < supportedCurves.length; i++) {
 
-            int size = tmp.getCurveSizeFromName(
+            int size = Ecc.getCurveSizeFromName(
                         supportedCurves[i].toUpperCase());
 
             if (size > 0) {
@@ -160,7 +155,7 @@ public class WolfCryptKeyAgreementTest {
             }
         }
 
-        /* uncomment this line to print disabled curves */
+        /* uncomment this line and method above to print disabled curves */
         /* printDisabledCurves(); */
     }
 
@@ -168,16 +163,14 @@ public class WolfCryptKeyAgreementTest {
     public void testGetKeyAgreementFromProvider()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 
-        KeyAgreement ka;
-
         /* try to get all available options we expect to have */
         for (int i = 0; i < wolfJCEAlgos.length; i++) {
-            ka = KeyAgreement.getInstance(wolfJCEAlgos[i], "wolfJCE");
+            KeyAgreement.getInstance(wolfJCEAlgos[i], "wolfJCE");
         }
 
         /* getting a garbage algorithm should throw an exception */
         try {
-            ka = KeyAgreement.getInstance("NotValid", "wolfJCE");
+            KeyAgreement.getInstance("NotValid", "wolfJCE");
 
             fail("KeyAgreement.getInstance should throw " +
                  "NoSuchAlgorithmException when given bad algorithm value");
@@ -272,6 +265,7 @@ public class WolfCryptKeyAgreementTest {
         int secretASz = aKeyAgree.generateSecret(secretA, 0);
         int secretBSz = bKeyAgree.generateSecret(secretB, 0);
 
+        assertEquals(secretASz, secretBSz);
         assertArrayEquals(secretA, secretB);
 
         /* now, try reusing the A object without calling init() again */
@@ -287,6 +281,7 @@ public class WolfCryptKeyAgreementTest {
         int secretA2Sz = aKeyAgree.generateSecret(secretA2, 0);
         int secretCSz  = cKeyAgree.generateSecret(secretC, 0);
 
+        assertEquals(secretA2Sz, secretCSz);
         assertArrayEquals(secretA2, secretC);
     }
 
@@ -392,14 +387,19 @@ public class WolfCryptKeyAgreementTest {
                 continue;
             }
 
-            KeyAgreement ka = KeyAgreement.getInstance("ECDH", "wolfJCE");
+            KeyAgreement ka =
+                KeyAgreement.getInstance("ECDH", "wolfJCE");
+
+            assertNotNull(ka);
         }
 
         /* Trying to use a bad curve should throw an exception */
         try {
             ecsp = new ECGenParameterSpec("invalidcurve");
             keyGen.initialize(ecsp);
-            KeyAgreement ka = KeyAgreement.getInstance("ECDH", "wolfJCE");
+            KeyAgreement ka =
+                KeyAgreement.getInstance("ECDH", "wolfJCE");
+            assertNotNull(ka);
 
             fail("Initializing KeyAgreement with invalid curve spec " +
                  "should throw exception");
@@ -478,6 +478,7 @@ public class WolfCryptKeyAgreementTest {
         int secretASz = aKeyAgree.generateSecret(secretA, 0);
         int secretBSz = bKeyAgree.generateSecret(secretB, 0);
 
+        assertEquals(secretASz, secretBSz);
         assertArrayEquals(secretA, secretB);
 
         /* now, try reusing the A object without calling init() again */
@@ -493,6 +494,7 @@ public class WolfCryptKeyAgreementTest {
         int secretA2Sz = aKeyAgree.generateSecret(secretA2, 0);
         int secretCSz  = cKeyAgree.generateSecret(secretC, 0);
 
+        assertEquals(secretA2Sz, secretCSz);
         assertArrayEquals(secretA2, secretC);
     }
 
