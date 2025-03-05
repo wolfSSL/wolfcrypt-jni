@@ -49,6 +49,7 @@ import java.security.InvalidKeyException;
 
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import com.wolfssl.wolfcrypt.test.Util;
 
 public class WolfCryptMacTest {
 
@@ -58,7 +59,11 @@ public class WolfCryptMacTest {
         "HmacSHA224",
         "HmacSHA256",
         "HmacSHA384",
-        "HmacSHA512"
+        "HmacSHA512",
+        "HmacSHA3-224",
+        "HmacSHA3-256",
+        "HmacSHA3-384",
+        "HmacSHA3-512"
     };
 
     private static ArrayList<String> enabledAlgos =
@@ -68,6 +73,10 @@ public class WolfCryptMacTest {
     private static int wolfJCEMacLengths[] = {
         16,
         20,
+        28,
+        32,
+        48,
+        64,
         28,
         32,
         48,
@@ -88,8 +97,6 @@ public class WolfCryptMacTest {
     public static void testProviderInstallationAtRuntime()
         throws NoSuchProviderException {
 
-        Mac mac;
-
         System.out.println("JCE WolfCryptMac Class");
 
         /* install wolfJCE provider at runtime */
@@ -102,7 +109,7 @@ public class WolfCryptMacTest {
          * compiled out */
         for (int i = 0; i < wolfJCEAlgos.length; i++) {
             try {
-                mac = Mac.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                Mac mac = Mac.getInstance(wolfJCEAlgos[i], "wolfJCE");
                 assertNotNull(mac);
                 enabledAlgos.add(wolfJCEAlgos[i]);
                 enabledAlgoLengths.add(wolfJCEMacLengths[i]);
@@ -116,17 +123,15 @@ public class WolfCryptMacTest {
     public void testGetMacFromProvider()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 
-        Mac mac;
-
         /* try to get all available options we expect to have */
         for (int i = 0; i < enabledAlgos.size(); i++) {
-            mac = Mac.getInstance(enabledAlgos.get(i), "wolfJCE");
+            Mac mac = Mac.getInstance(enabledAlgos.get(i), "wolfJCE");
             assertNotNull(mac);
         }
 
         /* getting a garbage algorithm should throw an exception */
         try {
-            mac = Mac.getInstance("NotValid", "wolfJCE");
+            Mac.getInstance("NotValid", "wolfJCE");
 
             fail("Mac.getInstance should throw NoSuchAlgorithmException " +
                  "when given bad algorithm value");
@@ -820,7 +825,8 @@ public class WolfCryptMacTest {
                 new SecretKeySpec(vectors[i].getKey(), "SHA512");
 
             try {
-                Mac mac = Mac.getInstance("HmacSHA512", "wolfJCE");
+                Mac mac =
+                    Mac.getInstance("HmacSHA512", "wolfJCE");
 
                 mac.init(keyspec);
                 mac.update(vectors[i].getInput());
@@ -833,6 +839,201 @@ public class WolfCryptMacTest {
                 /* skip test if not available */
                 Assume.assumeTrue(false);
             }
+        }
+    }
+
+    /**
+     * Shared SHA-3 test key and data vectors.
+     */
+    static final String[] sha3KeyVector = new String[] {
+        "4A656665", /* Jefe  */
+        "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "0102030405060708010203040506070801020304050607080102030405060708" +
+        "0102030405060708010203040506070801020304050607080102030405060708" +
+        "0102030405060708010203040506070801020304050607080102030405060708" +
+        "0102030405060708010203040506070801020304050607080102030405060708" +
+        "0102030405060708010203040506070801020304050607080102030405060708"
+    };
+    static final String[] sha3DataVector = new String[] {
+        /* what do ya want for nothing? */
+        "7768617420646f2079612077616e7420666f72206e6f7468696e673f",
+        /* Hi There */
+        "4869205468657265",
+        "dddddddddddddddddddd" +
+        "dddddddddddddddddddd" +
+        "dddddddddddddddddddd" +
+        "dddddddddddddddddddd" +
+        "dddddddddddddddddddd",
+        /* Big Key Input */
+        "426967204b657920496e707574"
+    };
+
+    @Test
+    public void testMacSha3_224SingleUpdate()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        String[] hashVector = new String[] {
+            "7fdb8dd88bd2f60d1b798634ad386811" +
+            "c2cfc85bfaf5d52bbace5e66",
+            "3b16546bbc7be2706a031dcafd56373d" +
+            "9884367641d8c59af3c860f7",
+            "676cfc7d16153638780390692be142d2" +
+            "df7ce924b909c0c08dbfdc1a",
+            "29e05e46c4a45e4674bfd72d1ad866db" +
+            "2d0d104e2bfaad537d15698b"
+        };
+
+        if (!enabledAlgos.contains("HmacSHA3-224")) {
+            return;
+        }
+
+        Mac mac = Mac.getInstance("HmacSHA3-224", "wolfJCE");
+
+        for (int i = 0; i < hashVector.length; i++) {
+
+            if ((i == 0) && Fips.enabled) {
+                /* FIPS doesn't allow short key lengths */
+                continue;
+            }
+
+            SecretKeySpec key = new SecretKeySpec(
+                Util.h2b(sha3KeyVector[i]), "HmacSHA3-224");
+            mac.init(key);
+            mac.update(Util.h2b(sha3DataVector[i]));
+            byte[] result = mac.doFinal();
+
+            assertArrayEquals(Util.h2b(hashVector[i]), result);
+        }
+    }
+
+    @Test
+    public void testMacSha3_256SingleUpdate()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        String[] hashVector = new String[] {
+            "c7d4072e788877ae3596bbb0da73b887" +
+            "c9171f93095b294ae857fbe2645e1ba5",
+            "ba85192310dffa96e2a3a40e69774351" +
+            "140bb7185e1202cdcc917589f95e16bb",
+            "84ec79124a27107865cedd8bd82da996" +
+            "5e5ed8c37b0ac98005a7f39ed58a4207",
+            "b55b8d64b69c21d0bf205ca2f7b9b14e" +
+            "8821612c66c391ae6c95168583e6f49b"
+        };
+
+        if (!enabledAlgos.contains("HmacSHA3-256")) {
+            return;
+        }
+
+        Mac mac = Mac.getInstance("HmacSHA3-256", "wolfJCE");
+
+        for (int i = 0; i < hashVector.length; i++) {
+
+            if ((i == 0) && Fips.enabled) {
+                /* FIPS doesn't allow short key lengths */
+                continue;
+            }
+
+            SecretKeySpec key = new SecretKeySpec(
+                Util.h2b(sha3KeyVector[i]), "HmacSHA3-256");
+            mac.init(key);
+            mac.update(Util.h2b(sha3DataVector[i]));
+            byte[] result = mac.doFinal();
+
+            assertArrayEquals(Util.h2b(hashVector[i]), result);
+        }
+    }
+
+    @Test
+    public void testMacSha3_384SingleUpdate()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        String[] hashVector = new String[] {
+            "f1101f8cbf9766fd6764d2ed61903f21" +
+            "ca9b18f57cf3e1a23ca13508a93243ce" +
+            "48c045dc007f26a21b3f5e0e9df4c20a",
+            "68d2dcf7fd4ddd0a2240c8a437305f61" +
+            "fb7334cfb5d0226e1bc27dc10a2e723a" +
+            "20d370b47743130e26ac7e3d532886bd",
+            "275cd0e661bb8b151c64d288f1f782fb" +
+            "91a8abd56858d72babb2d476f0458373" +
+            "b41b6ab5bf174bec422e53fc3135ac6e",
+            "aa91b3a62f56a1be8c3e7438db58d9d3" +
+            "34dea0606d8d46e0eca9f6063514e6ed" +
+            "83e67c77246c11b59082b575da7b832d"
+        };
+
+        if (!enabledAlgos.contains("HmacSHA3-384")) {
+            return;
+        }
+
+        Mac mac = Mac.getInstance("HmacSHA3-384", "wolfJCE");
+
+        for (int i = 0; i < hashVector.length; i++) {
+
+            if ((i == 0) && Fips.enabled) {
+                /* FIPS doesn't allow short key lengths */
+                continue;
+            }
+
+            SecretKeySpec key = new SecretKeySpec(
+                Util.h2b(sha3KeyVector[i]), "HmacSHA3-384");
+            mac.init(key);
+            mac.update(Util.h2b(sha3DataVector[i]));
+            byte[] result = mac.doFinal();
+
+            assertArrayEquals(Util.h2b(hashVector[i]), result);
+        }
+    }
+
+    @Test
+    public void testMacSha3_512SingleUpdate()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        String[] hashVector = new String[] {
+            "5a4bfeab6166427c7a3647b747292b83" +
+            "84537cdb89afb3bf5665e4c5e709350b" +
+            "287baec921fd7ca0ee7a0c31d022a95e" +
+            "1fc92ba9d77df883960275beb4e62024",
+            "eb3fbd4b2eaab8f5c504bd3a41465aac" +
+            "ec15770a7cabac531e482f860b5ec7ba" +
+            "47ccb2c6f2afce8f88d22b6dc61380f2" +
+            "3a668fd3888bb80537c0a0b86407689e",
+            "309e99f9ec075ec6c6d475eda1180687" +
+            "fcf1531195802a99b5677449a8625182" +
+            "851cb332afb6a89c411325fbcbcd42af" +
+            "cb7b6e5aab7ea42c660f97fd8584bf03",
+            "1cc3a9244a4a3fbdc72000169b794703" +
+            "78752cb5f12e627cbeef4e8f0b112b32" +
+            "a0eec9d04d64640b37f4dd66f78bb3ad" +
+            "52526b6512de0d7cc08b60016c37d7a8"
+        };
+
+        if (!enabledAlgos.contains("HmacSHA3-512")) {
+            return;
+        }
+
+        Mac mac = Mac.getInstance("HmacSHA3-512", "wolfJCE");
+
+        for (int i = 0; i < hashVector.length; i++) {
+
+            if ((i == 0) && Fips.enabled) {
+                /* FIPS doesn't allow short key lengths */
+                continue;
+            }
+
+            SecretKeySpec key = new SecretKeySpec(
+                Util.h2b(sha3KeyVector[i]), "HmacSHA3-512");
+            mac.init(key);
+            mac.update(Util.h2b(sha3DataVector[i]));
+            byte[] result = mac.doFinal();
+
+            assertArrayEquals(Util.h2b(hashVector[i]), result);
         }
     }
 
@@ -1139,6 +1340,50 @@ public class WolfCryptMacTest {
 
         if (enabledAlgos.contains("HmacSHA512")) {
             threadRunnerMacTest("HmacSHA512", "SHA512", sha512Vector);
+        }
+
+
+        if (enabledAlgos.contains("HmacSHA3-224")) {
+            HmacVector sha3_224Vector = new HmacVector(
+                Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"),
+                Util.h2b("4869205468657265"),
+                Util.h2b("3b16546bbc7be2706a031dcafd56373d" +
+                         "9884367641d8c59af3c860f7")
+            );
+            threadRunnerMacTest("HmacSHA3-224", "SHA3-224", sha3_224Vector);
+        }
+
+        if (enabledAlgos.contains("HmacSHA3-256")) {
+            HmacVector sha3_256Vector = new HmacVector(
+                Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"),
+                Util.h2b("4869205468657265"),
+                Util.h2b("ba85192310dffa96e2a3a40e69774351" +
+                         "140bb7185e1202cdcc917589f95e16bb")
+            );
+            threadRunnerMacTest("HmacSHA3-256", "SHA3-256", sha3_256Vector);
+        }
+
+        if (enabledAlgos.contains("HmacSHA3-384")) {
+            HmacVector sha3_384Vector = new HmacVector(
+                Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"),
+                Util.h2b("4869205468657265"),
+                Util.h2b("68d2dcf7fd4ddd0a2240c8a437305f61" +
+                         "fb7334cfb5d0226e1bc27dc10a2e723a" +
+                         "20d370b47743130e26ac7e3d532886bd")
+            );
+            threadRunnerMacTest("HmacSHA3-384", "SHA3-384", sha3_384Vector);
+        }
+
+        if (enabledAlgos.contains("HmacSHA3-512")) {
+            HmacVector sha3_512Vector = new HmacVector(
+                Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"),
+                Util.h2b("4869205468657265"),
+                Util.h2b("eb3fbd4b2eaab8f5c504bd3a41465aac" +
+                         "ec15770a7cabac531e482f860b5ec7ba" +
+                         "47ccb2c6f2afce8f88d22b6dc61380f2" +
+                         "3a668fd3888bb80537c0a0b86407689e")
+            );
+            threadRunnerMacTest("HmacSHA3-512", "SHA3-512", sha3_512Vector);
         }
     }
 

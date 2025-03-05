@@ -40,6 +40,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.Hmac;
 import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptError;
@@ -274,6 +275,197 @@ public class HmacTest {
         }
     }
 
+    static final String[] sha3KeyVector = new String[] {
+            "4A656665", /* Jefe  */
+            "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "0102030405060708010203040506070801020304050607080102030405060708" +
+            "0102030405060708010203040506070801020304050607080102030405060708" +
+            "0102030405060708010203040506070801020304050607080102030405060708" +
+            "0102030405060708010203040506070801020304050607080102030405060708" +
+            "0102030405060708010203040506070801020304050607080102030405060708"
+    };
+    static final String[] sha3DataVector = new String[] {
+            /* what do ya want for nothing? */
+            "7768617420646f2079612077616e7420666f72206e6f7468696e673f",
+            /* Hi There */
+            "4869205468657265",
+            "dddddddddddddddddddd" +
+            "dddddddddddddddddddd" +
+            "dddddddddddddddddddd" +
+            "dddddddddddddddddddd" +
+            "dddddddddddddddddddd",
+            /* Big Key Input */
+            "426967204b657920496e707574"
+    };
+
+    @Test
+    public void sha3_224HmacShouldMatch() {
+        String[] hashVector = new String[] {
+            "7fdb8dd88bd2f60d1b798634ad386811c2cfc85bfaf5d52bbace5e66",
+            "3b16546bbc7be2706a031dcafd56373d9884367641d8c59af3c860f7",
+            "676cfc7d16153638780390692be142d2df7ce924b909c0c08dbfdc1a",
+            "29e05e46c4a45e4674bfd72d1ad866db2d0d104e2bfaad537d15698b"
+        };
+
+        for (int i = 0; i < sha3DataVector.length; i++) {
+
+            if ((i == 0) && Fips.enabled) {
+                /* FIPS doesn't allow short key lengths */
+                continue;
+            }
+
+            try {
+                Hmac hmac = new Hmac();
+
+                byte[] key = Util.h2b(sha3KeyVector[i]);
+                byte[] data = Util.h2b(sha3DataVector[i]);
+                byte[] expected = Util.h2b(hashVector[i]);
+
+                hmac.setKey(Hmac.SHA3_224, key);
+                hmac.update(data);
+
+                assertArrayEquals(expected, hmac.doFinal());
+
+                hmac.reset();
+                assertArrayEquals(expected, hmac.doFinal(data));
+
+            } catch (WolfCryptException e) {
+                if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                    System.out.println("Hmac SHA3-224 test skipped: " +
+                                       e.getError());
+                } else {
+                    throw e;
+                }
+            }
+        }
+    }
+
+    @Test
+    public void sha3_256HmacShouldMatch() {
+        String[] hashVector = new String[] {
+            "c7d4072e788877ae3596bbb0da73b887c9171f93095b294ae857fbe2645e1ba5",
+            "ba85192310dffa96e2a3a40e69774351140bb7185e1202cdcc917589f95e16bb",
+            "84ec79124a27107865cedd8bd82da9965e5ed8c37b0ac98005a7f39ed58a4207",
+            "b55b8d64b69c21d0bf205ca2f7b9b14e8821612c66c391ae6c95168583e6f49b"
+        };
+
+        for (int i = 0; i < sha3DataVector.length; i++) {
+
+            if ((i == 0) && Fips.enabled) {
+                /* FIPS doesn't allow short key lengths */
+                continue;
+            }
+
+            try {
+                Hmac hmac = new Hmac();
+
+                byte[] key = Util.h2b(sha3KeyVector[i]);
+                byte[] expected = Util.h2b(hashVector[i]);
+                byte[] data = Util.h2b(sha3DataVector[i]);
+
+                hmac.setKey(Hmac.SHA3_256, key);
+                hmac.update(data);
+
+                assertArrayEquals(expected, hmac.doFinal());
+
+                hmac.reset();
+                assertArrayEquals(expected, hmac.doFinal(data));
+
+            } catch (WolfCryptException e) {
+                if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                    System.out.println("Hmac SHA3-256 test skipped: " +
+                                       e.getError());
+                } else {
+                    throw e;
+                }
+            }
+        }
+    }
+
+    @Test
+    public void sha3_384HmacShouldMatch() {
+        String[] hashVector = new String[] {
+            "f1101f8cbf9766fd6764d2ed61903f21ca9b18f57cf3e1a23ca13508a93243ce48c045dc007f26a21b3f5e0e9df4c20a",
+            "68d2dcf7fd4ddd0a2240c8a437305f61fb7334cfb5d0226e1bc27dc10a2e723a20d370b47743130e26ac7e3d532886bd",
+            "275cd0e661bb8b151c64d288f1f782fb91a8abd56858d72babb2d476f0458373b41b6ab5bf174bec422e53fc3135ac6e",
+            "aa91b3a62f56a1be8c3e7438db58d9d334dea0606d8d46e0eca9f6063514e6ed83e67c77246c11b59082b575da7b832d"
+        };
+
+        for (int i = 0; i < sha3DataVector.length; i++) {
+
+            if ((i == 0) && Fips.enabled) {
+                /* FIPS doesn't allow short key lengths */
+                continue;
+            }
+
+            try {
+                Hmac hmac = new Hmac();
+
+                byte[] key = Util.h2b(sha3KeyVector[i]);
+                byte[] data = Util.h2b(sha3DataVector[i]);
+                byte[] expected = Util.h2b(hashVector[i]);
+
+                hmac.setKey(Hmac.SHA3_384, key);
+                hmac.update(data);
+
+                assertArrayEquals(expected, hmac.doFinal());
+
+                hmac.reset();
+                assertArrayEquals(expected, hmac.doFinal(data));
+
+            } catch (WolfCryptException e) {
+                if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                    System.out.println("Hmac SHA3-384 test skipped: " +
+                                       e.getError());
+                } else {
+                    throw e;
+                }
+            }
+        }
+    }
+
+    @Test
+    public void sha3_512HmacShouldMatch() {
+        String[] hashVector = new String[] {
+            "5a4bfeab6166427c7a3647b747292b8384537cdb89afb3bf5665e4c5e709350b287baec921fd7ca0ee7a0c31d022a95e1fc92ba9d77df883960275beb4e62024",
+            "eb3fbd4b2eaab8f5c504bd3a41465aacec15770a7cabac531e482f860b5ec7ba47ccb2c6f2afce8f88d22b6dc61380f23a668fd3888bb80537c0a0b86407689e",
+            "309e99f9ec075ec6c6d475eda1180687fcf1531195802a99b5677449a8625182851cb332afb6a89c411325fbcbcd42afcb7b6e5aab7ea42c660f97fd8584bf03",
+            "1cc3a9244a4a3fbdc72000169b79470378752cb5f12e627cbeef4e8f0b112b32a0eec9d04d64640b37f4dd66f78bb3ad52526b6512de0d7cc08b60016c37d7a8"
+        };
+
+        for (int i = 0; i < sha3DataVector.length; i++) {
+
+            if ((i == 0) && Fips.enabled) {
+                /* FIPS doesn't allow short key lengths */
+                continue;
+            }
+
+            try {
+                Hmac hmac = new Hmac();
+
+                byte[] expected = Util.h2b(hashVector[i]);
+                byte[] data = Util.h2b(sha3DataVector[i]);
+
+                hmac.setKey(Hmac.SHA3_512, Util.h2b(sha3KeyVector[i]));
+                hmac.update(data);
+
+                assertArrayEquals(expected, hmac.doFinal());
+
+                hmac.reset();
+                assertArrayEquals(expected, hmac.doFinal(data));
+
+            } catch (WolfCryptException e) {
+                if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                    System.out.println("Hmac SHA3-512 test skipped: " +
+                                       e.getError());
+                } else {
+                    throw e;
+                }
+            }
+        }
+    }
+
     private void threadRunnerHmacTest(int hmacType, byte[] inKey,
         byte[] inData, byte[] inExpected)
         throws InterruptedException {
@@ -419,6 +611,43 @@ public class HmacTest {
                          "214b6eb3836aa089987a5aca585e" +
                          "3cb10af8cb19c12a89628e8f59b6" +
                          "952ac4b7da7131f0")
+            );
+        }
+
+        if (Hmac.SHA3_224 != -1) {
+            threadRunnerHmacTest(Hmac.SHA3_224,
+                Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"), /* key */
+                Util.h2b("4869205468657265"), /* data */
+                Util.h2b("3b16546bbc7be2706a031dcafd56373d" +
+                         "9884367641d8c59af3c860f7")
+            );
+        }
+        if (Hmac.SHA3_256 != -1) {
+            threadRunnerHmacTest(Hmac.SHA3_256,
+                Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"), /* key */
+                Util.h2b("4869205468657265"), /* data */
+                Util.h2b("ba85192310dffa96e2a3a40e697743" +
+                         "51140bb7185e1202cdcc917589f95e" +
+                         "16bb")
+            );
+        }
+        if (Hmac.SHA3_384 != -1) {
+            threadRunnerHmacTest(Hmac.SHA3_384,
+                Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"), /* key */
+                Util.h2b("4869205468657265"), /* data */
+                Util.h2b("68d2dcf7fd4ddd0a2240c8a437305f61" +
+                         "fb7334cfb5d0226e1bc27dc10a2e723a" +
+                         "20d370b47743130e26ac7e3d532886bd")
+            );
+        }
+        if (Hmac.SHA3_512 != -1) {
+            threadRunnerHmacTest(Hmac.SHA3_512,
+                Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"), /* key */
+                Util.h2b("4869205468657265"), /* data */
+                Util.h2b("eb3fbd4b2eaab8f5c504bd3a41465aac" +
+                         "ec15770a7cabac531e482f860b5ec7ba" +
+                         "47ccb2c6f2afce8f88d22b6dc61380f2" +
+                         "3a668fd3888bb80537c0a0b86407689e")
             );
         }
     }
