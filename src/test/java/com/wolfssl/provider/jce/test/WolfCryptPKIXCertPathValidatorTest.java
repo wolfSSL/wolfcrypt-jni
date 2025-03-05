@@ -27,11 +27,9 @@ import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.junit.Test;
-import org.junit.Assume;
 import org.junit.BeforeClass;
 
 import java.util.List;
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -54,13 +52,11 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.CertPath;
 import java.security.cert.CertPathValidator;
 import java.security.cert.CertPathValidatorResult;
-import java.security.cert.CertPathParameters;
 import java.security.cert.PKIXParameters;
 import java.security.cert.PKIXCertPathValidatorResult;
 import java.security.cert.CertificateException;
 import java.security.cert.CertPathValidatorException;
 import java.security.cert.TrustAnchor;
-import java.security.cert.PolicyNode;
 import java.security.cert.X509CertSelector;
 import java.security.cert.CRL;
 import java.security.cert.CertStore;
@@ -232,7 +228,6 @@ public class WolfCryptPKIXCertPathValidatorTest {
 
         PKIXCertPathValidatorResult pResult = null;
         TrustAnchor anchor = null;
-        PolicyNode policyTree = null;
         PublicKey pubKey = null;
 
         /* Check not null and of type PKIXCertPathValidatorResult */
@@ -247,6 +242,7 @@ public class WolfCryptPKIXCertPathValidatorTest {
         assertEquals(anchor.getTrustedCert(), expectedAnchor);
 
         /* Check PolicyTree matches expected - TODO */
+        //PolicyNode policyTree = null;
         //policyTree = pResult.getPolicyTree();
         //assertNotNull(policyTree);
 

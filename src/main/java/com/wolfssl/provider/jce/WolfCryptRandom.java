@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.security.SecureRandomSpi;
 
 import com.wolfssl.wolfcrypt.Rng;
-import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE RNG/SecureRandom wrapper

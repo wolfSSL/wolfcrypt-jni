@@ -36,7 +36,6 @@ import java.security.spec.InvalidKeySpecException;
 
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Pwdbased;
-import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE SecretKeyFactory implementation.
@@ -434,12 +433,6 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
     @Override
     protected synchronized KeySpec engineGetKeySpec(SecretKey key,
         Class<?> keySpec) throws InvalidKeySpecException {
-
-        PBEKey pKey = null;
-        int iterations = 0;
-        char[] password = null;
-        byte[] salt = null;
-        byte[] encoded = null;
 
         log("returning KeySpec from SecretKey in requested type");
 

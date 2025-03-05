@@ -62,6 +62,7 @@ public class Sha512Test {
     public static void checkSha512IsAvailable() {
         try {
             Sha512 sha = new Sha512();
+            assertNotNull(sha);
             System.out.println("JNI Sha512 Class");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {

@@ -72,6 +72,8 @@ public class WolfCryptMessageDigestSha256Test {
         try {
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256",
                                                              "wolfJCE");
+            assertNotNull(sha256);
+
         } catch (NoSuchAlgorithmException e) {
             /* if we also detect algo is compiled out, skip tests */
             if (FeatureDetect.Sha256Enabled() == false) {

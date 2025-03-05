@@ -62,6 +62,7 @@ public class ShaTest {
     public static void checkShaIsAvailable() {
         try {
             Sha sha = new Sha();
+            assertNotNull(sha);
             System.out.println("JNI Sha Class");
         } catch (WolfCryptException e) {
             if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {

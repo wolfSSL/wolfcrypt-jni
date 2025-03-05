@@ -32,7 +32,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import javax.crypto.ShortBufferException;
 import java.nio.ByteBuffer;
-import javax.crypto.ShortBufferException;
 
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -81,7 +80,7 @@ public class AesTest {
     @Test
     public void deprecatedConstructorThrows() {
         try {
-            Aes aes = new Aes(null, null, Aes.ENCRYPT_MODE);
+            new Aes(null, null, Aes.ENCRYPT_MODE);
             fail("Failed to throw expected exception");
         } catch (WolfCryptException e) {
             /* expected */

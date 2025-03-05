@@ -28,18 +28,13 @@ import java.security.KeyPair;
 import java.security.InvalidAlgorithmParameterException;
 
 import java.security.SecureRandom;
-import java.security.AlgorithmParameters;
 import java.security.spec.AlgorithmParameterSpec;
-import java.security.Key;
-import java.security.KeyPair;
 import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
 import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.RSAKeyGenParameterSpec;
-import java.security.spec.InvalidKeySpecException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.interfaces.ECPrivateKey;
@@ -55,8 +50,6 @@ import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Rng;
-
-import com.wolfssl.provider.jce.WolfCryptDebug;
 
 /**
  * wolfCrypt JCE KeyPairGenerator wrapper class

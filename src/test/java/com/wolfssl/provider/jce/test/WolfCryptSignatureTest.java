@@ -29,15 +29,11 @@ import org.junit.runner.Description;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
-import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.Random;
-import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import java.security.Security;
@@ -103,6 +99,7 @@ public class WolfCryptSignatureTest {
         for (int i = 0; i < wolfJCEAlgos.length; i++) {
             try {
                 sig = Signature.getInstance(wolfJCEAlgos[i], "wolfJCE");
+                assertNotNull(sig);
                 enabledAlgos.add(wolfJCEAlgos[i]);
             } catch (NoSuchAlgorithmException e) {
                 /* algo not compiled in */
@@ -119,6 +116,7 @@ public class WolfCryptSignatureTest {
         /* try to get all available options we expect to have */
         for (int i = 0; i < enabledAlgos.size(); i++) {
             sig = Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
+            assertNotNull(sig);
         }
 
         /* asking for a bad algo should throw an exception */

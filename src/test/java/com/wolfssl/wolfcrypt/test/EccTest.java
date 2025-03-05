@@ -32,7 +32,6 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
 import java.util.Arrays;
-import java.util.Random;
 import java.util.Iterator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -162,7 +161,6 @@ public class EccTest {
 
     @Test
     public void eccCurveSizeFromName() {
-        Ecc alice = new Ecc();
         int size = 0;
 
         /* valid case */
@@ -204,7 +202,6 @@ public class EccTest {
     public void eccPrivateToPkcs8() {
         Ecc alice = new Ecc();
         byte[] pkcs8;
-        int size;
 
         byte[] prvKey = Util.h2b("30770201010420F8CF92"
                 + "6BBD1E28F1A8ABA1234F3274188850AD7EC7EC92"

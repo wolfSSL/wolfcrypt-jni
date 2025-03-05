@@ -74,12 +74,16 @@ public class WolfCryptMessageDigestShaTest {
             /* Try "SHA" and "SHA1" cipher strings, for SUN interop */
             MessageDigest sha = MessageDigest.getInstance("SHA",
                                                           "wolfJCE");
+            assertNotNull(sha);
 
             MessageDigest sha1 = MessageDigest.getInstance("SHA1",
                                                           "wolfJCE");
+            assertNotNull(sha1);
 
             MessageDigest shaDash1 = MessageDigest.getInstance("SHA-1",
                                                                "wolfJCE");
+            assertNotNull(shaDash1);
+
         } catch (NoSuchAlgorithmException e) {
             /* if we also detect algo is compiled out, skip tests */
             if (FeatureDetect.ShaEnabled() == false) {
