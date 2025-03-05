@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 public class Hmac extends NativeStruct {
 
     private enum hashType {
-        typeMD5, typeSHA, typeSHA256, typeSHA384, typeSHA512;
+        typeMD5, typeSHA, typeSHA224, typeSHA256, typeSHA384, typeSHA512;
     }
 
     /* types may be -1 if not compiled in at native level */
@@ -37,6 +37,8 @@ public class Hmac extends NativeStruct {
     public static final int MD5     = getHashCode(hashType.typeMD5);
     /** HMAC-SHA-1 type */
     public static final int SHA     = getHashCode(hashType.typeSHA);
+    /** HMAC-SHA2-224 type */
+    public static final int SHA224  = getHashCode(hashType.typeSHA224);
     /** HMAC-SHA2-256 type */
     public static final int SHA256  = getHashCode(hashType.typeSHA256);
     /** HMAC-SHA2-384 type */
@@ -95,6 +97,7 @@ public class Hmac extends NativeStruct {
     private native int wc_HmacSizeByType(int type);
     private native static int getCodeMd5();
     private native static int getCodeSha();
+    private native static int getCodeSha224();
     private native static int getCodeSha256();
     private native static int getCodeSha384();
     private native static int getCodeSha512();
@@ -318,6 +321,9 @@ public class Hmac extends NativeStruct {
         if (type == MD5) {
             return "HmacMD5";
         }
+        else if (type == SHA224) {
+            return "HmacSHA224";
+        }
         else if (type == SHA256) {
             return "HmacSHA256";
         }
@@ -359,6 +365,8 @@ public class Hmac extends NativeStruct {
                 return getCodeMd5();
             case typeSHA:
                 return getCodeSha();
+            case typeSHA224:
+                return getCodeSha224();
             case typeSHA256:
                 return getCodeSha256();
             case typeSHA384:
@@ -370,4 +378,3 @@ public class Hmac extends NativeStruct {
         }
     }
 }
-

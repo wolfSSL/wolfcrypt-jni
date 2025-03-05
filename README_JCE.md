@@ -88,6 +88,7 @@ The JCE provider currently supports the following algorithms:
     MessageDigest Class
         MD5
         SHA-1
+        SHA-224
         SHA-256
         SHA-384
         SHA-512
@@ -107,6 +108,7 @@ The JCE provider currently supports the following algorithms:
     Mac Class
         HmacMD5
         HmacSHA1
+        HmacSHA224
         HmacSHA256
         HmacSHA384
         HmacSHA512
@@ -114,10 +116,12 @@ The JCE provider currently supports the following algorithms:
     Signature Class
         MD5withRSA
         SHA1withRSA
+        SHA224withRSA
         SHA256withRSA
         SHA384withRSA
         SHA512withRSA
         SHA1withECDSA
+        SHA224withECDSA
         SHA256withECDSA
         SHA384withECDSA
         SHA512withECDSA
@@ -130,6 +134,7 @@ The JCE provider currently supports the following algorithms:
     KeyGenerator
         AES
         HmacSHA1
+        HmacSHA224
         HmacSHA256
         HmacSHA384
         HmacSHA512

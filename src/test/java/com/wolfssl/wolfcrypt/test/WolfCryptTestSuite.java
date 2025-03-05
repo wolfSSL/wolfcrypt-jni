@@ -33,6 +33,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ChachaTest.class,
     Md5Test.class,
     ShaTest.class,
+    Sha224Test.class,
     Sha256Test.class,
     Sha384Test.class,
     Sha512Test.class,
