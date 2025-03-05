@@ -53,6 +53,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/Rng.java \
     src/main/java/com/wolfssl/wolfcrypt/Rsa.java \
     src/main/java/com/wolfssl/wolfcrypt/Sha.java \
+    src/main/java/com/wolfssl/wolfcrypt/Sha224.java \
     src/main/java/com/wolfssl/wolfcrypt/Sha256.java \
     src/main/java/com/wolfssl/wolfcrypt/Sha384.java \
     src/main/java/com/wolfssl/wolfcrypt/Sha512.java \
@@ -70,6 +71,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMac.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestMd5.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha224.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha256.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha384.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha512.java \
