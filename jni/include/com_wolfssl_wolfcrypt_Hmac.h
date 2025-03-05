@@ -115,6 +115,38 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeBlake2b
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    getCodeSha3_224
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha3_1224
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    getCodeSha3_256
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha3_1256
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    getCodeSha3_384
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha3_1384
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    getCodeSha3_512
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha3_1512
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
  * Method:    mallocNativeStruct
  * Signature: ()J
  */

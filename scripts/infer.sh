@@ -57,6 +57,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/Sha256.java \
     src/main/java/com/wolfssl/wolfcrypt/Sha384.java \
     src/main/java/com/wolfssl/wolfcrypt/Sha512.java \
+    src/main/java/com/wolfssl/wolfcrypt/Sha3.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfCrypt.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfCryptError.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfCryptException.java \

@@ -94,6 +94,16 @@ public final class WolfCryptProvider extends Provider {
             put("MessageDigest.SHA-512",
                     "com.wolfssl.provider.jce.WolfCryptMessageDigestSha512");
         }
+        if (FeatureDetect.Sha3Enabled()) {
+            put("MessageDigest.SHA3-224",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha3$wcSHA3_224");
+            put("MessageDigest.SHA3-256",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha3$wcSHA3_256");
+            put("MessageDigest.SHA3-384",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha3$wcSHA3_384");
+            put("MessageDigest.SHA3-512",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestSha3$wcSHA3_512");
+        }
 
         /* SecureRandom */
         /* TODO: May need to add "SHA1PRNG" alias, other JCA consumemrs may
@@ -138,6 +148,25 @@ public final class WolfCryptProvider extends Provider {
             put("Signature.SHA512withECDSA",
                   "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA512wECDSA");
         }
+        if (FeatureDetect.Sha3Enabled()) {
+            put("Signature.SHA3-224withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_224wRSA");
+            put("Signature.SHA3-256withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_256wRSA");
+            put("Signature.SHA3-384withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_384wRSA");
+            put("Signature.SHA3-512withRSA",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_512wRSA");
+
+            put("Signature.SHA3-224withECDSA",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_224wECDSA");
+            put("Signature.SHA3-256withECDSA",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_256wECDSA");
+            put("Signature.SHA3-384withECDSA",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_384wECDSA");
+            put("Signature.SHA3-512withECDSA",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_512wECDSA");
+        }
 
         /* Mac */
         if (FeatureDetect.HmacMd5Enabled()) {
@@ -163,6 +192,22 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.HmacSha512Enabled()) {
             put("Mac.HmacSHA512",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA512");
+        }
+        if (FeatureDetect.HmacSha3_224Enabled()) {
+            put("Mac.HmacSHA3-224",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA3_224");
+        }
+        if (FeatureDetect.HmacSha3_256Enabled()) {
+            put("Mac.HmacSHA3-256",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA3_256");
+        }
+        if (FeatureDetect.HmacSha3_384Enabled()) {
+            put("Mac.HmacSHA3-384",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA3_384");
+        }
+        if (FeatureDetect.HmacSha3_512Enabled()) {
+            put("Mac.HmacSHA3-512",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA3_512");
         }
 
         /* Cipher */

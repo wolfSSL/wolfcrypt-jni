@@ -43,6 +43,7 @@ import com.wolfssl.wolfcrypt.Sha224;
 import com.wolfssl.wolfcrypt.Sha256;
 import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.Sha512;
+import com.wolfssl.wolfcrypt.Sha3;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Rng;
@@ -64,7 +65,11 @@ public class WolfCryptSignature extends SignatureSpi {
         WC_SHA224,
         WC_SHA256,
         WC_SHA384,
-        WC_SHA512
+        WC_SHA512,
+        WC_SHA3_224,
+        WC_SHA3_256,
+        WC_SHA3_384,
+        WC_SHA3_512
     }
 
     /* internal hash type sums (asn.h) */
@@ -74,6 +79,10 @@ public class WolfCryptSignature extends SignatureSpi {
     private int SHA256h = 414;
     private int SHA384h = 415;
     private int SHA512h = 416;
+    private int SHA3_224h = 420;
+    private int SHA3_256h = 421;
+    private int SHA3_384h = 422;
+    private int SHA3_512h = 423;
 
     /* internal key objects */
     private Rsa rsa = null;
@@ -86,6 +95,7 @@ public class WolfCryptSignature extends SignatureSpi {
     private Sha256 sha256 = null;
     private Sha384 sha384 = null;
     private Sha512 sha512 = null;
+    private Sha3 sha3 = null;
 
     private KeyType keyType;        /* active key type, from KeyType */
     private DigestType digestType;  /* active digest type, from DigestType */
@@ -153,6 +163,30 @@ public class WolfCryptSignature extends SignatureSpi {
                 this.sha512 = new Sha512();
                 this.digestSz = Sha512.DIGEST_SIZE;
                 this.internalHashSum = SHA512h;
+                break;
+
+            case WC_SHA3_224:
+                this.sha3 = new Sha3(Sha3.TYPE_SHA3_224);
+                this.digestSz = Sha3.DIGEST_SIZE_224;
+                this.internalHashSum = SHA3_224h;
+                break;
+
+            case WC_SHA3_256:
+                this.sha3 = new Sha3(Sha3.TYPE_SHA3_256);
+                this.digestSz = Sha3.DIGEST_SIZE_256;
+                this.internalHashSum = SHA3_256h;
+                break;
+
+            case WC_SHA3_384:
+                this.sha3 = new Sha3(Sha3.TYPE_SHA3_384);
+                this.digestSz = Sha3.DIGEST_SIZE_384;
+                this.internalHashSum = SHA3_384h;
+                break;
+
+            case WC_SHA3_512:
+                this.sha3 = new Sha3(Sha3.TYPE_SHA3_512);
+                this.digestSz = Sha3.DIGEST_SIZE_512;
+                this.internalHashSum = SHA3_512h;
                 break;
 
             default:
@@ -280,6 +314,13 @@ public class WolfCryptSignature extends SignatureSpi {
             case WC_SHA512:
                 this.sha512.init();
                 break;
+
+            case WC_SHA3_224:
+            case WC_SHA3_256:
+            case WC_SHA3_384:
+            case WC_SHA3_512:
+                this.sha3.init();
+                break;
         }
 
         log("init sign with PrivateKey");
@@ -350,6 +391,12 @@ public class WolfCryptSignature extends SignatureSpi {
             case WC_SHA512:
                 this.sha512.init();
                 break;
+
+            case WC_SHA3_224:
+            case WC_SHA3_256:
+            case WC_SHA3_384:
+            case WC_SHA3_512:
+                this.sha3.init();
         }
 
         log("init verify with PublicKey");
@@ -399,8 +446,14 @@ public class WolfCryptSignature extends SignatureSpi {
                 case WC_SHA512:
                     this.sha512.digest(digest);
                     break;
-            }
 
+                case WC_SHA3_224:
+                case WC_SHA3_256:
+                case WC_SHA3_384:
+                case WC_SHA3_512:
+                    this.sha3.digest(digest);
+                    break;
+            }
         } catch (ShortBufferException e) {
             throw new SignatureException(e.getMessage());
         }
@@ -489,6 +542,12 @@ public class WolfCryptSignature extends SignatureSpi {
             case WC_SHA512:
                 this.sha512.update(b, off, len);
                 break;
+
+            case WC_SHA3_224:
+            case WC_SHA3_256:
+            case WC_SHA3_384:
+            case WC_SHA3_512:
+                this.sha3.update(b, off, len);
         }
 
         log("update, offset: " + off + ", len: " + len);
@@ -530,6 +589,13 @@ public class WolfCryptSignature extends SignatureSpi {
 
                 case WC_SHA512:
                     this.sha512.digest(digest);
+                    break;
+
+                case WC_SHA3_224:
+                case WC_SHA3_256:
+                case WC_SHA3_384:
+                case WC_SHA3_512:
+                    this.sha3.digest(digest);
                     break;
             }
 
@@ -619,6 +685,14 @@ public class WolfCryptSignature extends SignatureSpi {
                 return "SHA384";
             case WC_SHA512:
                 return "SHA512";
+            case WC_SHA3_224:
+                return "SHA3-224";
+            case WC_SHA3_256:
+                return "SHA3-256";
+            case WC_SHA3_384:
+                return "SHA3-384";
+            case WC_SHA3_512:
+                return "SHA3-512";
             default:
                 return "None";
         }
@@ -651,6 +725,9 @@ public class WolfCryptSignature extends SignatureSpi {
 
             if (this.sha512 != null)
                 this.sha512.releaseNativeStruct();
+
+            if (this.sha3 != null)
+                this.sha3.releaseNativeStruct();
 
             /* free native key objects */
             if (this.rsa != null)
@@ -764,6 +841,66 @@ public class WolfCryptSignature extends SignatureSpi {
     }
 
     /**
+     * wolfJCE SHA3-224wRSA signature class
+     */
+    public static final class wcSHA3_224wRSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA3_224wRSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA3_224wRSA() throws NoSuchAlgorithmException {
+            super(KeyType.WC_RSA, DigestType.WC_SHA3_224);
+        }
+    }
+
+    /**
+     * wolfJCE SHA3-256wRSA signature class
+     */
+    public static final class wcSHA3_256wRSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA3_256wRSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA3_256wRSA() throws NoSuchAlgorithmException {
+            super(KeyType.WC_RSA, DigestType.WC_SHA3_256);
+        }
+    }
+
+    /**
+     * wolfJCE SHA3-384wRSA signature class
+     */
+    public static final class wcSHA3_384wRSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA3_384wRSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA3_384wRSA() throws NoSuchAlgorithmException {
+            super(KeyType.WC_RSA, DigestType.WC_SHA3_384);
+        }
+    }
+
+    /**
+     * wolfJCE SHA3-512wRSA signature class
+     */
+    public static final class wcSHA3_512wRSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA3_512wRSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA3_512wRSA() throws NoSuchAlgorithmException {
+            super(KeyType.WC_RSA, DigestType.WC_SHA3_512);
+        }
+    }
+
+    /**
      * wolfJCE SHA1wECDSA signature class
      */
     public static final class wcSHA1wECDSA extends WolfCryptSignature {
@@ -837,5 +974,64 @@ public class WolfCryptSignature extends SignatureSpi {
             super(KeyType.WC_ECDSA, DigestType.WC_SHA512);
         }
     }
-}
 
+    /**
+     * wolfJCE SHA3-224wECDSA signature class
+     */
+    public static final class wcSHA3_224wECDSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA3_224wECDSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA3_224wECDSA() throws NoSuchAlgorithmException {
+            super(KeyType.WC_ECDSA, DigestType.WC_SHA3_224);
+        }
+    }
+
+    /**
+     * wolfJCE SHA3-256wECDSA signature class
+     */
+    public static final class wcSHA3_256wECDSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA3_256wECDSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA3_256wECDSA() throws NoSuchAlgorithmException {
+            super(KeyType.WC_ECDSA, DigestType.WC_SHA3_256);
+        }
+    }
+
+    /**
+     * wolfJCE SHA3-384wECDSA signature class
+     */
+    public static final class wcSHA3_384wECDSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA3_384wECDSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA3_384wECDSA() throws NoSuchAlgorithmException {
+            super(KeyType.WC_ECDSA, DigestType.WC_SHA3_384);
+        }
+    }
+
+    /**
+     * wolfJCE SHA3-512wECDSA signature class
+     */
+    public static final class wcSHA3_512wECDSA extends WolfCryptSignature {
+        /**
+         * Create new wcSHA3_512wECDSA object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA3_512wECDSA() throws NoSuchAlgorithmException {
+            super(KeyType.WC_ECDSA, DigestType.WC_SHA3_512);
+        }
+    }
+}

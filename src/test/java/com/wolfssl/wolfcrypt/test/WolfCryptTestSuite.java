@@ -37,6 +37,7 @@ import org.junit.runners.Suite.SuiteClasses;
     Sha256Test.class,
     Sha384Test.class,
     Sha512Test.class,
+    Sha3Test.class,
     HmacTest.class,
     RngTest.class,
     RsaTest.class,
