@@ -309,7 +309,7 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update_1internal___3BII(
     data   = getByteArray(env, data_buffer);
     dataSz = getByteArrayLength(env, data_buffer);
 
-    if (sha == NULL || data == NULL ||
+    if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
         (word32)(offset + len) > dataSz) {
         ret = BAD_FUNC_ARG;
     }
@@ -519,7 +519,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1update_1interna
     data   = getByteArray(env, data_buffer);
     dataSz = getByteArrayLength(env, data_buffer);
 
-    if (sha == NULL || data == NULL ||
+    if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
         (word32)(offset + len) > dataSz) {
         ret = BAD_FUNC_ARG;
     }
@@ -735,7 +735,7 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update_1internal___3BII(
     data   = getByteArray(env, data_buffer);
     dataSz = getByteArrayLength(env, data_buffer);
 
-    if (sha == NULL || data == NULL ||
+    if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
         (word32)(offset + len) > dataSz) {
         ret = BAD_FUNC_ARG;
     }
@@ -930,7 +930,7 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1update_1internal___3BII(
     data   = getByteArray(env, data_buffer);
     dataSz = getByteArrayLength(env, data_buffer);
 
-    if (sha == NULL || data == NULL ||
+    if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
         (word32)(offset + len) > dataSz) {
         ret = BAD_FUNC_ARG;
     }
@@ -1126,7 +1126,7 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1update_1internal___3BII(
     data   = getByteArray(env, data_buffer);
     dataSz = getByteArrayLength(env, data_buffer);
 
-    if (sha == NULL || data == NULL ||
+    if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
         (word32)(offset + len) > dataSz) {
         ret = BAD_FUNC_ARG;
     }
@@ -1414,7 +1414,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1update_1internal_
     data   = getByteArray(env, data_buffer);
     dataSz = getByteArrayLength(env, data_buffer);
 
-    if (sha == NULL || data == NULL ||
+    if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
         (word32)(offset + len) > dataSz) {
         ret = BAD_FUNC_ARG;
     }
