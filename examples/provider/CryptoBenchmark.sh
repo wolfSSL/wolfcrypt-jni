@@ -78,7 +78,7 @@ else
 fi
 
 # Run the benchmark
-java -classpath $CLASSPATH -Dsun.boot.library.path=../../../lib/ CryptoBenchmark $@
+java -XX:-TieredCompilation -XX:ReservedCodeCacheSize=1024m -classpath $CLASSPATH -Dsun.boot.library.path=../../../lib/ CryptoBenchmark $@
 
 # Always prompt for cleanup after benchmark completion if Bouncy Castle files exist
 if [ -f "../../../lib/bcprov-jdk18on-1.79.jar" ] && [ -f "../../../lib/bctls-jdk18on-1.79.jar" ]; then
