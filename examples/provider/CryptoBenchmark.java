@@ -16,6 +16,8 @@ import java.math.BigInteger;
 import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHParameterSpec;
 import java.security.spec.ECGenParameterSpec;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 import java.util.*;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
@@ -551,6 +553,62 @@ public class CryptoBenchmark {
         printKeyGenResults(agreementOps, elapsedTime, agreementOp, providerName, DH_ALGORITHM);
     }
 
+    /* PBKDF2 benchmark */
+    private static void runPBKDF2Benchmark(String algorithm, String providerName) throws Exception {
+        /* Variables for benchmark */
+        SecretKeyFactory secretKeyFactory;
+        byte[] salt;
+        char[] password;
+        int iterationCount = 10000;
+        int keyLength = 32;
+        int processingBytes = 1024;
+        SecureRandom secureRandom = new SecureRandom();
+        
+        /* Initialize test parameters */
+        salt = new byte[16];
+        secureRandom.nextBytes(salt);
+        password = "wolfCryptBenchmarkTestPassword".toCharArray();
+        
+        /* Initialize SecretKeyFactory with specific provider */
+        try {
+            secretKeyFactory = SecretKeyFactory.getInstance(algorithm, providerName);
+        } catch (Exception e) {
+            System.out.printf(" %-40s  Not supported by provider %s%n", algorithm, providerName);
+            return;
+        }
+        
+        /* Create PBEKeySpec */
+        PBEKeySpec pbeKeySpec = new PBEKeySpec(password, salt, iterationCount, keyLength * 8);
+        
+        /* Warm up phase */
+        for (int i = 0; i < WARMUP_ITERATIONS; i++) {
+            secretKeyFactory.generateSecret(pbeKeySpec);
+        }
+        
+        /* Benchmark */
+        long startTime = System.nanoTime();
+        int operations = 0;
+        double elapsedTime = 0;
+        
+        /* Run for at least 1 second */
+        do {
+            secretKeyFactory.generateSecret(pbeKeySpec);
+            operations++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < 1.0);
+        
+        /* Calculate metrics */
+        double processedKiB = (operations * processingBytes) / 1024.0;
+        double throughput = processedKiB / elapsedTime;
+        
+        String testName = String.format("%s (%s)", algorithm, providerName);
+        System.out.printf(" %-40s  %8.3f KiB took %.3f seconds, %8.3f KiB/s%n",
+            testName, processedKiB, elapsedTime, throughput);
+        
+        /* Store result */
+        results.add(new BenchmarkResult(providerName, algorithm, throughput));
+    }
+
     public static void main(String[] args) {
         try {
             /* Check if Bouncy Castle is available */
@@ -678,6 +736,42 @@ public class CryptoBenchmark {
                     } catch (Exception e) {
                         System.out.printf("Failed to benchmark DH %d with provider %s: %s%n", 
                             keySize, provider.getName(), e.getMessage());
+                    }
+                }
+            }
+
+            System.out.println("\n-----------------------------------------------------------------------------");
+            System.out.println("PBKDF2 Benchmark Results");
+            System.out.println("-----------------------------------------------------------------------------");
+
+            /* List of PBKDF2 algorithms to test */
+            String[] pbkdf2Algorithms = {
+                "PBKDF2WithHmacSHA1",
+                "PBKDF2WithHmacSHA224",
+                "PBKDF2WithHmacSHA256",
+                "PBKDF2WithHmacSHA384", 
+                "PBKDF2WithHmacSHA512",
+                "PBKDF2WithHmacSHA3-224",
+                "PBKDF2WithHmacSHA3-256",
+                "PBKDF2WithHmacSHA3-384",
+                "PBKDF2WithHmacSHA3-512"
+            };
+
+            for (String providerName : providerNames) {
+                System.out.println("\n" + providerName + ":");
+                
+                for (String algorithm : pbkdf2Algorithms) {
+                    try {
+                        /* Skip SHA3 algorithms for SunJCE */
+                        if (providerName.equals("SunJCE") && algorithm.contains("SHA3")) {
+                            continue;
+                        }
+                        
+                        runPBKDF2Benchmark(algorithm, providerName);
+                    } catch (Exception e) {
+                        /* Print but continue with other algorithms */
+                        System.out.printf(" %-40s  Error: %s%n", 
+                            algorithm + " (" + providerName + ")", e.getMessage());
                     }
                 }
             }
