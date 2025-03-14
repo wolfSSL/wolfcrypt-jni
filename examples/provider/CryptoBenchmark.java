@@ -18,6 +18,9 @@ import javax.crypto.spec.DHParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.util.*;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
@@ -296,6 +299,15 @@ public class CryptoBenchmark {
         results.add(new BenchmarkResult(providerName, cipherName + " dec", decryptThroughput));
     }
 
+    // Helper method to check if an algorithm is supported by the provider
+    private static boolean isAlgorithmSupported(String algorithm, String providerName) {
+        try {
+            MessageDigest.getInstance(algorithm, providerName);
+            return true;
+        } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
+            return false;
+        }
+    }
     /* Print RSA results in simpler format */
     private static void printKeyGenResults(int operations, double totalTime, String operation,
         String providerName, String mode) {
@@ -609,6 +621,35 @@ public class CryptoBenchmark {
         results.add(new BenchmarkResult(providerName, algorithm, throughput));
     }
 
+    /* MessageDigest benchmark */
+    private static void runMessageDigestBenchmark(String algorithm, String providerName) throws Exception {
+        MessageDigest md = MessageDigest.getInstance(algorithm, providerName);
+        byte[] testData = generateTestData(DATA_SIZE);
+        int ops = 0;
+        long startTime = System.nanoTime();
+        double elapsedTime;
+
+        /* Warm up phase */
+        for (int i = 0; i < WARMUP_ITERATIONS; i++) {
+            md.update(testData);
+            md.digest();
+        }
+
+        /* Benchmark phase: run for at least 1 second */
+        do {
+            md.update(testData);
+            md.digest();
+            ops++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
+
+        double dataSizeMiB = (DATA_SIZE * ops) / (1024.0 * 1024.0);
+        double throughput = dataSizeMiB / elapsedTime;
+        System.out.printf("%-40s %8.3f MiB took %.3f sec, %8.3f MiB/s%n",
+            algorithm + " (" + providerName + ")", dataSizeMiB, elapsedTime, throughput);
+        results.add(new BenchmarkResult(providerName, algorithm, throughput));
+    }
+
     public static void main(String[] args) {
         try {
             /* Check if Bouncy Castle is available */
@@ -772,6 +813,79 @@ public class CryptoBenchmark {
                         /* Print but continue with other algorithms */
                         System.out.printf(" %-40s  Error: %s%n", 
                             algorithm + " (" + providerName + ")", e.getMessage());
+                    }
+                }
+            }
+
+            System.out.println("\n-----------------------------------------------------------------------------");
+            System.out.println("MessageDigest Benchmark Results");
+            System.out.println("-----------------------------------------------------------------------------");
+
+            for (int i = 0; i < providers.length; i++) {
+                Security.insertProviderAt(providers[i], 1);
+                String providerName = providerNames[i];
+                String digestProviderName = providerName;
+
+                if (!providerName.equals("wolfJCE")) {
+                    if (providerName.equals("BC")) {
+                        digestProviderName = "BC";
+                    } else {
+                        try {
+                            Provider sunProvider = Security.getProvider("SUN");
+                            if (sunProvider != null) {
+                                Security.insertProviderAt(sunProvider, 1);
+                                digestProviderName = "SUN";
+                            } else {
+                                System.out.println("SUN provider not available, using " + providerName + " for MessageDigest");
+                            }
+                        } catch (Exception e) {
+                            System.out.println("Failed to set up SUN provider for " + providerName + ": " + e.getMessage());
+                            System.out.println("Using " + providerName + " for MessageDigest instead");
+                        }
+                    }
+                }
+
+                System.out.println("\n" + digestProviderName + ":");
+                try {
+                    if (FeatureDetect.Md5Enabled() && isAlgorithmSupported("MD5", digestProviderName)) {
+                        runMessageDigestBenchmark("MD5", digestProviderName);
+                    }
+                    if (FeatureDetect.ShaEnabled() && isAlgorithmSupported("SHA-1", digestProviderName)) {
+                        runMessageDigestBenchmark("SHA-1", digestProviderName);
+                    }
+                    if (FeatureDetect.Sha224Enabled() && isAlgorithmSupported("SHA-224", digestProviderName)) {
+                        runMessageDigestBenchmark("SHA-224", digestProviderName);
+                    }
+                    if (FeatureDetect.Sha256Enabled() && isAlgorithmSupported("SHA-256", digestProviderName)) {
+                        runMessageDigestBenchmark("SHA-256", digestProviderName);
+                    }
+                    if (FeatureDetect.Sha384Enabled() && isAlgorithmSupported("SHA-384", digestProviderName)) {
+                        runMessageDigestBenchmark("SHA-384", digestProviderName);
+                    }
+                    if (FeatureDetect.Sha512Enabled() && isAlgorithmSupported("SHA-512", digestProviderName)) {
+                        runMessageDigestBenchmark("SHA-512", digestProviderName);
+                    }
+                    if (FeatureDetect.Sha3Enabled() && isAlgorithmSupported("SHA3-224", digestProviderName)) {
+                        runMessageDigestBenchmark("SHA3-224", digestProviderName);
+                    }
+                    if (FeatureDetect.Sha3Enabled() && isAlgorithmSupported("SHA3-256", digestProviderName)) {
+                        runMessageDigestBenchmark("SHA3-256", digestProviderName);
+                    }
+                    if (FeatureDetect.Sha3Enabled() && isAlgorithmSupported("SHA3-384", digestProviderName)) {
+                        runMessageDigestBenchmark("SHA3-384", digestProviderName);
+                    }
+                    if (FeatureDetect.Sha3Enabled() && isAlgorithmSupported("SHA3-512", digestProviderName)) {
+                        runMessageDigestBenchmark("SHA3-512", digestProviderName);
+                    }
+                } catch (Exception e) {
+                    System.out.println("Failed to benchmark MessageDigest with provider " + digestProviderName + ": " + e.getMessage());
+                } finally {
+                    Security.removeProvider(providers[i].getName());
+                    if (!providerName.equals("wolfJCE") && !providerName.equals("BC")) {
+                        Provider sunProvider = Security.getProvider("SUN");
+                        if (sunProvider != null) {
+                            Security.removeProvider(sunProvider.getName());
+                        }
                     }
                 }
             }
