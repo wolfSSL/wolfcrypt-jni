@@ -234,8 +234,7 @@ SecretKey objects.
 #### Converting Other KeyStore Formats to WKS
 
 The Java `keytool` application can be used to convert between KeyStore formats.
-This can be easily used for example to convert a JKS KeyStore into a WKS
-format KeyStore.
+This can be easily used to convert a JKS KeyStore into a WKS format KeyStore.
 
 The following example command would convert a KeyStore in JKS format named
 `server.jks` to a KeyStore in WKS format named `server.wks`:
@@ -247,6 +246,50 @@ keytool -importkeystore -srckeystore server.jks -destkeystore server.wks \
     -provider com.wolfssl.provider.jce.WolfCryptProvider \
     --providerpath /path/to/wolfcrypt-jni.jar
 ```
+
+Additionally, wolfJCE provides a utility method `WolfCryptUtil.convertKeyStoreToWKS()` 
+that can be used programmatically to convert KeyStore formats. This method
+supports converting from JKS, PKCS12, and WKS formats to WKS format. When
+converting from WKS to WKS, the method efficiently returns the same input
+stream without performing any conversion.
+
+The method automatically detects the input KeyStore format and handles the
+conversion appropriately. It supports the following features:
+
+- Automatic format detection (WKS, JKS, PKCS12)
+- Preservation of all certificates and keys from the source KeyStore
+- Support for both key entries (with certificate chains) and certificate-only entries
+- Efficient handling of WKS input (returns same stream)
+- Proper stream handling with mark/reset support for large KeyStores
+
+**FIPS NOTE:** This utility method will call Sun provider code for JKS
+and PKCS12. This means that if using wolfCrypt FIPS, these calls will make
+calls into non-FIPS compliant cryptography for the conversion. Please take
+this into consideration when being used in a FIPS compliant environment.
+
+Example usage:
+
+```java
+import com.wolfssl.provider.jce.WolfCryptUtil;
+import java.io.InputStream;
+import java.security.KeyStore;
+
+/* Load your source KeyStore (JKS, PKCS12, or WKS) */
+InputStream sourceStream = ...;
+char[] password = "your_password".toCharArray();
+
+/* Convert to WKS format, fail on insert errors */
+InputStream wksStream = WolfCryptUtil.convertKeyStoreToWKS(sourceStream, password, true);
+
+/* Load the converted WKS KeyStore */
+KeyStore wksStore = KeyStore.getInstance("WKS", "wolfJCE");
+wksStore.load(wksStream, password);
+```
+
+The method respects the Security properties `wolfjce.mapJKStoWKS` and 
+`wolfjce.mapPKCS12toWKS` when performing conversions. If these properties are
+set to "true", the method will use reflection to find the Sun provider
+implementations for JKS and PKCS12 to use for conversion.
 
 To list entries inside a WKS keystore using the `keytool`, a command
 similar to the following can be used (with the `-list` option):
@@ -388,7 +431,7 @@ ant build system, please see the main README.md included in this package.
 wolfSSL (company) has it's own set of code signing certificates from Oracle
 that allow wolfJCE to be authenticated in the Oracle JDK.  With each release
 of wolfJCE, wolfSSL ships a couple pre-signed versions of the
-‘wolfcrypt-jni.jar”, located at:
+'wolfcrypt-jni.jar", located at:
 
 wolfcrypt-jni-X.X.X/lib/signed/debug/wolfcrypt-jni.jar
 wolfcrypt-jni-X.X.X/lib/signed/release/wolfcrypt-jni.jar
