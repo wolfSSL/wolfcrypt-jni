@@ -82,6 +82,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptRandom.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSecretKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSignature.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptUtil.java \
     src/main/java/com/wolfssl/provider/jce/WolfSSLKeyStore.java
 
 RETVAL=$?

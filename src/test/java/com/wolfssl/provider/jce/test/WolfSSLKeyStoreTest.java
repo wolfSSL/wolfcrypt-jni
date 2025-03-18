@@ -1430,7 +1430,6 @@ public class WolfSSLKeyStoreTest {
         assertEquals(1, store.size());
     }
 
-    //CHRIS
     @Test
     public void testLoadWKSasJKSFromFile()
         throws KeyStoreException, IOException, FileNotFoundException,
