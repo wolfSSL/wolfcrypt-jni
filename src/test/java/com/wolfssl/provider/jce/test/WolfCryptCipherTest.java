@@ -2250,6 +2250,66 @@ public class WolfCryptCipherTest {
         }
     }
 
+    /**
+     * Test Cipher("AES/GCM/NoPadding") getOutputSize() method for various
+     * use cases.
+     */
+    @Test
+    public void testAesGcmGetOutputSize() throws Exception {
+
+        final int TAG_LENGTH_BYTES = 16;  /* Default tag length */
+        final int KEY_LENGTH_BYTES = 16;  /* 128-bit AES key */
+        final int IV_LENGTH_BYTES  = 12;
+
+        /* Fill key and IV with non-zero values */
+        byte[] keyBytes = new byte[KEY_LENGTH_BYTES];
+        java.util.Arrays.fill(keyBytes, (byte) 0x01);
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+
+        byte[] iv = new byte[IV_LENGTH_BYTES];
+        java.util.Arrays.fill(iv, (byte) 0x02);
+        GCMParameterSpec spec = new GCMParameterSpec(TAG_LENGTH_BYTES * 8, iv);
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+
+        /* Test ENCRYPT with zero-length input */
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        assertEquals("Output size for zero-length input should be tag length",
+            TAG_LENGTH_BYTES, cipher.getOutputSize(0));
+
+        /* Test ENCRYPT with small input, re-init to reset state */
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        assertEquals("Output size should be input length plus tag length",
+            10 + TAG_LENGTH_BYTES, cipher.getOutputSize(10));
+
+        /* Test ENCRYPT with block boundary input */
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        assertEquals("Output size should be input length plus tag length " +
+            "at block boundary", 16 + TAG_LENGTH_BYTES,
+            cipher.getOutputSize(16));
+
+        /* Test DECRYPT with tag included */
+        cipher.init(Cipher.DECRYPT_MODE, key, spec);
+        assertEquals("Output size for decryption should be input length " +
+            "minus tag length", 10, cipher.getOutputSize(10 + TAG_LENGTH_BYTES));
+
+        /* Test ENCRYPT after partial update */
+        byte[] partialInput = new byte[5];
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        cipher.update(partialInput); /* Process some data */
+        assertEquals("Output size after update should account for remaining " +
+            "input plus tag", 10 + TAG_LENGTH_BYTES, cipher.getOutputSize(10));
+
+        /* Test getOutputSize() before initialization, expect exception */
+        Cipher uninitializedCipher = Cipher.getInstance("AES/GCM/NoPadding");
+        try {
+            uninitializedCipher.getOutputSize(10);
+            fail("Expected IllegalStateException for uninitialized cipher");
+        } catch (IllegalStateException e) {
+            /* Expected exception */
+        }
+    }
+
     @Test
     public void testDESedeCbcNoPadding()
         throws NoSuchProviderException, NoSuchAlgorithmException,
