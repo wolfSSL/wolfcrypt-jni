@@ -303,12 +303,19 @@ public class WolfCryptCipher extends CipherSpi {
                 if (paddingType == PaddingType.WC_NONE) {
                     if (cipherMode == CipherMode.WC_GCM) {
                         /* In AES-GCM mode we append the authentication tag
-                         * to the end of ciphertext */
-                        size = inputLen + this.gcmTagLen;
+                         * to the end of ciphertext, When decrypting, output
+                         * size will have it taken off. */
+                        if (this.direction == OpMode.WC_ENCRYPT) {
+                            size = inputLen + this.gcmTagLen;
+                        }
+                        else {
+                            size = inputLen - this.gcmTagLen;
+                        }
+                        size = Math.max(size, 0);
                     }
                     else {
-                        /* wolfCrypt expects input to be padded by application to
-                         * block size, thus output is same size as input */
+                        /* wolfCrypt expects input to be padded by application
+                         * to block size, thus output is same size as input */
                         size = inputLen;
                     }
                 }
