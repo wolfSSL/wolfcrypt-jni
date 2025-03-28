@@ -157,9 +157,9 @@ public class CryptoBenchmark {
                     String displayProvider = provider;
                     if (isRSAOperation) {
                         if (operation.contains("key gen")) {
-                            displayProvider = "SunRsaSign"; // Key generation uses SunRsaSign
+                            displayProvider = "SunRsaSign"; /* Key generation uses SunRsaSign */
                         } else {
-                            displayProvider = "SunJCE"; // Public/private operations use SunJCE
+                            displayProvider = "SunJCE"; /* Public/private operations use SunJCE */
                         }
                     }
 
@@ -299,7 +299,7 @@ public class CryptoBenchmark {
         results.add(new BenchmarkResult(providerName, cipherName + " dec", decryptThroughput));
     }
 
-    // Helper method to check if an algorithm is supported by the provider
+    /* Helper method to check if an algorithm is supported by the provider */
     private static boolean isAlgorithmSupported(String algorithm, String providerName) {
         try {
             MessageDigest.getInstance(algorithm, providerName);
