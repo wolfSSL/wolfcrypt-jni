@@ -21,6 +21,7 @@ import javax.crypto.spec.PBEKeySpec;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.Signature;
 import java.util.*;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
@@ -102,6 +103,58 @@ public class CryptoBenchmark {
                 throw new IllegalArgumentException("Unsupported HMAC algorithm: " + algorithm);
         }
     }
+
+    /* List of signature algorithms supported by wolfJCE - must match exactly what's in WolfCryptProvider */
+    private static final String[] WOLFJCE_SIGNATURE_ALGORITHMS = {
+        /* RSA algorithms */
+        "MD5withRSA",
+        "SHA1withRSA",
+        "SHA224withRSA",
+        "SHA256withRSA",
+        "SHA384withRSA",
+        "SHA512withRSA",
+        "SHA3-224withRSA",
+        "SHA3-256withRSA",
+        "SHA3-384withRSA",
+        "SHA3-512withRSA",
+        
+        /* ECDSA algorithms */
+        "SHA1withECDSA",
+        "SHA224withECDSA",
+        "SHA256withECDSA",
+        "SHA384withECDSA",
+        "SHA512withECDSA",
+        "SHA3-224withECDSA",
+        "SHA3-256withECDSA",
+        "SHA3-384withECDSA",
+        "SHA3-512withECDSA"
+    };
+
+    /* List of signature algorithms supported by BC */
+    private static final String[] BC_SIGNATURE_ALGORITHMS = {
+        /* RSA algorithms */
+        "MD5withRSA",
+        "SHA1withRSA",
+        "SHA224withRSA",
+        "SHA256withRSA",
+        "SHA384withRSA",
+        "SHA512withRSA",
+        "SHA3-224withRSA",
+        "SHA3-256withRSA",
+        "SHA3-384withRSA",
+        "SHA3-512withRSA",
+        
+        /* ECDSA algorithms */
+        "SHA1withECDSA",
+        "SHA224withECDSA",
+        "SHA256withECDSA",
+        "SHA384withECDSA",
+        "SHA512withECDSA",
+        "SHA3-224withECDSA",
+        "SHA3-256withECDSA",
+        "SHA3-384withECDSA",
+        "SHA3-512withECDSA"
+    };
 
     private static void printProviderInfo(Provider provider) {
         System.out.printf("%s version: %.1f%n", provider.getName(), provider.getVersion());
@@ -650,6 +703,102 @@ public class CryptoBenchmark {
         results.add(new BenchmarkResult(providerName, algorithm, throughput));
     }
 
+    /* Run signature benchmarks */
+    private static void runSignatureBenchmark(String algorithm, String providerName) throws Exception {
+        KeyPairGenerator keyGen;
+        Signature signature;
+        byte[] testData;
+        int ops = 0;
+        long startTime;
+        double elapsedTime;
+        KeyPair keyPair;
+        
+        /* Generate small test data */
+        testData = generateTestData(SMALL_MESSAGE_SIZE);
+        
+        /* Initialize based on algorithm type */
+        if (algorithm.contains("withRSA")) {
+            /* RSA signature */
+            if (providerName.equals("SunJCE")) {
+                keyGen = KeyPairGenerator.getInstance("RSA", "SunRsaSign");
+                signature = Signature.getInstance(algorithm, "SunRsaSign");
+                providerName = "SunRsaSign";
+            } else {
+                keyGen = KeyPairGenerator.getInstance("RSA", providerName);
+                signature = Signature.getInstance(algorithm, providerName);
+            }
+            keyGen.initialize(2048);
+        } else if (algorithm.contains("withECDSA")) {
+            /* ECDSA signature */
+            if (providerName.equals("SunJCE")) {
+                keyGen = KeyPairGenerator.getInstance("EC", "SunEC");
+                signature = Signature.getInstance(algorithm, "SunEC");
+                providerName = "SunEC";
+                keyGen.initialize(new ECGenParameterSpec("secp256r1"));
+            } else {
+                keyGen = KeyPairGenerator.getInstance("EC", providerName);
+                signature = Signature.getInstance(algorithm, providerName);
+                keyGen.initialize(new ECGenParameterSpec("secp256r1"));
+            }
+        } else {
+            throw new IllegalArgumentException("Unsupported signature algorithm: " + algorithm);
+        }
+        
+        /* Generate key pair */
+        keyPair = keyGen.generateKeyPair();
+        
+        /* Initialize signature for signing */
+        signature.initSign(keyPair.getPrivate());
+        signature.update(testData);
+        byte[] sig = signature.sign();
+        
+        /* Warm up phase */
+        for (int i = 0; i < WARMUP_ITERATIONS; i++) {
+            signature.initSign(keyPair.getPrivate());
+            signature.update(testData);
+            signature.sign();
+            
+            signature.initVerify(keyPair.getPublic());
+            signature.update(testData);
+            signature.verify(sig);
+        }
+        
+        /* Benchmark signing */
+        startTime = System.nanoTime();
+        elapsedTime = 0;
+        
+        do {
+            signature.initSign(keyPair.getPrivate());
+            signature.update(testData);
+            signature.sign();
+            ops++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
+        
+        double signOpsPerSec = ops / elapsedTime;
+        System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
+            algorithm + " sign (" + providerName + ")", ops, elapsedTime, signOpsPerSec);
+        results.add(new BenchmarkResult(providerName, algorithm + " sign", signOpsPerSec));
+        
+        /* Benchmark verification */
+        ops = 0;
+        startTime = System.nanoTime();
+        elapsedTime = 0;
+        
+        do {
+            signature.initVerify(keyPair.getPublic());
+            signature.update(testData);
+            signature.verify(sig);
+            ops++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
+        
+        double verifyOpsPerSec = ops / elapsedTime;
+        System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
+            algorithm + " verify (" + providerName + ")", ops, elapsedTime, verifyOpsPerSec);
+        results.add(new BenchmarkResult(providerName, algorithm + " verify", verifyOpsPerSec));
+    }
+
     public static void main(String[] args) {
         try {
             /* Check if Bouncy Castle is available */
@@ -888,6 +1037,43 @@ public class CryptoBenchmark {
                         }
                     }
                 }
+            }
+
+            System.out.println("\n-----------------------------------------------------------------------------");
+            System.out.println("Signature Benchmark Results");
+            System.out.println("-----------------------------------------------------------------------------");
+
+            /* First run wolfJCE and BC provider benchmarks as before */
+            for (Provider provider : providers) {
+                if (provider.getName().equals("SunJCE")) {
+                    continue;
+                }
+                
+                Security.insertProviderAt(provider, 1);
+                System.out.println("\n" + provider.getName() + ":");
+                
+                if (provider.getName().equals("wolfJCE")) {
+                    /* Test wolfJCE signature algorithms */
+                    for (String algorithm : WOLFJCE_SIGNATURE_ALGORITHMS) {
+                        try {
+                            runSignatureBenchmark(algorithm, "wolfJCE");
+                        } catch (Exception e) {
+                            System.out.printf(" %-40s  Not supported: %s%n", 
+                                algorithm + " (wolfJCE)", e.getMessage());
+                        }
+                    }
+                } else if (provider.getName().equals("BC")) {
+                    /* Test BC signature algorithms */
+                    for (String algorithm : BC_SIGNATURE_ALGORITHMS) {
+                        try {
+                            runSignatureBenchmark(algorithm, "BC");
+                        } catch (Exception e) {
+                            System.out.printf(" %-40s  Not supported: %s%n", 
+                                algorithm + " (BC)", e.getMessage());
+                        }
+                    }
+                }
+                Security.removeProvider(provider.getName());
             }
 
             System.out.println("-----------------------------------------------------------------------------\n");
