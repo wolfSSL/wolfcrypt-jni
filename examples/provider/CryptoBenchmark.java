@@ -171,10 +171,10 @@ public class CryptoBenchmark {
         double deltaPercent;
 
         System.out.println("\nPerformance Delta (compared to wolfJCE)");
-        System.out.println("--------------------------------------------------------------------------------");
-        System.out.println("| Operation                                | Provider     |  Delta   |   Delta  |");
-        System.out.println("|                                          |              |  Value*  |   (%)    |");
-        System.out.println("|------------------------------------------|--------------|----------|----------|");
+        System.out.println("------------------------------------------------------------------------------------");
+        System.out.println("| Operation                                    | Provider     |  Delta   |   Delta  |");
+        System.out.println("|                                              |              |  Value*  |   (%)    |");
+        System.out.println("|----------------------------------------------|--------------|----------|----------|");
 
         /* Group results by operation */
         groupedResults = new HashMap<>();
@@ -227,7 +227,7 @@ public class CryptoBenchmark {
                     /* Ensure unique operation-provider combination */
                     String uniqueKey = operation + "|" + displayProvider;
                     if (!groupedResults.containsKey(uniqueKey)) {
-                        System.out.printf("| %-40s | %-12s | %+8.2f | %+8.1f |%n",
+                        System.out.printf("| %-44s | %-12s | %+8.2f | %+8.1f |%n",
                             operation.replace("RSA", "RSA/ECB/PKCS1Padding RSA"),
                             displayProvider,
                             deltaValue,
@@ -239,7 +239,7 @@ public class CryptoBenchmark {
                 }
             }
         }
-        System.out.println("--------------------------------------------------------------------------------");
+        System.out.println("------------------------------------------------------------------------------------");
         System.out.println("* Delta Value: MiB/s for symmetric ciphers, operations/second for RSA and ECC");
     }
 

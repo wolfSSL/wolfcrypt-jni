@@ -1,0 +1,27 @@
+../../../lib/bcprov-jdk18on-1.80.jar
+../../../lib/bctls-jdk18on-1.80.jar
+Running crypto benchmark with Bouncy Castle (version 1.80)
+wolfJCE version: 1.8
+SunJCE version: 1.8
+BC version: 1.8
+-----------------------------------------------------------------------------
+ Symmetric Cipher Benchmark
+-----------------------------------------------------------------------------
+
+ AES/CBC/NoPadding (wolfJCE) enc              5.000 MiB    4.215 ms  237.234 MiB/s
+ AES/CBC/NoPadding (wolfJCE) dec              5.000 MiB    3.507 ms  285.139 MiB/s
+ AES/CBC/PKCS5Padding (wolfJCE) enc           5.000 MiB    4.213 ms  237.345 MiB/s
+ AES/CBC/PKCS5Padding (wolfJCE) dec           5.000 MiB    3.520 ms  284.089 MiB/s
+ AES/GCM/NoPadding (wolfJCE) enc              5.000 MiB    6.279 ms  159.264 MiB/s
+ AES/GCM/NoPadding (wolfJCE) dec              5.000 MiB    6.314 ms  158.366 MiB/s
+ DESede/CBC/NoPadding (wolfJCE) enc           5.000 MiB   28.514 ms   35.071 MiB/s
+ DESede/CBC/NoPadding (wolfJCE) dec           5.000 MiB   25.339 ms   39.466 MiB/s
+ AES/CBC/NoPadding (SunJCE) enc               5.000 MiB    4.393 ms  227.656 MiB/s
+ AES/CBC/NoPadding (SunJCE) dec               5.000 MiB    4.094 ms  244.269 MiB/s
+ AES/CBC/PKCS5Padding (SunJCE) enc            5.000 MiB    4.608 ms  217.007 MiB/s
+ AES/CBC/PKCS5Padding (SunJCE) dec            5.000 MiB    4.352 ms  229.806 MiB/s
+ AES/GCM/NoPadding (SunJCE) enc               5.000 MiB   13.276 ms   75.326 MiB/s
+ AES/GCM/NoPadding (SunJCE) dec               5.000 MiB   13.216 ms   75.665 MiB/s
+../../../lib/bcprov-jdk18on-1.80.jar
+../../../lib/bctls-jdk18on-1.80.jar
+
