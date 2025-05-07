@@ -1074,8 +1074,8 @@ public class WolfCryptCipher extends CipherSpi {
     }
 
     private void log(String msg) {
-        WolfCryptDebug.print("[Cipher, " + algString + "-" +
-            algMode + "] " + msg);
+        WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
+            () -> "[" + algString + "-" + algMode + "] " + msg);
     }
 
     @SuppressWarnings("deprecation")

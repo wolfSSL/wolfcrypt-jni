@@ -407,7 +407,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     }
 
     private void log(String msg) {
-        WolfCryptDebug.print("[KeyPairGenerator, " + algString + "] " + msg);
+        WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
+            () -> "[" + algString + "] " + msg);
     }
 
     @SuppressWarnings("deprecation")

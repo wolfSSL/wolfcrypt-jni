@@ -1815,7 +1815,8 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      * @param msg message to be logged
      */
     private static synchronized void log(String msg) {
-        WolfCryptDebug.print("[WolfSSLKeyStore] " + msg);
+        WolfCryptDebug.log(WolfSSLKeyStore.class, WolfCryptDebug.INFO,
+            () -> msg);
     }
 
     /**
