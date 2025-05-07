@@ -554,7 +554,8 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
     }
 
     private void log(String msg) {
-        WolfCryptDebug.print("[KeyAgreement, " + algString + "] " + msg);
+        WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
+            () -> "[" + algString + "] " + msg);
     }
 
     @SuppressWarnings("deprecation")

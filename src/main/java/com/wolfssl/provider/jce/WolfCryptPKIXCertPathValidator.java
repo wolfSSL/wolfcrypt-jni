@@ -716,7 +716,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
      * @param msg Log message to be printed
      */
     private void log(String msg) {
-        WolfCryptDebug.print("[CertPathValidator] " + msg);
+        WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO, () -> msg);
     }
 }
 

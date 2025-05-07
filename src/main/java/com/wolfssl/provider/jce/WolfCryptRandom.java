@@ -70,7 +70,7 @@ public final class WolfCryptRandom extends SecureRandomSpi {
     }
 
     private void log(String msg) {
-        WolfCryptDebug.print("[Random] " + msg);
+        WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO, () -> msg);
     }
 
     @SuppressWarnings("deprecation")

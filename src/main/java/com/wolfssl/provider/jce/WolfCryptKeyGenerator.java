@@ -104,7 +104,8 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
      * @param msg Message string to log
      */
     private void log(String msg) {
-        WolfCryptDebug.print("[KeyGenerator, " + algString + "] " + msg);
+        WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
+            () -> "[" + this.algString + "] " + msg);
     }
 
     /**
