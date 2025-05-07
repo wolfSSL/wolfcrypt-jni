@@ -215,7 +215,8 @@ public class WolfCryptMac extends MacSpi {
     }
 
     private void log(String msg) {
-        WolfCryptDebug.print("[Mac, " + algString + "] " + msg);
+        WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
+            () -> "[" + algString + "] " + msg);
     }
 
     @SuppressWarnings("deprecation")

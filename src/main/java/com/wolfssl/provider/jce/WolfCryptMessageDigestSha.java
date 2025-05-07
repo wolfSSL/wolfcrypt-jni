@@ -100,7 +100,8 @@ public final class WolfCryptMessageDigestSha
     }
 
     private void log(String msg) {
-        WolfCryptDebug.print("[MessageDigest, SHA] " + msg);
+        WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
+            () -> "[SHA] " + msg);
     }
 
     @Override

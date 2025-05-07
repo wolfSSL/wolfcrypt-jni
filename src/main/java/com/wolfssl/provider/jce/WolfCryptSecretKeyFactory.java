@@ -121,7 +121,8 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
      * @param msg message to be logged
      */
     private void log(String msg) {
-        WolfCryptDebug.print("[SecretKeyFactory, " + typeString + "] " + msg);
+        WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
+            () -> "[" + typeString + "] " + msg);
     }
 
     /**

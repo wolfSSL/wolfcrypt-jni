@@ -116,7 +116,8 @@ public class WolfCryptMessageDigestSha3
     }
 
     private void log(String msg) {
-        WolfCryptDebug.print("[MessageDigest, SHA-3] " + msg);
+        WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
+            () -> "[SHA-3] " + msg);
     }
 
     @Override
@@ -157,7 +158,7 @@ public class WolfCryptMessageDigestSha3
     public static final class wcSHA3_256 extends WolfCryptMessageDigestSha3 {
         /**
          * Create new wcSHA3_256 object
-         * 
+         *
          * @throws NoSuchAlgorithmException if digest type is not
          *         available in native wolfCrypt library
          */
@@ -184,7 +185,7 @@ public class WolfCryptMessageDigestSha3
     /**
      * wolfJCE SHA3-512 message digest class
      */
-    public static final class wcSHA3_512 extends WolfCryptMessageDigestSha3 {   
+    public static final class wcSHA3_512 extends WolfCryptMessageDigestSha3 {
         /**
          * Create new wcSHA3_512 object
          *

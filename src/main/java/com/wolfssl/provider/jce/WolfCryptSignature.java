@@ -699,8 +699,8 @@ public class WolfCryptSignature extends SignatureSpi {
     }
 
     private void log(String msg) {
-        WolfCryptDebug.print("[Signature, " + keyString + "-" +
-            digestString + "] " + msg);
+        WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
+            () -> "[" + keyString + "-" + digestString + "] " + msg);
     }
 
     @SuppressWarnings("deprecation")
