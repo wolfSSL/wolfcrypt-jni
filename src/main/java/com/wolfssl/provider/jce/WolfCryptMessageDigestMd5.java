@@ -100,7 +100,8 @@ public final class WolfCryptMessageDigestMd5
     }
 
     private void log(String msg) {
-        WolfCryptDebug.print("[MessageDigest, MD5] " + msg);
+        WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
+            () -> "[MD5] " + msg);
     }
 
     @Override
