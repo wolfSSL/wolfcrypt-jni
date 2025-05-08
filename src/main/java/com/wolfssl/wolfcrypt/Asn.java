@@ -36,18 +36,38 @@ public class Asn extends WolfObject {
     /* Key Sum values, from asn.h Key_Sum enum */
 
     /** DSA key value, from asn.h Key_Sum enum */
-    public static final int DSAk = 515;
+    public static final int DSAk;
     /** RSA key value, from asn.h Key_Sum enum */
-    public static final int RSAk = 645;
+    public static final int RSAk;
     /** RSA-PSS key value, from asn.h Key_Sum enum */
-    public static final int RSAPSSk = 654;
+    public static final int RSAPSSk;
     /** RSA-OAEP key value, from asn.h Key_Sum enum */
-    public static final int RSAESOAEPk = 651;
+    public static final int RSAESOAEPk;
     /** ECDSA key value, from asn.h Key_Sum enum */
-    public static final int ECDSAk = 518;
+    public static final int ECDSAk;
 
-    /** Default Asn constructor */
-    public Asn() { }
+    static {
+        DSAk = getDSAk();
+        RSAk = getRSAk();
+        RSAPSSk = getRSAPSSk();
+        RSAESOAEPk = getRSAESOAEPk();
+        ECDSAk = getECDSAk();
+    }
+
+    /** Return value of native DSAk enum */
+    private static native int getDSAk();
+
+    /** Return value of native RSAk enum */
+    private static native int getRSAk();
+
+    /** Return value of native RSAPSSk enum */
+    private static native int getRSAPSSk();
+
+    /** Return value of native RSAESOAEPk enum */
+    private static native int getRSAESOAEPk();
+
+    /** Return value of native ECDSAk enum */
+    private static native int getECDSAk();
 
     /** ASN.1 encode message digest, before it is signed
      *
