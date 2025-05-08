@@ -35,6 +35,36 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getDSAk
+  (JNIEnv* env, jclass class)
+{
+    return DSAk;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getRSAk
+  (JNIEnv* env, jclass class)
+{
+    return RSAk;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getRSAPSSk
+  (JNIEnv* env, jclass class)
+{
+    return RSAPSSk;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getRSAESOAEPk
+  (JNIEnv* env, jclass class)
+{
+    return RSAESOAEPk;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getECDSAk
+  (JNIEnv* env, jclass class)
+{
+    return ECDSAk;
+}
+
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature__Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2JI(
     JNIEnv* env, jclass class, jobject encoded_object, jobject hash_object,
     jlong hashSize, jint hashOID)
