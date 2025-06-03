@@ -94,11 +94,21 @@ public class CryptoBenchmark {
                 return 16;
             case "HmacSHA1":
                 return 20;
+            case "HmacSHA224":
+                return 28;
             case "HmacSHA256":
                 return 32;
             case "HmacSHA384":
                 return 48;
             case "HmacSHA512":
+                return 64;
+            case "HmacSHA3-224":
+                return 28;
+            case "HmacSHA3-256":
+                return 32;
+            case "HmacSHA3-384":
+                return 48;
+            case "HmacSHA3-512":
                 return 64;
             default:
                 throw new IllegalArgumentException("Unsupported HMAC algorithm: " + algorithm);
@@ -535,11 +545,9 @@ public class CryptoBenchmark {
     private static void runHmacBenchmark(String algorithm, String providerName) throws Exception {
         Mac mac;
         byte[] testData;
-        double dataSizeMiB;
+        int ops = 0;
         long startTime;
-        long endTime;
-        long elapsedTime;
-        double throughput;
+        double elapsedTime;
 
         /* Generate test data */
         testData = generateTestData(DATA_SIZE);
@@ -561,21 +569,24 @@ public class CryptoBenchmark {
             mac.doFinal();
         }
 
-        /* Benchmark */
+        /* Benchmark phase: run for at least 1 second */
         startTime = System.nanoTime();
-        for (int i = 0; i < TEST_ITERATIONS; i++) {
+        elapsedTime = 0;
+        
+        do {
             mac.update(testData);
             mac.doFinal();
-        }
-        endTime = System.nanoTime();
-        elapsedTime = (endTime - startTime) / TEST_ITERATIONS;
+            ops++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
 
-        dataSizeMiB = (DATA_SIZE * TEST_ITERATIONS) / (1024.0 * 1024.0);
-        throughput = (DATA_SIZE / (elapsedTime / 1000000000.0)) / (1024.0 * 1024.0);
+        /* Calculate metrics */
+        double dataSizeMiB = (DATA_SIZE * ops) / (1024.0 * 1024.0);
+        double throughput = dataSizeMiB / elapsedTime;
 
-        String testName = String.format("%s (%s)", algorithm, providerName);
-        System.out.printf(" %-40s  %8.3f MiB took %.3f seconds, %8.3f MiB/s%n",
-            testName, dataSizeMiB, elapsedTime / 1_000_000_000.0, throughput);
+        /* Print results in consistent format */
+        System.out.printf("%-40s %8.3f MiB took %.3f sec, %8.3f MiB/s%n",
+            algorithm + " (" + providerName + ")", dataSizeMiB, elapsedTime, throughput);
 
         /* Store result */
         results.add(new BenchmarkResult(providerName, algorithm, throughput));
@@ -974,52 +985,87 @@ public class CryptoBenchmark {
                 }
             }
 
-            /* Run HMAC benchmarks with clean provider setup */
+/* Run HMAC benchmarks with clean provider setup */
             System.out.println("\n-----------------------------------------------------------------------------");
             System.out.println("HMAC Benchmark Results");
             System.out.println("-----------------------------------------------------------------------------");
 
             for (int i = 0; i < providers.length; i++) {
                 setupProvidersForTest(providers[i]);
+                System.out.println("\n" + providerNames[i] + ":");
 
                 if (FeatureDetect.HmacMd5Enabled()) {
                     try {
                         runHmacBenchmark("HmacMD5", providerNames[i]);
                     } catch (Exception e) {
-                        System.out.printf("Failed to benchmark HmacMD5 with provider %s: %s%n", 
-                            providerNames[i], e.getMessage());
+                        System.out.printf("%-40s Error: %s%n", 
+                            "HmacMD5 (" + providerNames[i] + ")", e.getMessage());
                     }
                 }
                 if (FeatureDetect.HmacShaEnabled()) {
                     try {
                         runHmacBenchmark("HmacSHA1", providerNames[i]);
                     } catch (Exception e) {
-                        System.out.printf("Failed to benchmark HmacSHA1 with provider %s: %s%n", 
-                            providerNames[i], e.getMessage());
+                        System.out.printf("%-40s Error: %s%n", 
+                            "HmacSHA1 (" + providerNames[i] + ")", e.getMessage());
+                    }
+                }
+                if (FeatureDetect.Sha224Enabled()) {
+                    try {
+                        runHmacBenchmark("HmacSHA224", providerNames[i]);
+                    } catch (Exception e) {
+                        System.out.printf("%-40s Error: %s%n", 
+                            "HmacSHA224 (" + providerNames[i] + ")", e.getMessage());
                     }
                 }
                 if (FeatureDetect.HmacSha256Enabled()) {
                     try {
                         runHmacBenchmark("HmacSHA256", providerNames[i]);
                     } catch (Exception e) {
-                        System.out.printf("Failed to benchmark HmacSHA256 with provider %s: %s%n", 
-                            providerNames[i], e.getMessage());
+                        System.out.printf("%-40s Error: %s%n", 
+                            "HmacSHA256 (" + providerNames[i] + ")", e.getMessage());
                     }
                 }
                 if (FeatureDetect.HmacSha384Enabled()) {
                     try {
                         runHmacBenchmark("HmacSHA384", providerNames[i]);
                     } catch (Exception e) {
-                        System.out.printf("Failed to benchmark HmacSHA384 with provider %s: %s%n", 
-                            providerNames[i], e.getMessage());
+                        System.out.printf("%-40s Error: %s%n", 
+                            "HmacSHA384 (" + providerNames[i] + ")", e.getMessage());
                     }
                 }
                 if (FeatureDetect.HmacSha512Enabled()) {
                     try {
                         runHmacBenchmark("HmacSHA512", providerNames[i]);
                     } catch (Exception e) {
-                        System.out.printf("Failed to benchmark HmacSHA512 with provider %s: %s%n", 
-                            providerNames[i], e.getMessage());
+                        System.out.printf("%-40s Error: %s%n", 
+                            "HmacSHA512 (" + providerNames[i] + ")", e.getMessage());
+                    }
+                }
+                if (FeatureDetect.Sha3Enabled() && !providerNames[i].equals("SunJCE")) {
+                    try {
+                        runHmacBenchmark("HmacSHA3-224", providerNames[i]);
+                    } catch (Exception e) {
+                        System.out.printf("%-40s Error: %s%n", 
+                            "HmacSHA3-224 (" + providerNames[i] + ")", e.getMessage());
+                    }
+                    try {
+                        runHmacBenchmark("HmacSHA3-256", providerNames[i]);
+                    } catch (Exception e) {
+                        System.out.printf("%-40s Error: %s%n", 
+                            "HmacSHA3-256 (" + providerNames[i] + ")", e.getMessage());
+                    }
+                    try {
+                        runHmacBenchmark("HmacSHA3-384", providerNames[i]);
+                    } catch (Exception e) {
+                        System.out.printf("%-40s Error: %s%n", 
+                            "HmacSHA3-384 (" + providerNames[i] + ")", e.getMessage());
+                    }
+                    try {
+                        runHmacBenchmark("HmacSHA3-512", providerNames[i]);
+                    } catch (Exception e) {
+                        System.out.printf("%-40s Error: %s%n", 
+                            "HmacSHA3-512 (" + providerNames[i] + ")", e.getMessage());
                     }
                 }
             }
