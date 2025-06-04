@@ -21,6 +21,7 @@ import javax.crypto.spec.PBEKeySpec;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.Signature;
 import java.util.*;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
@@ -103,8 +104,65 @@ public class CryptoBenchmark {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static void printProviderInfo(Provider provider) {
-        System.out.printf("%s version: %.1f%n", provider.getName(), provider.getVersion());
+        System.out.printf("%s version: %s%n", provider.getName(), provider.getVersion());
+    }
+
+    private static void setupProvidersForTest(Provider testProvider) {
+        /* Remove only our test providers */
+        Security.removeProvider(testProvider.getName());
+        if (!testProvider.getName().equals("BC")) {
+            Security.removeProvider("BC");
+        }
+        
+        /* Add test provider at priority 1 */
+        Security.insertProviderAt(testProvider, 1);
+        
+        /* For SunJCE tests, SunEC is typically already available in modern Java versions */
+        if (testProvider.getName().equals("SunJCE")) {
+            /* SunEC should already be registered in Java 9+ */
+            if (Security.getProvider("SunEC") == null) {
+                System.out.println("Note: SunEC provider not available, some ECC operations may not work");
+            }
+        }
+    }
+
+    private static void setupDigestProvider(String testProviderName) {
+        /* For digest operations, we need special handling */
+        if (testProviderName.equals("wolfJCE") || testProviderName.equals("BC")) {
+            /* wolfJCE and BC can handle their own digests */
+            return;
+        } else {
+            /* For SunJCE, we need SUN provider for MessageDigest */
+            Provider sunProvider = Security.getProvider("SUN");
+            if (sunProvider == null) {
+                /* SUN provider should be built-in, but let's be safe */
+                System.out.println("SUN provider not found for MessageDigest operations");
+            }
+        }
+    }
+
+    private static KeyPairGenerator initializeKeyGenerator(String keyType, String keyGenProvider) throws Exception {
+        KeyPairGenerator keyGen;
+        
+        if (keyType.equals("EC") && keyGenProvider.equals("SunEC")) {
+            keyGen = KeyPairGenerator.getInstance("EC", "SunEC");
+            keyGen.initialize(new ECGenParameterSpec("secp256r1"));
+        } else {
+            keyGen = KeyPairGenerator.getInstance(keyType, keyGenProvider);
+            
+            /* Initialize key generator based on type */
+            if (keyType.equals("RSA")) {
+                keyGen.initialize(2048);
+            } else if (keyType.equals("EC")) {
+                keyGen.initialize(new ECGenParameterSpec("secp256r1"));
+            } else if (keyType.equals("DSA")) {
+                keyGen.initialize(1024);
+            }
+        }
+        
+        return keyGen;
     }
 
     private static void printDeltaTable() {
@@ -118,10 +176,10 @@ public class CryptoBenchmark {
         double deltaPercent;
 
         System.out.println("\nPerformance Delta (compared to wolfJCE)");
-        System.out.println("--------------------------------------------------------------------------------");
-        System.out.println("| Operation                                | Provider     |  Delta   |   Delta  |");
-        System.out.println("|                                          |              |  Value*  |   (%)    |");
-        System.out.println("|------------------------------------------|--------------|----------|----------|");
+        System.out.println("------------------------------------------------------------------------------------");
+        System.out.println("| Operation                                    | Provider     |  Delta   |   Delta  |");
+        System.out.println("|                                              |              |  Value*  |   (%)    |");
+        System.out.println("|----------------------------------------------|--------------|----------|----------|");
 
         /* Group results by operation */
         groupedResults = new HashMap<>();
@@ -174,7 +232,7 @@ public class CryptoBenchmark {
                     /* Ensure unique operation-provider combination */
                     String uniqueKey = operation + "|" + displayProvider;
                     if (!groupedResults.containsKey(uniqueKey)) {
-                        System.out.printf("| %-40s | %-12s | %+8.2f | %+8.1f |%n",
+                        System.out.printf("| %-44s | %-12s | %+8.2f | %+8.1f |%n",
                             operation.replace("RSA", "RSA/ECB/PKCS1Padding RSA"),
                             displayProvider,
                             deltaValue,
@@ -186,7 +244,7 @@ public class CryptoBenchmark {
                 }
             }
         }
-        System.out.println("--------------------------------------------------------------------------------");
+        System.out.println("------------------------------------------------------------------------------------");
         System.out.println("* Delta Value: MiB/s for symmetric ciphers, operations/second for RSA and ECC");
     }
 
@@ -422,6 +480,7 @@ public class CryptoBenchmark {
         /* Initialize key generator */
         if (providerName.equals("SunJCE")) {
             keyGen = KeyPairGenerator.getInstance("EC", "SunEC");
+            keyGen.initialize(new ECGenParameterSpec(curveName));
             providerName = "SunEC";
         } else {
             keyGen = KeyPairGenerator.getInstance("EC", providerName);
@@ -650,6 +709,201 @@ public class CryptoBenchmark {
         results.add(new BenchmarkResult(providerName, algorithm, throughput));
     }
 
+    /* Run signature benchmarks */
+    private static void runSignatureBenchmark(String algorithm, String providerName) throws Exception {
+        KeyPairGenerator keyGen;
+        Signature signature;
+        byte[] testData;
+        int ops = 0;
+        long startTime;
+        double elapsedTime;
+        KeyPair keyPair;
+        
+        /* Generate small test data */
+        testData = generateTestData(SMALL_MESSAGE_SIZE);
+        
+        /* Determine the correct provider and key type based on algorithm */
+        String keyGenProvider = providerName;
+        String signatureProvider = providerName;
+        String keyType;
+
+        /* Convert algorithm to lowercase for case-insensitive matching */
+        String algorithmLower = algorithm.toLowerCase();
+
+        /* Handle both wolfJCE format (withRSA) and BC format (WITHRSA) */
+        if (algorithmLower.contains("withrsa")) {
+            keyType = "RSA";
+            if (providerName.equals("SunJCE")) {
+                keyGenProvider = "SunRsaSign";
+                signatureProvider = "SunRsaSign";
+            }
+        } else if (algorithmLower.contains("withecdsa")) {
+            keyType = "EC";
+            if (providerName.equals("SunJCE")) {
+                /* Use SunEC if available, otherwise fall back to what's available */
+                Provider sunECProvider = Security.getProvider("SunEC");
+                if (sunECProvider != null) {
+                    keyGenProvider = "SunEC";
+                    signatureProvider = "SunEC";
+                } else {
+                    throw new Exception("SunEC provider not available for ECDSA operations");
+                }
+            }
+        } else if (algorithmLower.contains("withdsa")) {
+            keyType = "DSA";
+            if (providerName.equals("SunJCE")) {
+                keyGenProvider = "SUN";
+                signatureProvider = "SUN";
+            }
+        } else {
+            throw new IllegalArgumentException("Unsupported signature algorithm: " + algorithm);
+        }
+
+        try {
+            /* Initialize key generator and signature with correct providers */
+            keyGen = initializeKeyGenerator(keyType, keyGenProvider);
+            signature = Signature.getInstance(algorithm, signatureProvider);
+            
+            /* Generate key pair */
+            keyPair = keyGen.generateKeyPair();
+            
+            /* Test that signing works before benchmarking */
+            signature.initSign(keyPair.getPrivate());
+            signature.update(testData);
+            byte[] sig = signature.sign();
+            
+            /* Warm up phase */
+            for (int i = 0; i < WARMUP_ITERATIONS; i++) {
+                signature.initSign(keyPair.getPrivate());
+                signature.update(testData);
+                signature.sign();
+                
+                signature.initVerify(keyPair.getPublic());
+                signature.update(testData);
+                signature.verify(sig);
+            }
+            
+            /* Benchmark signing */
+            ops = 0;
+            startTime = System.nanoTime();
+            elapsedTime = 0;
+            
+            do {
+                signature.initSign(keyPair.getPrivate());
+                signature.update(testData);
+                signature.sign();
+                ops++;
+                elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+            } while (elapsedTime < TEST_MIN_TIME_SECONDS);
+            
+            double signOpsPerSec = ops / elapsedTime;
+            System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
+                algorithm + " sign (" + signatureProvider + ")", ops, elapsedTime, signOpsPerSec);
+            results.add(new BenchmarkResult(signatureProvider, algorithm + " sign", signOpsPerSec));
+            
+            /* Benchmark verification */
+            ops = 0;
+            startTime = System.nanoTime();
+            elapsedTime = 0;
+            
+            do {
+                signature.initVerify(keyPair.getPublic());
+                signature.update(testData);
+                signature.verify(sig);
+                ops++;
+                elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+            } while (elapsedTime < TEST_MIN_TIME_SECONDS);
+            
+            double verifyOpsPerSec = ops / elapsedTime;
+            System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
+                algorithm + " verify (" + signatureProvider + ")", ops, elapsedTime, verifyOpsPerSec);
+            results.add(new BenchmarkResult(signatureProvider, algorithm + " verify", verifyOpsPerSec));
+            
+        } catch (Exception e) {
+            System.err.printf(" %-40s  Not supported: %s (%s)%n", 
+                algorithm + " (" + signatureProvider + ")", e.getMessage(),
+                e.getClass().getName());
+        }
+    }
+
+    /* Get signature algorithms for a specific provider */
+    private static Set<String> getSignatureAlgorithms(String providerName) {
+        Set<String> signatureAlgorithms = new TreeSet<>();
+        
+        Provider provider = Security.getProvider(providerName);
+        if (provider == null) {
+            System.out.println("Provider " + providerName + " not found.");
+            return signatureAlgorithms;
+        }
+        
+        for (Provider.Service service : provider.getServices()) {
+            if ("Signature".equals(service.getType())) {
+                signatureAlgorithms.add(service.getAlgorithm());
+            }
+        }
+        
+        return signatureAlgorithms;
+    }
+
+    /* Get the baseline algorithms that wolfJCE supports for comparison */
+    private static Set<String> getWolfJCESignatureAlgorithms() {
+        return getSignatureAlgorithms("wolfJCE");
+    }
+
+    /* Enhanced method to get signature algorithms for special provider cases, filtered by wolfJCE support */
+    private static Set<String> getSignatureAlgorithmsForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
+        Set<String> algorithms = new TreeSet<>();
+        
+        if (providerName.equals("SunJCE")) {
+            algorithms.addAll(getSignatureAlgorithms("SunRsaSign"));
+            algorithms.addAll(getSignatureAlgorithms("SunEC"));
+            algorithms.addAll(getSignatureAlgorithms("SUN"));
+        } else {
+            algorithms.addAll(getSignatureAlgorithms(providerName));
+        }
+        
+        if (providerName.equals("BC")) {
+            Set<String> normalizedAlgorithms = new TreeSet<>();
+            for (String algorithm : algorithms) {
+                String normalized = algorithm.replace("WITH", "with");
+                if (wolfJCEAlgorithms.contains(normalized)) {
+                    normalizedAlgorithms.add(algorithm);
+                }
+            }
+            return normalizedAlgorithms;
+        } else {
+            algorithms.retainAll(wolfJCEAlgorithms);
+        }
+        
+        return algorithms;
+    }
+
+    /* Updated signature benchmark runner */
+    private static void runSignatureBenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
+        System.out.println("\n" + providerName + ":");
+        
+        Set<String> supportedAlgorithms;
+        if (providerName.equals("wolfJCE")) {
+            supportedAlgorithms = wolfJCEAlgorithms;
+        } else {
+            supportedAlgorithms = getSignatureAlgorithmsForProvider(providerName, wolfJCEAlgorithms);
+        }
+        
+        if (supportedAlgorithms.isEmpty()) {
+            System.out.println("  No common signature algorithms found for provider " + providerName);
+            return;
+        }
+        
+        for (String algorithm : supportedAlgorithms) {
+            try {
+                runSignatureBenchmark(algorithm, providerName);
+            } catch (Exception e) {
+                System.out.printf(" %-40s  Error: %s%n", 
+                    algorithm + " (" + providerName + ")", e.getMessage());
+            }
+        }
+    }
+
     public static void main(String[] args) {
         try {
             /* Check if Bouncy Castle is available */
@@ -670,8 +924,14 @@ public class CryptoBenchmark {
             providerList.add(new WolfCryptProvider());
             providerNameList.add("wolfJCE");
 
-            providerList.add(new com.sun.crypto.provider.SunJCE());
-            providerNameList.add("SunJCE");
+            /* Get SunJCE provider using Security.getProvider instead of direct instantiation */
+            Provider sunJCE = Security.getProvider("SunJCE");
+            if (sunJCE != null) {
+                providerList.add(sunJCE);
+                providerNameList.add("SunJCE");
+            } else {
+                System.out.println("Warning: SunJCE provider not available");
+            }
 
             if (hasBouncyCastle && bcProvider != null) {
                 providerList.add(bcProvider);
@@ -690,9 +950,9 @@ public class CryptoBenchmark {
             System.out.println(" Symmetric Cipher Benchmark");
             System.out.println("-----------------------------------------------------------------------------\n");
 
-            /* Run symmetric benchmarks */
+            /* Run symmetric benchmarks with clean provider setup */
             for (int i = 0; i < providers.length; i++) {
-                Security.insertProviderAt(providers[i], 1);
+                setupProvidersForTest(providers[i]);
 
                 runEncDecBenchmark("AES", "CBC", "NoPadding", providerNames[i]);
                 runEncDecBenchmark("AES", "CBC", "PKCS5Padding", providerNames[i]);
@@ -703,20 +963,25 @@ public class CryptoBenchmark {
                 }
             }
 
-            /* Run RSA benchmarks */
+            /* Run RSA benchmarks with clean provider setup */
             System.out.println("\n-----------------------------------------------------------------------------");
             System.out.println("RSA Benchmark Results");
             System.out.println("-----------------------------------------------------------------------------");
 
             for (Provider provider : providers) {
-                Security.insertProviderAt(provider, 1);
+                setupProvidersForTest(provider);
                 System.out.println("\n" + (provider.getName().equals("SunJCE") ? "SunJCE / SunRsaSign" : provider.getName()) + ":");
                 for (int keySize : RSA_KEY_SIZES) {
-                    runRSABenchmark(provider.getName(), keySize);
+                    try {
+                        runRSABenchmark(provider.getName(), keySize);
+                    } catch (Exception e) {
+                        System.out.printf("Failed to benchmark RSA %d with provider %s: %s%n", 
+                            keySize, provider.getName(), e.getMessage());
+                    }
                 }
-                Security.removeProvider(provider.getName());
             }
 
+            /* Run ECC benchmarks with clean provider setup */
             System.out.println("\n-----------------------------------------------------------------------------");
             System.out.println("ECC Benchmark Results");
             System.out.println("-----------------------------------------------------------------------------");
@@ -725,8 +990,8 @@ public class CryptoBenchmark {
                 if (provider instanceof WolfCryptProvider && !FeatureDetect.EccKeyGenEnabled()) {
                     continue;
                 }
-                Security.insertProviderAt(provider, 1);
-                                System.out.println("\n" + (provider.getName().equals("SunJCE") ? "SunJCE / SunEC" : provider.getName()) + ":");
+                setupProvidersForTest(provider);
+                System.out.println("\n" + (provider.getName().equals("SunJCE") ? "SunJCE / SunEC" : provider.getName()) + ":");
                 for (String curve : ECC_CURVES) {
                     try {
                         runECCBenchmark(provider.getName(), curve);
@@ -737,30 +1002,57 @@ public class CryptoBenchmark {
                 }
             }
 
+            /* Run HMAC benchmarks with clean provider setup */
             System.out.println("\n-----------------------------------------------------------------------------");
             System.out.println("HMAC Benchmark Results");
             System.out.println("-----------------------------------------------------------------------------");
 
             for (int i = 0; i < providers.length; i++) {
-                Security.insertProviderAt(providers[i], 1);
+                setupProvidersForTest(providers[i]);
 
                 if (FeatureDetect.HmacMd5Enabled()) {
-                    runHmacBenchmark("HmacMD5", providerNames[i]);
+                    try {
+                        runHmacBenchmark("HmacMD5", providerNames[i]);
+                    } catch (Exception e) {
+                        System.out.printf("Failed to benchmark HmacMD5 with provider %s: %s%n", 
+                            providerNames[i], e.getMessage());
+                    }
                 }
                 if (FeatureDetect.HmacShaEnabled()) {
-                    runHmacBenchmark("HmacSHA1", providerNames[i]);
+                    try {
+                        runHmacBenchmark("HmacSHA1", providerNames[i]);
+                    } catch (Exception e) {
+                        System.out.printf("Failed to benchmark HmacSHA1 with provider %s: %s%n", 
+                            providerNames[i], e.getMessage());
+                    }
                 }
                 if (FeatureDetect.HmacSha256Enabled()) {
-                    runHmacBenchmark("HmacSHA256", providerNames[i]);
+                    try {
+                        runHmacBenchmark("HmacSHA256", providerNames[i]);
+                    } catch (Exception e) {
+                        System.out.printf("Failed to benchmark HmacSHA256 with provider %s: %s%n", 
+                            providerNames[i], e.getMessage());
+                    }
                 }
                 if (FeatureDetect.HmacSha384Enabled()) {
-                    runHmacBenchmark("HmacSHA384", providerNames[i]);
+                    try {
+                        runHmacBenchmark("HmacSHA384", providerNames[i]);
+                    } catch (Exception e) {
+                        System.out.printf("Failed to benchmark HmacSHA384 with provider %s: %s%n", 
+                            providerNames[i], e.getMessage());
+                    }
                 }
                 if (FeatureDetect.HmacSha512Enabled()) {
-                    runHmacBenchmark("HmacSHA512", providerNames[i]);
+                    try {
+                        runHmacBenchmark("HmacSHA512", providerNames[i]);
+                    } catch (Exception e) {
+                        System.out.printf("Failed to benchmark HmacSHA512 with provider %s: %s%n", 
+                            providerNames[i], e.getMessage());
+                    }
                 }
             }
 
+            /* Run DH benchmarks with clean provider setup */
             System.out.println("\n-----------------------------------------------------------------------------");
             System.out.println("DH Benchmark Results");
             System.out.println("-----------------------------------------------------------------------------");
@@ -769,7 +1061,7 @@ public class CryptoBenchmark {
                 if (provider instanceof WolfCryptProvider && !FeatureDetect.DhEnabled()) {
                     continue;
                 }
-                Security.insertProviderAt(provider, 1);
+                setupProvidersForTest(provider);
                 System.out.println("\n" + provider.getName() + ":");
                 for (int keySize : DH_KEY_SIZES) {
                     try {
@@ -781,11 +1073,11 @@ public class CryptoBenchmark {
                 }
             }
 
+            /* Run PBKDF2 benchmarks with clean provider setup */
             System.out.println("\n-----------------------------------------------------------------------------");
             System.out.println("PBKDF2 Benchmark Results");
             System.out.println("-----------------------------------------------------------------------------");
 
-            /* List of PBKDF2 algorithms to test */
             String[] pbkdf2Algorithms = {
                 "PBKDF2WithHmacSHA1",
                 "PBKDF2WithHmacSHA224",
@@ -798,54 +1090,43 @@ public class CryptoBenchmark {
                 "PBKDF2WithHmacSHA3-512"
             };
 
-            for (String providerName : providerNames) {
-                System.out.println("\n" + providerName + ":");
+            for (int i = 0; i < providers.length; i++) {
+                setupProvidersForTest(providers[i]);
+                System.out.println("\n" + providerNames[i] + ":");
                 
                 for (String algorithm : pbkdf2Algorithms) {
                     try {
                         /* Skip SHA3 algorithms for SunJCE */
-                        if (providerName.equals("SunJCE") && algorithm.contains("SHA3")) {
+                        if (providerNames[i].equals("SunJCE") && algorithm.contains("SHA3")) {
                             continue;
                         }
                         
-                        runPBKDF2Benchmark(algorithm, providerName);
+                        runPBKDF2Benchmark(algorithm, providerNames[i]);
                     } catch (Exception e) {
-                        /* Print but continue with other algorithms */
                         System.out.printf(" %-40s  Error: %s%n", 
-                            algorithm + " (" + providerName + ")", e.getMessage());
+                            algorithm + " (" + providerNames[i] + ")", e.getMessage());
                     }
                 }
             }
 
+            /* Run MessageDigest benchmarks with clean provider setup */
             System.out.println("\n-----------------------------------------------------------------------------");
             System.out.println("MessageDigest Benchmark Results");
             System.out.println("-----------------------------------------------------------------------------");
 
             for (int i = 0; i < providers.length; i++) {
-                Security.insertProviderAt(providers[i], 1);
+                setupProvidersForTest(providers[i]);
                 String providerName = providerNames[i];
                 String digestProviderName = providerName;
 
-                if (!providerName.equals("wolfJCE")) {
-                    if (providerName.equals("BC")) {
-                        digestProviderName = "BC";
-                    } else {
-                        try {
-                            Provider sunProvider = Security.getProvider("SUN");
-                            if (sunProvider != null) {
-                                Security.insertProviderAt(sunProvider, 1);
-                                digestProviderName = "SUN";
-                            } else {
-                                System.out.println("SUN provider not available, using " + providerName + " for MessageDigest");
-                            }
-                        } catch (Exception e) {
-                            System.out.println("Failed to set up SUN provider for " + providerName + ": " + e.getMessage());
-                            System.out.println("Using " + providerName + " for MessageDigest instead");
-                        }
-                    }
+                /* Handle special case for digest providers */
+                if (!providerName.equals("wolfJCE") && !providerName.equals("BC")) {
+                    digestProviderName = "SUN";
                 }
 
+                setupDigestProvider(providerName);
                 System.out.println("\n" + digestProviderName + ":");
+                
                 try {
                     if (FeatureDetect.Md5Enabled() && isAlgorithmSupported("MD5", digestProviderName)) {
                         runMessageDigestBenchmark("MD5", digestProviderName);
@@ -879,15 +1160,21 @@ public class CryptoBenchmark {
                     }
                 } catch (Exception e) {
                     System.out.println("Failed to benchmark MessageDigest with provider " + digestProviderName + ": " + e.getMessage());
-                } finally {
-                    Security.removeProvider(providers[i].getName());
-                    if (!providerName.equals("wolfJCE") && !providerName.equals("BC")) {
-                        Provider sunProvider = Security.getProvider("SUN");
-                        if (sunProvider != null) {
-                            Security.removeProvider(sunProvider.getName());
-                        }
-                    }
                 }
+            }
+
+            /* Run Signature benchmarks with clean provider setup */
+            System.out.println("\n-----------------------------------------------------------------------------");
+            System.out.println("Signature Benchmark Results");
+            System.out.println("-----------------------------------------------------------------------------");
+
+            /* First, set up wolfJCE provider to get its algorithm list */
+            setupProvidersForTest(providers[0]);
+            Set<String> wolfJCEAlgorithms = getWolfJCESignatureAlgorithms();
+
+            for (Provider provider : providers) {
+                setupProvidersForTest(provider);
+                runSignatureBenchmarksForProvider(provider.getName(), wolfJCEAlgorithms);
             }
 
             System.out.println("-----------------------------------------------------------------------------\n");
