@@ -93,14 +93,32 @@ public class CryptoBenchmark {
                 return 16;
             case "HmacSHA1":
                 return 20;
+            case "HmacSHA224":
+                return 28;
             case "HmacSHA256":
                 return 32;
             case "HmacSHA384":
                 return 48;
             case "HmacSHA512":
                 return 64;
+            case "HmacSHA3-224":
+                return 28;
+            case "HmacSHA3-256":
+                return 32;
+            case "HmacSHA3-384":
+                return 48;
+            case "HmacSHA3-512":
+                return 64;
             default:
-                throw new IllegalArgumentException("Unsupported HMAC algorithm: " + algorithm);
+                if (algorithm.contains("224")) return 28;
+                if (algorithm.contains("256")) return 32;
+                if (algorithm.contains("384")) return 48;
+                if (algorithm.contains("512")) return 64;
+                if (algorithm.contains("MD5")) return 16;
+                if (algorithm.contains("SHA1") || algorithm.contains("SHA-1")) return 20;
+                
+                System.out.println("Warning: Unknown HMAC algorithm " + algorithm + ", using default key size 32");
+                return 32;
         }
     }
 
@@ -163,6 +181,103 @@ public class CryptoBenchmark {
         }
         
         return keyGen;
+    }
+
+    /* Universal method to get algorithms for a specific provider and service type */
+    private static Set<String> getAlgorithmsForProvider(String providerName, String serviceType, Set<String> wolfJCEAlgorithms) {
+        Set<String> algorithms = new TreeSet<>();
+        
+        if (providerName.equals("SunJCE") && serviceType.equals("Signature")) {
+            algorithms.addAll(getAlgorithmsForService("SunRsaSign", serviceType));
+            algorithms.addAll(getAlgorithmsForService("SunEC", serviceType));
+            algorithms.addAll(getAlgorithmsForService("SUN", serviceType));
+        } else {
+            algorithms.addAll(getAlgorithmsForService(providerName, serviceType));
+        }
+        
+        if (providerName.equals("BC")) {
+            Set<String> normalizedAlgorithms = new TreeSet<>();
+            for (String algorithm : algorithms) {
+                if (serviceType.equals("Signature")) {
+                    String normalized = algorithm.replace("WITH", "with");
+                    if (wolfJCEAlgorithms.contains(normalized)) {
+                        normalizedAlgorithms.add(algorithm);
+                    }
+                } else if (serviceType.equals("Mac")) {
+                    String normalized = algorithm;
+                    
+                    if (wolfJCEAlgorithms.contains(normalized)) {
+                        normalizedAlgorithms.add(algorithm);
+                        continue;
+                    }
+                    
+                    for (String wolfAlg : wolfJCEAlgorithms) {
+                        if (wolfAlg.equalsIgnoreCase(normalized)) {
+                            normalizedAlgorithms.add(algorithm);
+                            break;
+                        }
+                        
+                        String bcNormalized = normalized.replace("-", "");
+                        String wolfNormalized = wolfAlg.replace("-", "");
+                        if (bcNormalized.equalsIgnoreCase(wolfNormalized)) {
+                            normalizedAlgorithms.add(algorithm);
+                            break;
+                        }
+                    }
+                } else {
+                    if (wolfJCEAlgorithms.contains(algorithm)) {
+                        normalizedAlgorithms.add(algorithm);
+                    }
+                }
+            }
+            return normalizedAlgorithms;
+        } else {
+            algorithms.retainAll(wolfJCEAlgorithms);
+        }
+        
+        return algorithms;
+    }
+
+    /* Get the baseline algorithms that wolfJCE supports for comparison */
+    private static Set<String> getWolfJCEAlgorithmsForService(String serviceType) {
+        return getAlgorithmsForService("wolfJCE", serviceType);
+    }
+
+    /* Debug method to see what algorithms each provider actually supports */
+    private static void debugPrintAlgorithms(String providerName, String serviceType) {
+        System.out.println("Debug: " + providerName + " " + serviceType + " algorithms:");
+        Set<String> algorithms = getAlgorithmsForService(providerName, serviceType);
+        for (String alg : algorithms) {
+            System.out.println("  " + alg);
+        }
+        System.out.println();
+    }
+
+    /* Universal method to get algorithms for a specific provider and service type */
+    private static Set<String> getAlgorithmsForService(String providerName, String serviceType) {
+        Set<String> algorithms = new TreeSet<>();
+        
+        Provider provider = Security.getProvider(providerName);
+        if (provider == null) {
+            System.out.println("Provider " + providerName + " not found.");
+            return algorithms;
+        }
+        
+        for (Provider.Service service : provider.getServices()) {
+            if (serviceType.equals(service.getType())) {
+                String algorithm = service.getAlgorithm();
+                
+                if (serviceType.equals("Mac")) {
+                    if (algorithm.startsWith("Hmac") || algorithm.startsWith("HMAC")) {
+                        algorithms.add(algorithm);
+                    }
+                } else {
+                    algorithms.add(algorithm);
+                }
+            }
+        }
+        
+        return algorithms;
     }
 
     private static void printDeltaTable() {
@@ -502,15 +617,54 @@ public class CryptoBenchmark {
         printKeyGenResults(keyGenOps, elapsedTime, keyGenOp, providerName, "EC");
     }
 
+    /* Get HMAC algorithms for a specific provider */
+    private static Set<String> getHmacAlgorithms(String providerName) {
+        return getAlgorithmsForService(providerName, "Mac");
+    }
+
+    /* Get the baseline HMAC algorithms that wolfJCE supports for comparison */
+    private static Set<String> getWolfJCEHmacAlgorithms() {
+        return getWolfJCEAlgorithmsForService("Mac");
+    }
+
+    /* Enhanced method to get HMAC algorithms for special provider cases, filtered by wolfJCE support */
+    private static Set<String> getHmacAlgorithmsForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
+        return getAlgorithmsForProvider(providerName, "Mac", wolfJCEAlgorithms);
+    }
+
+    /* Updated HMAC benchmark runner using the universal methods */
+    private static void runHmacBenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
+        System.out.println("\n" + providerName + ":");
+        
+        Set<String> supportedAlgorithms;
+        if (providerName.equals("wolfJCE")) {
+            supportedAlgorithms = wolfJCEAlgorithms;
+        } else {
+            supportedAlgorithms = getHmacAlgorithmsForProvider(providerName, wolfJCEAlgorithms);
+        }
+        
+        if (supportedAlgorithms.isEmpty()) {
+            System.out.println("  No common HMAC algorithms found for provider " + providerName);
+            return;
+        }
+        
+        for (String algorithm : supportedAlgorithms) {
+            try {
+                runHmacBenchmark(algorithm, providerName);
+            } catch (Exception e) {
+                System.out.printf(" %-40s  Error: %s%n", 
+                    algorithm + " (" + providerName + ")", e.getMessage());
+            }
+        }
+    }
+
     /* HMAC benchmark */
     private static void runHmacBenchmark(String algorithm, String providerName) throws Exception {
         Mac mac;
         byte[] testData;
-        double dataSizeMiB;
+        int ops = 0;
         long startTime;
-        long endTime;
-        long elapsedTime;
-        double throughput;
+        double elapsedTime;
 
         /* Generate test data */
         testData = generateTestData(DATA_SIZE);
@@ -532,21 +686,22 @@ public class CryptoBenchmark {
             mac.doFinal();
         }
 
-        /* Benchmark */
+        /* Benchmark phase: run for at least 1 second like other tests */
         startTime = System.nanoTime();
-        for (int i = 0; i < TEST_ITERATIONS; i++) {
+        elapsedTime = 0;
+        
+        do {
             mac.update(testData);
             mac.doFinal();
-        }
-        endTime = System.nanoTime();
-        elapsedTime = (endTime - startTime) / TEST_ITERATIONS;
+            ops++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
 
-        dataSizeMiB = (DATA_SIZE * TEST_ITERATIONS) / (1024.0 * 1024.0);
-        throughput = (DATA_SIZE / (elapsedTime / 1000000000.0)) / (1024.0 * 1024.0);
+        double dataSizeMiB = (DATA_SIZE * ops) / (1024.0 * 1024.0);
+        double throughput = dataSizeMiB / elapsedTime;
 
-        String testName = String.format("%s (%s)", algorithm, providerName);
-        System.out.printf(" %-40s  %8.3f MiB took %.3f seconds, %8.3f MiB/s%n",
-            testName, dataSizeMiB, elapsedTime / 1_000_000_000.0, throughput);
+        System.out.printf(" %-40s  %8.3f MiB took %.3f sec, %8.3f MiB/s%n",
+            algorithm + " (" + providerName + ")", dataSizeMiB, elapsedTime, throughput);
 
         /* Store result */
         results.add(new BenchmarkResult(providerName, algorithm, throughput));
@@ -684,7 +839,7 @@ public class CryptoBenchmark {
     private static void runMessageDigestBenchmark(String algorithm, String providerName) throws Exception {
         MessageDigest md = MessageDigest.getInstance(algorithm, providerName);
         byte[] testData = generateTestData(DATA_SIZE);
-        int ops = 0;
+        long ops = 0;
         long startTime = System.nanoTime();
         double elapsedTime;
 
@@ -828,54 +983,17 @@ public class CryptoBenchmark {
 
     /* Get signature algorithms for a specific provider */
     private static Set<String> getSignatureAlgorithms(String providerName) {
-        Set<String> signatureAlgorithms = new TreeSet<>();
-        
-        Provider provider = Security.getProvider(providerName);
-        if (provider == null) {
-            System.out.println("Provider " + providerName + " not found.");
-            return signatureAlgorithms;
-        }
-        
-        for (Provider.Service service : provider.getServices()) {
-            if ("Signature".equals(service.getType())) {
-                signatureAlgorithms.add(service.getAlgorithm());
-            }
-        }
-        
-        return signatureAlgorithms;
+        return getAlgorithmsForService(providerName, "Signature");
     }
 
-    /* Get the baseline algorithms that wolfJCE supports for comparison */
+    /* Get the baseline signature algorithms that wolfJCE supports for comparison */
     private static Set<String> getWolfJCESignatureAlgorithms() {
-        return getSignatureAlgorithms("wolfJCE");
+        return getWolfJCEAlgorithmsForService("Signature");
     }
 
     /* Enhanced method to get signature algorithms for special provider cases, filtered by wolfJCE support */
     private static Set<String> getSignatureAlgorithmsForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
-        Set<String> algorithms = new TreeSet<>();
-        
-        if (providerName.equals("SunJCE")) {
-            algorithms.addAll(getSignatureAlgorithms("SunRsaSign"));
-            algorithms.addAll(getSignatureAlgorithms("SunEC"));
-            algorithms.addAll(getSignatureAlgorithms("SUN"));
-        } else {
-            algorithms.addAll(getSignatureAlgorithms(providerName));
-        }
-        
-        if (providerName.equals("BC")) {
-            Set<String> normalizedAlgorithms = new TreeSet<>();
-            for (String algorithm : algorithms) {
-                String normalized = algorithm.replace("WITH", "with");
-                if (wolfJCEAlgorithms.contains(normalized)) {
-                    normalizedAlgorithms.add(algorithm);
-                }
-            }
-            return normalizedAlgorithms;
-        } else {
-            algorithms.retainAll(wolfJCEAlgorithms);
-        }
-        
-        return algorithms;
+        return getAlgorithmsForProvider(providerName, "Signature", wolfJCEAlgorithms);
     }
 
     /* Updated signature benchmark runner */
@@ -1007,49 +1125,15 @@ public class CryptoBenchmark {
             System.out.println("HMAC Benchmark Results");
             System.out.println("-----------------------------------------------------------------------------");
 
-            for (int i = 0; i < providers.length; i++) {
-                setupProvidersForTest(providers[i]);
 
-                if (FeatureDetect.HmacMd5Enabled()) {
-                    try {
-                        runHmacBenchmark("HmacMD5", providerNames[i]);
-                    } catch (Exception e) {
-                        System.out.printf("Failed to benchmark HmacMD5 with provider %s: %s%n", 
-                            providerNames[i], e.getMessage());
-                    }
-                }
-                if (FeatureDetect.HmacShaEnabled()) {
-                    try {
-                        runHmacBenchmark("HmacSHA1", providerNames[i]);
-                    } catch (Exception e) {
-                        System.out.printf("Failed to benchmark HmacSHA1 with provider %s: %s%n", 
-                            providerNames[i], e.getMessage());
-                    }
-                }
-                if (FeatureDetect.HmacSha256Enabled()) {
-                    try {
-                        runHmacBenchmark("HmacSHA256", providerNames[i]);
-                    } catch (Exception e) {
-                        System.out.printf("Failed to benchmark HmacSHA256 with provider %s: %s%n", 
-                            providerNames[i], e.getMessage());
-                    }
-                }
-                if (FeatureDetect.HmacSha384Enabled()) {
-                    try {
-                        runHmacBenchmark("HmacSHA384", providerNames[i]);
-                    } catch (Exception e) {
-                        System.out.printf("Failed to benchmark HmacSHA384 with provider %s: %s%n", 
-                            providerNames[i], e.getMessage());
-                    }
-                }
-                if (FeatureDetect.HmacSha512Enabled()) {
-                    try {
-                        runHmacBenchmark("HmacSHA512", providerNames[i]);
-                    } catch (Exception e) {
-                        System.out.printf("Failed to benchmark HmacSHA512 with provider %s: %s%n", 
-                            providerNames[i], e.getMessage());
-                    }
-                }
+            /* First, set up wolfJCE provider to get its algorithm list */
+            setupProvidersForTest(providers[0]);
+            Set<String> wolfJCEHmacAlgorithms = getWolfJCEHmacAlgorithms();
+
+            for (Provider provider : providers) {
+                setupProvidersForTest(provider);
+                runHmacBenchmarksForProvider(provider.getName(), wolfJCEHmacAlgorithms);
+
             }
 
             /* Run DH benchmarks with clean provider setup */
