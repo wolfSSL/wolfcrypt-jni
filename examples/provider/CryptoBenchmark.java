@@ -371,19 +371,16 @@ public class CryptoBenchmark {
         AlgorithmParameterSpec params;
         byte[] testData;
         byte[] encryptedData = null;
-        double dataSizeMiB;
         Cipher cipher;
         String cipherName = algorithm + "/" + mode + "/" + padding;
 
         /* Timing variables */
         long startTime;
-        long endTime;
-        long encryptTime;
-        long decryptTime;
+        double elapsedTime;
+        int encryptOps = 0;
+        int decryptOps = 0;
         double encryptThroughput;
         double decryptThroughput;
-        double encryptTimeMS;
-        double decryptTimeMS;
 
         /* Use appropriate key based on algorithm */
         if (algorithm.equals("AES")) {
@@ -430,43 +427,46 @@ public class CryptoBenchmark {
             cipher.doFinal(encryptedData);
         }
 
-        /* Benchmark encryption */
+        /* Benchmark encryption - run for 1 second */
         startTime = System.nanoTime();
-        for (int i = 0; i < TEST_ITERATIONS; i++) {
+        elapsedTime = 0;
+        
+        do {
             if (mode.equals("GCM")) {
                 secureRandom.nextBytes(ivBytes);
                 params = new GCMParameterSpec(GCM_TAG_LENGTH, ivBytes);
             }
             cipher.init(Cipher.ENCRYPT_MODE, key, params);
             encryptedData = cipher.doFinal(testData);
-        }
-        endTime = System.nanoTime();
-        encryptTime = (endTime - startTime) / TEST_ITERATIONS;
+            encryptOps++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
 
-        dataSizeMiB = (DATA_SIZE * TEST_ITERATIONS) / (1024.0 * 1024.0);
-        encryptTimeMS = encryptTime / 1000000.0;
-        encryptThroughput = (DATA_SIZE / (encryptTime / 1000000000.0)) / (1024.0 * 1024.0);
+        double dataSizeMiB = (DATA_SIZE * encryptOps) / (1024.0 * 1024.0);
+        encryptThroughput = dataSizeMiB / elapsedTime;
 
         String testName = String.format("%s (%s)", cipherName, providerName);
-        System.out.printf(" %-40s  %8.3f MiB %8.3f ms %8.3f MiB/s%n",
-          testName + " enc", dataSizeMiB, encryptTimeMS, encryptThroughput);
+        System.out.printf(" %-40s  %8.3f MiB took %.3f sec, %8.3f MiB/s%n",
+          testName + " enc", dataSizeMiB, elapsedTime, encryptThroughput);
 
         results.add(new BenchmarkResult(providerName, cipherName + " enc", encryptThroughput));
 
-        /* Benchmark decryption */
+        /* Benchmark decryption - run for 1 second */
         startTime = System.nanoTime();
-        for (int i = 0; i < TEST_ITERATIONS; i++) {
+        elapsedTime = 0;
+        
+        do {
             cipher.init(Cipher.DECRYPT_MODE, key, params);
             cipher.doFinal(encryptedData);
-        }
-        endTime = System.nanoTime();
-        decryptTime = (endTime - startTime) / TEST_ITERATIONS;
+            decryptOps++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
 
-        decryptTimeMS = decryptTime / 1000000.0;
-        decryptThroughput = (DATA_SIZE / (decryptTime / 1000000000.0)) / (1024.0 * 1024.0);
+        dataSizeMiB = (DATA_SIZE * decryptOps) / (1024.0 * 1024.0);
+        decryptThroughput = dataSizeMiB / elapsedTime;
 
-        System.out.printf(" %-40s  %8.3f MiB %8.3f ms %8.3f MiB/s%n",
-          testName + " dec", dataSizeMiB , decryptTimeMS, decryptThroughput);
+        System.out.printf(" %-40s  %8.3f MiB took %.3f sec, %8.3f MiB/s%n",
+          testName + " dec", dataSizeMiB, elapsedTime, decryptThroughput);
 
         /* Store decryption result */
         results.add(new BenchmarkResult(providerName, cipherName + " dec", decryptThroughput));
@@ -632,7 +632,7 @@ public class CryptoBenchmark {
         return getAlgorithmsForProvider(providerName, "Mac", wolfJCEAlgorithms);
     }
 
-    /* Updated HMAC benchmark runner using the universal methods */
+    /* HMAC benchmark runner using the universal methods */
     private static void runHmacBenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
         System.out.println("\n" + providerName + ":");
         
@@ -986,17 +986,12 @@ public class CryptoBenchmark {
         return getAlgorithmsForService(providerName, "Signature");
     }
 
-    /* Get the baseline signature algorithms that wolfJCE supports for comparison */
-    private static Set<String> getWolfJCESignatureAlgorithms() {
-        return getWolfJCEAlgorithmsForService("Signature");
-    }
-
     /* Enhanced method to get signature algorithms for special provider cases, filtered by wolfJCE support */
     private static Set<String> getSignatureAlgorithmsForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
         return getAlgorithmsForProvider(providerName, "Signature", wolfJCEAlgorithms);
     }
 
-    /* Updated signature benchmark runner */
+    /* Signature benchmark runner */
     private static void runSignatureBenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
         System.out.println("\n" + providerName + ":");
         
@@ -1020,6 +1015,276 @@ public class CryptoBenchmark {
                     algorithm + " (" + providerName + ")", e.getMessage());
             }
         }
+    }
+
+    /* Enhanced method to get cipher algorithms for special provider cases, filtered by wolfJCE support */
+    private static Set<String> getCipherAlgorithmsForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
+        Set<String> providerAlgorithms = getAlgorithmsForService(providerName, "Cipher");
+        Set<String> filteredAlgorithms = new TreeSet<>();
+        
+        for (String wolfAlg : wolfJCEAlgorithms) {
+            if (wolfAlg.equals("RSA") || wolfAlg.startsWith("RSA/")) {
+                continue;
+            }
+            
+            if (providerAlgorithms.contains(wolfAlg)) {
+                filteredAlgorithms.add(wolfAlg);
+                continue;
+            }
+            
+            for (String providerAlg : providerAlgorithms) {
+                if (providerAlg.equalsIgnoreCase(wolfAlg)) {
+                    filteredAlgorithms.add(providerAlg);
+                    break;
+                }
+            }
+        }
+        
+        return filteredAlgorithms;
+    }
+
+    /* Enhanced method to get PBKDF2 algorithms for special provider cases, filtered by wolfJCE support */
+    private static Set<String> getPBKDF2AlgorithmsForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
+        Set<String> providerAlgorithms = getAlgorithmsForService(providerName, "SecretKeyFactory");
+        Set<String> filteredAlgorithms = new TreeSet<>();
+        
+        for (String wolfAlg : wolfJCEAlgorithms) {
+            if (providerAlgorithms.contains(wolfAlg)) {
+                filteredAlgorithms.add(wolfAlg);
+                continue;
+            }
+            
+            for (String providerAlg : providerAlgorithms) {
+                if (providerAlg.equalsIgnoreCase(wolfAlg)) {
+                    filteredAlgorithms.add(providerAlg);
+                    break;
+                }
+                
+                if (providerName.equals("BC")) {
+                    String normalizedProviderAlg = providerAlg.replace("WITH", "With").replace("HMAC", "Hmac");
+                    if (normalizedProviderAlg.equalsIgnoreCase(wolfAlg)) {
+                        filteredAlgorithms.add(providerAlg);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        return filteredAlgorithms;
+    }
+
+    /* Cipher benchmark runner using the universal methods */
+    private static void runCipherBenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
+        System.out.println("\n" + providerName + ":");
+        
+        Set<String> supportedAlgorithms;
+        if (providerName.equals("wolfJCE")) {
+            supportedAlgorithms = wolfJCEAlgorithms;
+        } else {
+            supportedAlgorithms = getCipherAlgorithmsForProvider(providerName, wolfJCEAlgorithms);
+        }
+        
+        if (supportedAlgorithms.isEmpty()) {
+            System.out.println("  No common Cipher algorithms found for provider " + providerName);
+            return;
+        }
+        
+        for (String algorithm : supportedAlgorithms) {
+            try {
+                /* Parse algorithm string to get mode and padding */
+                String[] parts = algorithm.split("/");
+                if (parts.length != 3) {
+                    System.out.printf(" %-40s  Invalid algorithm format: %s%n", 
+                        algorithm + " (" + providerName + ")", algorithm);
+                    continue;
+                }
+                
+                String baseAlg = parts[0];
+                String mode = parts[1];
+                String padding = parts[2];
+                
+                /* Skip if DESede is not enabled */
+                if (baseAlg.equals("DESede") && !FeatureDetect.Des3Enabled()) {
+                    System.out.printf(" %-40s  DESede not enabled in wolfCrypt%n", 
+                        algorithm + " (" + providerName + ")");
+                    continue;
+                }
+                
+                runEncDecBenchmark(baseAlg, mode, padding, providerName);
+            } catch (Exception e) {
+                System.out.printf(" %-40s  Error: %s%n", 
+                    algorithm + " (" + providerName + ")", e.getMessage());
+            }
+        }
+    }
+
+    /* Get MessageDigest algorithms for a specific provider */
+    private static Set<String> getMessageDigestAlgorithms(String providerName) {
+        return getAlgorithmsForService(providerName, "MessageDigest");
+    }
+
+    /* Get the baseline MessageDigest algorithms that wolfJCE supports for comparison */
+    private static Set<String> getWolfJCEMessageDigestAlgorithms() {
+        return getWolfJCEAlgorithmsForService("MessageDigest");
+    }
+
+    /* Enhanced method to get MessageDigest algorithms for special provider cases, filtered by wolfJCE support */
+    private static Set<String> getMessageDigestAlgorithmsForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
+        Set<String> algorithms;
+        
+        if (providerName.equals("wolfJCE")) {
+            algorithms = new TreeSet<>(wolfJCEAlgorithms);
+        } else {
+            algorithms = getAlgorithmsForProvider(providerName, "MessageDigest", wolfJCEAlgorithms);
+        }
+        
+        Set<String> filteredAlgorithms = new TreeSet<>();
+        
+        /* Normalize wolfJCE algorithms for comparison */
+        Set<String> normalizedWolfJCE = new TreeSet<>();
+        for (String alg : wolfJCEAlgorithms) {
+            String normalized = alg.toUpperCase();
+            if (normalized.equals("SHA")) normalized = "SHA-1";
+            if (normalized.equals("SHA1")) normalized = "SHA-1";
+            normalizedWolfJCE.add(normalized);
+        }
+        
+        /* Track which algorithms we've already added to avoid duplicates */
+        Set<String> addedNormalized = new TreeSet<>();
+        
+        /* Normalize algorithm names to avoid duplicates */
+        for (String algorithm : algorithms) {
+            String normalized = algorithm.toUpperCase();
+            if (normalized.equals("SHA")) normalized = "SHA-1";
+            if (normalized.equals("SHA1")) normalized = "SHA-1";
+            
+            /* For BC, convert their format to standard format */
+            if (providerName.equals("BC")) {
+                if (normalized.startsWith("SHA3") && !normalized.contains("-")) {
+                    if (normalized.equals("SHA3224")) normalized = "SHA3-224";
+                    else if (normalized.equals("SHA3256")) normalized = "SHA3-256";
+                    else if (normalized.equals("SHA3384")) normalized = "SHA3-384";
+                    else if (normalized.equals("SHA3512")) normalized = "SHA3-512";
+                }
+                normalized = normalized.replace("SHA3", "SHA3-");
+                normalized = normalized.replace("SHA3--", "SHA3-");
+            }
+            
+            if (normalizedWolfJCE.contains(normalized) && !addedNormalized.contains(normalized)) {
+                if (normalized.equals("SHA-1")) {
+                    if (algorithm.equals("SHA-1")) {
+                        filteredAlgorithms.add(algorithm);
+                        addedNormalized.add(normalized);
+                    } else if (!addedNormalized.contains(normalized)) {
+                        boolean hasStandardName = false;
+                        for (String alg : algorithms) {
+                            if (alg.equals("SHA-1")) {
+                                hasStandardName = true;
+                                break;
+                            }
+                        }
+                        if (!hasStandardName) {
+                            filteredAlgorithms.add(algorithm);
+                            addedNormalized.add(normalized);
+                        }
+                    }
+                } else {
+                    filteredAlgorithms.add(algorithm);
+                    addedNormalized.add(normalized);
+                }
+            }
+        }
+        
+        return filteredAlgorithms;
+    }
+
+    /* MessageDigest benchmark runner using the universal methods */
+    private static void runMessageDigestBenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
+        System.out.println("\n" + providerName + ":");
+        
+        Set<String> supportedAlgorithms;
+        supportedAlgorithms = getMessageDigestAlgorithmsForProvider(providerName, wolfJCEAlgorithms);
+        
+        if (supportedAlgorithms.isEmpty()) {
+            System.out.println("  No common MessageDigest algorithms found for provider " + providerName);
+            return;
+        }
+        
+        for (String algorithm : supportedAlgorithms) {
+            try {
+                /* Check if algorithm is enabled in wolfCrypt */
+                boolean isEnabled = true;
+                if (algorithm.equals("MD5") && !FeatureDetect.Md5Enabled()) isEnabled = false;
+                else if (algorithm.equals("SHA-1") && !FeatureDetect.ShaEnabled()) isEnabled = false;
+                else if (algorithm.equals("SHA-224") && !FeatureDetect.Sha224Enabled()) isEnabled = false;
+                else if (algorithm.equals("SHA-256") && !FeatureDetect.Sha256Enabled()) isEnabled = false;
+                else if (algorithm.equals("SHA-384") && !FeatureDetect.Sha384Enabled()) isEnabled = false;
+                else if (algorithm.equals("SHA-512") && !FeatureDetect.Sha512Enabled()) isEnabled = false;
+                else if (algorithm.startsWith("SHA3-") && !FeatureDetect.Sha3Enabled()) isEnabled = false;
+                
+                if (!isEnabled) {
+                    System.out.printf(" %-40s  Not enabled in wolfCrypt%n", 
+                        algorithm + " (" + providerName + ")");
+                    continue;
+                }
+                
+                runMessageDigestBenchmark(algorithm, providerName);
+            } catch (Exception e) {
+                System.out.printf(" %-40s  Error: %s%n", 
+                    algorithm + " (" + providerName + ")", e.getMessage());
+            }
+        }
+    }
+
+    /* Get PBKDF2 algorithms for a specific provider */
+    private static Set<String> getPBKDF2Algorithms(String providerName) {
+        return getAlgorithmsForService(providerName, "SecretKeyFactory");
+    }
+
+    /* PBKDF2 benchmark runner using the universal methods */
+    private static void runPBKDF2BenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
+        System.out.println("\n" + providerName + ":");
+        
+        Set<String> supportedAlgorithms;
+        if (providerName.equals("wolfJCE")) {
+            supportedAlgorithms = wolfJCEAlgorithms;
+        } else {
+            supportedAlgorithms = getPBKDF2AlgorithmsForProvider(providerName, wolfJCEAlgorithms);
+        }
+        
+        if (supportedAlgorithms.isEmpty()) {
+            System.out.println("  No common SecretKeyFactory algorithms found for provider " + providerName);
+            return;
+        }
+        
+        for (String algorithm : supportedAlgorithms) {
+            try {
+                /* Skip SHA3 algorithms for SunJCE */
+                if (providerName.equals("SunJCE") && algorithm.contains("SHA3")) {
+                    continue;
+                }
+                
+                runPBKDF2Benchmark(algorithm, providerName);
+            } catch (Exception e) {
+                System.out.printf(" %-40s  Error: %s%n", 
+                    algorithm + " (" + providerName + ")", e.getMessage());
+            }
+        }
+    }
+
+    /* Get the baseline cipher algorithms that wolfJCE supports for comparison */
+    private static Set<String> getWolfJCECipherAlgorithms() {
+        return getWolfJCEAlgorithmsForService("Cipher");
+    }
+
+    /* Get the baseline PBKDF2 algorithms that wolfJCE supports for comparison */
+    private static Set<String> getWolfJCEPBKDF2Algorithms() {
+        return getWolfJCEAlgorithmsForService("SecretKeyFactory");
+    }
+
+    /* Get the baseline signature algorithms that wolfJCE supports for comparison */
+    private static Set<String> getWolfJCESignatureAlgorithms() {
+        return getWolfJCEAlgorithmsForService("Signature");
     }
 
     public static void main(String[] args) {
@@ -1064,20 +1329,29 @@ public class CryptoBenchmark {
                 printProviderInfo(provider);
             }
 
+            /* Run symmetric benchmarks with hardcoded algorithms (temporary fix) */
             System.out.println("-----------------------------------------------------------------------------");
             System.out.println(" Symmetric Cipher Benchmark");
             System.out.println("-----------------------------------------------------------------------------\n");
 
-            /* Run symmetric benchmarks with clean provider setup */
-            for (int i = 0; i < providers.length; i++) {
-                setupProvidersForTest(providers[i]);
+            setupProvidersForTest(providers[0]);
+            Set<String> wolfJCECipherAlgorithms = getWolfJCECipherAlgorithms();
 
-                runEncDecBenchmark("AES", "CBC", "NoPadding", providerNames[i]);
-                runEncDecBenchmark("AES", "CBC", "PKCS5Padding", providerNames[i]);
-                runEncDecBenchmark("AES", "GCM", "NoPadding", providerNames[i]);
-
-                if (FeatureDetect.Des3Enabled()) {
-                    runEncDecBenchmark("DESede", "CBC", "NoPadding", providerNames[i]);
+            for (Provider provider : providers) {
+                setupProvidersForTest(provider);
+                String providerName = provider.getName();
+                System.out.println("\n" + providerName + ":");
+                
+                try {
+                    runEncDecBenchmark("AES", "CBC", "NoPadding", providerName);
+                    runEncDecBenchmark("AES", "CBC", "PKCS5Padding", providerName);
+                    runEncDecBenchmark("AES", "GCM", "NoPadding", providerName);
+                    
+                    if (FeatureDetect.Des3Enabled()) {
+                        runEncDecBenchmark("DESede", "CBC", "NoPadding", providerName);
+                    }
+                } catch (Exception e) {
+                    System.out.printf(" Error testing symmetric ciphers for %s: %s%n", providerName, e.getMessage());
                 }
             }
 
@@ -1162,35 +1436,13 @@ public class CryptoBenchmark {
             System.out.println("PBKDF2 Benchmark Results");
             System.out.println("-----------------------------------------------------------------------------");
 
-            String[] pbkdf2Algorithms = {
-                "PBKDF2WithHmacSHA1",
-                "PBKDF2WithHmacSHA224",
-                "PBKDF2WithHmacSHA256",
-                "PBKDF2WithHmacSHA384", 
-                "PBKDF2WithHmacSHA512",
-                "PBKDF2WithHmacSHA3-224",
-                "PBKDF2WithHmacSHA3-256",
-                "PBKDF2WithHmacSHA3-384",
-                "PBKDF2WithHmacSHA3-512"
-            };
+            /* First, set up wolfJCE provider to get its algorithm list */
+            setupProvidersForTest(providers[0]);
+            Set<String> wolfJCEPBKDF2Algorithms = getWolfJCEPBKDF2Algorithms();
 
-            for (int i = 0; i < providers.length; i++) {
-                setupProvidersForTest(providers[i]);
-                System.out.println("\n" + providerNames[i] + ":");
-                
-                for (String algorithm : pbkdf2Algorithms) {
-                    try {
-                        /* Skip SHA3 algorithms for SunJCE */
-                        if (providerNames[i].equals("SunJCE") && algorithm.contains("SHA3")) {
-                            continue;
-                        }
-                        
-                        runPBKDF2Benchmark(algorithm, providerNames[i]);
-                    } catch (Exception e) {
-                        System.out.printf(" %-40s  Error: %s%n", 
-                            algorithm + " (" + providerNames[i] + ")", e.getMessage());
-                    }
-                }
+            for (Provider provider : providers) {
+                setupProvidersForTest(provider);
+                runPBKDF2BenchmarksForProvider(provider.getName(), wolfJCEPBKDF2Algorithms);
             }
 
             /* Run MessageDigest benchmarks with clean provider setup */
@@ -1198,9 +1450,13 @@ public class CryptoBenchmark {
             System.out.println("MessageDigest Benchmark Results");
             System.out.println("-----------------------------------------------------------------------------");
 
-            for (int i = 0; i < providers.length; i++) {
-                setupProvidersForTest(providers[i]);
-                String providerName = providerNames[i];
+            /* First, set up wolfJCE provider to get its algorithm list */
+            setupProvidersForTest(providers[0]);
+            Set<String> wolfJCEMessageDigestAlgorithms = getWolfJCEMessageDigestAlgorithms();
+
+            for (Provider provider : providers) {
+                setupProvidersForTest(provider);
+                String providerName = provider.getName();
                 String digestProviderName = providerName;
 
                 /* Handle special case for digest providers */
@@ -1209,42 +1465,7 @@ public class CryptoBenchmark {
                 }
 
                 setupDigestProvider(providerName);
-                System.out.println("\n" + digestProviderName + ":");
-                
-                try {
-                    if (FeatureDetect.Md5Enabled() && isAlgorithmSupported("MD5", digestProviderName)) {
-                        runMessageDigestBenchmark("MD5", digestProviderName);
-                    }
-                    if (FeatureDetect.ShaEnabled() && isAlgorithmSupported("SHA-1", digestProviderName)) {
-                        runMessageDigestBenchmark("SHA-1", digestProviderName);
-                    }
-                    if (FeatureDetect.Sha224Enabled() && isAlgorithmSupported("SHA-224", digestProviderName)) {
-                        runMessageDigestBenchmark("SHA-224", digestProviderName);
-                    }
-                    if (FeatureDetect.Sha256Enabled() && isAlgorithmSupported("SHA-256", digestProviderName)) {
-                        runMessageDigestBenchmark("SHA-256", digestProviderName);
-                    }
-                    if (FeatureDetect.Sha384Enabled() && isAlgorithmSupported("SHA-384", digestProviderName)) {
-                        runMessageDigestBenchmark("SHA-384", digestProviderName);
-                    }
-                    if (FeatureDetect.Sha512Enabled() && isAlgorithmSupported("SHA-512", digestProviderName)) {
-                        runMessageDigestBenchmark("SHA-512", digestProviderName);
-                    }
-                    if (FeatureDetect.Sha3Enabled() && isAlgorithmSupported("SHA3-224", digestProviderName)) {
-                        runMessageDigestBenchmark("SHA3-224", digestProviderName);
-                    }
-                    if (FeatureDetect.Sha3Enabled() && isAlgorithmSupported("SHA3-256", digestProviderName)) {
-                        runMessageDigestBenchmark("SHA3-256", digestProviderName);
-                    }
-                    if (FeatureDetect.Sha3Enabled() && isAlgorithmSupported("SHA3-384", digestProviderName)) {
-                        runMessageDigestBenchmark("SHA3-384", digestProviderName);
-                    }
-                    if (FeatureDetect.Sha3Enabled() && isAlgorithmSupported("SHA3-512", digestProviderName)) {
-                        runMessageDigestBenchmark("SHA3-512", digestProviderName);
-                    }
-                } catch (Exception e) {
-                    System.out.println("Failed to benchmark MessageDigest with provider " + digestProviderName + ": " + e.getMessage());
-                }
+                runMessageDigestBenchmarksForProvider(digestProviderName, wolfJCEMessageDigestAlgorithms);
             }
 
             /* Run Signature benchmarks with clean provider setup */
