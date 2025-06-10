@@ -116,7 +116,7 @@ public class CryptoBenchmark {
                 if (algorithm.contains("512")) return 64;
                 if (algorithm.contains("MD5")) return 16;
                 if (algorithm.contains("SHA1") || algorithm.contains("SHA-1")) return 20;
-                
+
                 System.out.println("Warning: Unknown HMAC algorithm " + algorithm + ", using default key size 32");
                 return 32;
         }
@@ -133,10 +133,10 @@ public class CryptoBenchmark {
         if (!testProvider.getName().equals("BC")) {
             Security.removeProvider("BC");
         }
-        
+
         /* Add test provider at priority 1 */
         Security.insertProviderAt(testProvider, 1);
-        
+
         /* For SunJCE tests, SunEC is typically already available in modern Java versions */
         if (testProvider.getName().equals("SunJCE")) {
             /* SunEC should already be registered in Java 9+ */
@@ -163,13 +163,13 @@ public class CryptoBenchmark {
 
     private static KeyPairGenerator initializeKeyGenerator(String keyType, String keyGenProvider) throws Exception {
         KeyPairGenerator keyGen;
-        
+
         if (keyType.equals("EC") && keyGenProvider.equals("SunEC")) {
             keyGen = KeyPairGenerator.getInstance("EC", "SunEC");
             keyGen.initialize(new ECGenParameterSpec("secp256r1"));
         } else {
             keyGen = KeyPairGenerator.getInstance(keyType, keyGenProvider);
-            
+
             /* Initialize key generator based on type */
             if (keyType.equals("RSA")) {
                 keyGen.initialize(2048);
@@ -179,14 +179,14 @@ public class CryptoBenchmark {
                 keyGen.initialize(1024);
             }
         }
-        
+
         return keyGen;
     }
 
     /* Universal method to get algorithms for a specific provider and service type */
     private static Set<String> getAlgorithmsForProvider(String providerName, String serviceType, Set<String> wolfJCEAlgorithms) {
         Set<String> algorithms = new TreeSet<>();
-        
+
         if (providerName.equals("SunJCE") && serviceType.equals("Signature")) {
             algorithms.addAll(getAlgorithmsForService("SunRsaSign", serviceType));
             algorithms.addAll(getAlgorithmsForService("SunEC", serviceType));
@@ -194,7 +194,7 @@ public class CryptoBenchmark {
         } else {
             algorithms.addAll(getAlgorithmsForService(providerName, serviceType));
         }
-        
+
         if (providerName.equals("BC")) {
             Set<String> normalizedAlgorithms = new TreeSet<>();
             for (String algorithm : algorithms) {
@@ -203,20 +203,20 @@ public class CryptoBenchmark {
                     if (wolfJCEAlgorithms.contains(normalized)) {
                         normalizedAlgorithms.add(algorithm);
                     }
-                } else if (serviceType.equals("Mac")) {
+                } else if (serviceType.equals("Mac") || serviceType.equals("KeyGenerator")) {
                     String normalized = algorithm;
-                    
+
                     if (wolfJCEAlgorithms.contains(normalized)) {
                         normalizedAlgorithms.add(algorithm);
                         continue;
                     }
-                    
+
                     for (String wolfAlg : wolfJCEAlgorithms) {
                         if (wolfAlg.equalsIgnoreCase(normalized)) {
                             normalizedAlgorithms.add(algorithm);
                             break;
                         }
-                        
+
                         String bcNormalized = normalized.replace("-", "");
                         String wolfNormalized = wolfAlg.replace("-", "");
                         if (bcNormalized.equalsIgnoreCase(wolfNormalized)) {
@@ -234,7 +234,7 @@ public class CryptoBenchmark {
         } else {
             algorithms.retainAll(wolfJCEAlgorithms);
         }
-        
+
         return algorithms;
     }
 
@@ -256,17 +256,17 @@ public class CryptoBenchmark {
     /* Universal method to get algorithms for a specific provider and service type */
     private static Set<String> getAlgorithmsForService(String providerName, String serviceType) {
         Set<String> algorithms = new TreeSet<>();
-        
+
         Provider provider = Security.getProvider(providerName);
         if (provider == null) {
             System.out.println("Provider " + providerName + " not found.");
             return algorithms;
         }
-        
+
         for (Provider.Service service : provider.getServices()) {
             if (serviceType.equals(service.getType())) {
                 String algorithm = service.getAlgorithm();
-                
+
                 if (serviceType.equals("Mac")) {
                     if (algorithm.startsWith("Hmac") || algorithm.startsWith("HMAC")) {
                         algorithms.add(algorithm);
@@ -276,7 +276,7 @@ public class CryptoBenchmark {
                 }
             }
         }
-        
+
         return algorithms;
     }
 
@@ -430,7 +430,7 @@ public class CryptoBenchmark {
         /* Benchmark encryption - run for 1 second */
         startTime = System.nanoTime();
         elapsedTime = 0;
-        
+
         do {
             if (mode.equals("GCM")) {
                 secureRandom.nextBytes(ivBytes);
@@ -454,7 +454,7 @@ public class CryptoBenchmark {
         /* Benchmark decryption - run for 1 second */
         startTime = System.nanoTime();
         elapsedTime = 0;
-        
+
         do {
             cipher.init(Cipher.DECRYPT_MODE, key, params);
             cipher.doFinal(encryptedData);
@@ -591,7 +591,7 @@ public class CryptoBenchmark {
         int keyGenOps = 0;
         long startTime;
         double elapsedTime;
-        
+
         /* Initialize key generator */
         if (providerName.equals("SunJCE")) {
             keyGen = KeyPairGenerator.getInstance("EC", "SunEC");
@@ -605,14 +605,14 @@ public class CryptoBenchmark {
         /* Key Generation benchmark */
         startTime = System.nanoTime();
         elapsedTime = 0;
-        
+
         /* Run key generation benchmark */
         do {
             keyGen.generateKeyPair();
             keyGenOps++;
             elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
         } while (elapsedTime < TEST_MIN_TIME_SECONDS);
-        
+
         String keyGenOp = String.format("ECC %s key gen", curveName);
         printKeyGenResults(keyGenOps, elapsedTime, keyGenOp, providerName, "EC");
     }
@@ -635,24 +635,24 @@ public class CryptoBenchmark {
     /* HMAC benchmark runner using the universal methods */
     private static void runHmacBenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
         System.out.println("\n" + providerName + ":");
-        
+
         Set<String> supportedAlgorithms;
         if (providerName.equals("wolfJCE")) {
             supportedAlgorithms = wolfJCEAlgorithms;
         } else {
             supportedAlgorithms = getHmacAlgorithmsForProvider(providerName, wolfJCEAlgorithms);
         }
-        
+
         if (supportedAlgorithms.isEmpty()) {
             System.out.println("  No common HMAC algorithms found for provider " + providerName);
             return;
         }
-        
+
         for (String algorithm : supportedAlgorithms) {
             try {
                 runHmacBenchmark(algorithm, providerName);
             } catch (Exception e) {
-                System.out.printf(" %-40s  Error: %s%n", 
+                System.out.printf(" %-40s  Error: %s%n",
                     algorithm + " (" + providerName + ")", e.getMessage());
             }
         }
@@ -689,7 +689,7 @@ public class CryptoBenchmark {
         /* Benchmark phase: run for at least 1 second like other tests */
         startTime = System.nanoTime();
         elapsedTime = 0;
-        
+
         do {
             mac.update(testData);
             mac.doFinal();
@@ -789,12 +789,12 @@ public class CryptoBenchmark {
         int keyLength = 32;
         int processingBytes = 1024;
         SecureRandom secureRandom = new SecureRandom();
-        
+
         /* Initialize test parameters */
         salt = new byte[16];
         secureRandom.nextBytes(salt);
         password = "wolfCryptBenchmarkTestPassword".toCharArray();
-        
+
         /* Initialize SecretKeyFactory with specific provider */
         try {
             secretKeyFactory = SecretKeyFactory.getInstance(algorithm, providerName);
@@ -802,35 +802,35 @@ public class CryptoBenchmark {
             System.out.printf(" %-40s  Not supported by provider %s%n", algorithm, providerName);
             return;
         }
-        
+
         /* Create PBEKeySpec */
         PBEKeySpec pbeKeySpec = new PBEKeySpec(password, salt, iterationCount, keyLength * 8);
-        
+
         /* Warm up phase */
         for (int i = 0; i < WARMUP_ITERATIONS; i++) {
             secretKeyFactory.generateSecret(pbeKeySpec);
         }
-        
+
         /* Benchmark */
         long startTime = System.nanoTime();
         int operations = 0;
         double elapsedTime = 0;
-        
+
         /* Run for at least 1 second */
         do {
             secretKeyFactory.generateSecret(pbeKeySpec);
             operations++;
             elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
         } while (elapsedTime < 1.0);
-        
+
         /* Calculate metrics */
         double processedKiB = (operations * processingBytes) / 1024.0;
         double throughput = processedKiB / elapsedTime;
-        
+
         String testName = String.format("%s (%s)", algorithm, providerName);
         System.out.printf(" %-40s  %8.3f KiB took %.3f seconds, %8.3f KiB/s%n",
             testName, processedKiB, elapsedTime, throughput);
-        
+
         /* Store result */
         results.add(new BenchmarkResult(providerName, algorithm, throughput));
     }
@@ -873,10 +873,10 @@ public class CryptoBenchmark {
         long startTime;
         double elapsedTime;
         KeyPair keyPair;
-        
+
         /* Generate small test data */
         testData = generateTestData(SMALL_MESSAGE_SIZE);
-        
+
         /* Determine the correct provider and key type based on algorithm */
         String keyGenProvider = providerName;
         String signatureProvider = providerName;
@@ -918,31 +918,31 @@ public class CryptoBenchmark {
             /* Initialize key generator and signature with correct providers */
             keyGen = initializeKeyGenerator(keyType, keyGenProvider);
             signature = Signature.getInstance(algorithm, signatureProvider);
-            
+
             /* Generate key pair */
             keyPair = keyGen.generateKeyPair();
-            
+
             /* Test that signing works before benchmarking */
             signature.initSign(keyPair.getPrivate());
             signature.update(testData);
             byte[] sig = signature.sign();
-            
+
             /* Warm up phase */
             for (int i = 0; i < WARMUP_ITERATIONS; i++) {
                 signature.initSign(keyPair.getPrivate());
                 signature.update(testData);
                 signature.sign();
-                
+
                 signature.initVerify(keyPair.getPublic());
                 signature.update(testData);
                 signature.verify(sig);
             }
-            
+
             /* Benchmark signing */
             ops = 0;
             startTime = System.nanoTime();
             elapsedTime = 0;
-            
+
             do {
                 signature.initSign(keyPair.getPrivate());
                 signature.update(testData);
@@ -950,17 +950,17 @@ public class CryptoBenchmark {
                 ops++;
                 elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
             } while (elapsedTime < TEST_MIN_TIME_SECONDS);
-            
+
             double signOpsPerSec = ops / elapsedTime;
             System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
                 algorithm + " sign (" + signatureProvider + ")", ops, elapsedTime, signOpsPerSec);
             results.add(new BenchmarkResult(signatureProvider, algorithm + " sign", signOpsPerSec));
-            
+
             /* Benchmark verification */
             ops = 0;
             startTime = System.nanoTime();
             elapsedTime = 0;
-            
+
             do {
                 signature.initVerify(keyPair.getPublic());
                 signature.update(testData);
@@ -968,14 +968,14 @@ public class CryptoBenchmark {
                 ops++;
                 elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
             } while (elapsedTime < TEST_MIN_TIME_SECONDS);
-            
+
             double verifyOpsPerSec = ops / elapsedTime;
             System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
                 algorithm + " verify (" + signatureProvider + ")", ops, elapsedTime, verifyOpsPerSec);
             results.add(new BenchmarkResult(signatureProvider, algorithm + " verify", verifyOpsPerSec));
-            
+
         } catch (Exception e) {
-            System.err.printf(" %-40s  Not supported: %s (%s)%n", 
+            System.err.printf(" %-40s  Not supported: %s (%s)%n",
                 algorithm + " (" + signatureProvider + ")", e.getMessage(),
                 e.getClass().getName());
         }
@@ -994,24 +994,24 @@ public class CryptoBenchmark {
     /* Signature benchmark runner */
     private static void runSignatureBenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
         System.out.println("\n" + providerName + ":");
-        
+
         Set<String> supportedAlgorithms;
         if (providerName.equals("wolfJCE")) {
             supportedAlgorithms = wolfJCEAlgorithms;
         } else {
             supportedAlgorithms = getSignatureAlgorithmsForProvider(providerName, wolfJCEAlgorithms);
         }
-        
+
         if (supportedAlgorithms.isEmpty()) {
             System.out.println("  No common signature algorithms found for provider " + providerName);
             return;
         }
-        
+
         for (String algorithm : supportedAlgorithms) {
             try {
                 runSignatureBenchmark(algorithm, providerName);
             } catch (Exception e) {
-                System.out.printf(" %-40s  Error: %s%n", 
+                System.out.printf(" %-40s  Error: %s%n",
                     algorithm + " (" + providerName + ")", e.getMessage());
             }
         }
@@ -1021,17 +1021,17 @@ public class CryptoBenchmark {
     private static Set<String> getCipherAlgorithmsForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
         Set<String> providerAlgorithms = getAlgorithmsForService(providerName, "Cipher");
         Set<String> filteredAlgorithms = new TreeSet<>();
-        
+
         for (String wolfAlg : wolfJCEAlgorithms) {
             if (wolfAlg.equals("RSA") || wolfAlg.startsWith("RSA/")) {
                 continue;
             }
-            
+
             if (providerAlgorithms.contains(wolfAlg)) {
                 filteredAlgorithms.add(wolfAlg);
                 continue;
             }
-            
+
             for (String providerAlg : providerAlgorithms) {
                 if (providerAlg.equalsIgnoreCase(wolfAlg)) {
                     filteredAlgorithms.add(providerAlg);
@@ -1039,7 +1039,7 @@ public class CryptoBenchmark {
                 }
             }
         }
-        
+
         return filteredAlgorithms;
     }
 
@@ -1047,19 +1047,19 @@ public class CryptoBenchmark {
     private static Set<String> getPBKDF2AlgorithmsForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
         Set<String> providerAlgorithms = getAlgorithmsForService(providerName, "SecretKeyFactory");
         Set<String> filteredAlgorithms = new TreeSet<>();
-        
+
         for (String wolfAlg : wolfJCEAlgorithms) {
             if (providerAlgorithms.contains(wolfAlg)) {
                 filteredAlgorithms.add(wolfAlg);
                 continue;
             }
-            
+
             for (String providerAlg : providerAlgorithms) {
                 if (providerAlg.equalsIgnoreCase(wolfAlg)) {
                     filteredAlgorithms.add(providerAlg);
                     break;
                 }
-                
+
                 if (providerName.equals("BC")) {
                     String normalizedProviderAlg = providerAlg.replace("WITH", "With").replace("HMAC", "Hmac");
                     if (normalizedProviderAlg.equalsIgnoreCase(wolfAlg)) {
@@ -1069,50 +1069,50 @@ public class CryptoBenchmark {
                 }
             }
         }
-        
+
         return filteredAlgorithms;
     }
 
     /* Cipher benchmark runner using the universal methods */
     private static void runCipherBenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
         System.out.println("\n" + providerName + ":");
-        
+
         Set<String> supportedAlgorithms;
         if (providerName.equals("wolfJCE")) {
             supportedAlgorithms = wolfJCEAlgorithms;
         } else {
             supportedAlgorithms = getCipherAlgorithmsForProvider(providerName, wolfJCEAlgorithms);
         }
-        
+
         if (supportedAlgorithms.isEmpty()) {
             System.out.println("  No common Cipher algorithms found for provider " + providerName);
             return;
         }
-        
+
         for (String algorithm : supportedAlgorithms) {
             try {
                 /* Parse algorithm string to get mode and padding */
                 String[] parts = algorithm.split("/");
                 if (parts.length != 3) {
-                    System.out.printf(" %-40s  Invalid algorithm format: %s%n", 
+                    System.out.printf(" %-40s  Invalid algorithm format: %s%n",
                         algorithm + " (" + providerName + ")", algorithm);
                     continue;
                 }
-                
+
                 String baseAlg = parts[0];
                 String mode = parts[1];
                 String padding = parts[2];
-                
+
                 /* Skip if DESede is not enabled */
                 if (baseAlg.equals("DESede") && !FeatureDetect.Des3Enabled()) {
-                    System.out.printf(" %-40s  DESede not enabled in wolfCrypt%n", 
+                    System.out.printf(" %-40s  DESede not enabled in wolfCrypt%n",
                         algorithm + " (" + providerName + ")");
                     continue;
                 }
-                
+
                 runEncDecBenchmark(baseAlg, mode, padding, providerName);
             } catch (Exception e) {
-                System.out.printf(" %-40s  Error: %s%n", 
+                System.out.printf(" %-40s  Error: %s%n",
                     algorithm + " (" + providerName + ")", e.getMessage());
             }
         }
@@ -1131,15 +1131,15 @@ public class CryptoBenchmark {
     /* Enhanced method to get MessageDigest algorithms for special provider cases, filtered by wolfJCE support */
     private static Set<String> getMessageDigestAlgorithmsForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
         Set<String> algorithms;
-        
+
         if (providerName.equals("wolfJCE")) {
             algorithms = new TreeSet<>(wolfJCEAlgorithms);
         } else {
             algorithms = getAlgorithmsForProvider(providerName, "MessageDigest", wolfJCEAlgorithms);
         }
-        
+
         Set<String> filteredAlgorithms = new TreeSet<>();
-        
+
         /* Normalize wolfJCE algorithms for comparison */
         Set<String> normalizedWolfJCE = new TreeSet<>();
         for (String alg : wolfJCEAlgorithms) {
@@ -1148,16 +1148,16 @@ public class CryptoBenchmark {
             if (normalized.equals("SHA1")) normalized = "SHA-1";
             normalizedWolfJCE.add(normalized);
         }
-        
+
         /* Track which algorithms we've already added to avoid duplicates */
         Set<String> addedNormalized = new TreeSet<>();
-        
+
         /* Normalize algorithm names to avoid duplicates */
         for (String algorithm : algorithms) {
             String normalized = algorithm.toUpperCase();
             if (normalized.equals("SHA")) normalized = "SHA-1";
             if (normalized.equals("SHA1")) normalized = "SHA-1";
-            
+
             /* For BC, convert their format to standard format */
             if (providerName.equals("BC")) {
                 if (normalized.startsWith("SHA3") && !normalized.contains("-")) {
@@ -1169,7 +1169,7 @@ public class CryptoBenchmark {
                 normalized = normalized.replace("SHA3", "SHA3-");
                 normalized = normalized.replace("SHA3--", "SHA3-");
             }
-            
+
             if (normalizedWolfJCE.contains(normalized) && !addedNormalized.contains(normalized)) {
                 if (normalized.equals("SHA-1")) {
                     if (algorithm.equals("SHA-1")) {
@@ -1194,22 +1194,22 @@ public class CryptoBenchmark {
                 }
             }
         }
-        
+
         return filteredAlgorithms;
     }
 
     /* MessageDigest benchmark runner using the universal methods */
     private static void runMessageDigestBenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
         System.out.println("\n" + providerName + ":");
-        
+
         Set<String> supportedAlgorithms;
         supportedAlgorithms = getMessageDigestAlgorithmsForProvider(providerName, wolfJCEAlgorithms);
-        
+
         if (supportedAlgorithms.isEmpty()) {
             System.out.println("  No common MessageDigest algorithms found for provider " + providerName);
             return;
         }
-        
+
         for (String algorithm : supportedAlgorithms) {
             try {
                 /* Check if algorithm is enabled in wolfCrypt */
@@ -1221,16 +1221,16 @@ public class CryptoBenchmark {
                 else if (algorithm.equals("SHA-384") && !FeatureDetect.Sha384Enabled()) isEnabled = false;
                 else if (algorithm.equals("SHA-512") && !FeatureDetect.Sha512Enabled()) isEnabled = false;
                 else if (algorithm.startsWith("SHA3-") && !FeatureDetect.Sha3Enabled()) isEnabled = false;
-                
+
                 if (!isEnabled) {
-                    System.out.printf(" %-40s  Not enabled in wolfCrypt%n", 
+                    System.out.printf(" %-40s  Not enabled in wolfCrypt%n",
                         algorithm + " (" + providerName + ")");
                     continue;
                 }
-                
+
                 runMessageDigestBenchmark(algorithm, providerName);
             } catch (Exception e) {
-                System.out.printf(" %-40s  Error: %s%n", 
+                System.out.printf(" %-40s  Error: %s%n",
                     algorithm + " (" + providerName + ")", e.getMessage());
             }
         }
@@ -1244,29 +1244,29 @@ public class CryptoBenchmark {
     /* PBKDF2 benchmark runner using the universal methods */
     private static void runPBKDF2BenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
         System.out.println("\n" + providerName + ":");
-        
+
         Set<String> supportedAlgorithms;
         if (providerName.equals("wolfJCE")) {
             supportedAlgorithms = wolfJCEAlgorithms;
         } else {
             supportedAlgorithms = getPBKDF2AlgorithmsForProvider(providerName, wolfJCEAlgorithms);
         }
-        
+
         if (supportedAlgorithms.isEmpty()) {
             System.out.println("  No common SecretKeyFactory algorithms found for provider " + providerName);
             return;
         }
-        
+
         for (String algorithm : supportedAlgorithms) {
             try {
                 /* Skip SHA3 algorithms for SunJCE */
                 if (providerName.equals("SunJCE") && algorithm.contains("SHA3")) {
                     continue;
                 }
-                
+
                 runPBKDF2Benchmark(algorithm, providerName);
             } catch (Exception e) {
-                System.out.printf(" %-40s  Error: %s%n", 
+                System.out.printf(" %-40s  Error: %s%n",
                     algorithm + " (" + providerName + ")", e.getMessage());
             }
         }
@@ -1285,6 +1285,95 @@ public class CryptoBenchmark {
     /* Get the baseline signature algorithms that wolfJCE supports for comparison */
     private static Set<String> getWolfJCESignatureAlgorithms() {
         return getWolfJCEAlgorithmsForService("Signature");
+    }
+
+    /* KeyGenerator benchmark */
+    /* KeyGenerator benchmark */
+    private static void runKeyGeneratorBenchmark(String algorithm, String providerName) throws Exception {
+        KeyGenerator keyGen;
+        int ops = 0;
+        long startTime;
+        double elapsedTime;
+
+        /* Initialize KeyGenerator with specific provider */
+        keyGen = KeyGenerator.getInstance(algorithm, providerName);
+
+        /* Set appropriate key size based on algorithm */
+        if (algorithm.equals("AES")) {
+            keyGen.init(256);
+        } else if (algorithm.equals("DES")) {
+            keyGen.init(56);
+        } else if (algorithm.equals("DESede")) {
+            keyGen.init(168);
+        } else if (algorithm.equals("RSA")) {
+            keyGen.init(2048);
+        } else if (algorithm.startsWith("Hmac") || algorithm.startsWith("HMAC")) {
+            try {
+                int keySize = getHmacKeySize(algorithm) * 8;
+                keyGen.init(keySize);
+            } catch (Exception e) {
+            }
+        } else {
+            try {
+                keyGen.generateKey();
+                keyGen = KeyGenerator.getInstance(algorithm, providerName);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Unsupported algorithm or unable to determine key size: " + algorithm);
+            }
+        }
+
+        /* Warm up phase */
+        for (int i = 0; i < WARMUP_ITERATIONS; i++) {
+            keyGen.generateKey();
+        }
+
+        /* Benchmark phase */
+        startTime = System.nanoTime();
+        elapsedTime = 0;
+
+        do {
+            keyGen.generateKey();
+            ops++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
+
+        double opsPerSec = ops / elapsedTime;
+        System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
+            algorithm + " (" + providerName + ")", ops, elapsedTime, opsPerSec);
+
+        /* Store result */
+        results.add(new BenchmarkResult(providerName, algorithm + " keygen", opsPerSec));
+    }
+
+    /* Get KeyGenerator algorithms for a specific provider */
+    private static Set<String> getKeyGeneratorAlgorithmsForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
+        return getAlgorithmsForProvider(providerName, "KeyGenerator", wolfJCEAlgorithms);
+    }
+
+    /* KeyGenerator benchmark runner */
+    private static void runKeyGeneratorBenchmarksForProvider(String providerName, Set<String> wolfJCEAlgorithms) {
+        System.out.println("\n" + providerName + ":");
+
+        Set<String> supportedAlgorithms;
+        if (providerName.equals("wolfJCE")) {
+            supportedAlgorithms = wolfJCEAlgorithms;
+        } else {
+            supportedAlgorithms = getKeyGeneratorAlgorithmsForProvider(providerName, wolfJCEAlgorithms);
+        }
+
+        if (supportedAlgorithms.isEmpty()) {
+            System.out.println("  No common KeyGenerator algorithms found for provider " + providerName);
+            return;
+        }
+
+        for (String algorithm : supportedAlgorithms) {
+            try {
+                runKeyGeneratorBenchmark(algorithm, providerName);
+            } catch (Exception e) {
+                System.out.printf(" %-40s  Error: %s%n",
+                    algorithm + " (" + providerName + ")", e.getMessage());
+            }
+        }
     }
 
     public static void main(String[] args) {
@@ -1341,12 +1430,12 @@ public class CryptoBenchmark {
                 setupProvidersForTest(provider);
                 String providerName = provider.getName();
                 System.out.println("\n" + providerName + ":");
-                
+
                 try {
                     runEncDecBenchmark("AES", "CBC", "NoPadding", providerName);
                     runEncDecBenchmark("AES", "CBC", "PKCS5Padding", providerName);
                     runEncDecBenchmark("AES", "GCM", "NoPadding", providerName);
-                    
+
                     if (FeatureDetect.Des3Enabled()) {
                         runEncDecBenchmark("DESede", "CBC", "NoPadding", providerName);
                     }
@@ -1367,7 +1456,7 @@ public class CryptoBenchmark {
                     try {
                         runRSABenchmark(provider.getName(), keySize);
                     } catch (Exception e) {
-                        System.out.printf("Failed to benchmark RSA %d with provider %s: %s%n", 
+                        System.out.printf("Failed to benchmark RSA %d with provider %s: %s%n",
                             keySize, provider.getName(), e.getMessage());
                     }
                 }
@@ -1388,7 +1477,7 @@ public class CryptoBenchmark {
                     try {
                         runECCBenchmark(provider.getName(), curve);
                     } catch (Exception e) {
-                        System.out.printf("Failed to benchmark %s with provider %s: %s%n", 
+                        System.out.printf("Failed to benchmark %s with provider %s: %s%n",
                             curve, provider.getName(), e.getMessage());
                     }
                 }
@@ -1425,7 +1514,7 @@ public class CryptoBenchmark {
                     try {
                         runDHBenchmark(provider.getName(), keySize);
                     } catch (Exception e) {
-                        System.out.printf("Failed to benchmark DH %d with provider %s: %s%n", 
+                        System.out.printf("Failed to benchmark DH %d with provider %s: %s%n",
                             keySize, provider.getName(), e.getMessage());
                     }
                 }
@@ -1480,6 +1569,20 @@ public class CryptoBenchmark {
             for (Provider provider : providers) {
                 setupProvidersForTest(provider);
                 runSignatureBenchmarksForProvider(provider.getName(), wolfJCEAlgorithms);
+            }
+
+            /* Run KeyGenerator benchmarks with clean provider setup */
+            System.out.println("\n-----------------------------------------------------------------------------");
+            System.out.println("KeyGenerator Benchmark Results");
+            System.out.println("-----------------------------------------------------------------------------");
+
+            /* First, set up wolfJCE provider to get its algorithm list */
+            setupProvidersForTest(providers[0]);
+            Set<String> wolfJCEKeyGenAlgorithms = getWolfJCEAlgorithmsForService("KeyGenerator");
+
+            for (Provider provider : providers) {
+                setupProvidersForTest(provider);
+                runKeyGeneratorBenchmarksForProvider(provider.getName(), wolfJCEKeyGenAlgorithms);
             }
 
             System.out.println("-----------------------------------------------------------------------------\n");
