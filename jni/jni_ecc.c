@@ -157,31 +157,33 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key_1ex
     int ret = 0;
     ecc_key* ecc = NULL;
     RNG* rng = NULL;
-    const char* name = (*env)->GetStringUTFChars(env, curveName, 0);
+    const char* name;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
-        (*env)->ReleaseStringUTFChars(env, curveName, name);
         return;
     }
 
     rng = (RNG*) getNativeStruct(env, rng_object);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
-        (*env)->ReleaseStringUTFChars(env, curveName, name);
         return;
     }
 
-    if (ecc == NULL || rng == NULL || curveName == NULL || name == NULL) {
+    if (ecc == NULL || rng == NULL || curveName == NULL) {
         ret = BAD_FUNC_ARG;
     }
 
     if (ret == 0) {
-        ret = wc_ecc_get_curve_id_from_name(name);
+        name = (*env)->GetStringUTFChars(env, curveName, 0);
+        if (name == NULL) {
+            ret = BAD_FUNC_ARG;
+        }
     }
 
-    if (name != NULL) {
+    if (ret == 0) {
+        ret = wc_ecc_get_curve_id_from_name(name);
         (*env)->ReleaseStringUTFChars(env, curveName, name);
     }
 
@@ -264,10 +266,17 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
 
     if (ret == 0) {
         /* detect, and later skip, leading zero byte */
-        if (priv[0] == 0) {
+        if ((privSz > 0) && (priv[0] == 0)) {
             idx = 1;
         }
 
+        /* sanity check privSz is big enough to read to idx */
+        if (privSz <= idx) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
         if (curveName != NULL) {
             name = (*env)->GetStringUTFChars(env, curveName, 0);
             ret = wc_ecc_get_curve_id_from_name(name);
@@ -333,7 +342,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private(
             ret = MEMORY_E;
         }
         else {
-            XMEMSET(output, 0, sizeof(outputSz));
+            XMEMSET(output, 0, outputSz);
         }
     }
 
@@ -1017,9 +1026,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1ke
     byte* pkcs8  = NULL;
     word32 derKeySz = MAX_ECC_PRIVATE_DER_SZ;
     word32 pkcs8Sz  = 0;
-
     word32 derKeyBufSz = 0;
-    word32 pkcs8BufSz = 0;
 
     int algoID   = ECDSAk;
     word32 oidSz = 0;
@@ -1113,7 +1120,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1ke
         XFREE(derKey, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
     if (pkcs8 != NULL) {
-        XMEMSET(pkcs8, 0, pkcs8BufSz);
+        XMEMSET(pkcs8, 0, pkcs8Sz);
         XFREE(pkcs8,  NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
