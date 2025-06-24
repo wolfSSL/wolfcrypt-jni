@@ -9,6 +9,8 @@ import java.security.Provider;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.security.spec.AlgorithmParameterSpec;
+import java.util.HashSet;
+import java.util.Set;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import javax.crypto.KeyAgreement;
@@ -1576,6 +1578,74 @@ public class CryptoBenchmark {
           agreementResult.elapsedTime, agreementOp, finalProviderName, "ECDH");
     }
 
+    /* SecureRandom benchmark */
+    private static void runSecureRandomBenchmark(String algorithm,
+      String providerName) throws Exception {
+        SecureRandom secureRandom = SecureRandom.getInstance(algorithm,
+          providerName);
+        byte[] randomBytes = new byte[1024];
+
+        for (int i = 0; i < WARMUP_ITERATIONS; i++) {
+            secureRandom.nextBytes(randomBytes);
+        }
+
+        TimingResult result = runBenchmark(() -> {
+            secureRandom.nextBytes(randomBytes);
+        });
+
+        double throughputMiB = (randomBytes.length * result.operations)
+          / (1024.0 * 1024.0 * result.elapsedTime);
+        System.out.printf(" %-40s  %8.3f MiB took %.3f sec, %8.3f MiB/s%n",
+            algorithm + " (" + providerName + ")",
+            (randomBytes.length * result.operations) / (1024.0 * 1024.0),
+            result.elapsedTime,
+            throughputMiB);
+
+        results.add(new BenchmarkResult(providerName,
+          algorithm, throughputMiB));
+    }
+
+    /* Check if algorithm is supported by provider */
+    private static boolean isSecureRandomAlgorithmSupported(String algorithm,
+      String providerName) {
+        try {
+            SecureRandom.getInstance(algorithm, providerName);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /* Get wolfJCE SecureRandom algorithms to benchmark */
+    private static String[] getWolfJCESecureRandomAlgorithms() {
+        return new String[] { "DEFAULT", "HashDRBG" };
+    }
+
+    /* Run SecureRandom benchmarks consistently across providers */
+    private static void runSecureRandomBenchmarksForProvider(String providerName) {
+        /* Get the algorithms we want to benchmark (from wolfJCE) */
+        String[] algorithms = getWolfJCESecureRandomAlgorithms();
+
+        boolean anyAlgorithmSupported = false;
+
+        for (String algorithm : algorithms) {
+            try {
+                if (isSecureRandomAlgorithmSupported(algorithm, providerName)) {
+                    runSecureRandomBenchmark(algorithm, providerName);
+                    anyAlgorithmSupported = true;
+                }
+            } catch (Exception e) {
+                System.out.printf("Error benchmarking %s with provider %s: %s%n",
+                    algorithm, providerName, e.getMessage());
+            }
+        }
+
+        if (!anyAlgorithmSupported) {
+            System.out.printf("No wolfJCE SecureRandom algorithms supported by provider %s%n",
+                providerName);
+        }
+    }
+
     public static void main(String[] args) {
         try {
             /* Check if Bouncy Castle is available */
@@ -1849,6 +1919,25 @@ public class CryptoBenchmark {
                 setupProvidersForTest(provider);
                 runKeyGeneratorBenchmarksForProvider(provider.getName(),
                   wolfJCEKeyGenAlgorithms);
+            }
+
+            /* Run SecureRandom benchmarks */
+            System.out.println("\n---------------------------------------------"
+                   + "--------------------------------");
+            System.out.println("SecureRandom Benchmark Results");
+            System.out.println("----------------------------------------------"
+                   + "-------------------------------");
+
+            for (Provider provider : providers) {
+                setupProvidersForTest(provider);
+                System.out.println("\n" + provider.getName() + ":");
+                try {
+                    runSecureRandomBenchmarksForProvider(provider.getName());
+                } catch (Exception e) {
+                    System.out.printf(
+                      "Failed to benchmark SecureRandom with provider %s: %s%n",
+                        provider.getName(), e.getMessage());
+                }
             }
 
             System.out.println("----------------------------------------------"
