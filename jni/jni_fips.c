@@ -25,6 +25,8 @@
     #include <wolfssl/options.h>
 #endif
 
+#include <wolfssl/wolfcrypt/random.h>
+
 #ifdef HAVE_FIPS
     #include <wolfssl/wolfcrypt/error-crypt.h>
     #include <wolfssl/wolfcrypt/fips_test.h>
@@ -34,7 +36,6 @@
     #include <wolfssl/wolfcrypt/sha256.h>
     #include <wolfssl/wolfcrypt/sha512.h>
     #include <wolfssl/wolfcrypt/hmac.h>
-    #include <wolfssl/wolfcrypt/random.h>
     #include <wolfssl/wolfcrypt/rsa.h>
     #include <wolfssl/wolfcrypt/dh.h>
     #include <wolfssl/wolfcrypt/ecc.h>
