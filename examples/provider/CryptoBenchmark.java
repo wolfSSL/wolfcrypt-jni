@@ -32,17 +32,75 @@ import com.wolfssl.wolfcrypt.FeatureDetect;
 public class CryptoBenchmark {
     /* Constants for benchmark configuration */
     private static final int WARMUP_ITERATIONS = 5;
-    private static final int TEST_ITERATIONS = 5;
-    private static final int DATA_SIZE = 1024 * 1024;
+    private static final int TEST_ITERATIONS = 500;
+    private static final int DATA_SIZE = 16384;
     private static final int AES_BLOCK_SIZE = 16;
     private static final int DES3_BLOCK_SIZE = 8;
     private static final int GCM_TAG_LENGTH = 128;
     private static final int[] RSA_KEY_SIZES = {2048, 3072, 4096};
     private static final int TEST_MIN_TIME_SECONDS = 1;
-    private static final int SMALL_MESSAGE_SIZE = 32;
-    private static final String[] ECC_CURVES = {"secp256r1"};
-    private static final int[] DH_KEY_SIZES = {2048};
-    private static final String DH_ALGORITHM = "DiffieHellman";
+    private static final int SMALL_MESSAGE_SIZE = 64;
+    private static final String[] ECC_CURVES = {"secp256r1",
+      "secp384r1", "secp521r1"};
+    private static final int[] DH_KEY_SIZES = {2048, 3072, 4096};
+    private static final String DH_ALGORITHM = "DH";
+
+    /* Benchmark type constants */
+    private static final String BENCHMARK_ALL = "all";
+    private static final String BENCHMARK_SYMMETRIC = "symmetric";
+    private static final String BENCHMARK_RSA = "rsa";
+    private static final String BENCHMARK_ECC = "ecc";
+    private static final String BENCHMARK_HMAC = "hmac";
+    private static final String BENCHMARK_DH = "dh";
+    private static final String BENCHMARK_ECDH = "ecdh";
+    private static final String BENCHMARK_PBKDF2 = "pbkdf2";
+    private static final String BENCHMARK_DIGEST = "digest";
+    private static final String BENCHMARK_SIGNATURE = "signature";
+    private static final String BENCHMARK_KEYGEN = "keygen";
+    private static final String BENCHMARK_RANDOM = "random";
+
+    /**
+     * Prints usage instructions for the benchmark tool
+     */
+    private static void printUsage() {
+        System.out.println("\nCryptoBenchmark Usage:");
+        System.out.println("java CryptoBenchmark [benchmark_type]");
+        System.out.println("\nAvailable benchmark types:");
+        System.out.println(
+          "  all        - Run all benchmarks (default)");
+        System.out.println(
+          "  symmetric  - Symmetric cipher benchmarks (AES, 3DES)");
+        System.out.println(
+          "  rsa        - RSA encryption/decryption and signature benchmarks");
+        System.out.println(
+          "  ecc        - ECC key generation and operations benchmarks");
+        System.out.println("  hmac       - HMAC authentication benchmarks");
+        System.out.println(
+          "  dh         - Diffie-Hellman key exchange benchmarks");
+        System.out.println(
+          "  ecdh       - Elliptic Curve Diffie-Hellman benchmarks");
+        System.out.println(
+          "  pbkdf2     - PBKDF2 key derivation function benchmarks");
+        System.out.println("  digest     - Message digest (hash) benchmarks");
+        System.out.println("  signature  - Digital signature benchmarks");
+        System.out.println("  keygen     - Key generator benchmarks");
+        System.out.println(
+          "  random     - Secure random number generator benchmarks");
+        System.out.println("\nExample: java CryptoBenchmark rsa");
+    }
+
+    /**
+     * Determines if a specific benchmark should be run
+     *
+     * @param benchmarkType The benchmark type to check
+     * @param requestedBenchmark The benchmark that was requested
+     * @return true if the benchmark should be run, false otherwise
+     */
+    private static boolean shouldRunBenchmark(String benchmarkType,
+      String requestedBenchmark) {
+        return requestedBenchmark.equals(BENCHMARK_ALL) ||
+        requestedBenchmark.equals(benchmarkType);
+    }
 
     /* Class to store benchmark results */
     private static class BenchmarkResult {
@@ -61,10 +119,10 @@ public class CryptoBenchmark {
 
     /* Helper class to store timing results from benchmark operations */
     private static class TimingResult {
-        int operations;
+        long operations;
         double elapsedTime;
 
-        TimingResult(int operations, double elapsedTime) {
+        TimingResult(long operations, double elapsedTime) {
             this.operations = operations;
             this.elapsedTime = elapsedTime;
         }
@@ -73,7 +131,7 @@ public class CryptoBenchmark {
     /* Benchmark runner that executes an operation repeatedly
      * for a minimum time */
     private static TimingResult runBenchmark(Runnable operation) {
-        int ops = 0;
+        long ops = 0;
         long startTime = System.nanoTime();
         long elapsedTimeNano = 0;
         long minTimeNano = TEST_MIN_TIME_SECONDS * 1_000_000_000L;
@@ -90,7 +148,7 @@ public class CryptoBenchmark {
     }
 
     /* Generic function to print benchmark results with operations per second */
-    private static void printBenchmarkResults(int operations, double totalTime,
+    private static void printBenchmarkResults(long operations, double totalTime,
       String operation, String providerName, String mode) {
         /* Variables for result calculations */
         double avgTimeMs = (totalTime * 1000.0) / operations;
@@ -368,7 +426,7 @@ public class CryptoBenchmark {
           "       | Provider     |    Delta    |   Delta  |");
         System.out.println(
           "|                                       " +
-          "      |              |    Value*   |   (%)    |");
+          "       |              |    Value*   |   (%)    |");
         System.out.println(
           "|-------------------------------" +
           "---------------|--------------|-------------|----------|");
@@ -485,8 +543,8 @@ public class CryptoBenchmark {
         /* Timing variables */
         long startTime;
         double elapsedTime;
-        int encryptOps = 0;
-        int decryptOps = 0;
+        long encryptOps = 0;
+        long decryptOps = 0;
         double encryptThroughput;
         double decryptThroughput;
 
@@ -759,7 +817,7 @@ public class CryptoBenchmark {
     throws Exception {
         Mac mac;
         byte[] testData;
-        int ops = 0;
+        long ops = 0;
         long startTime;
         double elapsedTime;
 
@@ -801,8 +859,14 @@ public class CryptoBenchmark {
             algorithm + " (" + providerName + ")", dataSizeMiB, elapsedTime,
             throughput);
 
-        /* Store result */
-        results.add(new BenchmarkResult(providerName, algorithm, throughput));
+        String normalizedAlgorithm = algorithm;
+        if (providerName.equals("BC") && algorithm.startsWith("HMAC")) {
+            normalizedAlgorithm = "Hmac" + algorithm.substring(4);
+        }
+
+        /* Store result with normalized algorithm name */
+        results.add(new BenchmarkResult(providerName, normalizedAlgorithm,
+          throughput));
     }
 
     /* Run DH benchmarks for specified provider and key size */
@@ -910,7 +974,7 @@ public class CryptoBenchmark {
 
         /* Benchmark */
         long startTime = System.nanoTime();
-        int operations = 0;
+        long operations = 0;  /* Changed from int to long to prevent overflow */
         double elapsedTime = 0;
 
         /* Run for at least 1 second */
@@ -928,8 +992,20 @@ public class CryptoBenchmark {
         System.out.printf(" %-40s  %8.3f KiB took %.3f seconds, %8.3f KiB/s%n",
             testName, processedKiB, elapsedTime, throughput);
 
-        /* Store result */
-        results.add(new BenchmarkResult(providerName, algorithm, throughput));
+        String normalizedAlgorithm = algorithm;
+        if (providerName.equals("BC")) {
+            if (algorithm.startsWith("PBKDF2WITH")) {
+                String remainder = algorithm.substring(10);
+                if (remainder.startsWith("HMAC")) {
+                    remainder = "Hmac" + remainder.substring(4);
+                }
+                normalizedAlgorithm = "PBKDF2With" + remainder;
+            }
+        }
+
+        /* Store result with normalized algorithm name */
+        results.add(new BenchmarkResult(providerName, normalizedAlgorithm,
+          throughput));
     }
 
     /* MessageDigest benchmark */
@@ -969,7 +1045,7 @@ public class CryptoBenchmark {
         KeyPairGenerator keyGen;
         Signature signature;
         byte[] testData;
-        int ops = 0;
+        long ops = 0;
         long startTime;
         double elapsedTime;
         KeyPair keyPair;
@@ -1039,6 +1115,11 @@ public class CryptoBenchmark {
                 signature.verify(sig);
             }
 
+            String normalizedAlgorithm = algorithm;
+            if (providerName.equals("BC")) {
+                normalizedAlgorithm = algorithm.replace("WITH", "with");
+            }
+
             /* Benchmark signing */
             ops = 0;
             startTime = System.nanoTime();
@@ -1056,8 +1137,10 @@ public class CryptoBenchmark {
             System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
                 algorithm + " sign (" + signatureProvider + ")", ops,
                 elapsedTime, signOpsPerSec);
-            results.add(new BenchmarkResult(signatureProvider, algorithm +
-              " sign", signOpsPerSec));
+
+            /* Store result with normalized algorithm name */
+            results.add(new BenchmarkResult(signatureProvider,
+              normalizedAlgorithm + " sign", signOpsPerSec));
 
             /* Benchmark verification */
             ops = 0;
@@ -1076,8 +1159,10 @@ public class CryptoBenchmark {
             System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
                 algorithm + " verify (" + signatureProvider + ")", ops,
                 elapsedTime, verifyOpsPerSec);
-            results.add(new BenchmarkResult(signatureProvider, algorithm +
-              " verify", verifyOpsPerSec));
+
+            /* Store result with normalized algorithm name */
+            results.add(new BenchmarkResult(signatureProvider,
+              normalizedAlgorithm + " verify", verifyOpsPerSec));
 
         } catch (Exception e) {
             System.err.printf(" %-40s  Not supported: %s (%s)%n",
@@ -1443,7 +1528,11 @@ public class CryptoBenchmark {
         } else if (algorithm.startsWith("Hmac") ||
           algorithm.startsWith("HMAC")) {
             try {
-                int keySize = getHmacKeySize(algorithm) * 8;
+                String normalizedAlgorithm = algorithm;
+                if (providerName.equals("BC") && algorithm.startsWith("HMAC")) {
+                    normalizedAlgorithm = "Hmac" + algorithm.substring(4);
+                }
+                int keySize = getHmacKeySize(normalizedAlgorithm) * 8;
                 keyGen.init(keySize);
             } catch (Exception e) {
             }
@@ -1478,9 +1567,16 @@ public class CryptoBenchmark {
             algorithm + " (" + providerName + ")", result.operations,
             result.elapsedTime, opsPerSec);
 
-        /* Store result */
-        results.add(new BenchmarkResult(providerName, algorithm + " keygen",
-          opsPerSec));
+        String normalizedAlgorithm = algorithm;
+        if (providerName.equals("BC")) {
+            if (algorithm.startsWith("HMAC")) {
+                normalizedAlgorithm = "Hmac" + algorithm.substring(4);
+            }
+        }
+
+        /* Store result with normalized algorithm name */
+        results.add(new BenchmarkResult(providerName, normalizedAlgorithm +
+          " keygen", opsPerSec));
     }
 
     /* Get KeyGenerator algorithms for a specific provider */
@@ -1554,28 +1650,44 @@ public class CryptoBenchmark {
           keyGenOp, finalProviderName, "ECDH");
 
         /* Generate key pairs for agreement operations */
-        keyPair1 = keyGen.generateKeyPair();
-        keyPair2 = keyGen.generateKeyPair();
+        try {
+            keyPair1 = keyGen.generateKeyPair();
+            keyPair2 = keyGen.generateKeyPair();
 
-        /* Key Agreement benchmark using helper */
-        final KeyPair finalKeyPair1 = keyPair1;
-        final KeyPair finalKeyPair2 = keyPair2;
+            /* Key Agreement benchmark using helper */
+            final KeyPair finalKeyPair1 = keyPair1;
+            final KeyPair finalKeyPair2 = keyPair2;
 
-        TimingResult agreementResult = runBenchmark(() -> {
-            try {
-                KeyAgreement keyAgreement = KeyAgreement.getInstance("ECDH",
-                  finalProviderName);
-                keyAgreement.init(finalKeyPair1.getPrivate());
-                keyAgreement.doPhase(finalKeyPair2.getPublic(), true);
-                keyAgreement.generateSecret();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            TimingResult agreementResult = runBenchmark(() -> {
+                try {
+                    KeyAgreement keyAgreement = KeyAgreement.getInstance("ECDH",
+                      finalProviderName);
+                    keyAgreement.init(finalKeyPair1.getPrivate());
+                    keyAgreement.doPhase(finalKeyPair2.getPublic(), true);
+                    keyAgreement.generateSecret();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            String agreementOp = String.format("ECDH %s agree", curveName);
+            printBenchmarkResults(agreementResult.operations,
+              agreementResult.elapsedTime, agreementOp, finalProviderName,
+              "ECDH");
+
+        } catch (Exception e) {
+            System.out.printf(
+              "Failed to benchmark ECDH %s agree with provider %s: %s%n",
+                curveName, finalProviderName, e.getMessage());
+
+            /* Check if this is a known wolfCrypt limitation */
+            if (finalProviderName.equals("wolfJCE") &&
+              curveName.equals("secp521r1")
+                && e.getMessage().contains("WolfCryptException")) {
+                System.out.printf("Note: secp521r1 ECDH agreement may not be " +
+                  "fully supported in this wolfJCE version%n");
             }
-        });
-
-        String agreementOp = String.format("ECDH %s agree", curveName);
-        printBenchmarkResults(agreementResult.operations,
-          agreementResult.elapsedTime, agreementOp, finalProviderName, "ECDH");
+        }
     }
 
     /* SecureRandom benchmark */
@@ -1622,7 +1734,8 @@ public class CryptoBenchmark {
     }
 
     /* Run SecureRandom benchmarks consistently across providers */
-    private static void runSecureRandomBenchmarksForProvider(String providerName) {
+    private static void runSecureRandomBenchmarksForProvider(
+      String providerName) {
         /* Get the algorithms we want to benchmark (from wolfJCE) */
         String[] algorithms = getWolfJCESecureRandomAlgorithms();
 
@@ -1635,19 +1748,59 @@ public class CryptoBenchmark {
                     anyAlgorithmSupported = true;
                 }
             } catch (Exception e) {
-                System.out.printf("Error benchmarking %s with provider %s: %s%n",
+                System.out.printf(
+                  "Error benchmarking %s with provider %s: %s%n",
                     algorithm, providerName, e.getMessage());
             }
         }
 
         if (!anyAlgorithmSupported) {
-            System.out.printf("No wolfJCE SecureRandom algorithms supported by provider %s%n",
+            System.out.printf("No wolfJCE SecureRandom algorithms supported by "
+              + "provider %s%n",
                 providerName);
         }
     }
 
     public static void main(String[] args) {
         try {
+            /* Parse command line arguments */
+            String benchmarkToRun = BENCHMARK_ALL;
+
+            if (args.length > 0) {
+                String arg = args[0].toLowerCase();
+
+                /* Check for help command */
+                if (arg.equals("-h") || arg.equals("--help") ||
+                  arg.equals("help")) {
+                    printUsage();
+                    return;
+                }
+
+                /* Validate benchmark type */
+                if (arg.equals(BENCHMARK_SYMMETRIC) ||
+                    arg.equals(BENCHMARK_RSA) ||
+                    arg.equals(BENCHMARK_ECC) ||
+                    arg.equals(BENCHMARK_HMAC) ||
+                    arg.equals(BENCHMARK_DH) ||
+                    arg.equals(BENCHMARK_ECDH) ||
+                    arg.equals(BENCHMARK_PBKDF2) ||
+                    arg.equals(BENCHMARK_DIGEST) ||
+                    arg.equals(BENCHMARK_SIGNATURE) ||
+                    arg.equals(BENCHMARK_KEYGEN) ||
+                    arg.equals(BENCHMARK_RANDOM) ||
+                    arg.equals(BENCHMARK_ALL)) {
+                    benchmarkToRun = arg;
+                } else {
+                    System.out.println("Unknown benchmark type: " + arg);
+                    printUsage();
+                    return;
+                }
+            }
+
+            System.out.println("\nRunning benchmark mode: " + benchmarkToRun);
+            System.out.println(
+              "======================================================");
+
             /* Check if Bouncy Castle is available */
             boolean hasBouncyCastle = false;
             Provider bcProvider = null;
@@ -1691,259 +1844,298 @@ public class CryptoBenchmark {
             }
 
             /* Run symmetric benchmarks with hardcoded algorithms */
-            System.out.println("\n---------------------------------------------"
-              + "--------------------------------");
-            System.out.println(" Symmetric Cipher Benchmark");
-            System.out.println("----------------------------------------------"
-              + "-------------------------------\n");
+            if (shouldRunBenchmark(BENCHMARK_SYMMETRIC, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                  + "------------------------------------");
+                System.out.println(" Symmetric Cipher Benchmark");
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------\n");
 
-            setupProvidersForTest(providers[0]);
-            Set<String> wolfJCECipherAlgorithms = getWolfJCECipherAlgorithms();
+                setupProvidersForTest(providers[0]);
+                Set<String> wolfJCECipherAlgorithms =
+                getWolfJCECipherAlgorithms();
 
-            for (Provider provider : providers) {
-                setupProvidersForTest(provider);
-                String providerName = provider.getName();
-                System.out.println("\n" + providerName + ":");
+                for (Provider provider : providers) {
+                    setupProvidersForTest(provider);
+                    String providerName = provider.getName();
+                    System.out.println("\n" + providerName + ":");
 
-                try {
-                    runEncDecBenchmark("AES", "CBC", "NoPadding",
-                      providerName);
-                    runEncDecBenchmark("AES", "CBC", "PKCS5Padding",
-                      providerName);
-                    runEncDecBenchmark("AES", "GCM", "NoPadding",
-                      providerName);
-
-                    if (FeatureDetect.Des3Enabled()) {
-                        runEncDecBenchmark("DESede", "CBC", "NoPadding",
+                    try {
+                        runEncDecBenchmark("AES", "CBC", "NoPadding",
                           providerName);
+                        runEncDecBenchmark("AES", "CBC", "PKCS5Padding",
+                          providerName);
+
+                        if (!providerName.equals("wolfJCE")) {
+                            try {
+                                runEncDecBenchmark("AES", "GCM", "NoPadding",
+                                  providerName);
+                            } catch (Exception e) {
+                                System.out.printf(" %s GCM error: %s%n",
+                                    providerName, e.getMessage());
+                            }
+                        }
+
+                        if (FeatureDetect.Des3Enabled()) {
+                            runEncDecBenchmark("DESede", "CBC", "NoPadding",
+                              providerName);
+                        }
+                    } catch (Exception e) {
+                        System.out.printf(
+                          " Error testing symmetric ciphers for %s: %s%n",
+                          providerName, e.getMessage());
                     }
-                } catch (Exception e) {
-                    System.out.printf(
-                      " Error testing symmetric ciphers for %s: %s%n",
-                      providerName, e.getMessage());
                 }
             }
 
             /* Run RSA benchmarks with clean provider setup */
-            System.out.println("\n---------------------------------------------"
-              + "--------------------------------");
-            System.out.println("RSA Benchmark Results");
-            System.out.println("----------------------------------------------"
-              + "-------------------------------\n");
+            if (shouldRunBenchmark(BENCHMARK_RSA, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                  + "------------------------------------");
+                System.out.println("RSA Benchmark Results");
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------\n");
 
-            for (Provider provider : providers) {
-                setupProvidersForTest(provider);
-                System.out.println("\n" + (provider.getName().equals("SunJCE")
-                  ? "SunJCE / SunRsaSign" : provider.getName()) + ":");
-                for (int keySize : RSA_KEY_SIZES) {
-                    try {
-                        runRSABenchmark(provider.getName(), keySize);
-                    } catch (Exception e) {
-                        System.out.printf(
-                          "Failed to benchmark RSA %d with provider %s: %s%n",
-                            keySize, provider.getName(), e.getMessage());
+                for (Provider provider : providers) {
+                    setupProvidersForTest(provider);
+                    System.out.println("\n" +
+                      (provider.getName().equals("SunJCE")
+                      ? "SunJCE / SunRsaSign" : provider.getName()) + ":");
+                    for (int keySize : RSA_KEY_SIZES) {
+                        try {
+                            runRSABenchmark(provider.getName(), keySize);
+                        } catch (Exception e) {
+                            System.out.printf(
+                              "Failed to benchmark RSA %d" +
+                              "with provider %s: %s%n",
+                                keySize, provider.getName(), e.getMessage());
+                        }
                     }
                 }
             }
 
             /* Run ECC benchmarks with clean provider setup */
-            System.out.println("\n---------------------------------------------"
-              + "--------------------------------");
-            System.out.println("ECC Benchmark Results");
-            System.out.println("----------------------------------------------"
-              + "-------------------------------\n");
+            if (shouldRunBenchmark(BENCHMARK_ECC, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                  + "------------------------------------");
+                System.out.println("ECC Benchmark Results");
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------\n");
 
-            for (Provider provider : providers) {
-                if (provider instanceof WolfCryptProvider &&
-                  !FeatureDetect.EccKeyGenEnabled()) {
-                    continue;
-                }
-                setupProvidersForTest(provider);
-                System.out.println("\n" + (provider.getName().equals("SunJCE")
-                  ? "SunJCE / SunEC" : provider.getName()) + ":");
-                for (String curve : ECC_CURVES) {
-                    try {
-                        runECCBenchmark(provider.getName(), curve);
-                    } catch (Exception e) {
-                        System.out.printf(
-                          "Failed to benchmark %s with provider %s: %s%n",
-                            curve, provider.getName(), e.getMessage());
+                for (Provider provider : providers) {
+                    if (provider instanceof WolfCryptProvider &&
+                      !FeatureDetect.EccKeyGenEnabled()) {
+                        continue;
+                    }
+                    setupProvidersForTest(provider);
+                    System.out.println("\n" +
+                      (provider.getName().equals("SunJCE")
+                      ? "SunJCE / SunEC" : provider.getName()) + ":");
+                    for (String curve : ECC_CURVES) {
+                        try {
+                            runECCBenchmark(provider.getName(), curve);
+                        } catch (Exception e) {
+                            System.out.printf(
+                              "Failed to benchmark %s with provider %s: %s%n",
+                                curve, provider.getName(), e.getMessage());
+                        }
                     }
                 }
             }
 
             /* Run HMAC benchmarks with clean provider setup */
-            System.out.println("\n---------------------------------------------"
-              + "--------------------------------");
-            System.out.println("HMAC Benchmark Results");
-            System.out.println("----------------------------------------------"
-              + "-------------------------------\n");
+            if (shouldRunBenchmark(BENCHMARK_HMAC, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                  + "------------------------------------");
+                System.out.println("HMAC Benchmark Results");
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------\n");
 
 
-            /* First, set up wolfJCE provider to get its algorithm list */
-            setupProvidersForTest(providers[0]);
-            Set<String> wolfJCEHmacAlgorithms = getWolfJCEHmacAlgorithms();
+                /* First, set up wolfJCE provider to get its algorithm list */
+                setupProvidersForTest(providers[0]);
+                Set<String> wolfJCEHmacAlgorithms = getWolfJCEHmacAlgorithms();
 
-            for (Provider provider : providers) {
-                setupProvidersForTest(provider);
-                runHmacBenchmarksForProvider(provider.getName(),
-                  wolfJCEHmacAlgorithms);
+                for (Provider provider : providers) {
+                    setupProvidersForTest(provider);
+                    runHmacBenchmarksForProvider(provider.getName(),
+                      wolfJCEHmacAlgorithms);
 
+                }
             }
 
             /* Run DH benchmarks with clean provider setup */
-            System.out.println("\n---------------------------------------------"
-              + "--------------------------------");
-            System.out.println("DH Benchmark Results");
-            System.out.println("----------------------------------------------"
-              + "-------------------------------\n");
+            if (shouldRunBenchmark(BENCHMARK_DH, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                  + "-----------------------------------");
+                System.out.println("DH Benchmark Results");
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------\n");
 
-            for (Provider provider : providers) {
-                if (provider instanceof WolfCryptProvider &&
-                  !FeatureDetect.DhEnabled()) {
-                    continue;
-                }
-                setupProvidersForTest(provider);
-                System.out.println("\n" + provider.getName() + ":");
-                for (int keySize : DH_KEY_SIZES) {
-                    try {
-                        runDHBenchmark(provider.getName(), keySize);
-                    } catch (Exception e) {
-                        System.out.printf(
-                          "Failed to benchmark DH %d with provider %s: %s%n",
-                            keySize, provider.getName(), e.getMessage());
+                for (Provider provider : providers) {
+                    if (provider instanceof WolfCryptProvider &&
+                      !FeatureDetect.DhEnabled()) {
+                        continue;
+                    }
+                    setupProvidersForTest(provider);
+                    System.out.println("\n" + provider.getName() + ":");
+                    for (int keySize : DH_KEY_SIZES) {
+                        try {
+                            runDHBenchmark(provider.getName(), keySize);
+                        } catch (Exception e) {
+                            System.out.printf("Failed to benchmark DH %d" +
+                              "with provider %s: %s%n",
+                                keySize, provider.getName(), e.getMessage());
+                        }
                     }
                 }
             }
 
-            System.out.println("\n---------------------------------------------"
-              + "--------------------------------");
-            System.out.println("ECDH Benchmark Results");
-            System.out.println("----------------------------------------------"
-              + "-------------------------------\n");
+            if (shouldRunBenchmark(BENCHMARK_ECDH, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                  + "------------------------------------");
+                System.out.println("ECDH Benchmark Results");
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------\n");
 
-            for (Provider provider : providers) {
-                if (provider instanceof WolfCryptProvider &&
-                  !FeatureDetect.EccDheEnabled()) {
-                    continue;
-                }
-                setupProvidersForTest(provider);
-                System.out.println("\n" + (provider.getName().equals("SunJCE")
-                  ? "SunJCE / SunEC" : provider.getName()) + ":");
-                for (String curve : ECC_CURVES) {
-                    try {
-                        runECDHBenchmark(provider.getName(), curve);
-                    } catch (Exception e) {
-                        System.out.printf(
-                          "Failed to benchmark ECDH %s with provider %s: %s%n",
-                            curve, provider.getName(), e.getMessage());
+                for (Provider provider : providers) {
+                    if (provider instanceof WolfCryptProvider &&
+                      !FeatureDetect.EccDheEnabled()) {
+                        continue;
+                    }
+                    setupProvidersForTest(provider);
+                    System.out.println("\n" +
+                      (provider.getName().equals("SunJCE")
+                      ? "SunJCE / SunEC" : provider.getName()) + ":");
+                    for (String curve : ECC_CURVES) {
+                        try {
+                            runECDHBenchmark(provider.getName(), curve);
+                        } catch (Exception e) {
+                            System.out.printf(
+                              "Failed to benchmark ECDH %s" +
+                              "with provider %s: %s%n",
+                                curve, provider.getName(), e.getMessage());
+                        }
                     }
                 }
             }
 
             /* Run PBKDF2 benchmarks with clean provider setup */
-            System.out.println("\n---------------------------------------------"
-              + "--------------------------------");
-            System.out.println("PBKDF2 Benchmark Results");
-            System.out.println("----------------------------------------------"
-              + "-------------------------------\n");
+            if (shouldRunBenchmark(BENCHMARK_PBKDF2, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                  + "------------------------------------");
+                System.out.println("PBKDF2 Benchmark Results");
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------\n");
 
-            /* First, set up wolfJCE provider to get its algorithm list */
-            setupProvidersForTest(providers[0]);
-            Set<String> wolfJCEPBKDF2Algorithms = getWolfJCEPBKDF2Algorithms();
+                /* First, set up wolfJCE provider to get its algorithm list */
+                setupProvidersForTest(providers[0]);
+                Set<String> wolfJCEPBKDF2Algorithms =
+                getWolfJCEPBKDF2Algorithms();
 
-            for (Provider provider : providers) {
-                setupProvidersForTest(provider);
-                runPBKDF2BenchmarksForProvider(provider.getName(),
-                  wolfJCEPBKDF2Algorithms);
+                for (Provider provider : providers) {
+                    setupProvidersForTest(provider);
+                    runPBKDF2BenchmarksForProvider(provider.getName(),
+                      wolfJCEPBKDF2Algorithms);
+                }
             }
 
             /* Run MessageDigest benchmarks with clean provider setup */
-            System.out.println("\n---------------------------------------------"
-              + "--------------------------------");
-            System.out.println("MessageDigest Benchmark Results");
-            System.out.println("----------------------------------------------"
-              + "-------------------------------\n");
+            if (shouldRunBenchmark(BENCHMARK_DIGEST, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                  + "------------------------------------");
+                System.out.println("MessageDigest Benchmark Results");
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------\n");
 
-            /* First, set up wolfJCE provider to get its algorithm list */
-            setupProvidersForTest(providers[0]);
-            Set<String> wolfJCEMessageDigestAlgorithms =
-            getWolfJCEMessageDigestAlgorithms();
+                /* First, set up wolfJCE provider to get its algorithm list */
+                setupProvidersForTest(providers[0]);
+                Set<String> wolfJCEMessageDigestAlgorithms =
+                getWolfJCEMessageDigestAlgorithms();
 
-            for (Provider provider : providers) {
-                setupProvidersForTest(provider);
-                String providerName = provider.getName();
-                String digestProviderName = providerName;
+                for (Provider provider : providers) {
+                    setupProvidersForTest(provider);
+                    String providerName = provider.getName();
+                    String digestProviderName = providerName;
 
-                /* Handle special case for digest providers */
-                if (!providerName.equals("wolfJCE") &&
-                  !providerName.equals("BC")) {
-                    digestProviderName = "SUN";
+                    /* Handle special case for digest providers */
+                    if (!providerName.equals("wolfJCE") &&
+                      !providerName.equals("BC")) {
+                        digestProviderName = "SUN";
+                    }
+
+                    setupDigestProvider(providerName);
+                    runMessageDigestBenchmarksForProvider(digestProviderName,
+                      wolfJCEMessageDigestAlgorithms);
                 }
-
-                setupDigestProvider(providerName);
-                runMessageDigestBenchmarksForProvider(digestProviderName,
-                  wolfJCEMessageDigestAlgorithms);
             }
 
             /* Run Signature benchmarks with clean provider setup */
-            System.out.println("\n---------------------------------------------"
-              + "--------------------------------");
-            System.out.println("Signature Benchmark Results");
-            System.out.println("----------------------------------------------"
-              + "-------------------------------\n");
+            if (shouldRunBenchmark(BENCHMARK_SIGNATURE, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                  + "------------------------------------");
+                System.out.println("Signature Benchmark Results");
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------\n");
 
-            /* First, set up wolfJCE provider to get its algorithm list */
-            setupProvidersForTest(providers[0]);
-            Set<String> wolfJCEAlgorithms = getWolfJCESignatureAlgorithms();
+                /* First, set up wolfJCE provider to get its algorithm list */
+                setupProvidersForTest(providers[0]);
+                Set<String> wolfJCEAlgorithms = getWolfJCESignatureAlgorithms();
 
-            for (Provider provider : providers) {
-                setupProvidersForTest(provider);
-                runSignatureBenchmarksForProvider(provider.getName(),
-                  wolfJCEAlgorithms);
-            }
-
-            /* Run KeyGenerator benchmarks with clean provider setup */
-            System.out.println("\n---------------------------------------------"
-              + "--------------------------------");
-            System.out.println("KeyGenerator Benchmark Results");
-            System.out.println("----------------------------------------------"
-              + "-------------------------------\n");
-
-            /* First, set up wolfJCE provider to get its algorithm list */
-            setupProvidersForTest(providers[0]);
-            Set<String> wolfJCEKeyGenAlgorithms =
-            getWolfJCEAlgorithmsForService("KeyGenerator");
-
-            for (Provider provider : providers) {
-                setupProvidersForTest(provider);
-                runKeyGeneratorBenchmarksForProvider(provider.getName(),
-                  wolfJCEKeyGenAlgorithms);
-            }
-
-            /* Run SecureRandom benchmarks */
-            System.out.println("\n---------------------------------------------"
-                   + "--------------------------------");
-            System.out.println("SecureRandom Benchmark Results");
-            System.out.println("----------------------------------------------"
-                   + "-------------------------------");
-
-            for (Provider provider : providers) {
-                setupProvidersForTest(provider);
-                System.out.println("\n" + provider.getName() + ":");
-                try {
-                    runSecureRandomBenchmarksForProvider(provider.getName());
-                } catch (Exception e) {
-                    System.out.printf(
-                      "Failed to benchmark SecureRandom with provider %s: %s%n",
-                        provider.getName(), e.getMessage());
+                for (Provider provider : providers) {
+                    setupProvidersForTest(provider);
+                    runSignatureBenchmarksForProvider(provider.getName(),
+                      wolfJCEAlgorithms);
                 }
             }
 
-            System.out.println("----------------------------------------------"
-              + "-------------------------------");
+            /* Run KeyGenerator benchmarks with clean provider setup */
+            if (shouldRunBenchmark(BENCHMARK_KEYGEN, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                  + "------------------------------------");
+                System.out.println("KeyGenerator Benchmark Results");
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------\n");
 
-            /* Print delta table */
+                /* First, set up wolfJCE provider to get its algorithm list */
+                setupProvidersForTest(providers[0]);
+                Set<String> wolfJCEKeyGenAlgorithms =
+                getWolfJCEAlgorithmsForService("KeyGenerator");
+
+                for (Provider provider : providers) {
+                    setupProvidersForTest(provider);
+                    runKeyGeneratorBenchmarksForProvider(provider.getName(),
+                      wolfJCEKeyGenAlgorithms);
+                }
+            }
+
+            /* Run SecureRandom benchmarks */
+            if (shouldRunBenchmark(BENCHMARK_RANDOM, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                       + "------------------------------------");
+                System.out.println("SecureRandom Benchmark Results");
+                System.out.println("-------------------------------------------"
+                       + "----------------------------------");
+
+                for (Provider provider : providers) {
+                    setupProvidersForTest(provider);
+                    System.out.println("\n" + provider.getName() + ":");
+                    try {
+                        runSecureRandomBenchmarksForProvider(
+                          provider.getName());
+                    } catch (Exception e) {
+                        System.out.printf(
+                          "Failed to benchmark SecureRandom" +
+                          "with provider %s: %s%n",
+                            provider.getName(), e.getMessage());
+                    }
+                }
+
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------");
+            }
+
+            /* Always print the delta table, even for single benchmark runs */
             printDeltaTable();
 
         } catch (Exception e) {
