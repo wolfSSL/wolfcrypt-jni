@@ -99,9 +99,19 @@ else
   fi
 fi
 
-java -XX:-TieredCompilation -XX:ReservedCodeCacheSize=1024m -classpath "$CLASSPATH" -Dsun.boot.library.path=../../../lib/ CryptoBenchmark "$@"
+# Use interpreter mode to completely avoid CodeCache issues
+# This will be slower but eliminates CodeCache fragmentation problems
+echo "Running in interpreter mode to avoid CodeCache issues..."
+java -Xint \
+     -Xmx8g \
+     -Xms4g \
+     -XX:+UseG1GC \
+     -XX:MaxGCPauseMillis=100 \
+     -classpath "$CLASSPATH" \
+     -Dsun.boot.library.path=../../../lib/ \
+     CryptoBenchmark "$@"
 
-if ls "../../../lib/bcprov-jdk18on-"*".jar" "../../../lib/bctls-jdk18on-"*".jar" 2>/dev/null; then
+if [ "$BC_DOWNLOADED" = true ]; then
   echo
   read -p "Would you like to remove the Bouncy Castle JARs? (y/n) " -n 1 -r
   echo
