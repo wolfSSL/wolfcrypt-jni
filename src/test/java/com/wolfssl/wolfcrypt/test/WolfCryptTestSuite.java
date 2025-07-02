@@ -28,6 +28,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @RunWith(Suite.class)
 @SuiteClasses({
     AesTest.class,
+    AesCtrTest.class,
     AesGcmTest.class,
     AsnTest.class,
     Des3Test.class,
