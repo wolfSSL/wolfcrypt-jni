@@ -113,6 +113,13 @@ public class FeatureDetect {
 
 
     /**
+     * Tests if AES-CTR is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesCtrEnabled();
+
+    /**
      * Tests if AES-GCM is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.
