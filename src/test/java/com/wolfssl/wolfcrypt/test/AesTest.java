@@ -141,15 +141,15 @@ public class AesTest {
         try {
             enc.update(input, 0, Aes.BLOCK_SIZE, null, 0);
             fail("output should not be null.");
-        } catch (NullPointerException e) {
-            /* test must throw */
+        } catch (WolfCryptException e) {
+            /* test must throw WolfCryptException for null output */
         }
 
         try {
             dec.update(input, 0, Aes.BLOCK_SIZE, null, 0);
             fail("output should not be null.");
-        } catch (NullPointerException e) {
-            /* test must throw */
+        } catch (WolfCryptException e) {
+            /* test must throw WolfCryptException for null output */
         }
 
         enc.update(input, 0, Aes.BLOCK_SIZE, output, 0);
