@@ -120,6 +120,13 @@ public class FeatureDetect {
     public static native boolean AesCtrEnabled();
 
     /**
+     * Tests if AES-ECB is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesEcbEnabled();
+
+    /**
      * Tests if AES-GCM is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.
