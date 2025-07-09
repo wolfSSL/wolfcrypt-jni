@@ -196,6 +196,30 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesEcbEnable
 #endif
 }
 
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesOfbEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(WOLFSSL_AES_OFB)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesDecryptEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(HAVE_AES_DECRYPT)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesGcmEnabled
   (JNIEnv* env, jclass jcl)
 {

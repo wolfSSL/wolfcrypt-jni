@@ -109,8 +109,8 @@ Java_com_wolfssl_wolfcrypt_AesCtr_native_1update_1internal___3BII_3BI(
     jbyteArray input_object, jint offset, jint length,
     jbyteArray output_object, jint outputOffset)
 {
-#if !defined(NO_AES) && defined(WOLFSSL_AES_COUNTER)
     int ret = 0;
+#if !defined(NO_AES) && defined(WOLFSSL_AES_COUNTER)
     Aes*  aes    = NULL;
     byte* input  = NULL;
     byte* output = NULL;
