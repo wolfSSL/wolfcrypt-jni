@@ -157,6 +157,13 @@ public class FeatureDetect {
     public static native boolean AesGcmStreamEnabled();
 
     /**
+     * Tests if AES-CCM is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesCcmEnabled();
+
+    /**
      * Tests if 3DES is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.
