@@ -33,6 +33,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AesOfbTest.class,
     AesGcmTest.class,
     AesCcmTest.class,
+    AesCmacTest.class,
     AsnTest.class,
     Des3Test.class,
     ChachaTest.class,
