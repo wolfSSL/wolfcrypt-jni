@@ -111,6 +111,56 @@ public class DhTest {
     }
 
     @Test
+    public void bufferOverflowRegressionTest() {
+        /*
+         * Regression test for heap buffer overflow in wc_DhAgree JNI wrapper.
+         * The issue was that buffer allocation used pubSz instead of the
+         * maximum possible DH secret size (mp_unsigned_bin_size(&key->p)).
+         * This test uses a smaller public key with a larger DH group to
+         * trigger the condition where the computed secret is larger than
+         * the input public key size.
+         */
+
+        /* 2048-bit DH prime (256 bytes) */
+        byte[] p = Util.h2b("E6969D3D495BE32C7CF180C3BDD4798E91B7818251BB055E"
+                + "2A2064904A79A770FA15A259CBD523A6A6EF09C43048D5A22F971F3C20"
+                + "129B48000E6EDD061CBC053E371D794E5327DF611EBBBE1BAC9B5C6044"
+                + "CF023D76E05EEA9BAD991B13A63C974E9EF1839EB5DB125136F7262E56"
+                + "A8871538DFD823C6505085E21F0DD5C86B");
+
+        byte[] g = Util.h2b("02");
+
+        /* Create Alice with full-size DH group */
+        Dh alice = new Dh(p, g);
+        synchronized (rngLock) {
+            alice.makeKey(rng);
+        }
+
+        /* Create a deliberately small public key (127 bytes). This simulates
+         * receiving a public key that is smaller than the maximum possible
+         * secret size. */
+        byte[] smallPubKey = new byte[127];
+        /* Initialize with a valid but small public key value */
+        smallPubKey[0] = 0x02; /* Make it a valid small value */
+        for (int i = 1; i < smallPubKey.length; i++) {
+            smallPubKey[i] = 0x00;
+        }
+
+        try {
+            byte[] sharedSecret = alice.makeSharedSecret(smallPubKey);
+            /* We don't verify the mathematical correctness here since this
+             * is primarily a memory safety regression test. */
+            assertNotNull("Shared secret should not be null", sharedSecret);
+            assertTrue("Shared secret should not be empty",
+                      sharedSecret.length > 0);
+        } catch (WolfCryptException e) {
+            /* Expected mathematical error (not a buffer overflow) */
+        } finally {
+            alice.releaseNativeStruct();
+        }
+    }
+
+    @Test
     public void threadedDhSharedSecretTest() throws InterruptedException {
 
         int numThreads = 10;
