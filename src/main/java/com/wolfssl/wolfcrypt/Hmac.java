@@ -195,9 +195,22 @@ public class Hmac extends NativeStruct {
     public synchronized void reset()
         throws WolfCryptException, IllegalStateException {
 
-        throwIfKeyNotLoaded();
+        synchronized (stateLock) {
+            throwIfKeyNotLoaded();
 
-        setKey(type, key);
+            /* Reset the HMAC state without accessing the stored key.
+             * Since we already have a valid HMAC context with the key set,
+             * we can simply re-initialize it with the same key that's
+             * already in the native structure. */
+            synchronized (pointerLock) {
+                /* Release and re-allocate native struct to reset state */
+                releaseNativeStruct();
+                initNativeStruct();
+
+                /* Re-set the key using the existing key and type */
+                wc_HmacSetKey(type, key);
+            }
+        }
     }
 
     /**
