@@ -171,6 +171,13 @@ public class FeatureDetect {
     public static native boolean AesCmacEnabled();
 
     /**
+     * Tests if AES-GMAC is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesGmacEnabled();
+
+    /**
      * Tests if 3DES is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.
