@@ -40,8 +40,9 @@ public class Ecc extends NativeStruct {
      * during Rng cleanup. */
     private boolean weOwnRng = true;
 
-    /** Lock around Rng object access */
-    private final Object rngLock = new Object();
+    /* Static lock around RNG access to ensure thread safety when
+     * the same RNG instance is shared across multiple ECC objects. */
+    private static final Object rngLock = new Object();
 
     /** Lock around object state */
     protected final Object stateLock = new Object();
@@ -523,6 +524,9 @@ public class Ecc extends NativeStruct {
         throwIfKeyNotLoaded();
 
         synchronized (pointerLock) {
+            /* Use static RNG lock to ensure thread safety when multiple
+             * ECC instances share the same RNG. This prevents race conditions
+             * in the native wolfCrypt RNG state. */
             synchronized (rngLock) {
                 signature = wc_ecc_sign_hash(hash, rng);
             }
