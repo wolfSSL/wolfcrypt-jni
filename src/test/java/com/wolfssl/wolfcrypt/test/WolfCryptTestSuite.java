@@ -29,6 +29,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @SuiteClasses({
     AesTest.class,
     AesGcmTest.class,
+    AsnTest.class,
     Des3Test.class,
     ChachaTest.class,
     Md5Test.class,
