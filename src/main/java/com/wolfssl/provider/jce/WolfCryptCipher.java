@@ -50,6 +50,7 @@ import com.wolfssl.wolfcrypt.AesEcb;
 import com.wolfssl.wolfcrypt.AesCtr;
 import com.wolfssl.wolfcrypt.AesOfb;
 import com.wolfssl.wolfcrypt.AesGcm;
+import com.wolfssl.wolfcrypt.AesCcm;
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Rng;
@@ -70,7 +71,8 @@ public class WolfCryptCipher extends CipherSpi {
         WC_CBC,
         WC_CTR,
         WC_OFB,
-        WC_GCM
+        WC_GCM,
+        WC_CCM
     }
 
     enum PaddingType {
@@ -102,6 +104,7 @@ public class WolfCryptCipher extends CipherSpi {
     private AesCtr aesCtr = null;
     private AesOfb aesOfb = null;
     private AesGcm aesGcm = null;
+    private AesCcm aesCcm = null;
     private Des3 des3     = null;
     private Rsa  rsa      = null;
     private Rng  rng      = null;
@@ -201,6 +204,13 @@ public class WolfCryptCipher extends CipherSpi {
                     }
                     aesGcm = new AesGcm();
                 }
+                else if (cipherMode == CipherMode.WC_CCM) {
+                    if (aesCcm != null) {
+                        aesCcm.releaseNativeStruct();
+                        aesCcm = null;
+                    }
+                    aesCcm = new AesCcm();
+                }
                 break;
 
             case WC_DES3:
@@ -278,6 +288,16 @@ public class WolfCryptCipher extends CipherSpi {
                 supported = 1;
 
                 log("set mode to GCM");
+            }
+
+        } else if (mode.equals("CCM")) {
+
+            /* AES supports CCM */
+            if (cipherType == CipherType.WC_AES) {
+                cipherMode = CipherMode.WC_CCM;
+                supported = 1;
+
+                log("set mode to CCM");
             }
         }
 
@@ -485,6 +505,44 @@ public class WolfCryptCipher extends CipherSpi {
                 }
                 this.gcmTagLen = (gcmSpec.getTLen() / 8);
             }
+            else if (cipherMode == CipherMode.WC_CCM) {
+                /*
+                 * CCM Parameter Handling:
+                 * We use GCMParameterSpec for CCM mode to maintain
+                 * compatibility with:
+                 * 1. Java 8+ (CCMParameterSpec only available in Java 11+)
+                 * 2. BouncyCastle provider (uses GCMParameterSpec for CCM)
+                 * 3. Existing developer expectations and code patterns
+                 */
+                if (!(spec instanceof GCMParameterSpec)) {
+                    throw new InvalidAlgorithmParameterException(
+                        "AlgorithmParameterSpec must be of type " +
+                        "GCMParameterSpec for AES-CCM");
+                }
+
+                GCMParameterSpec ccmSpec = (GCMParameterSpec)spec;
+
+                if (ccmSpec.getIV() == null || ccmSpec.getIV().length == 0) {
+                    throw new InvalidAlgorithmParameterException(
+                        "AES-CCM nonce is null or 0 length");
+                }
+
+                /* CCM nonce length validation (7-15 bytes typical) */
+                if (ccmSpec.getIV().length < 7 || ccmSpec.getIV().length > 15) {
+                    throw new InvalidAlgorithmParameterException(
+                        "CCM nonce length must be 7-15 bytes, got: " +
+                        ccmSpec.getIV().length);
+                }
+
+                this.iv = ccmSpec.getIV().clone();
+
+                /* store tag length as bytes */
+                if (ccmSpec.getTLen() == 0) {
+                    throw new InvalidAlgorithmParameterException(
+                        "Tag length cannot be zero");
+                }
+                this.gcmTagLen = (ccmSpec.getTLen() / 8);
+            }
             else {
                 if (!(spec instanceof IvParameterSpec)) {
                     throw new InvalidAlgorithmParameterException(
@@ -546,6 +604,9 @@ public class WolfCryptCipher extends CipherSpi {
                     if (cipherMode == CipherMode.WC_GCM) {
                         this.aesGcm.setKey(encodedKey);
                     }
+                    else if (cipherMode == CipherMode.WC_CCM) {
+                        this.aesCcm.setKey(encodedKey);
+                    }
                     else if (cipherMode == CipherMode.WC_ECB) {
                         this.aesEcb.setKey(
                             encodedKey, null, AesEcb.ENCRYPT_MODE);
@@ -562,6 +623,9 @@ public class WolfCryptCipher extends CipherSpi {
                 } else {
                     if (cipherMode == CipherMode.WC_GCM) {
                         this.aesGcm.setKey(encodedKey);
+                    }
+                    else if (cipherMode == CipherMode.WC_CCM) {
+                        this.aesCcm.setKey(encodedKey);
                     }
                     else if (cipherMode == CipherMode.WC_ECB) {
                         this.aesEcb.setKey(
@@ -716,11 +780,12 @@ public class WolfCryptCipher extends CipherSpi {
         }
 
         /* keep buffered data if RSA or data is less than block size, or doing
-         * AES-GCM without stream mode compiled natively, but not for CTR/OFB
-         * which are stream ciphers */
+         * AES-GCM/CCM without stream mode compiled natively, but not for
+         * CTR/OFB which are stream ciphers */
         if ((cipherType == CipherType.WC_RSA) ||
             ((cipherType == CipherType.WC_AES) &&
-             (cipherMode == CipherMode.WC_GCM)) ||
+             (cipherMode == CipherMode.WC_GCM ||
+              cipherMode == CipherMode.WC_CCM)) ||
             ((buffered.length < blockSize) &&
              (cipherMode != CipherMode.WC_CTR) &&
              (cipherMode != CipherMode.WC_OFB))) {
@@ -810,9 +875,11 @@ public class WolfCryptCipher extends CipherSpi {
         this.operationStarted = true;
         totalSz = buffered.length + len;
 
-        /* AES-GCM, AES-CTR, and AES-OFB do not require block size inputs */
+        /* AES-GCM, AES-CCM, AES-CTR, and AES-OFB do not require
+         * block size inputs */
         if (isBlockCipher() &&
             (cipherMode != CipherMode.WC_GCM) &&
+            (cipherMode != CipherMode.WC_CCM) &&
             (cipherMode != CipherMode.WC_CTR) &&
             (cipherMode != CipherMode.WC_OFB) &&
             (this.direction == OpMode.WC_DECRYPT ||
@@ -832,9 +899,10 @@ public class WolfCryptCipher extends CipherSpi {
 
         /* add padding if encrypting and PKCS5 padding is used. PKCS#5 padding
          * is treated the same as PKCS#7 padding here, using each algorithm's
-         * specific block size. CTR and OFB modes do not use padding */
+         * specific block size. CCM, CTR and OFB modes do not use padding */
         if (this.direction == OpMode.WC_ENCRYPT &&
             this.paddingType == PaddingType.WC_PKCS5 &&
+            cipherMode != CipherMode.WC_CCM &&
             cipherMode != CipherMode.WC_CTR &&
             cipherMode != CipherMode.WC_OFB) {
             if (this.cipherType == CipherType.WC_AES) {
@@ -874,6 +942,33 @@ public class WolfCryptCipher extends CipherSpi {
                                     this.aadData);
                     }
                 }
+                else if (cipherMode == CipherMode.WC_CCM) {
+                    if (this.direction == OpMode.WC_ENCRYPT) {
+                        byte[] tag = new byte[this.gcmTagLen];
+                        tmpOut = this.aesCcm.encrypt(tmpIn, this.iv, tag,
+                                    this.aadData);
+
+                        /* Concatenate auth tag to end of ciphertext */
+                        byte[] totalOut = new byte[tmpOut.length + tag.length];
+                        System.arraycopy(tmpOut, 0, totalOut, 0, tmpOut.length);
+                        System.arraycopy(tag, 0, totalOut, tmpOut.length,
+                                         tag.length);
+                        tmpOut = totalOut;
+                    }
+                    else {
+                        /* Get auth tag from end of ciphertext */
+                        byte[] tag = Arrays.copyOfRange(tmpIn,
+                                        tmpIn.length - this.gcmTagLen,
+                                        tmpIn.length);
+
+                        /* Shrink ciphertext array down to not include tag */
+                        tmpIn = Arrays.copyOfRange(tmpIn, 0,
+                                    tmpIn.length - this.gcmTagLen);
+
+                        tmpOut = this.aesCcm.decrypt(tmpIn, this.iv, tag,
+                                    this.aadData);
+                    }
+                }
                 else if (cipherMode == CipherMode.WC_ECB) {
                     tmpOut = this.aesEcb.update(tmpIn, 0, tmpIn.length);
                 }
@@ -891,9 +986,10 @@ public class WolfCryptCipher extends CipherSpi {
                 }
 
                 /* strip PKCS#5/PKCS#7 padding if required,
-                 * CTR and OFB modes do not use padding */
+                 * CCM, CTR and OFB modes do not use padding */
                 if (this.direction == OpMode.WC_DECRYPT &&
                     this.paddingType == PaddingType.WC_PKCS5 &&
+                    cipherMode != CipherMode.WC_CCM &&
                     cipherMode != CipherMode.WC_CTR &&
                     cipherMode != CipherMode.WC_OFB) {
                     tmpOut = Aes.unPadPKCS7(tmpOut, Aes.BLOCK_SIZE);
@@ -1095,9 +1191,10 @@ public class WolfCryptCipher extends CipherSpi {
         throws IllegalArgumentException, IllegalStateException {
 
         if (this.cipherType != CipherType.WC_AES ||
-            this.cipherMode != CipherMode.WC_GCM) {
+            (this.cipherMode != CipherMode.WC_GCM &&
+             this.cipherMode != CipherMode.WC_CCM)) {
             throw new IllegalStateException(
-                "AAD only supported for AES-GCM");
+                "AAD only supported for AES-GCM and AES-CCM");
         }
 
         if (this.operationStarted) {
@@ -1105,7 +1202,9 @@ public class WolfCryptCipher extends CipherSpi {
                 "Must set AAD before calling Cipher.update/final");
         }
 
-        if (!this.cipherInitialized || this.aesGcm == null) {
+        if (!this.cipherInitialized ||
+            (this.cipherMode == CipherMode.WC_GCM && this.aesGcm == null) ||
+            (this.cipherMode == CipherMode.WC_CCM && this.aesCcm == null)) {
             throw new IllegalStateException(
                 "Cipher not initialized yet");
         }
@@ -1176,6 +1275,8 @@ public class WolfCryptCipher extends CipherSpi {
                 return "CBC";
             case WC_GCM:
                 return "GCM";
+            case WC_CCM:
+                return "CCM";
             default:
                 return "None";
         }
@@ -1203,6 +1304,11 @@ public class WolfCryptCipher extends CipherSpi {
             if (this.aesGcm != null) {
                 this.aesGcm.releaseNativeStruct();
                 this.aesGcm = null;
+            }
+
+            if (this.aesCcm != null) {
+                this.aesCcm.releaseNativeStruct();
+                this.aesCcm = null;
             }
 
             if (this.des3 != null) {
@@ -1263,6 +1369,18 @@ public class WolfCryptCipher extends CipherSpi {
          */
         public wcAESGCMNoPadding() {
             super(CipherType.WC_AES, CipherMode.WC_GCM, PaddingType.WC_NONE);
+        }
+    }
+
+    /**
+     * Class for AES-CCM with no padding
+     */
+    public static final class wcAESCCMNoPadding extends WolfCryptCipher {
+        /**
+         * Create new wcAESCCMNoPadding object
+         */
+        public wcAESCCMNoPadding() {
+            super(CipherType.WC_AES, CipherMode.WC_CCM, PaddingType.WC_NONE);
         }
     }
 
