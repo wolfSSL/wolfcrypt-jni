@@ -72,17 +72,17 @@ public class WolfCryptSignature extends SignatureSpi {
         WC_SHA3_512
     }
 
-    /* internal hash type sums (asn.h) */
-    private int MD5h = 649;
-    private int SHAh = 88;
-    private int SHA224h = 417;
-    private int SHA256h = 414;
-    private int SHA384h = 415;
-    private int SHA512h = 416;
-    private int SHA3_224h = 420;
-    private int SHA3_256h = 421;
-    private int SHA3_384h = 422;
-    private int SHA3_512h = 423;
+    /* internal hash type sums (from oid_sum.h) - retrieved dynamically */
+    private int MD5h = Asn.MD5h;
+    private int SHAh = Asn.SHAh;
+    private int SHA224h = Asn.SHA224h;
+    private int SHA256h = Asn.SHA256h;
+    private int SHA384h = Asn.SHA384h;
+    private int SHA512h = Asn.SHA512h;
+    private int SHA3_224h = Asn.SHA3_224h;
+    private int SHA3_256h = Asn.SHA3_256h;
+    private int SHA3_384h = Asn.SHA3_384h;
+    private int SHA3_512h = Asn.SHA3_512h;
 
     /* internal key objects */
     private Rsa rsa = null;
@@ -623,9 +623,14 @@ public class WolfCryptSignature extends SignatureSpi {
                 }
 
                 /* compare expected digest to one unwrapped from verify */
-                for (int i = 0; i < verify.length; i++) {
-                    if (verify[i] != encDigest[i]) {
-                        verified = false;
+                if (verify.length != encodedSz) {
+                    verified = false;
+                } else {
+                    for (int i = 0; i < encodedSz; i++) {
+                        if (verify[i] != encDigest[i]) {
+                            verified = false;
+                            break;
+                        }
                     }
                 }
 

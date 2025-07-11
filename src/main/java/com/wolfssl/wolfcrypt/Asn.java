@@ -46,12 +46,46 @@ public class Asn extends WolfObject {
     /** ECDSA key value, from asn.h Key_Sum enum */
     public static final int ECDSAk;
 
+    /* Hash Sum values, from oid_sum.h Hash_Sum enum */
+
+    /** MD5 hash OID value, from oid_sum.h Hash_Sum enum */
+    public static final int MD5h;
+    /** SHA-1 hash OID value, from oid_sum.h Hash_Sum enum */
+    public static final int SHAh;
+    /** SHA-224 hash OID value, from oid_sum.h Hash_Sum enum */
+    public static final int SHA224h;
+    /** SHA-256 hash OID value, from oid_sum.h Hash_Sum enum */
+    public static final int SHA256h;
+    /** SHA-384 hash OID value, from oid_sum.h Hash_Sum enum */
+    public static final int SHA384h;
+    /** SHA-512 hash OID value, from oid_sum.h Hash_Sum enum */
+    public static final int SHA512h;
+    /** SHA3-224 hash OID value, from oid_sum.h Hash_Sum enum */
+    public static final int SHA3_224h;
+    /** SHA3-256 hash OID value, from oid_sum.h Hash_Sum enum */
+    public static final int SHA3_256h;
+    /** SHA3-384 hash OID value, from oid_sum.h Hash_Sum enum */
+    public static final int SHA3_384h;
+    /** SHA3-512 hash OID value, from oid_sum.h Hash_Sum enum */
+    public static final int SHA3_512h;
+
     static {
         DSAk = getDSAk();
         RSAk = getRSAk();
         RSAPSSk = getRSAPSSk();
         RSAESOAEPk = getRSAESOAEPk();
         ECDSAk = getECDSAk();
+
+        MD5h = getMD5h();
+        SHAh = getSHAh();
+        SHA224h = getSHA224h();
+        SHA256h = getSHA256h();
+        SHA384h = getSHA384h();
+        SHA512h = getSHA512h();
+        SHA3_224h = getSHA3_224h();
+        SHA3_256h = getSHA3_256h();
+        SHA3_384h = getSHA3_384h();
+        SHA3_512h = getSHA3_512h();
     }
 
     /** Return value of native DSAk enum */
@@ -68,6 +102,36 @@ public class Asn extends WolfObject {
 
     /** Return value of native ECDSAk enum */
     private static native int getECDSAk();
+
+    /** Return value of native MD5h enum */
+    private static native int getMD5h();
+
+    /** Return value of native SHAh enum */
+    private static native int getSHAh();
+
+    /** Return value of native SHA224h enum */
+    private static native int getSHA224h();
+
+    /** Return value of native SHA256h enum */
+    private static native int getSHA256h();
+
+    /** Return value of native SHA384h enum */
+    private static native int getSHA384h();
+
+    /** Return value of native SHA512h enum */
+    private static native int getSHA512h();
+
+    /** Return value of native SHA3_224h enum */
+    private static native int getSHA3_224h();
+
+    /** Return value of native SHA3_256h enum */
+    private static native int getSHA3_256h();
+
+    /** Return value of native SHA3_384h enum */
+    private static native int getSHA3_384h();
+
+    /** Return value of native SHA3_512h enum */
+    private static native int getSHA3_512h();
 
     /** ASN.1 encode message digest, before it is signed
      *
