@@ -189,7 +189,7 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesEcbEnable
 {
     (void)env;
     (void)jcl;
-#if !defined(NO_AES) && defined(WOLFSSL_AES_DIRECT)
+#if !defined(NO_AES) && defined(HAVE_AES_ECB)
     return JNI_TRUE;
 #else
     return JNI_FALSE;

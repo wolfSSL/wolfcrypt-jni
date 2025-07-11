@@ -38,7 +38,7 @@
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_AesEcb_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
-#if !defined(NO_AES) && defined(WOLFSSL_AES_DIRECT)
+#if !defined(NO_AES) && defined(HAVE_AES_ECB)
     Aes* aes = NULL;
 
     aes = (Aes*)XMALLOC(sizeof(Aes), NULL, DYNAMIC_TYPE_TMP_BUFFER);
@@ -64,7 +64,7 @@ JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_AesEcb_native_1set_1key_1internal(
     JNIEnv* env, jobject this, jbyteArray key_object, jbyteArray iv_object, jint opmode)
 {
-#if !defined(NO_AES) && defined(WOLFSSL_AES_DIRECT)
+#if !defined(NO_AES) && defined(HAVE_AES_ECB)
     int ret = 0;
     Aes* aes  = NULL;
     byte* key = NULL;
@@ -98,7 +98,7 @@ Java_com_wolfssl_wolfcrypt_AesEcb_native_1set_1key_1internal(
     releaseByteArray(env, key_object, key, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
-#endif /* !NO_AES && WOLFSSL_AES_DIRECT */
+#endif /* !NO_AES && HAVE_AES_ECB */
 }
 
 JNIEXPORT jint JNICALL
@@ -107,8 +107,8 @@ Java_com_wolfssl_wolfcrypt_AesEcb_native_1update_1internal__I_3BII_3BI(
     jbyteArray input_object, jint offset, jint length,
     jbyteArray output_object, jint outputOffset)
 {
-#if !defined(NO_AES) && defined(WOLFSSL_AES_DIRECT)
     int ret = 0;
+#if !defined(NO_AES) && defined(HAVE_AES_ECB)
     Aes*  aes    = NULL;
     byte* input  = NULL;
     byte* output = NULL;
@@ -168,7 +168,8 @@ Java_com_wolfssl_wolfcrypt_AesEcb_native_1update_1internal__I_3BII_3BI(
     }
 #else
     throwNotCompiledInException(env);
-#endif /* !NO_AES && WOLFSSL_AES_DIRECT */
+    ret = NOT_COMPILED_IN;
+#endif /* !NO_AES && HAVE_AES_ECB */
 
     return ret;
 }
@@ -181,7 +182,7 @@ Java_com_wolfssl_wolfcrypt_AesEcb_native_1update_1internal__ILjava_nio_ByteBuffe
 {
     int ret = 0;
 
-#if !defined(NO_AES) && defined(WOLFSSL_AES_DIRECT)
+#if !defined(NO_AES) && defined(HAVE_AES_ECB)
     Aes*  aes    = NULL;
     byte* input  = NULL;
     byte* output = NULL;
@@ -235,7 +236,8 @@ Java_com_wolfssl_wolfcrypt_AesEcb_native_1update_1internal__ILjava_nio_ByteBuffe
     LogHex((byte*) output, 0, length);
 #else
     throwNotCompiledInException(env);
-#endif /* !NO_AES && WOLFSSL_AES_DIRECT */
+    ret = NOT_COMPILED_IN;
+#endif /* !NO_AES && HAVE_AES_ECB */
 
     return ret;
 }
