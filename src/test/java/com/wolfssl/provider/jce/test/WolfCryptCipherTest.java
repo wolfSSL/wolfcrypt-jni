@@ -75,6 +75,7 @@ public class WolfCryptCipherTest {
         "AES/ECB/NoPadding",
         "AES/ECB/PKCS5Padding",
         "AES/GCM/NoPadding",
+        "AES/OFB/NoPadding",
         "DESede/CBC/NoPadding",
         "RSA",
         "RSA/ECB/PKCS1Padding"
@@ -133,6 +134,7 @@ public class WolfCryptCipherTest {
         expectedBlockSizes.put("AES/ECB/NoPadding", 16);
         expectedBlockSizes.put("AES/ECB/PKCS5Padding", 16);
         expectedBlockSizes.put("AES/GCM/NoPadding", 16);
+        expectedBlockSizes.put("AES/OFB/NoPadding", 16);
         expectedBlockSizes.put("DESede/CBC/NoPadding", 8);
         expectedBlockSizes.put("RSA", 0);
         expectedBlockSizes.put("RSA/ECB/PKCS1Padding", 0);
@@ -2859,6 +2861,279 @@ public class WolfCryptCipherTest {
             Integer cur = listIterator.next();
             if (cur == 1) {
                 fail("Threading error in AES-CTR Cipher thread test");
+            }
+        }
+    }
+
+    @Test
+    public void testAesOfbNoPadding()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/OFB/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        /* NIST SP 800-38A test vector for AES-128-OFB */
+        byte[] key = {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        byte[] iv = {
+            (byte)0x00, (byte)0x01, (byte)0x02, (byte)0x03,
+            (byte)0x04, (byte)0x05, (byte)0x06, (byte)0x07,
+            (byte)0x08, (byte)0x09, (byte)0x0a, (byte)0x0b,
+            (byte)0x0c, (byte)0x0d, (byte)0x0e, (byte)0x0f
+        };
+
+        byte[] plaintext = {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+        };
+
+        byte[] expected = {
+            (byte)0x3b, (byte)0x3f, (byte)0xd9, (byte)0x2e,
+            (byte)0xb7, (byte)0x2d, (byte)0xad, (byte)0x20,
+            (byte)0x33, (byte)0x34, (byte)0x49, (byte)0xf8,
+            (byte)0xe8, (byte)0x3c, (byte)0xfb, (byte)0x4a
+        };
+
+        /* Test encrypt */
+        Cipher cipher = Cipher.getInstance("AES/OFB/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        byte[] ciphertext = cipher.doFinal(plaintext);
+        assertArrayEquals(expected, ciphertext);
+
+        /* Test decrypt */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+        assertArrayEquals(plaintext, decrypted);
+    }
+
+    @Test
+    public void testAesOfbNoPaddingWithUpdate()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/OFB/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        /* NIST SP 800-38A test vector for AES-128-OFB */
+        byte[] key = {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        byte[] iv = {
+            (byte)0x00, (byte)0x01, (byte)0x02, (byte)0x03,
+            (byte)0x04, (byte)0x05, (byte)0x06, (byte)0x07,
+            (byte)0x08, (byte)0x09, (byte)0x0a, (byte)0x0b,
+            (byte)0x0c, (byte)0x0d, (byte)0x0e, (byte)0x0f
+        };
+
+        byte[] plaintext = {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+        };
+
+        byte[] expected = {
+            (byte)0x3b, (byte)0x3f, (byte)0xd9, (byte)0x2e,
+            (byte)0xb7, (byte)0x2d, (byte)0xad, (byte)0x20,
+            (byte)0x33, (byte)0x34, (byte)0x49, (byte)0xf8,
+            (byte)0xe8, (byte)0x3c, (byte)0xfb, (byte)0x4a
+        };
+
+        /* Test encrypt with update() calls */
+        Cipher cipher = Cipher.getInstance("AES/OFB/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+
+        /* Process plaintext in chunks */
+        byte[] part1 = cipher.update(plaintext, 0, 8);
+        byte[] part2 = cipher.doFinal(plaintext, 8, 8);
+
+        /* Combine parts */
+        byte[] ciphertext = new byte[part1.length + part2.length];
+        System.arraycopy(part1, 0, ciphertext, 0, part1.length);
+        System.arraycopy(part2, 0, ciphertext, part1.length, part2.length);
+
+        assertArrayEquals(expected, ciphertext);
+
+        /* Test decrypt with update() calls */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+
+        byte[] decPart1 = cipher.update(ciphertext, 0, 8);
+        byte[] decPart2 = cipher.doFinal(ciphertext, 8, 8);
+
+        /* Combine parts */
+        byte[] decrypted = new byte[decPart1.length + decPart2.length];
+        System.arraycopy(decPart1, 0, decrypted, 0, decPart1.length);
+        System.arraycopy(decPart2, 0, decrypted, decPart1.length,
+            decPart2.length);
+
+        assertArrayEquals(plaintext, decrypted);
+    }
+
+    @Test
+    public void testAesOfbStreaming()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/OFB/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        /* Test OFB streaming with arbitrary data sizes */
+        byte[] key = {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        byte[] iv = {
+            (byte)0x00, (byte)0x01, (byte)0x02, (byte)0x03,
+            (byte)0x04, (byte)0x05, (byte)0x06, (byte)0x07,
+            (byte)0x08, (byte)0x09, (byte)0x0a, (byte)0x0b,
+            (byte)0x0c, (byte)0x0d, (byte)0x0e, (byte)0x0f
+        };
+
+        /* Test with various data sizes (not block aligned) */
+        int[] dataSizes = {1, 7, 15, 17, 31, 33, 63, 65};
+
+        for (int size : dataSizes) {
+            byte[] plaintext = new byte[size];
+            secureRandom.nextBytes(plaintext);
+
+            Cipher cipher = Cipher.getInstance(
+                "AES/OFB/NoPadding", jceProvider);
+            SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+            IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+            /* Encrypt */
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+            byte[] ciphertext = cipher.doFinal(plaintext);
+
+            /* Decrypt */
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+            byte[] decrypted = cipher.doFinal(ciphertext);
+
+            assertArrayEquals("Failed for size " + size, plaintext, decrypted);
+        }
+    }
+
+    @Test
+    public void testAesOfbThreaded() throws InterruptedException {
+        if (!enabledJCEAlgos.contains("AES/OFB/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        int numThreads = 50;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<Integer> results =
+            new LinkedBlockingQueue<>();
+
+        /* NIST SP 800-38A test vector for AES-128-OFB */
+        final byte[] key = {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        final byte[] iv = {
+            (byte)0x00, (byte)0x01, (byte)0x02, (byte)0x03,
+            (byte)0x04, (byte)0x05, (byte)0x06, (byte)0x07,
+            (byte)0x08, (byte)0x09, (byte)0x0a, (byte)0x0b,
+            (byte)0x0c, (byte)0x0d, (byte)0x0e, (byte)0x0f
+        };
+
+        final byte[] plaintext = {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+        };
+
+        final byte[] expected = {
+            (byte)0x3b, (byte)0x3f, (byte)0xd9, (byte)0x2e,
+            (byte)0xb7, (byte)0x2d, (byte)0xad, (byte)0x20,
+            (byte)0x33, (byte)0x34, (byte)0x49, (byte)0xf8,
+            (byte)0xe8, (byte)0x3c, (byte)0xfb, (byte)0x4a
+        };
+
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override
+                public void run() {
+                    int ret = 0;
+
+                    try {
+                        Cipher cipher = Cipher.getInstance(
+                            "AES/OFB/NoPadding", jceProvider);
+                        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+                        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+                        /* Test encrypt */
+                        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+                        byte[] ciphertext = cipher.doFinal(plaintext);
+
+                        if (!Arrays.equals(expected, ciphertext)) {
+                            ret = 1;
+                        }
+
+                        /* Test decrypt */
+                        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+                        byte[] decrypted = cipher.doFinal(ciphertext);
+
+                        if (!Arrays.equals(plaintext, decrypted)) {
+                            ret = 1;
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        ret = 1;
+                    }
+
+                    results.add(ret);
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur == 1) {
+                fail("Threading error in AES-OFB Cipher thread test");
             }
         }
     }
