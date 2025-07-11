@@ -71,6 +71,7 @@ public class WolfCryptCipherTest {
     private static String supportedJCEAlgos[] = {
         "AES/CBC/NoPadding",
         "AES/CBC/PKCS5Padding",
+        "AES/CCM/NoPadding",
         "AES/CTR/NoPadding",
         "AES/ECB/NoPadding",
         "AES/ECB/PKCS5Padding",
@@ -130,6 +131,7 @@ public class WolfCryptCipherTest {
         /* fill expected block size HashMap */
         expectedBlockSizes.put("AES/CBC/NoPadding", 16);
         expectedBlockSizes.put("AES/CBC/PKCS5Padding", 16);
+        expectedBlockSizes.put("AES/CCM/NoPadding", 16);
         expectedBlockSizes.put("AES/CTR/NoPadding", 16);
         expectedBlockSizes.put("AES/ECB/NoPadding", 16);
         expectedBlockSizes.put("AES/ECB/PKCS5Padding", 16);
@@ -965,7 +967,8 @@ public class WolfCryptCipherTest {
                 /* append data to final output buffer */
                 output = new byte[finalOutput.length + tmp.length];
                 System.arraycopy(finalOutput, 0, output, 0, finalOutput.length);
-                System.arraycopy(tmp, 0, output, finalOutput.length, tmp.length);
+                System.arraycopy(tmp, 0, output, finalOutput.length,
+                    tmp.length);
                 finalOutput = output;
             }
         }
@@ -1408,7 +1411,8 @@ public class WolfCryptCipherTest {
         int numThreads = 50;
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
-        final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
+        final LinkedBlockingQueue<Integer> results =
+            new LinkedBlockingQueue<>();
         final byte[] rand2kBuf = new byte[2048];
 
         final byte[] key = new byte[] {
@@ -2299,7 +2303,8 @@ public class WolfCryptCipherTest {
         /* Test DECRYPT with tag included */
         cipher.init(Cipher.DECRYPT_MODE, key, spec);
         assertEquals("Output size for decryption should be input length " +
-            "minus tag length", 10, cipher.getOutputSize(10 + TAG_LENGTH_BYTES));
+            "minus tag length", 10,
+            cipher.getOutputSize(10 + TAG_LENGTH_BYTES));
 
         /* Test ENCRYPT after partial update */
         byte[] partialInput = new byte[5];
@@ -2758,7 +2763,8 @@ public class WolfCryptCipherTest {
             byte[] plaintext = new byte[size];
             secureRandom.nextBytes(plaintext);
 
-            Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding", jceProvider);
+            Cipher cipher =
+                Cipher.getInstance("AES/CTR/NoPadding", jceProvider);
             SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
             IvParameterSpec ivSpec = new IvParameterSpec(iv);
 
@@ -2784,7 +2790,8 @@ public class WolfCryptCipherTest {
         int numThreads = 50;
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
-        final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
+        final LinkedBlockingQueue<Integer> results =
+            new LinkedBlockingQueue<>();
 
         /* NIST SP 800-38A test vector for AES-128-CTR */
         final byte[] key = {
@@ -3894,6 +3901,353 @@ public class WolfCryptCipherTest {
 
         testRSAInterop("RSA");
         testRSAInterop("RSA/ECB/PKCS1Padding");
+    }
+
+    @Test
+    public void testAesCcmNoPadding()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        /* Simple CCM test vector */
+        byte[] key = {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+        byte[] nonce = {
+            (byte)0x00, (byte)0x01, (byte)0x02, (byte)0x03,
+            (byte)0x04, (byte)0x05, (byte)0x06, (byte)0x07,
+            (byte)0x08, (byte)0x09, (byte)0x0a, (byte)0x0b
+        }; /* 12-byte nonce */
+        byte[] plaintext = {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+        };
+
+        /* Test encrypt */
+        Cipher cipher = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        /* 128-bit tag */
+        GCMParameterSpec ccmSpec = new GCMParameterSpec(128, nonce);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ccmSpec);
+        byte[] ciphertext = cipher.doFinal(plaintext);
+
+        /* Verify ciphertext is longer than plaintext due to auth tag */
+        assertTrue("CCM ciphertext should be longer than plaintext",
+                   ciphertext.length > plaintext.length);
+        assertEquals("CCM ciphertext should include 16-byte auth tag",
+                     plaintext.length + 16, ciphertext.length);
+
+        /* Test decrypt */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ccmSpec);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+
+        /* Verify roundtrip */
+        assertArrayEquals("CCM decrypt should match original plaintext",
+                          plaintext, decrypted);
+    }
+
+    @Test
+    public void testAesCcmNoPaddingWithAAD()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        /* CCM test vector with AAD */
+        byte[] key = {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+        byte[] nonce = {
+            (byte)0x00, (byte)0x01, (byte)0x02, (byte)0x03,
+            (byte)0x04, (byte)0x05, (byte)0x06, (byte)0x07,
+            (byte)0x08, (byte)0x09, (byte)0x0a, (byte)0x0b
+        }; /* 12-byte nonce */
+        byte[] plaintext = {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96
+        };
+        byte[] aad = {
+            (byte)0xfe, (byte)0xed, (byte)0xfa, (byte)0xce,
+            (byte)0xde, (byte)0xad, (byte)0xbe, (byte)0xef
+        };
+
+        /* Test encrypt with AAD */
+        Cipher cipher = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        GCMParameterSpec ccmSpec = new GCMParameterSpec(128, nonce);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ccmSpec);
+        cipher.updateAAD(aad);
+        byte[] ciphertext = cipher.doFinal(plaintext);
+
+        /* Test decrypt with AAD */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ccmSpec);
+        cipher.updateAAD(aad);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+
+        assertArrayEquals("CCM with AAD decrypt should match plaintext",
+                          plaintext, decrypted);
+    }
+
+    @Test
+    public void testAesCcmNoPaddingWithUpdate()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        /* CCM test with multiple update() calls */
+        byte[] key = {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+        byte[] nonce = {
+            (byte)0x00, (byte)0x01, (byte)0x02, (byte)0x03,
+            (byte)0x04, (byte)0x05, (byte)0x06, (byte)0x07,
+            (byte)0x08, (byte)0x09, (byte)0x0a, (byte)0x0b
+        };
+        byte[] plaintext = {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+        };
+
+        /* Test encrypt with update() calls */
+        Cipher cipher = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        GCMParameterSpec ccmSpec = new GCMParameterSpec(128, nonce);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ccmSpec);
+
+        /* CCM buffers data until doFinal, so update() should return empty */
+        byte[] tmp1 = cipher.update(plaintext, 0, 8);
+        byte[] tmp2 = cipher.update(plaintext, 8, 8);
+        byte[] ciphertext = cipher.doFinal();
+
+        /* For CCM, update() calls should return empty arrays */
+        assertEquals("CCM update() should return empty", 0, tmp1.length);
+        assertEquals("CCM update() should return empty", 0, tmp2.length);
+        assertTrue("CCM ciphertext should be non-empty", ciphertext.length > 0);
+
+        /* Test decrypt */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ccmSpec);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+
+        assertArrayEquals("CCM multi-update decrypt should match plaintext",
+                          plaintext, decrypted);
+    }
+
+    @Test
+    public void testAesCcmStreaming()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        byte[] key = {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+        byte[] nonce = {
+            (byte)0x00, (byte)0x01, (byte)0x02, (byte)0x03,
+            (byte)0x04, (byte)0x05, (byte)0x06, (byte)0x07,
+            (byte)0x08, (byte)0x09, (byte)0x0a, (byte)0x0b
+        };
+
+        /* Test various data sizes */
+        int[] testSizes = {1, 7, 15, 16, 17, 31, 32, 33, 63, 64, 65};
+
+        for (int size : testSizes) {
+            byte[] plaintext = new byte[size];
+            for (int i = 0; i < size; i++) {
+                plaintext[i] = (byte)(i & 0xFF);
+            }
+
+            Cipher cipher =
+                Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+            SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+            GCMParameterSpec ccmSpec = new GCMParameterSpec(128, nonce);
+
+            /* Encrypt */
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ccmSpec);
+            byte[] ciphertext = cipher.doFinal(plaintext);
+
+            /* Decrypt */
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ccmSpec);
+            byte[] decrypted = cipher.doFinal(ciphertext);
+
+            assertArrayEquals("Failed for size " + size, plaintext, decrypted);
+        }
+    }
+
+    @Test
+    public void testAesCcmThreaded() throws InterruptedException {
+        if (!enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        int numThreads = 10;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<Integer> results =
+            new LinkedBlockingQueue<>();
+
+        final byte[] key = {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+        final byte[] nonce = {
+            (byte)0x00, (byte)0x01, (byte)0x02, (byte)0x03,
+            (byte)0x04, (byte)0x05, (byte)0x06, (byte)0x07,
+            (byte)0x08, (byte)0x09, (byte)0x0a, (byte)0x0b
+        };
+        final byte[] plaintext = {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96
+        };
+
+        for (int i = 0; i < numThreads; i++) {
+            final int threadNum = i;
+            service.submit(new Runnable() {
+                @Override
+                public void run() {
+                    int result = 0;
+                    try {
+                        Cipher cipher = Cipher.getInstance("AES/CCM/NoPadding",
+                                                         jceProvider);
+                        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+                        GCMParameterSpec ccmSpec =
+                            new GCMParameterSpec(128, nonce);
+
+                        /* Multiple encrypt/decrypt cycles */
+                        for (int j = 0; j < 100; j++) {
+                            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ccmSpec);
+                            byte[] ciphertext = cipher.doFinal(plaintext);
+
+                            cipher.init(Cipher.DECRYPT_MODE, keySpec, ccmSpec);
+                            byte[] decrypted = cipher.doFinal(ciphertext);
+
+                            if (!Arrays.equals(plaintext, decrypted)) {
+                                result = 1;
+                                break;
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        result = 1;
+                    }
+                    results.add(result);
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+        service.shutdown();
+
+        Integer[] resultsArray = results.toArray(new Integer[results.size()]);
+        for (int i = 0; i < resultsArray.length; i++) {
+            if (resultsArray[i] != 0) {
+                fail("Threading error in AES-CCM Cipher thread test");
+            }
+        }
+    }
+
+    @Test
+    public void testAesCcmNonceLengthValidation() {
+        if (!enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        byte[] key = {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        try {
+            Cipher cipher = Cipher.getInstance(
+                "AES/CCM/NoPadding", jceProvider);
+            SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+
+            /* Test nonce too short (6 bytes) */
+            byte[] shortNonce = new byte[6];
+            GCMParameterSpec shortSpec = new GCMParameterSpec(128, shortNonce);
+
+            try {
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec, shortSpec);
+                fail("Should reject nonce shorter than 7 bytes");
+            } catch (InvalidAlgorithmParameterException e) {
+                assertTrue("Error message should mention nonce length",
+                           e.getMessage().contains("nonce length"));
+            }
+
+            /* Test nonce too long (16 bytes) */
+            byte[] longNonce = new byte[16];
+            GCMParameterSpec longSpec = new GCMParameterSpec(128, longNonce);
+
+            try {
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec, longSpec);
+                fail("Should reject nonce longer than 15 bytes");
+            } catch (InvalidAlgorithmParameterException e) {
+                assertTrue("Error message should mention nonce length",
+                           e.getMessage().contains("nonce length"));
+            }
+
+            /* Test valid nonce lengths (7-15 bytes) */
+            for (int len = 7; len <= 15; len++) {
+                byte[] validNonce = new byte[len];
+                GCMParameterSpec validSpec =
+                    new GCMParameterSpec(128, validNonce);
+
+                /* Should not throw exception */
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec, validSpec);
+            }
+
+        } catch (Exception e) {
+            fail("Unexpected exception in nonce length validation: " +
+                e.getMessage());
+        }
     }
 
     private class CipherVector {
