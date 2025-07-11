@@ -47,6 +47,7 @@ import java.security.interfaces.RSAPublicKey;
 
 import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.AesEcb;
+import com.wolfssl.wolfcrypt.AesCtr;
 import com.wolfssl.wolfcrypt.AesGcm;
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.Rsa;
@@ -66,6 +67,7 @@ public class WolfCryptCipher extends CipherSpi {
     enum CipherMode {
         WC_ECB,
         WC_CBC,
+        WC_CTR,
         WC_GCM
     }
 
@@ -95,6 +97,7 @@ public class WolfCryptCipher extends CipherSpi {
 
     private Aes  aes      = null;
     private AesEcb aesEcb = null;
+    private AesCtr aesCtr = null;
     private AesGcm aesGcm = null;
     private Des3 des3     = null;
     private Rsa  rsa      = null;
@@ -174,6 +177,13 @@ public class WolfCryptCipher extends CipherSpi {
                     }
                     aesEcb = new AesEcb();
                 }
+                else if (cipherMode == CipherMode.WC_CTR) {
+                    if (aesCtr != null) {
+                        aesCtr.releaseNativeStruct();
+                        aesCtr = null;
+                    }
+                    aesCtr = new AesCtr();
+                }
                 else if (cipherMode == CipherMode.WC_GCM) {
                     if (aesGcm != null) {
                         aesGcm.releaseNativeStruct();
@@ -228,6 +238,16 @@ public class WolfCryptCipher extends CipherSpi {
                 supported = 1;
 
                 log("set mode to CBC");
+            }
+
+        } else if (mode.equals("CTR")) {
+
+            /* AES supports CTR */
+            if (cipherType == CipherType.WC_AES) {
+                cipherMode = CipherMode.WC_CTR;
+                supported = 1;
+
+                log("set mode to CTR");
             }
 
         } else if (mode.equals("GCM")) {
@@ -510,6 +530,9 @@ public class WolfCryptCipher extends CipherSpi {
                         this.aesEcb.setKey(
                             encodedKey, null, AesEcb.ENCRYPT_MODE);
                     }
+                    else if (cipherMode == CipherMode.WC_CTR) {
+                        this.aesCtr.setKey(encodedKey, iv);
+                    }
                     else {
                         this.aes.setKey(encodedKey, iv, Aes.ENCRYPT_MODE);
                     }
@@ -520,6 +543,9 @@ public class WolfCryptCipher extends CipherSpi {
                     else if (cipherMode == CipherMode.WC_ECB) {
                         this.aesEcb.setKey(
                             encodedKey, null, AesEcb.DECRYPT_MODE);
+                    }
+                    else if (cipherMode == CipherMode.WC_CTR) {
+                        this.aesCtr.setKey(encodedKey, iv);
                     }
                     else {
                         this.aes.setKey(encodedKey, iv, Aes.DECRYPT_MODE);
@@ -664,11 +690,13 @@ public class WolfCryptCipher extends CipherSpi {
         }
 
         /* keep buffered data if RSA or data is less than block size, or doing
-         * AES-GCM without stream mode compiled natively */
+         * AES-GCM without stream mode compiled natively, but not for CTR
+         * which is a stream cipher */
         if ((cipherType == CipherType.WC_RSA) ||
             ((cipherType == CipherType.WC_AES) &&
              (cipherMode == CipherMode.WC_GCM)) ||
-            (buffered.length < blockSize)) {
+            ((buffered.length < blockSize) &&
+             (cipherMode != CipherMode.WC_CTR))) {
             return new byte[0];
         }
 
@@ -676,10 +704,14 @@ public class WolfCryptCipher extends CipherSpi {
         blocks    = buffered.length / blockSize;
         bytesToProcess = blocks * blockSize;
 
+        /* CTR is a stream cipher, process all available data */
+        if (cipherMode == CipherMode.WC_CTR) {
+            bytesToProcess = buffered.length;
+        }
         /* if PKCS#5/7 padding, and decrypting, hold on to last block for
          * padding check in wolfCryptFinal() */
-        if (paddingType == PaddingType.WC_PKCS5 &&
-            direction == OpMode.WC_DECRYPT) {
+        else if (paddingType == PaddingType.WC_PKCS5 &&
+                 direction == OpMode.WC_DECRYPT) {
             bytesToProcess -= blockSize;
         }
 
@@ -699,11 +731,14 @@ public class WolfCryptCipher extends CipherSpi {
         /* process tmpIn[] */
         switch (this.cipherType) {
 
-            /* Only CBC/ECB mode reaches this point currently, GCM caches all
-             * data internally above until final call */
+            /* Only CBC/ECB/CTR mode reaches this point currently, GCM
+             * caches all data internally above until final call */
             case WC_AES:
                 if (cipherMode == CipherMode.WC_ECB) {
                     output = this.aesEcb.update(tmpIn, 0, tmpIn.length);
+                }
+                else if (cipherMode == CipherMode.WC_CTR) {
+                    output = this.aesCtr.update(tmpIn, 0, tmpIn.length);
                 }
                 else {
                     output = this.aes.update(tmpIn, 0, tmpIn.length);
@@ -744,9 +779,10 @@ public class WolfCryptCipher extends CipherSpi {
         this.operationStarted = true;
         totalSz = buffered.length + len;
 
-        /* AES-GCM does not require block size inputs */
+        /* AES-GCM and AES-CTR do not require block size inputs */
         if (isBlockCipher() &&
             (cipherMode != CipherMode.WC_GCM) &&
+            (cipherMode != CipherMode.WC_CTR) &&
             (this.direction == OpMode.WC_DECRYPT ||
             (this.direction == OpMode.WC_ENCRYPT &&
              this.paddingType != PaddingType.WC_PKCS5)) &&
@@ -764,9 +800,10 @@ public class WolfCryptCipher extends CipherSpi {
 
         /* add padding if encrypting and PKCS5 padding is used. PKCS#5 padding
          * is treated the same as PKCS#7 padding here, using each algorithm's
-         * specific block size */
+         * specific block size. CTR mode does not use padding */
         if (this.direction == OpMode.WC_ENCRYPT &&
-            this.paddingType == PaddingType.WC_PKCS5) {
+            this.paddingType == PaddingType.WC_PKCS5 &&
+            cipherMode != CipherMode.WC_CTR) {
             if (this.cipherType == CipherType.WC_AES) {
                 tmpIn = Aes.padPKCS7(tmpIn, Aes.BLOCK_SIZE);
             } else if (this.cipherType == CipherType.WC_DES3) {
@@ -807,6 +844,9 @@ public class WolfCryptCipher extends CipherSpi {
                 else if (cipherMode == CipherMode.WC_ECB) {
                     tmpOut = this.aesEcb.update(tmpIn, 0, tmpIn.length);
                 }
+                else if (cipherMode == CipherMode.WC_CTR) {
+                    tmpOut = this.aesCtr.update(tmpIn, 0, tmpIn.length);
+                }
                 else {
                     tmpOut = this.aes.update(tmpIn, 0, tmpIn.length);
 
@@ -814,9 +854,11 @@ public class WolfCryptCipher extends CipherSpi {
                     tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
                 }
 
-                /* strip PKCS#5/PKCS#7 padding if required */
+                /* strip PKCS#5/PKCS#7 padding if required,
+                 * CTR mode does not use padding */
                 if (this.direction == OpMode.WC_DECRYPT &&
-                    this.paddingType == PaddingType.WC_PKCS5) {
+                    this.paddingType == PaddingType.WC_PKCS5 &&
+                    cipherMode != CipherMode.WC_CTR) {
                     tmpOut = Aes.unPadPKCS7(tmpOut, Aes.BLOCK_SIZE);
                 }
 
@@ -1220,6 +1262,18 @@ public class WolfCryptCipher extends CipherSpi {
          */
         public wcAESECBPKCS5Padding() {
             super(CipherType.WC_AES, CipherMode.WC_ECB, PaddingType.WC_PKCS5);
+        }
+    }
+
+    /**
+     * Class for AES-CTR with no padding
+     */
+    public static final class wcAESCTRNoPadding extends WolfCryptCipher {
+        /**
+         * Create new wcAESCTRNoPadding object
+         */
+        public wcAESCTRNoPadding() {
+            super(CipherType.WC_AES, CipherMode.WC_CTR, PaddingType.WC_NONE);
         }
     }
 
