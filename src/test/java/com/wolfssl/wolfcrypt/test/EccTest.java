@@ -54,7 +54,7 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
 
 public class EccTest {
     private static Rng rng = new Rng();
-    private static final Object rngLock = new Rng();
+    private static final Object rngLock = new Object();
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = new TestWatcher() {
