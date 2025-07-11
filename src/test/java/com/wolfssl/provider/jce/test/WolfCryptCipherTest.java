@@ -71,6 +71,8 @@ public class WolfCryptCipherTest {
     private static String supportedJCEAlgos[] = {
         "AES/CBC/NoPadding",
         "AES/CBC/PKCS5Padding",
+        "AES/ECB/NoPadding",
+        "AES/ECB/PKCS5Padding",
         "AES/GCM/NoPadding",
         "DESede/CBC/NoPadding",
         "RSA",
@@ -126,6 +128,8 @@ public class WolfCryptCipherTest {
         /* fill expected block size HashMap */
         expectedBlockSizes.put("AES/CBC/NoPadding", 16);
         expectedBlockSizes.put("AES/CBC/PKCS5Padding", 16);
+        expectedBlockSizes.put("AES/ECB/NoPadding", 16);
+        expectedBlockSizes.put("AES/ECB/PKCS5Padding", 16);
         expectedBlockSizes.put("AES/GCM/NoPadding", 16);
         expectedBlockSizes.put("DESede/CBC/NoPadding", 8);
         expectedBlockSizes.put("RSA", 0);
@@ -2307,6 +2311,282 @@ public class WolfCryptCipherTest {
             fail("Expected IllegalStateException for uninitialized cipher");
         } catch (IllegalStateException e) {
             /* Expected exception */
+        }
+    }
+
+    @Test
+    public void testAesEcbNoPadding()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        CipherVector vectors[] = new CipherVector[] {
+            /* test vectors {key, input, output} - ECB doesn't use IV */
+            /* NIST SP 800-38A test vector */
+            new CipherVector(
+                new byte[] {
+                    (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+                    (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+                    (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+                    (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+                },
+                null, /* ECB doesn't use IV */
+                new byte[] {
+                    (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+                    (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+                    (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+                    (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+                },
+                new byte[] {
+                    (byte)0x3a, (byte)0xd7, (byte)0x7b, (byte)0xb4,
+                    (byte)0x0d, (byte)0x7a, (byte)0x36, (byte)0x60,
+                    (byte)0xa8, (byte)0x9e, (byte)0xca, (byte)0xf3,
+                    (byte)0x24, (byte)0x66, (byte)0xef, (byte)0x97
+                },
+                null, null
+            )
+        };
+
+        byte output[];
+
+        if (!enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            /* bail out if AES-ECB is not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding", jceProvider);
+
+        for (int i = 0; i < vectors.length; i++) {
+
+            SecretKeySpec key = new SecretKeySpec(vectors[i].getKey(), "AES");
+
+            /* getOutputSize() before init() should throw exception */
+            try {
+                cipher.getOutputSize(vectors[i].getInput().length);
+                fail("getOutputSize() before init() should fail");
+            } catch (IllegalStateException e) {
+                /* expected, continue */
+            }
+
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+            output = cipher.doFinal(vectors[i].getInput());
+
+            assertArrayEquals(output, vectors[i].getOutput());
+
+            /* now decrypt */
+            cipher.init(Cipher.DECRYPT_MODE, key);
+            output = cipher.doFinal(vectors[i].getOutput());
+
+            assertArrayEquals(output, vectors[i].getInput());
+        }
+    }
+
+    @Test
+    public void testAesEcbNoPaddingWithUpdate()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            /* bail out if AES-ECB is not enabled */
+            return;
+        }
+
+        byte key[] = new byte[] {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        /* Multi-block test data (32 bytes = 2 AES blocks) */
+        byte input[] = new byte[] {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a,
+            (byte)0xae, (byte)0x2d, (byte)0x8a, (byte)0x57,
+            (byte)0x1e, (byte)0x03, (byte)0xac, (byte)0x9c,
+            (byte)0x9e, (byte)0xb7, (byte)0x6f, (byte)0xac,
+            (byte)0x45, (byte)0xaf, (byte)0x8e, (byte)0x51
+        };
+
+        byte expected[] = new byte[] {
+            (byte)0x3a, (byte)0xd7, (byte)0x7b, (byte)0xb4,
+            (byte)0x0d, (byte)0x7a, (byte)0x36, (byte)0x60,
+            (byte)0xa8, (byte)0x9e, (byte)0xca, (byte)0xf3,
+            (byte)0x24, (byte)0x66, (byte)0xef, (byte)0x97,
+            (byte)0xf5, (byte)0xd3, (byte)0xd5, (byte)0x85,
+            (byte)0x03, (byte)0xb9, (byte)0x69, (byte)0x9d,
+            (byte)0xe7, (byte)0x85, (byte)0x89, (byte)0x5a,
+            (byte)0x96, (byte)0xfd, (byte)0xba, (byte)0xaf
+        };
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+
+        /* Test with update() calls */
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] output1 = cipher.update(input, 0, 16); /* First block */
+        byte[] output2 = cipher.doFinal(input, 16, 16); /* Second block */
+
+        /* Combine outputs */
+        byte[] fullOutput = new byte[output1.length + output2.length];
+        System.arraycopy(output1, 0, fullOutput, 0, output1.length);
+        System.arraycopy(output2, 0, fullOutput, output1.length, output2.length);
+
+        assertArrayEquals(expected, fullOutput);
+
+        /* Test decryption with update() */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec);
+        byte[] decrypted1 = cipher.update(fullOutput, 0, 16);
+        byte[] decrypted2 = cipher.doFinal(fullOutput, 16, 16);
+
+        byte[] fullDecrypted = new byte[decrypted1.length + decrypted2.length];
+        System.arraycopy(decrypted1, 0, fullDecrypted, 0, decrypted1.length);
+        System.arraycopy(decrypted2, 0, fullDecrypted, decrypted1.length,
+                         decrypted2.length);
+
+        assertArrayEquals(input, fullDecrypted);
+    }
+
+    @Test
+    public void testAesEcbPKCS5Padding()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/ECB/PKCS5Padding")) {
+            /* bail out if AES-ECB with padding is not enabled */
+            return;
+        }
+
+        byte key[] = new byte[] {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        /* Test with data that needs padding.
+         * 12 bytes, needs 4 bytes padding */
+        byte input[] = "Hello World!".getBytes();
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+
+        /* Test encryption */
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] ciphertext = cipher.doFinal(input);
+
+        /* Ciphertext should be block-aligned (16 bytes) */
+        assertEquals(16, ciphertext.length);
+
+        /* Test decryption */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+
+        assertArrayEquals(input, decrypted);
+
+        /* Test with exact block size data */
+        byte blockSizeInput[] = new byte[16];
+        Arrays.fill(blockSizeInput, (byte)0x41); /* Fill with 'A' */
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] blockCiphertext = cipher.doFinal(blockSizeInput);
+
+        /* Should be 32 bytes (original 16 + 16 bytes padding) */
+        assertEquals(32, blockCiphertext.length);
+
+        cipher.init(Cipher.DECRYPT_MODE, keySpec);
+        byte[] blockDecrypted = cipher.doFinal(blockCiphertext);
+
+        assertArrayEquals(blockSizeInput, blockDecrypted);
+    }
+
+    @Test
+    public void testAesEcbThreaded() throws InterruptedException {
+        int numThreads = 50;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<Integer> results =
+            new LinkedBlockingQueue<>();
+
+        if (!enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            /* AES-ECB not compiled in */
+            return;
+        }
+
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+                    int ret = 0;
+
+                    try {
+                        /* NIST test vector */
+                        byte key[] = new byte[] {
+                            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+                            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+                            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+                            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+                        };
+
+                        byte input[] = new byte[] {
+                            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+                            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+                            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+                            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+                        };
+
+                        byte expected[] = new byte[] {
+                            (byte)0x3a, (byte)0xd7, (byte)0x7b, (byte)0xb4,
+                            (byte)0x0d, (byte)0x7a, (byte)0x36, (byte)0x60,
+                            (byte)0xa8, (byte)0x9e, (byte)0xca, (byte)0xf3,
+                            (byte)0x24, (byte)0x66, (byte)0xef, (byte)0x97
+                        };
+
+                        Cipher cipher = Cipher.getInstance(
+                            "AES/ECB/NoPadding", jceProvider);
+                        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+
+                        /* Test encrypt */
+                        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+                        byte[] ciphertext = cipher.doFinal(input);
+
+                        if (!Arrays.equals(expected, ciphertext)) {
+                            ret = 1;
+                        }
+
+                        /* Test decrypt */
+                        cipher.init(Cipher.DECRYPT_MODE, keySpec);
+                        byte[] decrypted = cipher.doFinal(ciphertext);
+
+                        if (!Arrays.equals(input, decrypted)) {
+                            ret = 1;
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        ret = 1;
+                    }
+
+                    results.add(ret);
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur == 1) {
+                fail("Threading error in AES-ECB Cipher thread test");
+            }
         }
     }
 

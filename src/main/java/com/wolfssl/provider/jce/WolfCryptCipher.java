@@ -46,6 +46,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 
 import com.wolfssl.wolfcrypt.Aes;
+import com.wolfssl.wolfcrypt.AesEcb;
 import com.wolfssl.wolfcrypt.AesGcm;
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.Rsa;
@@ -93,6 +94,7 @@ public class WolfCryptCipher extends CipherSpi {
     private int blockSize = 0;
 
     private Aes  aes      = null;
+    private AesEcb aesEcb = null;
     private AesGcm aesGcm = null;
     private Des3 des3     = null;
     private Rsa  rsa      = null;
@@ -165,6 +167,13 @@ public class WolfCryptCipher extends CipherSpi {
                     }
                     aes = new Aes();
                 }
+                else if (cipherMode == CipherMode.WC_ECB) {
+                    if (aesEcb != null) {
+                        aesEcb.releaseNativeStruct();
+                        aesEcb = null;
+                    }
+                    aesEcb = new AesEcb();
+                }
                 else if (cipherMode == CipherMode.WC_GCM) {
                     if (aesGcm != null) {
                         aesGcm.releaseNativeStruct();
@@ -201,8 +210,9 @@ public class WolfCryptCipher extends CipherSpi {
 
         if (mode.equals("ECB")) {
 
-            /* RSA is ECB mode */
-            if (cipherType == CipherType.WC_RSA) {
+            /* RSA and AES support ECB mode */
+            if (cipherType == CipherType.WC_RSA ||
+                cipherType == CipherType.WC_AES) {
                 cipherMode = CipherMode.WC_ECB;
                 supported = 1;
 
@@ -266,7 +276,8 @@ public class WolfCryptCipher extends CipherSpi {
         } else if (padding.equals("PKCS5Padding")) {
 
             if ((cipherType == CipherType.WC_AES) &&
-                (cipherMode == CipherMode.WC_CBC)) {
+                (cipherMode == CipherMode.WC_CBC ||
+                 cipherMode == CipherMode.WC_ECB)) {
 
                 paddingType = PaddingType.WC_PKCS5;
                 supported = 1;
@@ -392,8 +403,10 @@ public class WolfCryptCipher extends CipherSpi {
         /* store AlgorithmParameterSpec for class reset */
         this.storedSpec = spec;
 
-        /* RSA doesn't need an IV */
-        if (this.cipherType == CipherType.WC_RSA)
+        /* RSA and AES-ECB don't need an IV */
+        if (this.cipherType == CipherType.WC_RSA ||
+            (this.cipherType == CipherType.WC_AES &&
+             this.cipherMode == CipherMode.WC_ECB))
             return;
 
         /* store IV, or generate random IV if not available */
@@ -493,12 +506,20 @@ public class WolfCryptCipher extends CipherSpi {
                     if (cipherMode == CipherMode.WC_GCM) {
                         this.aesGcm.setKey(encodedKey);
                     }
+                    else if (cipherMode == CipherMode.WC_ECB) {
+                        this.aesEcb.setKey(
+                            encodedKey, null, AesEcb.ENCRYPT_MODE);
+                    }
                     else {
                         this.aes.setKey(encodedKey, iv, Aes.ENCRYPT_MODE);
                     }
                 } else {
                     if (cipherMode == CipherMode.WC_GCM) {
                         this.aesGcm.setKey(encodedKey);
+                    }
+                    else if (cipherMode == CipherMode.WC_ECB) {
+                        this.aesEcb.setKey(
+                            encodedKey, null, AesEcb.DECRYPT_MODE);
                     }
                     else {
                         this.aes.setKey(encodedKey, iv, Aes.DECRYPT_MODE);
@@ -678,13 +699,18 @@ public class WolfCryptCipher extends CipherSpi {
         /* process tmpIn[] */
         switch (this.cipherType) {
 
-            /* Only CBC mode reaches this point currently, GCM caches all
+            /* Only CBC/ECB mode reaches this point currently, GCM caches all
              * data internally above until final call */
             case WC_AES:
-                output = this.aes.update(tmpIn, 0, tmpIn.length);
+                if (cipherMode == CipherMode.WC_ECB) {
+                    output = this.aesEcb.update(tmpIn, 0, tmpIn.length);
+                }
+                else {
+                    output = this.aes.update(tmpIn, 0, tmpIn.length);
 
-                /* truncate */
-                output = Arrays.copyOfRange(output, 0, tmpIn.length);
+                    /* truncate */
+                    output = Arrays.copyOfRange(output, 0, tmpIn.length);
+                }
 
                 break;
 
@@ -777,6 +803,9 @@ public class WolfCryptCipher extends CipherSpi {
                         tmpOut = this.aesGcm.decrypt(tmpIn, this.iv, tag,
                                     this.aadData);
                     }
+                }
+                else if (cipherMode == CipherMode.WC_ECB) {
+                    tmpOut = this.aesEcb.update(tmpIn, 0, tmpIn.length);
                 }
                 else {
                     tmpOut = this.aes.update(tmpIn, 0, tmpIn.length);
@@ -1087,6 +1116,11 @@ public class WolfCryptCipher extends CipherSpi {
                 this.aes = null;
             }
 
+            if (this.aesEcb != null) {
+                this.aesEcb.releaseNativeStruct();
+                this.aesEcb = null;
+            }
+
             if (this.aesGcm != null) {
                 this.aesGcm.releaseNativeStruct();
                 this.aesGcm = null;
@@ -1162,6 +1196,30 @@ public class WolfCryptCipher extends CipherSpi {
          */
         public wcDESedeCBCNoPadding() {
             super(CipherType.WC_DES3, CipherMode.WC_CBC, PaddingType.WC_NONE);
+        }
+    }
+
+    /**
+     * Class for AES-ECB with no padding
+     */
+    public static final class wcAESECBNoPadding extends WolfCryptCipher {
+        /**
+         * Create new wcAESECBNoPadding object
+         */
+        public wcAESECBNoPadding() {
+            super(CipherType.WC_AES, CipherMode.WC_ECB, PaddingType.WC_NONE);
+        }
+    }
+
+    /**
+     * Class for AES-ECB with PKCS#5 padding
+     */
+    public static final class wcAESECBPKCS5Padding extends WolfCryptCipher {
+        /**
+         * Create new wcAESECBPKCS5Padding object
+         */
+        public wcAESECBPKCS5Padding() {
+            super(CipherType.WC_AES, CipherMode.WC_ECB, PaddingType.WC_PKCS5);
         }
     }
 

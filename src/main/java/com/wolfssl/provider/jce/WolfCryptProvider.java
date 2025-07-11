@@ -217,6 +217,12 @@ public final class WolfCryptProvider extends Provider {
             put("Cipher.AES/CBC/PKCS5Padding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCBCPKCS5Padding");
         }
+        if (FeatureDetect.AesEcbEnabled()) {
+            put("Cipher.AES/ECB/NoPadding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESECBNoPadding");
+            put("Cipher.AES/ECB/PKCS5Padding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESECBPKCS5Padding");
+        }
         if (FeatureDetect.AesGcmEnabled()) {
             put("Cipher.AES/GCM/NoPadding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESGCMNoPadding");
