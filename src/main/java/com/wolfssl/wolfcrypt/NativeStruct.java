@@ -37,7 +37,7 @@ public abstract class NativeStruct extends WolfObject {
     }
 
     /* points to the internal native structure */
-    private long pointer = 0;
+    private volatile long pointer = 0;
 
     /** Lock around native pointer use */
     protected final Object pointerLock = new Object();

@@ -22,6 +22,7 @@
 package com.wolfssl.wolfcrypt;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
  * Wrapper for the native WolfCrypt AES-CMAC implementation.
@@ -32,6 +33,9 @@ import java.nio.ByteBuffer;
 public class AesCmac extends NativeStruct {
 
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
+
+    /** Stored key for reset functionality */
+    private byte[] key = null;
 
     /** Lock around object state */
     protected final Object stateLock = new Object();
@@ -74,6 +78,7 @@ public class AesCmac extends NativeStruct {
     @Override
     public void releaseNativeStruct() {
         synchronized (stateLock) {
+            zeroizeKey();
             native_free();
             super.releaseNativeStruct();
         }
@@ -345,6 +350,45 @@ public class AesCmac extends NativeStruct {
     private void throwIfKeyNotLoaded() throws IllegalStateException {
         if (state != WolfCryptState.READY) {
             throw new IllegalStateException("No key available");
+        }
+    }
+
+    /**
+     * Zeroize stored key.
+     */
+    private void zeroizeKey() {
+        if (this.key != null) {
+            Arrays.fill(this.key, (byte) 0);
+            this.key = null;
+        }
+    }
+
+    /**
+     * Thread-safe key zeroization for finalization.
+     * Only zeroizes if the object is in a safe state for cleanup.
+     */
+    private void safeZeroizeKey() {
+        synchronized (stateLock) {
+            if (this.key != null) {
+                Arrays.fill(this.key, (byte) 0);
+                this.key = null;
+            }
+        }
+    }
+
+    /**
+     * Zeroize stored key upon finalization
+     */
+    @SuppressWarnings("deprecation")
+    @Override
+    protected void finalize() throws Throwable {
+        try {
+            safeZeroizeKey();
+        } catch (Exception e) {
+            /* Ignore exceptions during finalization to avoid issues
+             * if the object is in an inconsistent state */
+        } finally {
+            super.finalize();
         }
     }
 

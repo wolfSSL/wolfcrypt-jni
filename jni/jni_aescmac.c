@@ -242,9 +242,9 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1CmacUpdate__Ljava_
 JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1CmacFinal(
     JNIEnv* env, jobject this)
 {
+    jbyteArray result = NULL;
 #ifdef WOLFSSL_CMAC
     int ret = 0;
-    jbyteArray result = NULL;
     word32 macSz = AES_BLOCK_SIZE;
     Cmac* cmac = NULL;
     byte tmp[AES_BLOCK_SIZE];
