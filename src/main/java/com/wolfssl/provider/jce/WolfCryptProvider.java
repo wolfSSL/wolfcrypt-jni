@@ -209,6 +209,11 @@ public final class WolfCryptProvider extends Provider {
             put("Mac.HmacSHA3-512",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA3_512");
         }
+        if (FeatureDetect.AesCmacEnabled()) {
+            put("Mac.AESCMAC",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcAesCmac");
+            put("Alg.Alias.Mac.AES-CMAC", "AESCMAC");
+        }
 
         /* Cipher */
         if (FeatureDetect.AesCbcEnabled()) {

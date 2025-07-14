@@ -63,7 +63,8 @@ public class WolfCryptMacTest {
         "HmacSHA3-224",
         "HmacSHA3-256",
         "HmacSHA3-384",
-        "HmacSHA3-512"
+        "HmacSHA3-512",
+        "AESCMAC"
     };
 
     private static ArrayList<String> enabledAlgos =
@@ -80,7 +81,8 @@ public class WolfCryptMacTest {
         28,
         32,
         48,
-        64
+        64,
+        16  /* AES-CMAC block size */
     };
 
     private static ArrayList<Integer> enabledAlgoLengths =
@@ -1037,13 +1039,643 @@ public class WolfCryptMacTest {
         }
     }
 
+    @Test
+    public void testAesCmacSingleUpdate()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        /* RFC 4493 AES-CMAC test vectors */
+        HmacVector[] vectors = new HmacVector[] {
+            /* Test Vector 1: zero-length message */
+            new HmacVector(
+                new byte[] {
+                    (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+                    (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+                    (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+                    (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+                },
+                new byte[] {},
+                new byte[] {
+                    (byte)0xbb, (byte)0x1d, (byte)0x69, (byte)0x29,
+                    (byte)0xe9, (byte)0x59, (byte)0x37, (byte)0x28,
+                    (byte)0x7f, (byte)0xa3, (byte)0x7d, (byte)0x12,
+                    (byte)0x9b, (byte)0x75, (byte)0x67, (byte)0x46
+                }
+            ),
+            /* Test Vector 2: 128-bit message */
+            new HmacVector(
+                new byte[] {
+                    (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+                    (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+                    (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+                    (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+                },
+                new byte[] {
+                    (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+                    (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+                    (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+                    (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+                },
+                new byte[] {
+                    (byte)0x07, (byte)0x0a, (byte)0x16, (byte)0xb4,
+                    (byte)0x6b, (byte)0x4d, (byte)0x41, (byte)0x44,
+                    (byte)0xf7, (byte)0x9b, (byte)0xdd, (byte)0x9d,
+                    (byte)0xd0, (byte)0x4a, (byte)0x28, (byte)0x7c
+                }
+            ),
+            /* Test Vector 3: 320-bit message */
+            new HmacVector(
+                new byte[] {
+                    (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+                    (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+                    (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+                    (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+                },
+                new byte[] {
+                    (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+                    (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+                    (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+                    (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a,
+                    (byte)0xae, (byte)0x2d, (byte)0x8a, (byte)0x57,
+                    (byte)0x1e, (byte)0x03, (byte)0xac, (byte)0x9c,
+                    (byte)0x9e, (byte)0xb7, (byte)0x6f, (byte)0xac,
+                    (byte)0x45, (byte)0xaf, (byte)0x8e, (byte)0x51,
+                    (byte)0x30, (byte)0xc8, (byte)0x1c, (byte)0x46,
+                    (byte)0xa3, (byte)0x5c, (byte)0xe4, (byte)0x11
+                },
+                new byte[] {
+                    (byte)0xdf, (byte)0xa6, (byte)0x67, (byte)0x47,
+                    (byte)0xde, (byte)0x9a, (byte)0xe6, (byte)0x30,
+                    (byte)0x30, (byte)0xca, (byte)0x32, (byte)0x61,
+                    (byte)0x14, (byte)0x97, (byte)0xc8, (byte)0x27
+                }
+            ),
+            /* Test Vector 4: 512-bit message */
+            new HmacVector(
+                new byte[] {
+                    (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+                    (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+                    (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+                    (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+                },
+                new byte[] {
+                    (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+                    (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+                    (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+                    (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a,
+                    (byte)0xae, (byte)0x2d, (byte)0x8a, (byte)0x57,
+                    (byte)0x1e, (byte)0x03, (byte)0xac, (byte)0x9c,
+                    (byte)0x9e, (byte)0xb7, (byte)0x6f, (byte)0xac,
+                    (byte)0x45, (byte)0xaf, (byte)0x8e, (byte)0x51,
+                    (byte)0x30, (byte)0xc8, (byte)0x1c, (byte)0x46,
+                    (byte)0xa3, (byte)0x5c, (byte)0xe4, (byte)0x11,
+                    (byte)0xe5, (byte)0xfb, (byte)0xc1, (byte)0x19,
+                    (byte)0x1a, (byte)0x0a, (byte)0x52, (byte)0xef,
+                    (byte)0xf6, (byte)0x9f, (byte)0x24, (byte)0x45,
+                    (byte)0xdf, (byte)0x4f, (byte)0x9b, (byte)0x17,
+                    (byte)0xad, (byte)0x2b, (byte)0x41, (byte)0x7b,
+                    (byte)0xe6, (byte)0x6c, (byte)0x37, (byte)0x10
+                },
+                new byte[] {
+                    (byte)0x51, (byte)0xf0, (byte)0xbe, (byte)0xbf,
+                    (byte)0x7e, (byte)0x3b, (byte)0x9d, (byte)0x92,
+                    (byte)0xfc, (byte)0x49, (byte)0x74, (byte)0x17,
+                    (byte)0x79, (byte)0x36, (byte)0x3c, (byte)0xfe
+                }
+            )
+        };
+
+        for (int i = 0; i < vectors.length; i++) {
+            SecretKeySpec keyspec =
+                new SecretKeySpec(vectors[i].getKey(), "AES");
+
+            try {
+                Mac mac = Mac.getInstance("AESCMAC", "wolfJCE");
+
+                mac.init(keyspec);
+                mac.update(vectors[i].getInput());
+
+                byte out[] = mac.doFinal();
+
+                assertArrayEquals(out, vectors[i].getOutput());
+
+            } catch (NoSuchAlgorithmException e) {
+                /* skip test if not available */
+                Assume.assumeTrue(false);
+            }
+        }
+    }
+
+    @Test
+    public void testAesCmacMultipleUpdate()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        /* RFC 4493 AES-CMAC test vector for multiple update test */
+        byte[] key = new byte[] {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        byte[] input = new byte[] {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a,
+            (byte)0xae, (byte)0x2d, (byte)0x8a, (byte)0x57,
+            (byte)0x1e, (byte)0x03, (byte)0xac, (byte)0x9c,
+            (byte)0x9e, (byte)0xb7, (byte)0x6f, (byte)0xac,
+            (byte)0x45, (byte)0xaf, (byte)0x8e, (byte)0x51,
+            (byte)0x30, (byte)0xc8, (byte)0x1c, (byte)0x46,
+            (byte)0xa3, (byte)0x5c, (byte)0xe4, (byte)0x11
+        };
+
+        byte[] expected = new byte[] {
+            (byte)0xdf, (byte)0xa6, (byte)0x67, (byte)0x47,
+            (byte)0xde, (byte)0x9a, (byte)0xe6, (byte)0x30,
+            (byte)0x30, (byte)0xca, (byte)0x32, (byte)0x61,
+            (byte)0x14, (byte)0x97, (byte)0xc8, (byte)0x27
+        };
+
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+
+        try {
+            Mac mac = Mac.getInstance("AESCMAC", "wolfJCE");
+
+            mac.init(keyspec);
+
+            /* Update in multiple chunks */
+            mac.update(input, 0, 16);
+            mac.update(input, 16, 16);
+            mac.update(input, 32, 8);
+
+            byte out[] = mac.doFinal();
+
+            assertArrayEquals(expected, out);
+
+        } catch (NoSuchAlgorithmException e) {
+            /* skip test if not available */
+            Assume.assumeTrue(false);
+        }
+    }
+
+    @Test
+    public void testAesCmacSingleByteUpdate()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        if (!enabledAlgos.contains("AESCMAC")) {
+            return;
+        }
+
+        /* RFC 4493 AES-CMAC test vector */
+        byte[] key = new byte[] {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        byte[] input = new byte[] {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+        };
+
+        byte[] expected = new byte[] {
+            (byte)0x07, (byte)0x0a, (byte)0x16, (byte)0xb4,
+            (byte)0x6b, (byte)0x4d, (byte)0x41, (byte)0x44,
+            (byte)0xf7, (byte)0x9b, (byte)0xdd, (byte)0x9d,
+            (byte)0xd0, (byte)0x4a, (byte)0x28, (byte)0x7c
+        };
+
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+        Mac mac = Mac.getInstance("AESCMAC", "wolfJCE");
+
+        mac.init(keyspec);
+
+        /* Update one byte at a time */
+        for (int i = 0; i < input.length; i++) {
+            mac.update(input[i]);
+        }
+
+        byte out[] = mac.doFinal();
+        assertArrayEquals(expected, out);
+    }
+
+    @Test
+    public void testAesCmacReset()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        if (!enabledAlgos.contains("AESCMAC")) {
+            return;
+        }
+
+        /* RFC 4493 AES-CMAC test vector */
+        byte[] key = new byte[] {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        byte[] input = new byte[] {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+        };
+
+        byte[] expected = new byte[] {
+            (byte)0x07, (byte)0x0a, (byte)0x16, (byte)0xb4,
+            (byte)0x6b, (byte)0x4d, (byte)0x41, (byte)0x44,
+            (byte)0xf7, (byte)0x9b, (byte)0xdd, (byte)0x9d,
+            (byte)0xd0, (byte)0x4a, (byte)0x28, (byte)0x7c
+        };
+
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+        Mac mac = Mac.getInstance("AESCMAC", "wolfJCE");
+
+        mac.init(keyspec);
+
+        /* Add some data */
+        mac.update(input, 0, 8);
+
+        /* Reset and start over */
+        mac.reset();
+
+        /* Now compute the full MAC */
+        mac.update(input);
+        byte out[] = mac.doFinal();
+
+        assertArrayEquals(expected, out);
+
+        /* Test reset after doFinal() */
+        mac.reset();
+        mac.update(input);
+        byte out2[] = mac.doFinal();
+
+        assertArrayEquals(expected, out2);
+    }
+
+    @Test
+    public void testAesCmacDoFinalWithInput()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        if (!enabledAlgos.contains("AESCMAC")) {
+            return;
+        }
+
+        /* RFC 4493 AES-CMAC test vector */
+        byte[] key = new byte[] {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        byte[] input = new byte[] {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+        };
+
+        byte[] expected = new byte[] {
+            (byte)0x07, (byte)0x0a, (byte)0x16, (byte)0xb4,
+            (byte)0x6b, (byte)0x4d, (byte)0x41, (byte)0x44,
+            (byte)0xf7, (byte)0x9b, (byte)0xdd, (byte)0x9d,
+            (byte)0xd0, (byte)0x4a, (byte)0x28, (byte)0x7c
+        };
+
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+        Mac mac = Mac.getInstance("AESCMAC", "wolfJCE");
+
+        mac.init(keyspec);
+
+        /* Test doFinal(byte[] input) convenience method */
+        byte out[] = mac.doFinal(input);
+        assertArrayEquals(expected, out);
+    }
+
+    @Test
+    public void testAesCmacDoFinalWithOutputBuffer()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException, javax.crypto.ShortBufferException {
+
+        if (!enabledAlgos.contains("AESCMAC")) {
+            return;
+        }
+
+        /* RFC 4493 AES-CMAC test vector */
+        byte[] key = new byte[] {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        byte[] input = new byte[] {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+        };
+
+        byte[] expected = new byte[] {
+            (byte)0x07, (byte)0x0a, (byte)0x16, (byte)0xb4,
+            (byte)0x6b, (byte)0x4d, (byte)0x41, (byte)0x44,
+            (byte)0xf7, (byte)0x9b, (byte)0xdd, (byte)0x9d,
+            (byte)0xd0, (byte)0x4a, (byte)0x28, (byte)0x7c
+        };
+
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+        Mac mac = Mac.getInstance("AESCMAC", "wolfJCE");
+
+        mac.init(keyspec);
+        mac.update(input);
+
+        /* Test doFinal(byte[] output, int outOffset) */
+        byte[] output = new byte[32]; /* Larger buffer */
+        mac.doFinal(output, 8); /* offset of 8 */
+
+        /* Extract the MAC from the output buffer */
+        byte[] result = new byte[16];
+        System.arraycopy(output, 8, result, 0, 16);
+
+        assertArrayEquals(expected, result);
+    }
+
+    @Test
+    public void testAesCmacGetAlgorithmAndProvider()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        if (!enabledAlgos.contains("AESCMAC")) {
+            return;
+        }
+
+        Mac mac = Mac.getInstance("AESCMAC", "wolfJCE");
+
+        assertEquals("AESCMAC", mac.getAlgorithm());
+        assertEquals("wolfJCE", mac.getProvider().getName());
+        assertEquals(16, mac.getMacLength()); /* AES block size */
+    }
+
+    @Test
+    public void testAesCmacKeyVariations()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        if (!enabledAlgos.contains("AESCMAC")) {
+            return;
+        }
+
+        /* Test 128-bit key */
+        byte[] key128 = new byte[16];
+        Arrays.fill(key128, (byte)0x42);
+
+        /* Test 192-bit key */
+        byte[] key192 = new byte[24];
+        Arrays.fill(key192, (byte)0x42);
+
+        /* Test 256-bit key */
+        byte[] key256 = new byte[32];
+        Arrays.fill(key256, (byte)0x42);
+
+        byte[] input = "Test message".getBytes();
+
+        Mac mac = Mac.getInstance("AESCMAC", "wolfJCE");
+
+        /* Test 128-bit key */
+        SecretKeySpec keyspec128 = new SecretKeySpec(key128, "AES");
+        mac.init(keyspec128);
+        byte[] result128 = mac.doFinal(input);
+        assertEquals(16, result128.length);
+
+        /* Test 192-bit key */
+        SecretKeySpec keyspec192 = new SecretKeySpec(key192, "AES");
+        mac.init(keyspec192);
+        byte[] result192 = mac.doFinal(input);
+        assertEquals(16, result192.length);
+
+        /* Test 256-bit key */
+        SecretKeySpec keyspec256 = new SecretKeySpec(key256, "AES");
+        mac.init(keyspec256);
+        byte[] result256 = mac.doFinal(input);
+        assertEquals(16, result256.length);
+
+        /* Results should be different for different key sizes */
+        assertFalse(Arrays.equals(result128, result192));
+        assertFalse(Arrays.equals(result192, result256));
+        assertFalse(Arrays.equals(result128, result256));
+    }
+
+    @Test
+    public void testAesCmacErrorConditions()
+        throws NoSuchAlgorithmException, NoSuchProviderException {
+
+        if (!enabledAlgos.contains("AESCMAC")) {
+            return;
+        }
+
+        Mac mac = Mac.getInstance("AESCMAC", "wolfJCE");
+
+        /* Test using MAC before initialization */
+        try {
+            mac.update((byte)0x42);
+            fail("Expected IllegalStateException when using uninitialized MAC");
+        } catch (IllegalStateException e) {
+            /* Expected */
+        }
+
+        try {
+            mac.doFinal();
+            fail("Expected IllegalStateException when using uninitialized MAC");
+        } catch (IllegalStateException e) {
+            /* Expected */
+        }
+
+        /* Test null key */
+        try {
+            mac.init(null);
+            fail("Expected InvalidKeyException for null key");
+        } catch (InvalidKeyException e) {
+            /* Expected */
+        }
+
+        /* Test wrong key type */
+        try {
+            SecretKeySpec wrongKey = new SecretKeySpec(
+                new byte[16], "HMACSHA256");
+            mac.init(wrongKey);
+            /* This might succeed depending on implementation */
+        } catch (InvalidKeyException e) {
+            /* Expected behavior */
+        }
+
+        /* Test invalid key size */
+        try {
+            SecretKeySpec shortKey = new SecretKeySpec(new byte[8], "AES");
+            mac.init(shortKey);
+            fail("Expected InvalidKeyException for short key");
+        } catch (InvalidKeyException e) {
+            /* Expected */
+        }
+    }
+
+    @Test
+    public void testAesCmacKeyZeroization()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        if (!enabledAlgos.contains("AESCMAC")) {
+            return;
+        }
+
+        /* Test that key is properly cleared */
+        byte[] key = new byte[] {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        byte[] input = new byte[] {
+            (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+            (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+            (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+            (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+        };
+
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+        Mac mac = Mac.getInstance("AESCMAC", "wolfJCE");
+
+        /* Initialize and use normally */
+        mac.init(keyspec);
+        mac.update(input);
+        byte[] result1 = mac.doFinal();
+
+        /* Create direct AesCmac instance to test key zeroization */
+        try {
+            com.wolfssl.wolfcrypt.AesCmac aesCmac =
+                new com.wolfssl.wolfcrypt.AesCmac();
+
+            /* Set key and use normally */
+            aesCmac.setKey(key);
+            aesCmac.update(input);
+            byte[] result2 = aesCmac.doFinal();
+
+            /* Verify the result matches */
+            assertArrayEquals(result1, result2);
+
+            /* Clear the key explicitly */
+            aesCmac.clearKey();
+
+            /* Verify that operations fail after key is cleared */
+            try {
+                aesCmac.update(input);
+                fail("Expected IllegalStateException after key cleared");
+            } catch (IllegalStateException e) {
+                /* Expected */
+            }
+
+            try {
+                aesCmac.doFinal();
+                fail("Expected IllegalStateException after key cleared");
+            } catch (IllegalStateException e) {
+                /* Expected */
+            }
+
+            try {
+                aesCmac.reset();
+                fail("Expected IllegalStateException after key cleared");
+            } catch (IllegalStateException e) {
+                /* Expected */
+            }
+
+            /* Test that key can be set again after clearKey */
+            aesCmac.setKey(key);
+            aesCmac.update(input);
+            byte[] result3 = aesCmac.doFinal();
+
+            /* Verify the result matches again */
+            assertArrayEquals(result1, result3);
+
+        } catch (Exception e) {
+            fail("AesCmac key zeroization test failed: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testHmacKeyZeroization()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException, javax.crypto.ShortBufferException {
+
+        /* Use HmacSHA256 for this test */
+        try {
+            /* Test key */
+            byte[] key = new byte[32];
+            Arrays.fill(key, (byte) 0x42);
+
+            /* Test data */
+            byte[] data =
+                "The quick brown fox jumps over the lazy dog".getBytes();
+
+            /* Test key clearing functionality */
+            com.wolfssl.wolfcrypt.Hmac testHmac =
+                new com.wolfssl.wolfcrypt.Hmac();
+            testHmac.setKey(com.wolfssl.wolfcrypt.Hmac.SHA256, key);
+            testHmac.update(data);
+            byte[] result1 = testHmac.doFinal();
+
+            /* Verify we get a valid result */
+            assertNotNull(result1);
+            assertEquals(32, result1.length); /* SHA256 output is 32 bytes */
+
+            /* Test key clearing and verify object becomes unusable */
+            testHmac.clearKey();
+
+            try {
+                testHmac.update(data);
+                fail("HMAC should fail after key clearing");
+            } catch (IllegalStateException e) {
+                /* Expected - this validates that clearKey() works */
+            }
+
+            try {
+                testHmac.doFinal();
+                fail("HMAC should fail after key clearing");
+            } catch (IllegalStateException e) {
+                /* Expected - this validates that clearKey() works */
+            }
+
+            /* Test that we can't get algorithm after key clearing */
+            try {
+                testHmac.getAlgorithm();
+                fail("HMAC should fail after key clearing");
+            } catch (IllegalStateException e) {
+                /* Expected - this validates that clearKey() works */
+            }
+
+        } catch (Exception e) {
+            fail("HMAC key zeroization test failed: " + e.getMessage());
+        }
+    }
+
     private void threadRunnerMacTest(String hmacAlgo, String digest,
         HmacVector vector) throws InterruptedException {
 
         int numThreads = 20;
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
-        final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
+        final LinkedBlockingQueue<Integer> results =
+            new LinkedBlockingQueue<>();
         final String currentAlgo = hmacAlgo;
         final String mdAlgo = digest;
         final byte[] key = vector.getKey();
@@ -1384,6 +2016,29 @@ public class WolfCryptMacTest {
                          "3a668fd3888bb80537c0a0b86407689e")
             );
             threadRunnerMacTest("HmacSHA3-512", "SHA3-512", sha3_512Vector);
+        }
+        if (enabledAlgos.contains("AESCMAC")) {
+            HmacVector aesCmacVector = new HmacVector(
+                new byte[] {
+                    (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+                    (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+                    (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+                    (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+                },
+                new byte[] {
+                    (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2,
+                    (byte)0x2e, (byte)0x40, (byte)0x9f, (byte)0x96,
+                    (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+                    (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a
+                },
+                new byte[] {
+                    (byte)0x07, (byte)0x0a, (byte)0x16, (byte)0xb4,
+                    (byte)0x6b, (byte)0x4d, (byte)0x41, (byte)0x44,
+                    (byte)0xf7, (byte)0x9b, (byte)0xdd, (byte)0x9d,
+                    (byte)0xd0, (byte)0x4a, (byte)0x28, (byte)0x7c
+                }
+            );
+            threadRunnerMacTest("AESCMAC", "AES", aesCmacVector);
         }
     }
 
