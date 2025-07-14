@@ -40,12 +40,14 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.spec.GCMParameterSpec;
 
 import java.security.Security;
 import java.security.Provider;
 import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
+import java.security.InvalidAlgorithmParameterException;
 
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.provider.jce.WolfCryptProvider;
@@ -64,7 +66,8 @@ public class WolfCryptMacTest {
         "HmacSHA3-256",
         "HmacSHA3-384",
         "HmacSHA3-512",
-        "AESCMAC"
+        "AESCMAC",
+        "AESGMAC"
     };
 
     private static ArrayList<String> enabledAlgos =
@@ -82,7 +85,8 @@ public class WolfCryptMacTest {
         32,
         48,
         64,
-        16  /* AES-CMAC block size */
+        16,  /* AES-CMAC block size */
+        16   /* AES-GMAC block size */
     };
 
     private static ArrayList<Integer> enabledAlgoLengths =
@@ -2040,6 +2044,190 @@ public class WolfCryptMacTest {
             );
             threadRunnerMacTest("AESCMAC", "AES", aesCmacVector);
         }
+    }
+
+    @Test
+    public void testAesGmacSingleUpdate()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException, InvalidAlgorithmParameterException {
+
+        if (!enabledAlgos.contains("AESGMAC")) {
+            /* skip test if AES-GMAC is not available */
+            return;
+        }
+
+        byte[] key = new byte[] {
+            (byte)0x89, (byte)0xc9, (byte)0x49, (byte)0xe9,
+            (byte)0xc8, (byte)0x04, (byte)0xaf, (byte)0x01,
+            (byte)0x4d, (byte)0x56, (byte)0x04, (byte)0xb3,
+            (byte)0x94, (byte)0x59, (byte)0xf2, (byte)0xc8
+        };
+
+        byte[] iv = new byte[] {
+            (byte)0xd1, (byte)0xb1, (byte)0x04, (byte)0xc8,
+            (byte)0x15, (byte)0xbf, (byte)0x1e, (byte)0x94,
+            (byte)0xe2, (byte)0x8c, (byte)0x8f, (byte)0x16
+        };
+
+        byte[] authIn = new byte[] {
+            (byte)0x82, (byte)0xad, (byte)0xcd, (byte)0x63,
+            (byte)0x8d, (byte)0x3f, (byte)0xa9, (byte)0xd9,
+            (byte)0xf3, (byte)0xe8, (byte)0x41, (byte)0x00,
+            (byte)0xd6, (byte)0x1e, (byte)0x07, (byte)0x77
+        };
+
+        byte[] expectedTag = new byte[] {
+            (byte)0x88, (byte)0xdb, (byte)0x9d, (byte)0x62,
+            (byte)0x17, (byte)0x2e, (byte)0xd0, (byte)0x43,
+            (byte)0xaa, (byte)0x10, (byte)0xf1, (byte)0x6d,
+            (byte)0x22, (byte)0x7d, (byte)0xc4, (byte)0x1b
+        };
+
+        Mac mac = Mac.getInstance("AESGMAC", "wolfJCE");
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+        /* 128 bits == 16 bytes */
+        GCMParameterSpec gmacSpec = new GCMParameterSpec(128, iv);
+
+        mac.init(keyspec, gmacSpec);
+        mac.update(authIn);
+        byte[] computedTag = mac.doFinal();
+
+        assertArrayEquals(expectedTag, computedTag);
+    }
+
+    @Test
+    public void testAesGmacMultipleUpdate()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException, InvalidAlgorithmParameterException {
+
+        if (!enabledAlgos.contains("AESGMAC")) {
+            /* skip test if AES-GMAC is not available */
+            return;
+        }
+
+        byte[] key = new byte[] {
+            (byte)0x89, (byte)0xc9, (byte)0x49, (byte)0xe9,
+            (byte)0xc8, (byte)0x04, (byte)0xaf, (byte)0x01,
+            (byte)0x4d, (byte)0x56, (byte)0x04, (byte)0xb3,
+            (byte)0x94, (byte)0x59, (byte)0xf2, (byte)0xc8
+        };
+
+        byte[] iv = new byte[] {
+            (byte)0xd1, (byte)0xb1, (byte)0x04, (byte)0xc8,
+            (byte)0x15, (byte)0xbf, (byte)0x1e, (byte)0x94,
+            (byte)0xe2, (byte)0x8c, (byte)0x8f, (byte)0x16
+        };
+
+        byte[] authIn1 = new byte[] {
+            (byte)0x82, (byte)0xad, (byte)0xcd, (byte)0x63,
+            (byte)0x8d, (byte)0x3f, (byte)0xa9, (byte)0xd9
+        };
+
+        byte[] authIn2 = new byte[] {
+            (byte)0xf3, (byte)0xe8, (byte)0x41, (byte)0x00,
+            (byte)0xd6, (byte)0x1e, (byte)0x07, (byte)0x77
+        };
+
+        byte[] expectedTag = new byte[] {
+            (byte)0x88, (byte)0xdb, (byte)0x9d, (byte)0x62,
+            (byte)0x17, (byte)0x2e, (byte)0xd0, (byte)0x43,
+            (byte)0xaa, (byte)0x10, (byte)0xf1, (byte)0x6d,
+            (byte)0x22, (byte)0x7d, (byte)0xc4, (byte)0x1b
+        };
+
+        Mac mac = Mac.getInstance("AESGMAC", "wolfJCE");
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+        /* 128 bits == 16 bytes */
+        GCMParameterSpec gmacSpec = new GCMParameterSpec(128, iv);
+
+        mac.init(keyspec, gmacSpec);
+        mac.update(authIn1);
+        mac.update(authIn2);
+        byte[] computedTag = mac.doFinal();
+
+        assertArrayEquals(expectedTag, computedTag);
+    }
+
+    @Test
+    public void testAesGmacReset()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException, InvalidAlgorithmParameterException {
+
+        if (!enabledAlgos.contains("AESGMAC")) {
+            /* skip test if AES-GMAC is not available */
+            return;
+        }
+
+        byte[] key = new byte[] {
+            (byte)0x89, (byte)0xc9, (byte)0x49, (byte)0xe9,
+            (byte)0xc8, (byte)0x04, (byte)0xaf, (byte)0x01,
+            (byte)0x4d, (byte)0x56, (byte)0x04, (byte)0xb3,
+            (byte)0x94, (byte)0x59, (byte)0xf2, (byte)0xc8
+        };
+
+        byte[] iv = new byte[] {
+            (byte)0xd1, (byte)0xb1, (byte)0x04, (byte)0xc8,
+            (byte)0x15, (byte)0xbf, (byte)0x1e, (byte)0x94,
+            (byte)0xe2, (byte)0x8c, (byte)0x8f, (byte)0x16
+        };
+
+        byte[] authIn = new byte[] {
+            (byte)0x82, (byte)0xad, (byte)0xcd, (byte)0x63,
+            (byte)0x8d, (byte)0x3f, (byte)0xa9, (byte)0xd9,
+            (byte)0xf3, (byte)0xe8, (byte)0x41, (byte)0x00,
+            (byte)0xd6, (byte)0x1e, (byte)0x07, (byte)0x77
+        };
+
+        byte[] expectedTag = new byte[] {
+            (byte)0x88, (byte)0xdb, (byte)0x9d, (byte)0x62,
+            (byte)0x17, (byte)0x2e, (byte)0xd0, (byte)0x43,
+            (byte)0xaa, (byte)0x10, (byte)0xf1, (byte)0x6d,
+            (byte)0x22, (byte)0x7d, (byte)0xc4, (byte)0x1b
+        };
+
+        Mac mac = Mac.getInstance("AESGMAC", "wolfJCE");
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+        /* 128 bits == 16 bytes */
+        GCMParameterSpec gmacSpec = new GCMParameterSpec(128, iv);
+
+        /* First computation */
+        mac.init(keyspec, gmacSpec);
+        mac.update(authIn);
+        byte[] computedTag1 = mac.doFinal();
+        assertArrayEquals(expectedTag, computedTag1);
+
+        /* Reset and compute again - should get same result */
+        mac.reset();
+        mac.update(authIn);
+        byte[] computedTag2 = mac.doFinal();
+        assertArrayEquals(expectedTag, computedTag2);
+    }
+
+    @Test
+    public void testAesGmacGetAlgorithmAndProvider()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException, InvalidAlgorithmParameterException {
+
+        if (!enabledAlgos.contains("AESGMAC")) {
+            /* skip test if AES-GMAC is not available */
+            return;
+        }
+
+        byte[] key = new byte[16];
+        byte[] iv = new byte[12];
+        Arrays.fill(key, (byte) 0x42);
+        Arrays.fill(iv, (byte) 0x01);
+
+        Mac mac = Mac.getInstance("AESGMAC", "wolfJCE");
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+        /* 128 bits == 16 bytes */
+        GCMParameterSpec gmacSpec = new GCMParameterSpec(128, iv);
+
+        mac.init(keyspec, gmacSpec);
+
+        assertEquals("AESGMAC", mac.getAlgorithm());
+        assertEquals("wolfJCE", mac.getProvider().getName());
+        assertEquals(16, mac.getMacLength());
     }
 
     private class HmacVector {

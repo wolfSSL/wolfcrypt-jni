@@ -275,10 +275,10 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
 
 #else
     (void)this;
-    (void)input;
-    (void)iv;
-    (void)authTag;
-    (void)authIn;
+    (void)inputArr;
+    (void)ivArr;
+    (void)authTagArr;
+    (void)authInArr;
     throwNotCompiledInException(env);
     return NULL;
 #endif
@@ -398,10 +398,10 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
 
 #else
     (void)this;
-    (void)input;
-    (void)iv;
-    (void)authTag;
-    (void)authIn;
+    (void)inputArr;
+    (void)ivArr;
+    (void)authTagArr;
+    (void)authInArr;
     throwNotCompiledInException(env);
     return NULL;
 #endif

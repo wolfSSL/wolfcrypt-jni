@@ -116,6 +116,7 @@ The JCE provider currently supports the following algorithms:
 
     Mac Class
         AESCMAC (aliased also as: AES-CMAC)
+        AESGMAC (aliased also as: AES-GMAC)
         HmacMD5
         HmacSHA1
         HmacSHA224
