@@ -1,0 +1,83 @@
+name: Line Length Check
+
+on:
+  pull_request:
+    branches: [ '*' ]
+
+jobs:
+  line-length-check:
+    runs-on: ubuntu-latest
+    name: Check 80 character line limit
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Check line length in PR changes
+      run: |
+        # Get the base branch (usually main/master)
+        BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+
+        echo "Checking line length (max 80 characters) for changed files in " \
+          "src/, examples/, and jni/ directories..."
+        echo "================================================================"
+
+        # Create temporary files with unique names
+        changed_files=$(mktemp)
+        violations_file=$(mktemp)
+
+        # Get all changed files in this PR and filter for target directories
+        git diff --name-only "origin/$BASE_BRANCH"...HEAD | \
+          grep -E '^(src/|examples/|jni/)' > "$changed_files" || true
+
+        # Initialize violation count
+        violation_count=0
+
+        # Check each changed file
+        while IFS= read -r file; do
+          if [[ -f "$file" ]]; then
+            echo "Checking: $file"
+
+            # Get added lines with line numbers and check their length
+            git diff "origin/$BASE_BRANCH"...HEAD "$file" | \
+              grep -n -E '^\+[^+]' | \
+              while IFS=':' read -r line_num added_line; do
+                # Remove the leading +
+                actual_line="${added_line:1}"
+                char_count=${#actual_line}
+
+                if [[ $char_count -gt 80 ]]; then
+                  echo "❌ $file:$line_num - Line too long ($char_count characters)"
+                  echo "   Line: $actual_line"
+                  echo "violation" >> "$violations_file"
+                fi
+              done
+          fi
+        done < "$changed_files"
+
+        # Count violations
+        if [[ -f "$violations_file" ]]; then
+          violation_count=$(grep -c "violation" "$violations_file" || echo 0)
+        else
+          violation_count=0
+        fi
+
+        echo "================================================================"
+
+        if [[ $violation_count -gt 0 ]]; then
+          echo "❌ Found $violation_count line(s) exceeding 80 " \
+            "characters in PR changes"
+          echo ""
+          echo "Please ensure all lines are 80 characters or less " \
+            "as per coding standards."
+          echo "You can check line length in your editor or use this command:"
+          echo "  grep -n '.\{81,\}' <filename>"
+          rm -f "$violations_file" "$changed_files"
+          exit 1
+        else
+          echo "✅ All changed lines are within the 80 character limit"
+          rm -f "$violations_file" "$changed_files"
+          exit 0
+        fi
