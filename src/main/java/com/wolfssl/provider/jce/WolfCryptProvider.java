@@ -215,6 +215,12 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.Mac.AES-CMAC", "AESCMAC");
         }
 
+        if (FeatureDetect.AesGmacEnabled()) {
+            put("Mac.AESGMAC",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcAesGmac");
+            put("Alg.Alias.Mac.AES-GMAC", "AESGMAC");
+        }
+
         /* Cipher */
         if (FeatureDetect.AesCbcEnabled()) {
             put("Cipher.AES/CBC/NoPadding",

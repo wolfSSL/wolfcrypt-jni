@@ -2269,6 +2269,11 @@ public class WolfCryptCipherTest {
     @Test
     public void testAesGcmGetOutputSize() throws Exception {
 
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            /* skip if AES-GCM is not enabled */
+            return;
+        }
+
         final int TAG_LENGTH_BYTES = 16;  /* Default tag length */
         final int KEY_LENGTH_BYTES = 16;  /* 128-bit AES key */
         final int IV_LENGTH_BYTES  = 12;
@@ -2444,7 +2449,8 @@ public class WolfCryptCipherTest {
         /* Combine outputs */
         byte[] fullOutput = new byte[output1.length + output2.length];
         System.arraycopy(output1, 0, fullOutput, 0, output1.length);
-        System.arraycopy(output2, 0, fullOutput, output1.length, output2.length);
+        System.arraycopy(output2, 0, fullOutput, output1.length,
+            output2.length);
 
         assertArrayEquals(expected, fullOutput);
 
@@ -3293,7 +3299,8 @@ public class WolfCryptCipherTest {
         int numThreads = 50;
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
-        final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
+        final LinkedBlockingQueue<Integer> results =
+            new LinkedBlockingQueue<>();
         final byte[] rand2kBuf = new byte[2048];
 
         final byte key[] = new byte[] {
