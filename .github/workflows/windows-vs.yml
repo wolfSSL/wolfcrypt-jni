@@ -1,14 +1,9 @@
-name: CI
+name: Windows Visual Studio Build
+
 on:
-  push:
-    branches: [ 'master', 'main', 'release/**' ]
-  pull_request:
-    branches: [ '*' ]
+  workflow_call:
 
 jobs:
-  # --------------- Windows Visual Studio build ----------------------
-  # Test building wolfcrypt-jni on Windows with Visual Studio using
-  # the solution and project files in ./IDE/WIN (Normal wolfSSL non-FIPS)
   windows-vs-build:
     runs-on: windows-latest
     name: Windows Visual Studio (Normal wolfSSL non-FIPS)
