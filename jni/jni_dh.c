@@ -352,18 +352,22 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
     privSz = getByteArrayLength(env, priv_object);
     pub    = getByteArray(env, pub_object);
     pubSz  = getByteArrayLength(env, pub_object);
-    secretSz = pubSz;
 
-    secret = XMALLOC(pubSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    /* Use safe maximum buffer size that covers all common DH group sizes.
+     * DH_MAX_SIZE is in bits, so convert to bytes and round up if needed. */
+    secretSz = (DH_MAX_SIZE + 7) / 8;
+
+    secret = XMALLOC(secretSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (secret == NULL) {
-        throwOutOfMemoryException(env, "Failed to allocate private key buffer");
+        throwOutOfMemoryException(
+            env, "Failed to allocate shared secret buffer");
 
         releaseByteArray(env, priv_object, priv, JNI_ABORT);
         releaseByteArray(env, pub_object, pub, JNI_ABORT);
 
         return result;
     }
-    XMEMSET(secret, 0, pubSz);
+    XMEMSET(secret, 0, secretSz);
 
     if (key == NULL || priv == NULL || pub == NULL) {
         ret = BAD_FUNC_ARG;
@@ -379,7 +383,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
 
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, secretSz,
-                                                          (const jbyte*)secret);
+                (const jbyte*)secret);
         } else {
             throwWolfCryptException(env, "Failed to allocate shared secret");
         }
