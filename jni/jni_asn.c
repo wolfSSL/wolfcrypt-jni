@@ -27,6 +27,7 @@
 #include <wolfssl/wolfcrypt/asn.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/oid_sum.h>
 
 #include <com_wolfssl_wolfcrypt_Asn.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -167,5 +168,85 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getPkcs8AlgoID
     (void)pkcs8Der;
     return (jint)NOT_COMPILED_IN;
 #endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getMD5h
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+    return MD5h;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSHAh
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+    return SHAh;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSHA224h
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+    return SHA224h;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSHA256h
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+    return SHA256h;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSHA384h
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+    return SHA384h;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSHA512h
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+    return SHA512h;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSHA3_1224h
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+    return SHA3_224h;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSHA3_1256h
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+    return SHA3_256h;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSHA3_1384h
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+    return SHA3_384h;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSHA3_1512h
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+    return SHA3_512h;
 }
 
