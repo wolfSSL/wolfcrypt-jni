@@ -9,6 +9,26 @@ extern "C" {
 #endif
 #undef com_wolfssl_wolfcrypt_Rsa_NULL
 #define com_wolfssl_wolfcrypt_Rsa_NULL 0LL
+#undef com_wolfssl_wolfcrypt_Rsa_RSA_PSS_SALT_LEN_DEFAULT
+#define com_wolfssl_wolfcrypt_Rsa_RSA_PSS_SALT_LEN_DEFAULT -1L
+#undef com_wolfssl_wolfcrypt_Rsa_RSA_PSS_SALT_LEN_DISCOVER
+#define com_wolfssl_wolfcrypt_Rsa_RSA_PSS_SALT_LEN_DISCOVER -2L
+#undef com_wolfssl_wolfcrypt_Rsa_WC_MGF1NONE
+#define com_wolfssl_wolfcrypt_Rsa_WC_MGF1NONE 0L
+#undef com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA1
+#define com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA1 26L
+#undef com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA224
+#define com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA224 4L
+#undef com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA256
+#define com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA256 1L
+#undef com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA384
+#define com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA384 2L
+#undef com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA512
+#define com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA512 3L
+#undef com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA512_224
+#define com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA512_224 5L
+#undef com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA512_256
+#define com_wolfssl_wolfcrypt_Rsa_WC_MGF1SHA512_256 6L
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa
  * Method:    mallocNativeStruct
@@ -176,6 +196,46 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify
  */
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_rsaMinSize
   (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaPSS_Sign
+ * Signature: ([BJIILcom/wolfssl/wolfcrypt/Rng;)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Sign
+  (JNIEnv *, jobject, jbyteArray, jlong, jint, jint, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaPSS_Verify
+ * Signature: ([B[BJII)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jlong, jint, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaPSS_VerifyInline
+ * Signature: ([BJII)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyInline
+  (JNIEnv *, jobject, jbyteArray, jlong, jint, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaPSS_VerifyCheck
+ * Signature: ([B[B[BJII)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyCheck
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jbyteArray, jlong, jint, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaPSS_CheckPadding
+ * Signature: ([B[BIII)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1CheckPadding
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jint, jint, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa
