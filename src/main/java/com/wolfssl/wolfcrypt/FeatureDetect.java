@@ -262,6 +262,13 @@ public class FeatureDetect {
     public static native boolean RsaKeyGenEnabled();
 
     /**
+     * Tests if RSA-PSS is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean RsaPssEnabled();
+
+    /**
      * Tests if DH is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.

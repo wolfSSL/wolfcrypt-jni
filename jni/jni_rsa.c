@@ -31,6 +31,7 @@
 #include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/misc.h>
+#include <wolfssl/wolfcrypt/hash.h>
 
 #include <com_wolfssl_wolfcrypt_Rsa.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -130,8 +131,8 @@ Java_com_wolfssl_wolfcrypt_Rsa_MakeRsaKey(
 
 JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw__Ljava_nio_ByteBuffer_2JLjava_nio_ByteBuffer_2J(
-    JNIEnv* env, jobject this, jobject n_object, jlong nSize, jobject e_object,
-    jlong eSize)
+    JNIEnv* env, jobject this, jobject n_object, jlong nSize,
+    jobject e_object, jlong eSize)
 {
 #ifndef NO_RSA
     int ret = 0;
@@ -1186,6 +1187,419 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify(
         XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
     releaseByteArray(env, signature_object, signature, JNI_ABORT);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Sign(
+    JNIEnv* env, jobject this, jbyteArray data_object, jlong hashType,
+    jint mgf, jint saltLen, jobject rng_object)
+{
+#if !defined(NO_RSA) && defined(WC_RSA_PSS)
+    int ret = 0;
+    RsaKey* key = NULL;
+    RNG*    rng = NULL;
+    byte*   data = NULL;
+    byte*   signature = NULL;
+    word32  dataSz = 0;
+    word32  signatureSz = 0;
+    jbyteArray result = NULL;
+
+    /* get RsaKey pointer from Java object */
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        return NULL;
+    }
+
+    /* get RNG pointer from Java object */
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        return NULL;
+    }
+
+    /* get data to sign */
+    data = getByteArray(env, data_object);
+    dataSz = getByteArrayLength(env, data_object);
+
+    /* validate parameters */
+    if (key == NULL || rng == NULL || data == NULL || dataSz == 0) {
+        LogStr("Parameter validation failed: key=%p, rng=%p, data=%p, "
+               "dataSz=%d\n", key, rng, data, dataSz);
+        ret = BAD_FUNC_ARG;
+    }
+
+    /* get signature size */
+    if (ret == 0) {
+        signatureSz = wc_RsaEncryptSize(key);
+        if (signatureSz <= 0) {
+            ret = signatureSz;
+        }
+    }
+
+    if (ret == 0) {
+        signature = (byte*)XMALLOC(signatureSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (signature == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(signature, 0, signatureSz);
+
+        LogStr("About to call wc_RsaPSS_Sign_ex: data=%p, dataSz=%d, "
+                "signature=%p, signatureSz=%d, hashType=%ld, mgf=%d, "
+                "saltLen=%d, key=%p, rng=%p\n", data, dataSz, signature,
+                signatureSz, hashType, mgf, saltLen, key, rng);
+
+        ret = wc_RsaPSS_Sign_ex(data, dataSz, signature, signatureSz,
+            (enum wc_HashType)hashType, mgf, saltLen, key, rng);
+        if (ret > 0) {
+            signatureSz = ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, signatureSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, signatureSz,
+                                       (const jbyte*) signature);
+        } else {
+            throwWolfCryptException(env,
+                "Failed to create new signature array");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_RsaPSS_Sign_ex(data, dataSz, sig, sigSz, hash, mgf=%d, "
+           "saltLen, key, rng) = %d\n", mgf, ret);
+
+    if (signature != NULL) {
+        XFREE(signature, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (data != NULL) {
+        releaseByteArray(env, data_object, data, JNI_ABORT);
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify(
+    JNIEnv* env, jobject this, jbyteArray signature_object,
+    jbyteArray data_object, jlong hashType, jint mgf, jint saltLen)
+{
+#if !defined(NO_RSA) && defined(WC_RSA_PSS)
+    int ret = 0;
+    RsaKey* key = NULL;
+    byte*   signature = NULL;
+    byte*   data = NULL;
+    byte*   output = NULL;
+    word32  signatureSz = 0;
+    word32  dataSz = 0;
+    word32  outputSz = 0;
+    jboolean result = JNI_FALSE;
+
+    /* get RsaKey pointer from Java object */
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        return JNI_FALSE;
+    }
+
+    /* get signature and data */
+    signature = getByteArray(env, signature_object);
+    signatureSz = getByteArrayLength(env, signature_object);
+    data = getByteArray(env, data_object);
+    dataSz = getByteArrayLength(env, data_object);
+
+    /* validate parameters */
+    if (key == NULL || signature == NULL || signatureSz == 0 ||
+        data == NULL || dataSz == 0) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    /* get output buffer size */
+    if (ret == 0) {
+        outputSz = wc_RsaEncryptSize(key);
+        if (outputSz <= 0) {
+            ret = outputSz;
+        }
+    }
+
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(output, 0, outputSz);
+
+        ret = wc_RsaPSS_Verify_ex(signature, signatureSz, output, outputSz,
+                                  (enum wc_HashType)hashType, mgf,
+                                  saltLen, key);
+        if (ret > 0) {
+            /* Now verify the PSS padding with the provided data */
+            ret = wc_RsaPSS_CheckPadding_ex(data, dataSz, output, ret,
+                                            (enum wc_HashType)hashType,
+                                            saltLen, 0);
+            if (ret == 0) {
+                result = JNI_TRUE;
+            }
+        } else if (ret < 0) {
+            throwWolfCryptExceptionFromError(env, ret);
+        }
+    }
+
+    if (ret != 0 && ret != RSA_BUFFER_E) {
+        LogStr("wc_RsaPSS_Verify_ex failed with error: %d\n", ret);
+    }
+
+    LogStr("wc_RsaPSS_Verify_ex(sig, sigSz, out, outSz, hash, mgf, "
+           "saltLen, key) = %d\n", ret);
+
+    if (output != NULL) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (signature != NULL) {
+        releaseByteArray(env, signature_object, signature, JNI_ABORT);
+    }
+    if (data != NULL) {
+        releaseByteArray(env, data_object, data, JNI_ABORT);
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyInline(
+    JNIEnv* env, jobject this, jbyteArray signatureAndData_object,
+    jlong hashType, jint mgf, jint saltLen)
+{
+#if !defined(NO_RSA) && defined(WC_RSA_PSS)
+    int ret = 0;
+    RsaKey* key = NULL;
+    byte*   signatureAndData = NULL;
+    byte*   output = NULL;
+    word32  signatureAndDataSz = 0;
+    jboolean result = JNI_FALSE;
+
+    /* get RsaKey pointer from Java object */
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        return JNI_FALSE;
+    }
+
+    /* get signature and data */
+    signatureAndData = getByteArray(env, signatureAndData_object);
+    signatureAndDataSz = getByteArrayLength(env, signatureAndData_object);
+
+    /* validate parameters */
+    if (key == NULL || signatureAndData == NULL || signatureAndDataSz == 0) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        ret = wc_RsaPSS_VerifyInline_ex(signatureAndData, signatureAndDataSz,
+            &output, (enum wc_HashType)hashType, mgf, saltLen, key);
+    }
+    if (ret > 0) {
+        result = JNI_TRUE;
+    }
+
+    LogStr("wc_RsaPSS_VerifyInline_ex(sig, sigSz, out, hash, mgf, "
+           "saltLen, key) = %d\n", ret);
+
+    if (signatureAndData != NULL) {
+        releaseByteArray(env, signatureAndData_object, signatureAndData,
+                         JNI_ABORT);
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyCheck(
+    JNIEnv* env, jobject this, jbyteArray signature_object,
+    jbyteArray data_object, jbyteArray digest_object, jlong hashType,
+    jint mgf, jint saltLen)
+{
+#if !defined(NO_RSA) && defined(WC_RSA_PSS)
+    int ret = 0;
+    RsaKey* key = NULL;
+    byte*   signature = NULL;
+    byte*   data = NULL;
+    byte*   digest = NULL;
+    word32  signatureSz = 0;
+    word32  dataSz = 0;
+    word32  digestSz = 0;
+    jboolean result = JNI_FALSE;
+
+    /* get RsaKey pointer from Java object */
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        return JNI_FALSE;
+    }
+
+    /* get signature, data, and digest */
+    signature = getByteArray(env, signature_object);
+    signatureSz = getByteArrayLength(env, signature_object);
+    data = getByteArray(env, data_object);
+    dataSz = getByteArrayLength(env, data_object);
+    digest = getByteArray(env, digest_object);
+    digestSz = getByteArrayLength(env, digest_object);
+
+    /* validate parameters */
+    if (key == NULL || signature == NULL || signatureSz == 0 ||
+        data == NULL || dataSz == 0 || digest == NULL || digestSz == 0) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    /* get output buffer for decrypted signature */
+    byte* output = NULL;
+    word32 outputSz = 0;
+
+    if (ret == 0) {
+        outputSz = wc_RsaEncryptSize(key);
+        if (outputSz <= 0) {
+            ret = outputSz;
+        }
+    }
+
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(output, 0, outputSz);
+
+        ret = wc_RsaPSS_VerifyCheck(signature, signatureSz, output, outputSz,
+            digest, digestSz, (enum wc_HashType)hashType, mgf, key);
+    }
+    if (ret > 0) {
+        result = JNI_TRUE;
+    }
+
+    LogStr("wc_RsaPSS_VerifyCheck(sig, sigSz, out, outSz, digest, "
+           "digestSz, hash, mgf, key) = %d\n", ret);
+
+    if (output != NULL) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (signature != NULL) {
+        releaseByteArray(env, signature_object, signature, JNI_ABORT);
+    }
+    if (data != NULL) {
+        releaseByteArray(env, data_object, data, JNI_ABORT);
+    }
+    if (digest != NULL) {
+        releaseByteArray(env, digest_object, digest, JNI_ABORT);
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1CheckPadding(
+    JNIEnv* env, jobject this, jbyteArray signature_object,
+    jbyteArray digest_object, jint hashType, jint mgf, jint saltLen)
+{
+#if !defined(NO_RSA) && defined(WC_RSA_PSS)
+    int ret = 0;
+    RsaKey* key = NULL;
+    byte*   signature = NULL;
+    byte*   digest = NULL;
+    byte*   pssData = NULL;
+    word32  signatureSz = 0;
+    word32  digestSz = 0;
+    word32  pssDataSz = 0;
+    jboolean result = JNI_FALSE;
+
+    /* get RsaKey pointer from Java object */
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        return JNI_FALSE;
+    }
+
+    /* get signature and digest */
+    signature = getByteArray(env, signature_object);
+    signatureSz = getByteArrayLength(env, signature_object);
+    digest = getByteArray(env, digest_object);
+    digestSz = getByteArrayLength(env, digest_object);
+
+    /* validate parameters */
+    if (key == NULL || signature == NULL || signatureSz == 0 ||
+        digest == NULL || digestSz == 0) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    /* get PSS data buffer size */
+    if (ret == 0) {
+        pssDataSz = wc_RsaEncryptSize(key);
+        if (pssDataSz <= 0) {
+            ret = pssDataSz;
+        }
+    }
+
+    if (ret == 0) {
+        pssData = (byte*)XMALLOC(pssDataSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (pssData == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(pssData, 0, pssDataSz);
+
+        /* First decrypt the signature to get PSS padded data */
+        ret = wc_RsaPSS_Verify_ex(signature, signatureSz, pssData, pssDataSz,
+            (enum wc_HashType)hashType, mgf, saltLen, key);
+
+        if (ret > 0) {
+            pssDataSz = ret;
+            /* Now check the PSS padding against the digest */
+            ret = wc_RsaPSS_CheckPadding_ex(digest, digestSz, pssData,
+                pssDataSz, (enum wc_HashType)hashType, saltLen, 0);
+        }
+    }
+    if (ret == 0) {
+        result = JNI_TRUE;
+    }
+
+    LogStr("wc_RsaPSS_CheckPadding_ex(digest, digestSz, pss, pssSz, "
+           "hash, saltLen, bits) = %d\n", ret);
+
+    if (pssData != NULL) {
+        XFREE(pssData, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (signature != NULL) {
+        releaseByteArray(env, signature_object, signature, JNI_ABORT);
+    }
+    if (digest != NULL) {
+        releaseByteArray(env, digest_object, digest, JNI_ABORT);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
