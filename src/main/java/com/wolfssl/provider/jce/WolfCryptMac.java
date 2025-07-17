@@ -28,6 +28,8 @@ import java.security.InvalidKeyException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+import java.io.ByteArrayOutputStream;
 
 import com.wolfssl.wolfcrypt.Md5;
 import com.wolfssl.wolfcrypt.Sha;
@@ -37,13 +39,16 @@ import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.Sha512;
 import com.wolfssl.wolfcrypt.Sha3;
 import com.wolfssl.wolfcrypt.Hmac;
+import com.wolfssl.wolfcrypt.AesCmac;
+import com.wolfssl.wolfcrypt.AesGmac;
+import com.wolfssl.wolfcrypt.Aes;
 
 /**
  * wolfCrypt JCE Mac wrapper
  */
 public class WolfCryptMac extends MacSpi {
 
-    enum HmacType {
+    enum MacType {
         WC_HMAC_MD5,
         WC_HMAC_SHA,
         WC_HMAC_SHA224,
@@ -53,75 +58,106 @@ public class WolfCryptMac extends MacSpi {
         WC_HMAC_SHA3_224,
         WC_HMAC_SHA3_256,
         WC_HMAC_SHA3_384,
-        WC_HMAC_SHA3_512
+        WC_HMAC_SHA3_512,
+        WC_AES_CMAC,
+        WC_AES_GMAC
     }
 
     private Hmac hmac = null;
+    private AesCmac aesCmac = null;
+    private AesGmac aesGmac = null;
     private int nativeHmacType = 0;
     private int digestSize = 0;
+    private MacType macType;
+
+    /* GMAC-specific fields */
+    private byte[] gmacIv = null;
+    private int gmacTagLen = 16; /* default tag length */
+    private ByteArrayOutputStream gmacAuthData = null;
 
     /* for debug logging */
     private String algString;
 
-    private WolfCryptMac(HmacType type)
+    private WolfCryptMac(MacType type)
         throws NoSuchAlgorithmException {
 
-        hmac = new Hmac();
+        this.macType = type;
 
         switch (type) {
             case WC_HMAC_MD5:
+                hmac = new Hmac();
                 this.digestSize = Md5.DIGEST_SIZE;
                 this.nativeHmacType = Hmac.MD5;
                 break;
 
             case WC_HMAC_SHA:
+                hmac = new Hmac();
                 this.digestSize = Sha.DIGEST_SIZE;
                 this.nativeHmacType = Hmac.SHA;
                 break;
 
             case WC_HMAC_SHA224:
+                hmac = new Hmac();
                 this.digestSize = Sha224.DIGEST_SIZE;
                 this.nativeHmacType = Hmac.SHA224;
                 break;
 
             case WC_HMAC_SHA256:
+                hmac = new Hmac();
                 this.digestSize = Sha256.DIGEST_SIZE;
                 this.nativeHmacType = Hmac.SHA256;
                 break;
 
             case WC_HMAC_SHA384:
+                hmac = new Hmac();
                 this.digestSize = Sha384.DIGEST_SIZE;
                 this.nativeHmacType = Hmac.SHA384;
                 break;
 
             case WC_HMAC_SHA512:
+                hmac = new Hmac();
                 this.digestSize = Sha512.DIGEST_SIZE;
                 this.nativeHmacType = Hmac.SHA512;
                 break;
 
             case WC_HMAC_SHA3_224:
+                hmac = new Hmac();
                 this.digestSize = Sha3.DIGEST_SIZE_224;
                 this.nativeHmacType = Hmac.SHA3_224;
                 break;
 
             case WC_HMAC_SHA3_256:
+                hmac = new Hmac();
                 this.digestSize = Sha3.DIGEST_SIZE_256;
                 this.nativeHmacType = Hmac.SHA3_256;
                 break;
 
             case WC_HMAC_SHA3_384:
+                hmac = new Hmac();
                 this.digestSize = Sha3.DIGEST_SIZE_384;
                 this.nativeHmacType = Hmac.SHA3_384;
                 break;
 
             case WC_HMAC_SHA3_512:
+                hmac = new Hmac();
                 this.digestSize = Sha3.DIGEST_SIZE_512;
                 this.nativeHmacType = Hmac.SHA3_512;
                 break;
 
+            case WC_AES_CMAC:
+                aesCmac = new AesCmac();
+                this.digestSize = Aes.BLOCK_SIZE;
+                break;
+
+            case WC_AES_GMAC:
+                aesGmac = new AesGmac();
+                this.digestSize = Aes.BLOCK_SIZE;
+                gmacAuthData = new ByteArrayOutputStream();
+                break;
+
             default:
                 throw new NoSuchAlgorithmException(
-                    "Unsupported HMAC type");
+                    "Unsupported MAC type");
         }
 
         if (WolfCryptDebug.DEBUG) {
@@ -132,7 +168,19 @@ public class WolfCryptMac extends MacSpi {
     @Override
     protected byte[] engineDoFinal() {
 
-        byte[] out = this.hmac.doFinal();
+        byte[] out = null;
+
+        if (macType == MacType.WC_AES_CMAC) {
+            out = this.aesCmac.doFinal();
+        } else if (macType == MacType.WC_AES_GMAC) {
+            /* Compute GMAC using accumulated auth data */
+            byte[] authData = gmacAuthData.toByteArray();
+            out = this.aesGmac.update(gmacIv, authData, gmacTagLen);
+            /* Reset for next operation */
+            gmacAuthData.reset();
+        } else {
+            out = this.hmac.doFinal();
+        }
 
         if (out != null) {
             log("final digest generated, len: " + out.length);
@@ -163,33 +211,77 @@ public class WolfCryptMac extends MacSpi {
         if (encodedKey == null)
             throw new InvalidKeyException("Key does not support encoding");
 
-        this.hmac.setKey(nativeHmacType, encodedKey);
+        try {
+            if (macType == MacType.WC_AES_CMAC) {
+                this.aesCmac.setKey(encodedKey);
+            } else if (macType == MacType.WC_AES_GMAC) {
+                /* GMAC requires GCMParameterSpec with IV */
+                if (params == null || !(params instanceof GCMParameterSpec)) {
+                    throw new InvalidAlgorithmParameterException(
+                        "AES-GMAC requires GCMParameterSpec with IV");
+                }
+                GCMParameterSpec gcmSpec = (GCMParameterSpec) params;
+                this.gmacIv = gcmSpec.getIV();
+                /* Convert bits to bytes */
+                this.gmacTagLen = gcmSpec.getTLen() / 8;
+                this.aesGmac.setKey(encodedKey);
+                /* Reset auth data accumulator */
+                gmacAuthData.reset();
+            } else {
+                this.hmac.setKey(nativeHmacType, encodedKey);
+            }
+        } catch (com.wolfssl.wolfcrypt.WolfCryptException e) {
+            throw new InvalidKeyException("Invalid key: " + e.getMessage());
+        }
 
         log("init with key and spec");
     }
 
     @Override
     protected void engineReset() {
-        this.hmac.reset();
+        if (macType == MacType.WC_AES_CMAC) {
+            this.aesCmac.reset();
+        } else if (macType == MacType.WC_AES_GMAC) {
+            /* Reset GMAC auth data accumulator */
+            if (gmacAuthData != null) {
+                gmacAuthData.reset();
+            }
+        } else {
+            this.hmac.reset();
+        }
 
         log("engine reset");
     }
 
     @Override
     protected void engineUpdate(byte input) {
-        this.hmac.update(input);
+        if (macType == MacType.WC_AES_CMAC) {
+            this.aesCmac.update(input);
+        } else if (macType == MacType.WC_AES_GMAC) {
+            /* Accumulate auth data for GMAC */
+            gmacAuthData.write(input);
+        } else {
+            this.hmac.update(input);
+        }
 
         log("update with single byte");
     }
 
     @Override
     protected void engineUpdate(byte[] input, int offset, int len) {
-        this.hmac.update(input, offset, len);
+        if (macType == MacType.WC_AES_CMAC) {
+            this.aesCmac.update(input, offset, len);
+        } else if (macType == MacType.WC_AES_GMAC) {
+            /* Accumulate auth data for GMAC */
+            gmacAuthData.write(input, offset, len);
+        } else {
+            this.hmac.update(input, offset, len);
+        }
 
         log("update, offset: " + offset + ", len: " + len);
     }
 
-    private String typeToString(HmacType type) {
+    private String typeToString(MacType type) {
         switch (type) {
             case WC_HMAC_MD5:
                 return "MD5";
@@ -209,6 +301,12 @@ public class WolfCryptMac extends MacSpi {
                 return "SHA3-256";
             case WC_HMAC_SHA3_384:
                 return "SHA3-384";
+            case WC_HMAC_SHA3_512:
+                return "SHA3-512";
+            case WC_AES_CMAC:
+                return "AES-CMAC";
+            case WC_AES_GMAC:
+                return "AES-GMAC";
             default:
                 return "None";
         }
@@ -225,6 +323,10 @@ public class WolfCryptMac extends MacSpi {
         try {
             if (this.hmac != null)
                 this.hmac.releaseNativeStruct();
+            if (this.aesCmac != null)
+                this.aesCmac.releaseNativeStruct();
+            if (this.aesGmac != null)
+                this.aesGmac.releaseNativeStruct();
         } finally {
             super.finalize();
         }
@@ -241,7 +343,7 @@ public class WolfCryptMac extends MacSpi {
          *         native wolfCrypt level.
          */
         public wcHmacMD5() throws NoSuchAlgorithmException {
-            super(HmacType.WC_HMAC_MD5);
+            super(MacType.WC_HMAC_MD5);
         }
     }
 
@@ -256,7 +358,7 @@ public class WolfCryptMac extends MacSpi {
          *         native wolfCrypt level.
          */
         public wcHmacSHA1() throws NoSuchAlgorithmException {
-            super(HmacType.WC_HMAC_SHA);
+            super(MacType.WC_HMAC_SHA);
         }
     }
 
@@ -271,7 +373,7 @@ public class WolfCryptMac extends MacSpi {
          *         native wolfCrypt level.
          */
         public wcHmacSHA224() throws NoSuchAlgorithmException {
-            super(HmacType.WC_HMAC_SHA224);
+            super(MacType.WC_HMAC_SHA224);
         }
     }
 
@@ -286,7 +388,7 @@ public class WolfCryptMac extends MacSpi {
          *         native wolfCrypt level.
          */
         public wcHmacSHA256() throws NoSuchAlgorithmException {
-            super(HmacType.WC_HMAC_SHA256);
+            super(MacType.WC_HMAC_SHA256);
         }
     }
 
@@ -301,7 +403,7 @@ public class WolfCryptMac extends MacSpi {
          *         native wolfCrypt level.
          */
         public wcHmacSHA384() throws NoSuchAlgorithmException {
-            super(HmacType.WC_HMAC_SHA384);
+            super(MacType.WC_HMAC_SHA384);
         }
     }
 
@@ -316,7 +418,7 @@ public class WolfCryptMac extends MacSpi {
          *         native wolfCrypt level.
          */
         public wcHmacSHA512() throws NoSuchAlgorithmException {
-            super(HmacType.WC_HMAC_SHA512);
+            super(MacType.WC_HMAC_SHA512);
         }
     }
 
@@ -331,7 +433,7 @@ public class WolfCryptMac extends MacSpi {
          *         native wolfCrypt level.
          */
         public wcHmacSHA3_224() throws NoSuchAlgorithmException {
-            super(HmacType.WC_HMAC_SHA3_224);
+            super(MacType.WC_HMAC_SHA3_224);
         }
     }
 
@@ -346,7 +448,7 @@ public class WolfCryptMac extends MacSpi {
          *         native wolfCrypt level.
          */
         public wcHmacSHA3_256() throws NoSuchAlgorithmException {
-            super(HmacType.WC_HMAC_SHA3_256);
+            super(MacType.WC_HMAC_SHA3_256);
         }
     }
 
@@ -361,7 +463,7 @@ public class WolfCryptMac extends MacSpi {
          *         native wolfCrypt level.
          */
         public wcHmacSHA3_384() throws NoSuchAlgorithmException {
-            super(HmacType.WC_HMAC_SHA3_384);
+            super(MacType.WC_HMAC_SHA3_384);
         }
     }
 
@@ -376,7 +478,37 @@ public class WolfCryptMac extends MacSpi {
          *         native wolfCrypt level.
          */
         public wcHmacSHA3_512() throws NoSuchAlgorithmException {
-            super(HmacType.WC_HMAC_SHA3_512);
+            super(MacType.WC_HMAC_SHA3_512);
+        }
+    }
+
+    /**
+     * wolfJCE AES-CMAC class
+     */
+    public static final class wcAesCmac extends WolfCryptMac {
+        /**
+         * Create new wcAesCmac object
+         *
+         * @throws NoSuchAlgorithmException if AES-CMAC is not available at
+         *         native wolfCrypt level.
+         */
+        public wcAesCmac() throws NoSuchAlgorithmException {
+            super(MacType.WC_AES_CMAC);
+        }
+    }
+
+    /**
+     * wolfJCE AES-GMAC class
+     */
+    public static final class wcAesGmac extends WolfCryptMac {
+        /**
+         * Create new wcAesGmac object
+         *
+         * @throws NoSuchAlgorithmException if AES-GMAC is not available at
+         *         native wolfCrypt level.
+         */
+        public wcAesGmac() throws NoSuchAlgorithmException {
+            super(MacType.WC_AES_GMAC);
         }
     }
 }

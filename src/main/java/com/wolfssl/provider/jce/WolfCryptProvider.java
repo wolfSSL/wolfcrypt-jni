@@ -209,6 +209,17 @@ public final class WolfCryptProvider extends Provider {
             put("Mac.HmacSHA3-512",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA3_512");
         }
+        if (FeatureDetect.AesCmacEnabled()) {
+            put("Mac.AESCMAC",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcAesCmac");
+            put("Alg.Alias.Mac.AES-CMAC", "AESCMAC");
+        }
+
+        if (FeatureDetect.AesGmacEnabled()) {
+            put("Mac.AESGMAC",
+                    "com.wolfssl.provider.jce.WolfCryptMac$wcAesGmac");
+            put("Alg.Alias.Mac.AES-GMAC", "AESGMAC");
+        }
 
         /* Cipher */
         if (FeatureDetect.AesCbcEnabled()) {
@@ -217,9 +228,27 @@ public final class WolfCryptProvider extends Provider {
             put("Cipher.AES/CBC/PKCS5Padding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCBCPKCS5Padding");
         }
+        if (FeatureDetect.AesEcbEnabled()) {
+            put("Cipher.AES/ECB/NoPadding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESECBNoPadding");
+            put("Cipher.AES/ECB/PKCS5Padding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESECBPKCS5Padding");
+        }
+        if (FeatureDetect.AesCtrEnabled()) {
+            put("Cipher.AES/CTR/NoPadding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCTRNoPadding");
+        }
+        if (FeatureDetect.AesOfbEnabled()) {
+            put("Cipher.AES/OFB/NoPadding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESOFBNoPadding");
+        }
         if (FeatureDetect.AesGcmEnabled()) {
             put("Cipher.AES/GCM/NoPadding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESGCMNoPadding");
+        }
+        if (FeatureDetect.AesCcmEnabled()) {
+            put("Cipher.AES/CCM/NoPadding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCCMNoPadding");
         }
 
         if (FeatureDetect.Des3Enabled()) {

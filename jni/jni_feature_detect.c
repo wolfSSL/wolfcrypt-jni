@@ -172,6 +172,54 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCbcEnable
 #endif
 }
 
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCtrEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(WOLFSSL_AES_COUNTER)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesEcbEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(HAVE_AES_ECB)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesOfbEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(WOLFSSL_AES_OFB)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesDecryptEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(HAVE_AES_DECRYPT)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesGcmEnabled
   (JNIEnv* env, jclass jcl)
 {
@@ -190,6 +238,42 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesGcmStream
     (void)env;
     (void)jcl;
 #if !defined(NO_AES) && defined(WOLFSSL_AESGCM_STREAM)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCcmEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(HAVE_AESCCM)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCmacEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(WOLFSSL_CMAC)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesGmacEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(HAVE_AESGCM)
     return JNI_TRUE;
 #else
     return JNI_FALSE;
