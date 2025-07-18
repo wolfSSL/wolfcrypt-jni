@@ -132,6 +132,11 @@ The JCE provider currently supports the following algorithms:
         SHA3-256withRSA
         SHA3-384withRSA
         SHA3-512withRSA
+        RSASSA-PSS
+        SHA224withRSA/PSS
+        SHA256withRSA/PSS
+        SHA384withRSA/PSS
+        SHA512withRSA/PSS
         SHA1withECDSA
         SHA224withECDSA
         SHA256withECDSA
@@ -176,6 +181,9 @@ The JCE provider currently supports the following algorithms:
 
     KeyStore
         WKS
+
+    AlgorithmParameters
+        RSASSA-PSS
 
 ### SecureRandom.getInstanceStrong()
 
