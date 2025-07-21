@@ -1,0 +1,97 @@
+name: CodeChecker Static Analysis
+
+on:
+  push:
+    branches: [ 'master', 'main', 'release/**' ]
+  pull_request:
+    branches: [ '*' ]
+
+jobs:
+  codechecker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Cache Junit JARs
+      - name: Cache Junit JARs
+        uses: actions/cache@v3
+        id: cache-junit
+        with:
+          path: ${{ github.workspace }}/junit
+          key: junit-cache-${{ runner.os }}-junit-4.13.2-hamcrest-1.3
+          restore-keys: |
+            junit-cache-${{ runner.os }}-
+
+      # Download Junit JARs (needed for full build)
+      - name: Download junit-4.13.2.jar
+        if: steps.cache-junit.outputs.cache-hit != 'true'
+        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar
+      - name: Download hamcrest-all-1.3.jar
+        if: steps.cache-junit.outputs.cache-hit != 'true'
+        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/org/hamcrest/hamcrest-all/1.3/hamcrest-all-1.3.jar
+
+      # Build native wolfSSL
+      - name: Build native wolfSSL
+        uses: wolfSSL/actions-build-autotools-project@v1
+        with:
+          repository: wolfSSL/wolfssl
+          ref: master
+          path: wolfssl
+          configure: '--enable-jni --enable-all'
+          check: false
+          install: true
+
+      # Setup Java
+      - name: Setup java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
+      - name: Set JUNIT_HOME
+        run: |
+          echo "JUNIT_HOME=$GITHUB_WORKSPACE/junit" >> "$GITHUB_ENV"
+      - name: Set LD_LIBRARY_PATH
+        run: |
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$GITHUB_WORKSPACE/build-dir/lib" >> "$GITHUB_ENV"
+
+      # Copy appropriate makefile for Linux
+      - name: Copy makefile
+        run: cp makefile.linux makefile
+
+      # Run CodeChecker static analysis
+      - name: Run CodeChecker analysis
+        uses: whisperity/codechecker-analysis-action@v1
+        id: codechecker
+        with:
+          build-command: 'PREFIX=${{ github.workspace }}/build-dir make'
+          ctu: true
+          config: |
+            {
+              "CodeChecker": {
+                "analyzer": [
+                  "--enable=sensitive"
+                ]
+              }
+            }
+
+      # Upload CodeChecker results as artifacts
+      - name: Upload CodeChecker results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codechecker-reports
+          path: ${{ steps.codechecker.outputs.result-html-dir }}
+
+      # Show CodeChecker results in logs
+      - name: Show CodeChecker results
+        if: always()
+        run: |
+          echo "=== CodeChecker analysis complete ==="
+          echo "Warnings found: ${{ steps.codechecker.outputs.warnings }}"
+          echo "CodeChecker version: ${{ steps.codechecker.outputs.codechecker-version }}"
+          if [ "${{ steps.codechecker.outputs.warnings }}" -eq "0" ]; then
+            echo "✅ No static analysis issues found"
+          else
+            echo "⚠️  Static analysis issues detected - check artifacts"
+          fi
