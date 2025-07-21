@@ -41,6 +41,7 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.Sha224;
 import com.wolfssl.wolfcrypt.Sha256;
@@ -92,6 +93,11 @@ public class WolfCryptKeyGeneratorTest {
         KeyGenerator kg;
 
         for (String alg : keyAlgorithms) {
+            /* Skip HmacSHA224 if not supported by native wolfSSL */
+            if (alg.equals("HmacSHA224") &&
+                !FeatureDetect.HmacSha224Enabled()) {
+                continue;
+            }
             kg = KeyGenerator.getInstance(alg, "wolfJCE");
             assertNotNull(kg);
         }
@@ -126,6 +132,11 @@ public class WolfCryptKeyGeneratorTest {
     @Test
     public void testHmacSHA224KeyGeneration()
         throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Skip test if HmacSHA224 is not supported by native wolfSSL */
+        if (!FeatureDetect.HmacSha224Enabled()) {
+            return;
+        }
 
         testKeyGeneration("HmacSHA224", new int[] { 224 });
         testKeyGenerationDefaultKeySize("HmacSHA224", Sha224.DIGEST_SIZE * 8);
