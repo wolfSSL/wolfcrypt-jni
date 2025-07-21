@@ -162,6 +162,7 @@ The JCE provider currently supports the following algorithms:
 
     KeyPairGenerator Class
         RSA
+        RSASSA-PSS
         EC
         DH
 
