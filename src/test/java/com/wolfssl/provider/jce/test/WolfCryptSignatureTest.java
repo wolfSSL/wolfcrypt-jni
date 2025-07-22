@@ -386,24 +386,27 @@ public class WolfCryptSignatureTest {
         byte[] signature;
 
         for (int i = 0; i < enabledAlgos.size(); i++) {
+            String algorithm = enabledAlgos.get(i);
 
             Signature signer =
-                Signature.getInstance(enabledAlgos.get(i));
+                Signature.getInstance(algorithm);
             Signature verifier =
-                Signature.getInstance(enabledAlgos.get(i), "wolfJCE");
+                Signature.getInstance(algorithm, "wolfJCE");
 
             assertNotNull(signer);
             assertNotNull(verifier);
 
-            Provider prov = signer.getProvider();
-            if (prov.equals("wolfJCE")) {
+            Provider signerProv = signer.getProvider();
+            Provider verifierProv = verifier.getProvider();
+
+            if (signerProv.getName().equals("wolfJCE")) {
                 /* bail out, there isn't another implementation to interop
                  * against by default */
                 return;
             }
 
             /* Set parameters for generic RSASSA-PSS */
-            if (enabledAlgos.get(i).equals("RSASSA-PSS")) {
+            if (algorithm.equals("RSASSA-PSS")) {
                 java.security.spec.PSSParameterSpec pssSpec =
                     new java.security.spec.PSSParameterSpec(
                         "SHA-256", "MGF1",
@@ -414,7 +417,7 @@ public class WolfCryptSignatureTest {
             }
 
             /* generate key pair */
-            KeyPair pair = generateKeyPair(enabledAlgos.get(i), secureRandom);
+            KeyPair pair = generateKeyPair(algorithm, secureRandom);
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();
@@ -431,11 +434,76 @@ public class WolfCryptSignatureTest {
             boolean verified = verifier.verify(signature);
 
             if (verified != true) {
+                /* Enhanced failure diagnostics, helpful for debugging
+                 * sporadic failing test. */
+                System.err.println("\nSignature Verification Failure:");
+                System.err.println("Algorithm: " + algorithm);
+                System.err.println("Iteration: " + i + " of " +
+                    enabledAlgos.size());
+                System.err.println("Test Data: '" + toSign + "' (" +
+                    toSignBuf.length + " bytes)");
+                System.err.println("Signer Provider: " +
+                    signerProv.getName() + " v" + signerProv.getVersion());
+                System.err.println("Verifier Provider: " +
+                    verifierProv.getName() + " v" +
+                    verifierProv.getVersion());
+                System.err.println("Key Algorithm: " + priv.getAlgorithm() +
+                    "/" + pub.getAlgorithm());
+                System.err.println("Private Key Class: " +
+                    priv.getClass().getName() + " [" + priv.getFormat() + "]");
+                System.err.println("Public Key Class: " +
+                    pub.getClass().getName() + " [" + pub.getFormat() + "]");
+                if (pub.getEncoded() != null) {
+                    System.err.println("Public Key Size: " +
+                        pub.getEncoded().length + " bytes");
+                }
+                System.err.println("Signature Algorithm: " +
+                    signer.getAlgorithm());
+                System.err.println("Verifier Algorithm: " +
+                    verifier.getAlgorithm());
+                System.err.println("Signature Length: " +
+                    signature.length + " bytes");
+                System.err.println("Full Signature: " +
+                    bytesToHex(signature, 0, signature.length));
+
+                /* Memory information */
+                Runtime runtime = Runtime.getRuntime();
+                long memUsed = runtime.totalMemory() - runtime.freeMemory();
+                System.err.println("Memory Usage: " +
+                    (memUsed / 1024) + " KB");
+
+                /* Attempt re-verification for debugging */
+                System.err.println(
+                    "\nAttempting re-verification for debugging...");
+                try {
+                    verifier.initVerify(pub);
+                    verifier.update(toSignBuf, 0, toSignBuf.length);
+                    boolean retryResult = verifier.verify(signature);
+                    System.err.println("Re-verification result: " +
+                        retryResult);
+                } catch (Exception e) {
+                    System.err.println("Re-verification failed with " +
+                        "exception: " + e.getMessage());
+                    e.printStackTrace();
+                }
+
                 fail("Signature verification failed when generating with " +
-                        "system default JCE provider and verifying with " +
-                        "wolfJCE provider, iteration " + i);
+                        "system default JCE provider (" +
+                        signerProv.getName() +
+                        ") and verifying with wolfJCE provider, iteration " +
+                        i + " (algorithm: " + algorithm + ")");
             }
         }
+    }
+
+    /* Helper method to format byte arrays as hex strings */
+    private String bytesToHex(byte[] bytes, int offset, int length) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = offset; i < offset + length && i < bytes.length; i++) {
+            sb.append(String.format("%02X", bytes[i] & 0xFF));
+            if (i < offset + length - 1) sb.append(" ");
+        }
+        return sb.toString();
     }
 
     /**
