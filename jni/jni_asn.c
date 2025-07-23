@@ -27,7 +27,6 @@
 #include <wolfssl/wolfcrypt/asn.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
-#include <wolfssl/wolfcrypt/oid_sum.h>
 
 #include <com_wolfssl_wolfcrypt_Asn.h>
 #include <wolfcrypt_jni_NativeStruct.h>
