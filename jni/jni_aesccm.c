@@ -1,4 +1,4 @@
-/* jni_aesgcm.c
+/* jni_aesccm.c
  *
  * Copyright (C) 2006-2025 wolfSSL Inc.
  *
@@ -28,14 +28,14 @@
 #endif
 #include <wolfssl/wolfcrypt/aes.h>
 
-#include <com_wolfssl_wolfcrypt_AesGcm.h>
+#include <com_wolfssl_wolfcrypt_AesCcm.h>
 #include <wolfcrypt_jni_NativeStruct.h>
 #include <wolfcrypt_jni_error.h>
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
-JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_mallocNativeStruct_1internal
+JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_AesCcm_mallocNativeStruct_1internal
   (JNIEnv* env, jobject this)
 {
 #ifndef NO_AES
@@ -50,7 +50,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_mallocNativeStruct_1in
         XMEMSET(aes, 0, sizeof(Aes));
     }
 
-    LogStr("new AesGcm() = %p\n", aes);
+    LogStr("new AesCcm() = %p\n", aes);
 
     return (jlong)(uintptr_t)aes;
 #else
@@ -60,14 +60,14 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_mallocNativeStruct_1in
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesInit
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCcm_wc_1AesInit
   (JNIEnv* env, jobject this)
 {
 #ifndef NO_AES
     int ret = 0;
     Aes* aes = NULL;
     (void)this;
-    
+
     aes = (Aes*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, if so stop and return */
@@ -86,13 +86,13 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesInit
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesFree
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCcm_wc_1AesFree
   (JNIEnv* env, jobject this)
 {
 #ifndef NO_AES
     Aes* aes = NULL;
     (void)this;
-    
+
     aes = (Aes*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, if so stop and return */
@@ -108,10 +108,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesFree
 #endif
 }
 
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmSetKey
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCcm_wc_1AesCcmSetKey
   (JNIEnv* env, jobject this, jbyteArray keyArr)
 {
-#if !defined(NO_AES) && defined(HAVE_AESGCM)
+#if !defined(NO_AES) && defined(HAVE_AESCCM)
     int ret = 0;
     Aes* aes = NULL;
     const byte* key = NULL;
@@ -133,7 +133,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmSetKey
     }
 
     if (ret == 0) {
-        ret = wc_AesGcmSetKey(aes, key, keyLen);
+        ret = wc_AesCcmSetKey(aes, key, keyLen);
     }
 
     if (keyArr != NULL) {
@@ -144,25 +144,25 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmSetKey
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    LogStr("wc_AesGcmSetKey(aes = %p, keylen = %d)\n", aes, keyLen);
+    LogStr("wc_AesCcmSetKey(aes = %p, keylen = %d)\n", aes, keyLen);
 #else
     (void)this;
     throwNotCompiledInException(env);
 #endif
 }
 
-JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
-  (JNIEnv* env, jobject this, jbyteArray inputArr, jbyteArray ivArr, jbyteArray authTagArr, jbyteArray authInArr)
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesCcm_wc_1AesCcmEncrypt
+  (JNIEnv* env, jobject this, jbyteArray inputArr, jbyteArray nonceArr, jbyteArray authTagArr, jbyteArray authInArr)
 {
-#if !defined(NO_AES) && defined(HAVE_AESGCM)
+#if !defined(NO_AES) && defined(HAVE_AESCCM)
     int ret = 0;
     Aes* aes = NULL;
     const byte* in = NULL;
-    const byte* iv = NULL;
+    const byte* nonce = NULL;
     byte* authTag = NULL;
     const byte* authIn = NULL;
     word32 inLen = 0;
-    word32 ivSz = 0;
+    word32 nonceSz = 0;
     word32 authTagSz = 0;
     word32 authInSz = 0;
 
@@ -179,9 +179,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
         in = (const byte*)(*env)->GetByteArrayElements(env, inputArr, NULL);
         inLen = (*env)->GetArrayLength(env, inputArr);
     }
-    if (ivArr != NULL) {
-        iv = (byte*)(*env)->GetByteArrayElements(env, ivArr, NULL);
-        ivSz = (*env)->GetArrayLength(env, ivArr);
+    if (nonceArr != NULL) {
+        nonce = (byte*)(*env)->GetByteArrayElements(env, nonceArr, NULL);
+        nonceSz = (*env)->GetArrayLength(env, nonceArr);
     }
     if (authTagArr != NULL) {
         authTag = (byte*)(*env)->GetByteArrayElements(env, authTagArr, NULL);
@@ -193,7 +193,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
     }
 
     /* authIn can be null */
-    if (in == NULL || inLen == 0 || iv == NULL || ivSz == 0 ||
+    if (in == NULL || inLen == 0 || nonce == NULL || nonceSz == 0 ||
         authTag == NULL || authTagSz == 0) {
         ret = BAD_FUNC_ARG;
     }
@@ -210,7 +210,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
     }
 
     if (ret == 0) {
-        ret = wc_AesGcmEncrypt(aes, out, in, inLen, iv, ivSz,
+        ret = wc_AesCcmEncrypt(aes, out, in, inLen, nonce, nonceSz,
             authTag, authTagSz, authIn, authInSz);
     }
 
@@ -218,7 +218,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
     if (ret == 0) {
         outArr = (*env)->NewByteArray(env, inLen);
         if (outArr == NULL) {
-            ret = MEMORY_E; 
+            ret = MEMORY_E;
         }
         else {
             (*env)->SetByteArrayRegion(env, outArr, 0, inLen, (jbyte*)out);
@@ -249,8 +249,8 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
         (*env)->ReleaseByteArrayElements(env, inputArr, (jbyte*)in,
             JNI_ABORT);
     }
-    if (ivArr != NULL) {
-        (*env)->ReleaseByteArrayElements(env, ivArr, (jbyte*)iv,
+    if (nonceArr != NULL) {
+        (*env)->ReleaseByteArrayElements(env, nonceArr, (jbyte*)nonce,
             JNI_ABORT);
     }
     if (authInArr != NULL) {
@@ -262,8 +262,8 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
         XFREE(out, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
-    LogStr("wc_AesGcmEncrypt(aes = %p, inLen = %d, ivSz = %d, "
-            "authTagSz = %d, authInSz = %d)\n", aes, inLen, ivSz,
+    LogStr("wc_AesCcmEncrypt(aes = %p, inLen = %d, nonceSz = %d, "
+            "authTagSz = %d, authInSz = %d)\n", aes, inLen, nonceSz,
             authTagSz, authInSz);
 
     if (ret != 0) {
@@ -276,7 +276,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
 #else
     (void)this;
     (void)inputArr;
-    (void)ivArr;
+    (void)nonceArr;
     (void)authTagArr;
     (void)authInArr;
     throwNotCompiledInException(env);
@@ -284,18 +284,18 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
 #endif
 }
 
-JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
-  (JNIEnv* env, jobject this, jbyteArray inputArr, jbyteArray ivArr, jbyteArray authTagArr, jbyteArray authInArr)
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesCcm_wc_1AesCcmDecrypt
+  (JNIEnv* env, jobject this, jbyteArray inputArr, jbyteArray nonceArr, jbyteArray authTagArr, jbyteArray authInArr)
 {
-#if !defined(NO_AES) && defined(HAVE_AESGCM)
+#if !defined(NO_AES) && defined(HAVE_AESCCM)
     int ret = 0;
     Aes* aes = NULL;
     const byte* in = NULL;
-    const byte* iv = NULL;
+    const byte* nonce = NULL;
     const byte* authTag = NULL;
     const byte* authIn = NULL;
     word32 inLen = 0;
-    word32 ivSz = 0;
+    word32 nonceSz = 0;
     word32 authTagSz = 0;
     word32 authInSz = 0;
 
@@ -312,9 +312,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
         in = (byte*)(*env)->GetByteArrayElements(env, inputArr, NULL);
         inLen = (*env)->GetArrayLength(env, inputArr);
     }
-    if (ivArr != NULL) {
-        iv = (byte*)(*env)->GetByteArrayElements(env, ivArr, NULL);
-        ivSz = (*env)->GetArrayLength(env, ivArr);
+    if (nonceArr != NULL) {
+        nonce = (byte*)(*env)->GetByteArrayElements(env, nonceArr, NULL);
+        nonceSz = (*env)->GetArrayLength(env, nonceArr);
     }
     if (authTagArr != NULL) {
         authTag = (byte*)(*env)->GetByteArrayElements(env, authTagArr, NULL);
@@ -325,7 +325,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
         authInSz = (*env)->GetArrayLength(env, authInArr);
     }
 
-    if (in == NULL || inLen == 0 || iv == NULL || ivSz == 0 ||
+    if (in == NULL || inLen == 0 || nonce == NULL || nonceSz == 0 ||
         authTag == NULL || authTagSz == 0) {
         ret = BAD_FUNC_ARG;
     }
@@ -341,7 +341,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
     }
 
     if (ret == 0) {
-        ret = wc_AesGcmDecrypt(aes, out, in, inLen, iv, ivSz,
+        ret = wc_AesCcmDecrypt(aes, out, in, inLen, nonce, nonceSz,
             authTag, authTagSz, authIn, authInSz);
     }
 
@@ -349,7 +349,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
     if (ret == 0) {
         outArr = (*env)->NewByteArray(env, inLen);
         if (outArr == NULL) {
-            ret = MEMORY_E; 
+            ret = MEMORY_E;
         }
         else {
             (*env)->SetByteArrayRegion(env, outArr, 0, inLen, (jbyte*)out);
@@ -368,8 +368,8 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
         (*env)->ReleaseByteArrayElements(env, inputArr, (jbyte*)in,
             JNI_ABORT);
     }
-    if (ivArr != NULL) {
-        (*env)->ReleaseByteArrayElements(env, ivArr, (jbyte*)iv,
+    if (nonceArr != NULL) {
+        (*env)->ReleaseByteArrayElements(env, nonceArr, (jbyte*)nonce,
             JNI_ABORT);
     }
     if (authInArr != NULL) {
@@ -386,8 +386,8 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
         XFREE(out, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
-    LogStr("wc_AesGcmDecrypt(aes = %p, inLen = %d, ivSz = %d, "
-            "authTagSz = %d, authInSz = %d)\n", aes, inLen, ivSz,
+    LogStr("wc_AesCcmDecrypt(aes = %p, inLen = %d, nonceSz = %d, "
+            "authTagSz = %d, authInSz = %d)\n", aes, inLen, nonceSz,
             authTagSz, authInSz);
 
     if (ret != 0) {
@@ -399,7 +399,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
 #else
     (void)this;
     (void)inputArr;
-    (void)ivArr;
+    (void)nonceArr;
     (void)authTagArr;
     (void)authInArr;
     throwNotCompiledInException(env);

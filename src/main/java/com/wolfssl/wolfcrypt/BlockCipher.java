@@ -214,6 +214,10 @@ public abstract class BlockCipher extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyNotLoaded();
 
+        if (output == null) {
+            throw new WolfCryptException("output buffer cannot be null");
+        }
+
         if (outputOffset + length > output.length) {
             throw new ShortBufferException(
                 "output buffer is too small to hold the result.");

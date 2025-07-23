@@ -104,12 +104,19 @@ The JCE provider currently supports the following algorithms:
     Cipher Class
         AES/CBC/NoPadding
         AES/CBC/PKCS5Padding
+        AES/CCM/NoPadding
+        AES/CTR/NoPadding
+        AES/ECB/NoPadding
+        AES/ECB/PKCS5Padding
         AES/GCM/NoPadding
+        AES/OFB/NoPadding
         DESede/CBC/NoPadding
         RSA
         RSA/ECB/PKCS1Padding
 
     Mac Class
+        AESCMAC (aliased also as: AES-CMAC)
+        AESGMAC (aliased also as: AES-GMAC)
         HmacMD5
         HmacSHA1
         HmacSHA224
