@@ -290,6 +290,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 ECPublicKey  eccPub  = null;
                 Ecc ecc = null;
 
+                /* synchronize entire key generation and encoding to prevent
+                 * multiple threads from mixing up keys during generation */
                 synchronized (rngLock) {
                     ecc = new Ecc(this.rng);
 
@@ -298,38 +300,38 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     } else {
                         ecc.makeKeyOnCurve(this.rng, this.keysize, this.curve);
                     }
-                }
 
-                /* private key */
-                privDer = ecc.privateKeyEncodePKCS8();
-                if (privDer == null) {
-                    throw new RuntimeException(
-                        "Unable to get ECC private key DER");
-                }
-                privSpec = new PKCS8EncodedKeySpec(privDer);
+                    /* private key */
+                    privDer = ecc.privateKeyEncodePKCS8();
+                    if (privDer == null) {
+                        throw new RuntimeException(
+                            "Unable to get ECC private key DER");
+                    }
+                    privSpec = new PKCS8EncodedKeySpec(privDer);
 
-                /* public key */
-                pubDer = ecc.publicKeyEncode();
-                if (pubDer == null) {
-                    throw new RuntimeException(
-                        "Unable to get ECC public key DER");
-                }
-                pubSpec = new X509EncodedKeySpec(pubDer);
+                    /* public key */
+                    pubDer = ecc.publicKeyEncode();
+                    if (pubDer == null) {
+                        throw new RuntimeException(
+                            "Unable to get ECC public key DER");
+                    }
+                    pubSpec = new X509EncodedKeySpec(pubDer);
 
-                zeroArray(privDer);
-                zeroArray(pubDer);
-                ecc.releaseNativeStruct();
+                    zeroArray(privDer);
+                    zeroArray(pubDer);
+                    ecc.releaseNativeStruct();
 
-                try {
-                    KeyFactory kf = KeyFactory.getInstance("EC");
+                    try {
+                        KeyFactory kf = KeyFactory.getInstance("EC");
 
-                    eccPriv  = (ECPrivateKey)kf.generatePrivate(privSpec);
-                    eccPub   = (ECPublicKey)kf.generatePublic(pubSpec);
+                        eccPriv  = (ECPrivateKey)kf.generatePrivate(privSpec);
+                        eccPub   = (ECPublicKey)kf.generatePublic(pubSpec);
 
-                    pair = new KeyPair(eccPub, eccPriv);
+                        pair = new KeyPair(eccPub, eccPriv);
 
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 }
 
                 log("generated ECC KeyPair");
