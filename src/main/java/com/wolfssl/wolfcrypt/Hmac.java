@@ -22,6 +22,7 @@
 package com.wolfssl.wolfcrypt;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
  * Wrapper for the native WolfCrypt HMAC implementation.
@@ -57,7 +58,7 @@ public class Hmac extends NativeStruct {
 
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
     private int type = -1;
-    private byte[] key;
+    private byte[] key = null;
 
     /** Lock around object state */
     protected final Object stateLock = new Object();
@@ -178,9 +179,13 @@ public class Hmac extends NativeStruct {
                 initNativeStruct();
 
                 wc_HmacSetKey(type, key);
+
+                this.type = type;
+
+                /* Save copy of key[] into this.key */
+                this.key = new byte[key.length];
+                System.arraycopy(key, 0, this.key, 0, key.length);
             }
-            this.type = type;
-            this.key = key;
 
             state = WolfCryptState.READY;
         }
@@ -197,7 +202,14 @@ public class Hmac extends NativeStruct {
 
         throwIfKeyNotLoaded();
 
-        setKey(type, key);
+        synchronized (pointerLock) {
+            /* Reset the HMAC state */
+            releaseNativeStruct();
+            initNativeStruct();
+
+            /* Re-set the key and type */
+            wc_HmacSetKey(type, key);
+        }
     }
 
     /**
@@ -226,7 +238,7 @@ public class Hmac extends NativeStruct {
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException if object has no key
      */
-    public void update(byte[] data)
+    public synchronized void update(byte[] data)
         throws WolfCryptException, IllegalStateException {
 
         throwIfKeyNotLoaded();
@@ -375,6 +387,39 @@ public class Hmac extends NativeStruct {
         /* Does not use Hmac poiner, no need to lock or check state */
         return wc_HmacSizeByType(type);
     }
+
+    /**
+     * Clear the stored key.
+     * After calling this method, the object must be reinitialized with setKey()
+     * before use.
+     */
+    public void clearKey() {
+        synchronized (stateLock) {
+            if (this.key != null) {
+                Arrays.fill(this.key, (byte) 0);
+                this.key = null;
+            }
+            this.type = -1;
+            this.state = WolfCryptState.RELEASED;
+        }
+    }
+
+    /**
+     * Zeroize stored key upon finalization.
+     */
+    @SuppressWarnings("deprecation")
+    @Override
+    protected void finalize() throws Throwable {
+        try {
+            clearKey();
+        } catch (Exception e) {
+            /* Ignore exceptions during finalization to avoid issues
+             * if the object is in an inconsistent state */
+        } finally {
+            super.finalize();
+        }
+    }
+
 
     /**
      * Get HMAC hash code

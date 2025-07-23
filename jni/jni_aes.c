@@ -105,8 +105,8 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update_1internal__I_3BII_3BI(
     jbyteArray input_object, jint offset, jint length,
     jbyteArray output_object, jint outputOffset)
 {
-#ifndef NO_AES
     int ret = 0;
+#ifndef NO_AES
     Aes*  aes    = NULL;
     byte* input  = NULL;
     byte* output = NULL;
@@ -162,6 +162,7 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update_1internal__I_3BII_3BI(
     }
 #else
     throwNotCompiledInException(env);
+    ret = NOT_COMPILED_IN;
 #endif
 
     return ret;
@@ -226,6 +227,7 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update_1internal__ILjava_nio_ByteBuffer_2
     LogHex((byte*) output, 0, length);
 #else
     throwNotCompiledInException(env);
+    ret = NOT_COMPILED_IN;
 #endif
 
     return ret;

@@ -113,6 +113,35 @@ public class FeatureDetect {
 
 
     /**
+     * Tests if AES-CTR is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesCtrEnabled();
+
+    /**
+     * Tests if AES-ECB is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesEcbEnabled();
+
+    /**
+     * Tests if AES-OFB is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesOfbEnabled();
+
+    /**
+     * Tests if AES decrypt functionality (HAVE_AES_DECRYPT) is compiled into
+     * the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesDecryptEnabled();
+
+    /**
      * Tests if AES-GCM is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.
@@ -126,6 +155,27 @@ public class FeatureDetect {
      * @return true if enabled, otherwise false if not compiled in.
      */
     public static native boolean AesGcmStreamEnabled();
+
+    /**
+     * Tests if AES-CCM is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesCcmEnabled();
+
+    /**
+     * Tests if AES-CMAC is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesCmacEnabled();
+
+    /**
+     * Tests if AES-GMAC is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesGmacEnabled();
 
     /**
      * Tests if 3DES is compiled into the native wolfSSL library.
