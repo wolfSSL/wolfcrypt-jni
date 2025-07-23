@@ -39,6 +39,25 @@
     #define RNG WC_RNG
 #endif
 
+/* Some FIPS versions don't have DH_MAX_SIZE defined */
+#ifndef DH_MAX_SIZE
+    #ifdef USE_FAST_MATH
+        /* FP implementation support numbers up to FP_MAX_BITS / 2 bits. */
+        #define DH_MAX_SIZE    (FP_MAX_BITS / 2)
+    #elif defined(WOLFSSL_SP_MATH_ALL) || defined(WOLFSSL_SP_MATH)
+        /* SP implementation supports numbers of SP_INT_BITS bits. */
+        #define DH_MAX_SIZE    (((SP_INT_BITS + 7) / 8) * 8)
+    #else
+        #ifdef WOLFSSL_MYSQL_COMPATIBLE
+            /* Integer maths is dynamic but we only go up to 8192 bits. */
+            #define DH_MAX_SIZE 8192
+        #else
+            /* Integer maths is dynamic but we only go up to 4096 bits. */
+            #define DH_MAX_SIZE 4096
+        #endif
+    #endif
+#endif
+
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Dh_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
