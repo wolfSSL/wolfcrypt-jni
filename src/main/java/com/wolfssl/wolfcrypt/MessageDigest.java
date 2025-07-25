@@ -231,6 +231,9 @@ public abstract class MessageDigest extends NativeStruct {
 
         native_final(hash, hash.position());
         hash.position(hash.position() + digestSize());
+
+        /* After digest is finalized, reset state to allow re-initialization */
+        state = WolfCryptState.UNINITIALIZED;
     }
 
     /**
@@ -246,13 +249,16 @@ public abstract class MessageDigest extends NativeStruct {
         throws ShortBufferException, WolfCryptException, IllegalStateException {
 
         checkStateAndInitialize();
- 
+
         if (hash.length < digestSize()) {
             throw new ShortBufferException(
                 "Input buffer is too small for digest size");
         }
 
         native_final(hash);
+
+        /* After digest is finalized, reset state to allow re-initialization */
+        state = WolfCryptState.UNINITIALIZED;
     }
 
     /**
@@ -271,6 +277,9 @@ public abstract class MessageDigest extends NativeStruct {
         checkStateAndInitialize();
 
         native_final(hash);
+
+        /* After digest is finalized, reset state to allow re-initialization */
+        state = WolfCryptState.UNINITIALIZED;
 
         return hash;
     }

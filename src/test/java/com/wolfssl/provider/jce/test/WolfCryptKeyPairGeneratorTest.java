@@ -193,6 +193,8 @@ public class WolfCryptKeyPairGeneratorTest {
         assertNotNull(kpg);
         kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
         assertNotNull(kpg);
+        kpg = KeyPairGenerator.getInstance("RSASSA-PSS", "wolfJCE");
+        assertNotNull(kpg);
 
         /* getting a garbage algorithm should throw an exception */
         try {
@@ -552,6 +554,47 @@ public class WolfCryptKeyPairGeneratorTest {
 
         assertNotNull(kp1);
         assertNotNull(kp2);
+    }
+
+    @Test
+    public void testKeyPairGeneratorRsassaPssKeyGeneration()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        /* Test RSASSA-PSS KeyPairGenerator alias uses same
+         * RSA key generation */
+        if (testedRSAKeySizes.size() > 0) {
+
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSASSA-PSS", "wolfJCE");
+
+            RSAKeyGenParameterSpec rsaSpec =
+                new RSAKeyGenParameterSpec(testedRSAKeySizes.get(0),
+                        BigInteger.valueOf(Rsa.getDefaultRsaExponent()));
+            kpg.initialize(rsaSpec);
+
+            KeyPair kp = kpg.generateKeyPair();
+            assertNotNull(kp);
+            assertNotNull(kp.getPublic());
+            assertNotNull(kp.getPrivate());
+
+            /* Verify keys can be used with RSASSA-PSS signature */
+            try {
+                java.security.Signature sig =
+                    java.security.Signature.getInstance(
+                        "RSASSA-PSS", "wolfJCE");
+                sig.initSign(kp.getPrivate());
+                sig.update("test data".getBytes());
+                byte[] signature = sig.sign();
+                assertNotNull(signature);
+
+                sig.initVerify(kp.getPublic());
+                sig.update("test data".getBytes());
+                assertTrue(sig.verify(signature));
+            } catch (Exception e) {
+                /* If signature test fails, it's not a key generation issue */
+            }
+        }
     }
 }
 

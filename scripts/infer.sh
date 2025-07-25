@@ -85,6 +85,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPBEKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPKIXCertPathValidator.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptProvider.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptPssParameters.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptRandom.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSecretKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSignature.java \
