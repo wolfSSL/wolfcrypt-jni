@@ -513,6 +513,63 @@ public class WolfCryptMessageDigestSha3Test {
         assertArrayEquals(output, output2);
     }
 
+    /**
+     * This test verifies that the Sha3 class can be reused after a digest()
+     * operation. This prevents regressions of a bug where stale native state
+     * caused subsequent hash operations to be incorrect.
+     */
+    @Test
+    public void testSha3Reusability() throws NoSuchAlgorithmException,
+            NoSuchProviderException {
+
+        /* Data for the first hash operation */
+        byte[] data1 = "abcdefghijklmnopqrstuvwxyz".getBytes();
+        String expectedHash1 =
+            "af328d17fa28753a3c9f5cb72e376b90" +
+            "440b96f0289e5703b729324a975ab384" +
+            "eda565fc92aaded143669900d7618616" +
+            "87acdc0a5ffa358bd0571aaad80aca68";
+
+        /* Data for the second hash operation */
+        byte[] data2 = "The quick brown fox jumps over the lazy dog".getBytes();
+        String expectedHash2 =
+            "01dedd5de4ef14642445ba5f5b97c15e" +
+            "47b9ad931326e4b0727cd94cefc44fff" +
+            "23f07bf543139939b49128caf436dc1b" +
+            "dee54fcb24023a08d9403f9b4bf0d450";
+
+        /* 1. Create a MessageDigest instance for SHA3-512 */
+        MessageDigest sha3 = MessageDigest.getInstance("SHA3-512", "wolfJCE");
+
+        /* 2. Perform the first hash and verify */
+        sha3.update(data1);
+        byte[] actualHash1 = sha3.digest();
+        assertEquals(expectedHash1, toHexString(actualHash1));
+
+        /* 3. Reuse the same instance for the second hash and verify
+         * This is the critical part that would fail if the bug is
+         * reintroduced. */
+        sha3.update(data2);
+        byte[] actualHash2 = sha3.digest();
+        assertEquals(expectedHash2, toHexString(actualHash2));
+    }
+
+    /**
+     * Helper to convert byte array to hex string for comparison.
+     */
+    private static String toHexString(byte[] bytes) {
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : bytes) {
+            String hex = Integer.toHexString(0xff & b);
+            if (hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+        return hexString.toString();
+    }
+
+
     @Test
     public void testSha3LargeInput()
         throws NoSuchProviderException, NoSuchAlgorithmException {

@@ -168,6 +168,49 @@ public final class WolfCryptProvider extends Provider {
                   "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_512wECDSA");
         }
 
+        /* RSA-PSS Signature support.
+         * Include Bouncy Castle and other alias styles for compatibility */
+        if (FeatureDetect.RsaEnabled()) {
+
+            if (FeatureDetect.Sha224Enabled()) {
+                put("Signature.SHA224withRSA/PSS",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA224wRSAPSS");
+                put("Alg.Alias.Signature.SHA224withRSAandMGF1", "SHA224withRSA/PSS");
+                put("Alg.Alias.Signature.SHA224WITHRSAANDMGF1", "SHA224withRSA/PSS");
+            }
+            if (FeatureDetect.Sha256Enabled()) {
+                /* Primary RSA-PSS algorithm (SunJCE style), uses SHA-256 */
+                put("Signature.RSASSA-PSS",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcRSAPSS");
+                put("Signature.SHA256withRSA/PSS",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA256wRSAPSS");
+                put("Alg.Alias.Signature.SHA256withRSAandMGF1", "SHA256withRSA/PSS");
+                put("Alg.Alias.Signature.SHA256WITHRSAANDMGF1", "SHA256withRSA/PSS");
+            }
+            if (FeatureDetect.Sha384Enabled()) {
+                put("Signature.SHA384withRSA/PSS",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA384wRSAPSS");
+                put("Alg.Alias.Signature.SHA384withRSAandMGF1", "SHA384withRSA/PSS");
+                put("Alg.Alias.Signature.SHA384WITHRSAANDMGF1", "SHA384withRSA/PSS");
+            }
+            if (FeatureDetect.Sha512Enabled()) {
+                put("Signature.SHA512withRSA/PSS",
+                    "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA512wRSAPSS");
+                put("Alg.Alias.Signature.SHA512withRSAandMGF1", "SHA512withRSA/PSS");
+                put("Alg.Alias.Signature.SHA512WITHRSAANDMGF1", "SHA512withRSA/PSS");
+            }
+
+            /* OID mappings */
+            put("Alg.Alias.Signature.1.2.840.113549.1.1.10", "RSASSA-PSS");
+            put("Alg.Alias.Signature.OID.1.2.840.113549.1.1.10", "RSASSA-PSS");
+
+            /* Algorithm parameters */
+            put("AlgorithmParameters.RSASSA-PSS",
+                "com.wolfssl.provider.jce.WolfCryptPssParameters");
+            put("Alg.Alias.AlgorithmParameters.1.2.840.113549.1.1.10", "RSASSA-PSS");
+            put("Alg.Alias.AlgorithmParameters.OID.1.2.840.113549.1.1.10", "RSASSA-PSS");
+        }
+
         /* Mac */
         if (FeatureDetect.HmacMd5Enabled()) {
             put("Mac.HmacMD5",
@@ -304,6 +347,8 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.RsaKeyGenEnabled()) {
             put("KeyPairGenerator.RSA",
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenRSA");
+            /* RSASSA-PSS uses same key generation as RSA */
+            put("Alg.Alias.KeyPairGenerator.RSASSA-PSS", "RSA");
         }
         if (FeatureDetect.EccKeyGenEnabled()) {
             put("KeyPairGenerator.EC",

@@ -37,6 +37,55 @@ public class Rsa extends NativeStruct {
      */
     public static final int RSA_MIN_SIZE = Rsa.rsaMinSize();
 
+    /**
+     * Used to indicate that salt length is the same as hash length
+     */
+    public static final int RSA_PSS_SALT_LEN_DEFAULT = -1;
+    /**
+     * Used to indicate that the salt length is determined from the data.
+     */
+    public static final int RSA_PSS_SALT_LEN_DISCOVER = -2;
+
+    /**
+     * Mask Generation Function 1 with no hash function
+     */
+    public static final int WC_MGF1NONE = 0;
+
+    /**
+     * Mask Generation Function 1 with SHA-1
+     */
+    public static final int WC_MGF1SHA1 = 26;
+
+    /**
+     * Mask Generation Function 1 with SHA-224
+     */
+    public static final int WC_MGF1SHA224 = 4;
+
+    /**
+     * Mask Generation Function 1 with SHA-256
+     */
+    public static final int WC_MGF1SHA256 = 1;
+
+    /**
+     * Mask Generation Function 1 with SHA-384
+     */
+    public static final int WC_MGF1SHA384 = 2;
+
+    /**
+     * Mask Generation Function 1 with SHA-512
+     */
+    public static final int WC_MGF1SHA512 = 3;
+
+    /**
+     * Mask Generation Function 1 with SHA-512/224
+     */
+    public static final int WC_MGF1SHA512_224 = 5;
+
+    /**
+     * Mask Generation Function 1 with SHA-512/256
+     */
+    public static final int WC_MGF1SHA512_256 = 6;
+
     /** Lock around object state */
     protected final Object stateLock = new Object();
 
@@ -63,6 +112,7 @@ public class Rsa extends NativeStruct {
             ByteBuffer e, long eSize) throws WolfCryptException;
     private native void wc_RsaPublicKeyDecodeRaw(byte[] n, long nSize, byte[] e,
             long eSize) throws WolfCryptException;
+
     private native void RsaFlattenPublicKey(ByteBuffer n, ByteBuffer e)
             throws WolfCryptException;
     private native void RsaFlattenPublicKey(byte[] n, long[] nSize, byte[] e,
@@ -98,6 +148,19 @@ public class Rsa extends NativeStruct {
     private native byte[] wc_RsaSSL_Verify(byte[] data)
             throws WolfCryptException;
     private static native int rsaMinSize();
+
+    /* RSA-PSS functions */
+    private native byte[] wc_RsaPSS_Sign(byte[] data, long hashType, int mgf,
+            int saltLen, Rng rng) throws WolfCryptException;
+    private native boolean wc_RsaPSS_Verify(byte[] signature, byte[] data,
+            long hashType, int mgf, int saltLen) throws WolfCryptException;
+    private native boolean wc_RsaPSS_VerifyInline(byte[] signatureAndData,
+            long hashType, int mgf, int saltLen) throws WolfCryptException;
+    private native boolean wc_RsaPSS_VerifyCheck(byte[] signature, byte[] data,
+            byte[] digest, long hashType, int mgf, int saltLen)
+            throws WolfCryptException;
+    private native boolean wc_RsaPSS_CheckPadding(byte[] pssData, byte[] digest,
+            int hashType, int mgf, int saltLen) throws WolfCryptException;
 
     /**
      * Create new Rsa object.
@@ -696,6 +759,120 @@ public class Rsa extends NativeStruct {
 
         synchronized (pointerLock) {
             return wc_RsaSSL_Verify(signature);
+        }
+    }
+
+    /**
+     * Sign data with RSA-PSS private key.
+     *
+     * @param data input data to be signed
+     * @param hashType hash type (WC_HASH_TYPE_*)
+     * @param mgf mask generation function (ex: WC_MGF1SHA256 for MGF1
+     *            with SHA-256)
+     * @param saltLen salt length in bytes, or special value
+     * @param rng initialized Rng object
+     *
+     * @return RSA-PSS signature of input data
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if private key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
+     */
+    public synchronized byte[] rsaPssSign(byte[] data, long hashType, int mgf,
+        int saltLen, Rng rng) throws WolfCryptException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded(true);
+
+        synchronized (pointerLock) {
+            return wc_RsaPSS_Sign(data, hashType, mgf, saltLen, rng);
+        }
+    }
+
+    /**
+     * Verify data with RSA-PSS public key.
+     *
+     * @param signature signature to be verified
+     * @param data original data that was signed
+     * @param hashType hash type (WC_HASH_TYPE_*)
+     * @param mgf mask generation function (ex: WC_MGF1SHA256 for MGF1
+     *            with SHA-256)
+     * @param saltLen salt length in bytes, or special value
+     *
+     * @return true if signature is valid, false otherwise
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if public key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
+     */
+    public synchronized boolean rsaPssVerify(byte[] signature, byte[] data,
+        long hashType, int mgf, int saltLen) throws WolfCryptException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded(false);
+
+        synchronized (pointerLock) {
+            return wc_RsaPSS_Verify(signature, data, hashType, mgf, saltLen);
+        }
+    }
+
+    /**
+     * RSA-PSS verification of precomputed digest.
+     *
+     * @param signature signature to be verified
+     * @param data original data that was signed
+     * @param digest pre-computed digest of data
+     * @param hashType hash type (WC_HASH_TYPE_*)
+     * @param mgf mask generation function (WC_MGF1SHA256 for MGF1 with SHA-256)
+     * @param saltLen salt length in bytes, or special value
+     *
+     * @return true if signature is valid, false otherwise
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if public key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
+     */
+    public synchronized boolean rsaPssVerifyWithDigest(byte[] signature,
+            byte[] data, byte[] digest, long hashType, int mgf, int saltLen)
+            throws WolfCryptException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded(false);
+
+        synchronized (pointerLock) {
+            return wc_RsaPSS_VerifyCheck(signature, data, digest, hashType,
+                mgf, saltLen);
+        }
+    }
+
+    /**
+     * Check RSA-PSS padding separately from signature verification.
+     *
+     * @param pssData PSS padded data
+     * @param digest expected message digest
+     * @param hashType hash algorithm type
+     * @param mgf mask generation function (WC_MGF1SHA256 for MGF1 with SHA-256)
+     * @param saltLen salt length in bytes, or special value
+     *
+     * @return true if padding is valid, false otherwise
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released.
+     */
+    public synchronized boolean rsaPssCheckPadding(byte[] pssData,
+            byte[] digest, int hashType, int mgf, int saltLen)
+            throws WolfCryptException {
+
+        checkStateAndInitialize();
+
+        synchronized (pointerLock) {
+            return wc_RsaPSS_CheckPadding(pssData, digest, hashType,
+                mgf, saltLen);
         }
     }
 }

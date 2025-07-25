@@ -33,6 +33,11 @@ import java.security.InvalidKeyException;
 import java.security.SignatureException;
 import java.security.InvalidParameterException;
 import java.security.NoSuchAlgorithmException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.AlgorithmParameters;
+import java.security.spec.AlgorithmParameterSpec;
+import java.security.spec.PSSParameterSpec;
+import java.security.spec.MGF1ParameterSpec;
 
 import javax.crypto.ShortBufferException;
 
@@ -47,6 +52,7 @@ import com.wolfssl.wolfcrypt.Sha3;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Rng;
+import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 
 /**
@@ -72,6 +78,11 @@ public class WolfCryptSignature extends SignatureSpi {
         WC_SHA3_512
     }
 
+    enum PaddingType {
+        WC_PKCS1_V1_5,  /* PKCS#1 v1.5 padding */
+        WC_RSA_PSS      /* RSA-PSS padding */
+    }
+
     /* internal hash type sums (from oid_sum.h) - retrieved dynamically */
     private int MD5h = Asn.MD5h;
     private int SHAh = Asn.SHAh;
@@ -83,6 +94,7 @@ public class WolfCryptSignature extends SignatureSpi {
     private int SHA3_256h = Asn.SHA3_256h;
     private int SHA3_384h = Asn.SHA3_384h;
     private int SHA3_512h = Asn.SHA3_512h;
+
 
     /* internal key objects */
     private Rsa rsa = null;
@@ -99,8 +111,12 @@ public class WolfCryptSignature extends SignatureSpi {
 
     private KeyType keyType;        /* active key type, from KeyType */
     private DigestType digestType;  /* active digest type, from DigestType */
+    private PaddingType paddingType = PaddingType.WC_PKCS1_V1_5; /* default */
     private int internalHashSum;    /* used for native EncodeSignature */
     private int digestSz;           /* digest size in bytes */
+
+    /* Parameter spec for RSA-PSS */
+    private PSSParameterSpec pssParams = null;
 
     /* for debug logging */
     private String keyString;
@@ -110,11 +126,66 @@ public class WolfCryptSignature extends SignatureSpi {
     private Rng rng = null;
     private final Object rngLock = new Object();
 
+    /**
+     * Create a WolfCryptSignature instance with the specified key type
+     * and digest type.
+     *
+     * @param ktype KeyType to use (WC_RSA or WC_ECDSA)
+     * @param dtype DigestType to use (WC_MD5, WC_SHA1, etc.)
+     *
+     * @throws NoSuchAlgorithmException if the key type or digest type is not
+     *         supported
+     */
     private WolfCryptSignature(KeyType ktype, DigestType dtype)
         throws NoSuchAlgorithmException {
 
         this.keyType = ktype;
         this.digestType = dtype;
+        this.paddingType = PaddingType.WC_PKCS1_V1_5;
+
+        init(ktype, dtype, this.paddingType);
+    }
+
+    /**
+     * Create a WolfCryptSignature instance with the specified key type,
+     * digest type, and padding type.
+     *
+     * If the padding type is WC_RSA_PSS, digest object and parameters will be
+     * initialized later via engineSetParameter().
+     *
+     * @param ktype KeyType to use (WC_RSA or WC_ECDSA)
+     * @param dtype DigestType to use (WC_MD5, WC_SHA1, etc.)
+     * @param ptype PaddingType to use (WC_PKCS1_V1_5 or WC_RSA_PSS)
+     *
+     * @throws NoSuchAlgorithmException if the key type or digest type is not
+     *        supported, or if the padding type is not compatible with the
+     *        digest type.
+     */
+    private WolfCryptSignature(KeyType ktype, DigestType dtype,
+        PaddingType ptype) throws NoSuchAlgorithmException {
+
+        this.keyType = ktype;
+        this.digestType = dtype;
+        this.paddingType = ptype;
+
+        /* For RSASSA-PSS without explicit digest type, delay initialization
+         * until parameters are set */
+        if (dtype != null) {
+            init(ktype, dtype, ptype);
+        } else if (ptype == PaddingType.WC_RSA_PSS) {
+            /* Init RNG only, hash will be set and initialized via parameters */
+            synchronized (rngLock) {
+                this.rng = new Rng();
+                this.rng.init();
+            }
+        } else {
+            throw new NoSuchAlgorithmException(
+                "Digest type cannot be null for non-PSS algorithms");
+        }
+    }
+
+    private void init(KeyType ktype, DigestType dtype, PaddingType ptype)
+        throws NoSuchAlgorithmException {
 
         if ((ktype != KeyType.WC_RSA) &&
             (ktype != KeyType.WC_ECDSA)) {
@@ -123,9 +194,14 @@ public class WolfCryptSignature extends SignatureSpi {
         }
 
         synchronized (rngLock) {
-            this.rng = new Rng();
-            this.rng.init();
+            if (this.rng == null) {
+                this.rng = new Rng();
+                this.rng.init();
+            }
         }
+
+        /* Release existing hash objects to prevent memory leaks */
+        releaseHashObjects();
 
         /* init hash type */
         switch (dtype) {
@@ -194,12 +270,30 @@ public class WolfCryptSignature extends SignatureSpi {
                     "Unsupported signature algorithm digest type");
         }
 
+        /* Initialize PSS parameters if PSS padding */
+        if (ptype == PaddingType.WC_RSA_PSS) {
+            String digestAlg = digestTypeToJavaName(dtype);
+            MGF1ParameterSpec mgf1Spec = getMGF1SpecForDigest(digestAlg);
+            int saltLen = this.digestSz;  /* Use actual hash length */
+            this.pssParams = new PSSParameterSpec(
+                digestAlg,  /* message digest */
+                "MGF1",     /* mask generation function */
+                mgf1Spec,   /* MGF parameters */
+                saltLen,    /* salt length (hash length) */
+                1           /* trailer field (always 1) */
+            );
+        }
+
         if (WolfCryptDebug.DEBUG) {
-            keyString = typeToString(ktype);
-            digestString = digestToString(dtype);
+            keyString = keyTypeToString(ktype);
+            digestString = digestTypeToString(dtype);
         }
     }
 
+    /**
+     * This method is deprecated in SignatureSpi, thus not implemented
+     * here in wolfJCE.
+     */
     @Deprecated
     @Override
     protected Object engineGetParameter(String param)
@@ -289,7 +383,13 @@ public class WolfCryptSignature extends SignatureSpi {
 
         wolfCryptInitPrivateKey(privateKey, encodedKey);
 
-        /* init hash object */
+        /* init hash object if digest type is set */
+        if (this.digestType == null) {
+            /* For RSASSA-PSS, hash init will happen in engineSetParameter() */
+            log("init sign with PrivateKey (hash init deferred for PSS)");
+            return;
+        }
+
         switch (this.digestType) {
             case WC_MD5:
                 this.md5.init();
@@ -366,7 +466,13 @@ public class WolfCryptSignature extends SignatureSpi {
 
         wolfCryptInitPublicKey(publicKey, encodedKey);
 
-        /* init hash object */
+        /* init hash object if digest type is set */
+        if (this.digestType == null) {
+            /* For RSASSA-PSS, hash init will happen in engineSetParameter() */
+            log("init verify with PublicKey (hash init deferred for PSS)");
+            return;
+        }
+
         switch (this.digestType) {
             case WC_MD5:
                 this.md5.init();
@@ -402,6 +508,10 @@ public class WolfCryptSignature extends SignatureSpi {
         log("init verify with PublicKey");
     }
 
+    /**
+     * This method is deprecated in SignatureSpi, thus not implemented
+     * here in wolfJCE.
+     */
     @Deprecated
     @Override
     protected void engineSetParameter(String param, Object value)
@@ -412,7 +522,75 @@ public class WolfCryptSignature extends SignatureSpi {
     }
 
     @Override
+    protected synchronized void engineSetParameter(
+        AlgorithmParameterSpec params)
+        throws InvalidAlgorithmParameterException {
+
+        if (this.paddingType != PaddingType.WC_RSA_PSS) {
+            throw new InvalidAlgorithmParameterException(
+                "Parameters only supported for RSA-PSS");
+        }
+
+        if (!(params instanceof PSSParameterSpec)) {
+            throw new InvalidAlgorithmParameterException(
+                "Only PSSParameterSpec supported");
+        }
+
+        PSSParameterSpec pss = (PSSParameterSpec)params;
+        validatePSSParameters(pss);
+        this.pssParams = pss;
+
+        /* For RSASSA-PSS, (re)initialize digest based on parameters */
+        String hashAlg = pss.getDigestAlgorithm();
+        DigestType newDigestType = javaNameToDigestType(hashAlg);
+
+        /* Check if digest type has changed or needs initialization */
+        if (this.digestType == null || this.digestType != newDigestType) {
+            this.digestType = newDigestType;
+
+            try {
+                /* (re)initialize with the new digest type */
+                init(this.keyType, this.digestType, this.paddingType);
+
+                /* Initialize hash object for existing key if already set */
+                if ((this.rsa != null || this.ecc != null)) {
+                    initHashObject();
+                }
+            } catch (NoSuchAlgorithmException e) {
+                throw new InvalidAlgorithmParameterException(
+                    "Failed to initialize with digest: " + hashAlg, e);
+            }
+        }
+    }
+
+    @Override
+    protected synchronized AlgorithmParameters engineGetParameters() {
+        if (this.paddingType != PaddingType.WC_RSA_PSS ||
+            this.pssParams == null) {
+            return null;
+        }
+
+        try {
+            AlgorithmParameters params =
+                AlgorithmParameters.getInstance("RSASSA-PSS");
+            params.init(this.pssParams);
+
+            return params;
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Override
     protected synchronized byte[] engineSign() throws SignatureException {
+
+        /* For RSASSA-PSS, ensure parameters have been set */
+        if (this.paddingType == PaddingType.WC_RSA_PSS &&
+            this.digestType == null) {
+            throw new SignatureException(
+                "Parameters must be set before signing with RSASSA-PSS");
+        }
 
         int encodedSz = 0;
 
@@ -461,22 +639,38 @@ public class WolfCryptSignature extends SignatureSpi {
         /* sign digest */
         switch (this.keyType) {
             case WC_RSA:
+                if (this.paddingType == PaddingType.WC_RSA_PSS) {
+                    /* RSA-PSS signature */
+                    int mgfType = getMgfTypeFromParams();
+                    int saltLen = this.pssParams.getSaltLength();
 
-                /* DER encode digest */
-                encodedSz = (int)Asn.encodeSignature(encDigest, digest,
-                                digest.length, this.internalHashSum);
+                    /* Convert -1 (default) to digest length */
+                    if (saltLen == -1) {
+                        saltLen = this.digestSz;
+                    }
 
-                if (encodedSz < 0) {
-                    throw new SignatureException(
-                        "Failed to DER encode digest during sig gen");
+                    synchronized (rngLock) {
+                        signature = this.rsa.rsaPssSign(digest,
+                            digestTypeToHashType(this.digestType),
+                            mgfType, saltLen, this.rng);
+                    }
+                } else {
+                    /* Existing PKCS#1 v1.5 signature code */
+                    encodedSz = (int)Asn.encodeSignature(encDigest, digest,
+                                    digest.length, this.internalHashSum);
+
+                    if (encodedSz < 0) {
+                        throw new SignatureException(
+                            "Failed to DER encode digest during sig gen");
+                    }
+
+                    byte[] tmp = new byte[encodedSz];
+                    System.arraycopy(encDigest, 0, tmp, 0, encodedSz);
+                    synchronized (rngLock) {
+                        signature = this.rsa.sign(tmp, this.rng);
+                    }
+                    zeroArray(tmp);
                 }
-
-                byte[] tmp = new byte[encodedSz];
-                System.arraycopy(encDigest, 0, tmp, 0, encodedSz);
-                synchronized (rngLock) {
-                    signature = this.rsa.sign(tmp, this.rng);
-                }
-                zeroArray(tmp);
 
                 break;
 
@@ -518,6 +712,13 @@ public class WolfCryptSignature extends SignatureSpi {
     protected synchronized void engineUpdate(byte[] b, int off, int len)
         throws SignatureException {
 
+        /* For RSASSA-PSS, ensure parameters have been set */
+        if (this.paddingType == PaddingType.WC_RSA_PSS &&
+            this.digestType == null) {
+            throw new SignatureException(
+                "Parameters must be set before updating with RSASSA-PSS");
+        }
+
         switch (this.digestType) {
             case WC_MD5:
                 this.md5.update(b, off, len);
@@ -556,6 +757,13 @@ public class WolfCryptSignature extends SignatureSpi {
     @Override
     protected synchronized boolean engineVerify(byte[] sigBytes)
         throws SignatureException {
+
+        /* For RSASSA-PSS, ensure parameters have been set */
+        if (this.paddingType == PaddingType.WC_RSA_PSS &&
+            this.digestType == null) {
+            throw new SignatureException(
+                "Parameters must be set before verifying with RSASSA-PSS");
+        }
 
         long   encodedSz = 0;
         boolean verified = true;
@@ -606,30 +814,51 @@ public class WolfCryptSignature extends SignatureSpi {
         /* verify digest */
         switch (this.keyType) {
             case WC_RSA:
+                if (this.paddingType == PaddingType.WC_RSA_PSS) {
+                    /* RSA-PSS verification */
+                    int mgfType = getMgfTypeFromParams();
+                    int saltLen = this.pssParams.getSaltLength();
 
-                /* DER encode digest */
-                encodedSz = Asn.encodeSignature(encDigest, digest,
-                                digest.length, this.internalHashSum);
+                    /* Convert -1 (default) to digest length */
+                    if (saltLen == -1) {
+                        saltLen = this.digestSz;
+                    }
 
-                if (encodedSz < 0) {
-                    throw new SignatureException(
-                        "Failed to DER encode digest during sig verification");
-                }
+                    try {
+                        verified = this.rsa.rsaPssVerify(sigBytes, digest,
+                            digestTypeToHashType(this.digestType),
+                            mgfType, saltLen);
 
-                try {
-                    verify = this.rsa.verify(sigBytes);
-                } catch (WolfCryptException e) {
-                    verified = false;
-                }
+                    } catch (WolfCryptException e) {
+                        verified = false;
+                    }
 
-                /* compare expected digest to one unwrapped from verify */
-                if (verify.length != encodedSz) {
-                    verified = false;
                 } else {
-                    for (int i = 0; i < encodedSz; i++) {
-                        if (verify[i] != encDigest[i]) {
-                            verified = false;
-                            break;
+                    /* Existing PKCS#1 v1.5 verification code */
+                    encodedSz = Asn.encodeSignature(encDigest, digest,
+                                    digest.length, this.internalHashSum);
+
+                    if (encodedSz < 0) {
+                        throw new SignatureException(
+                            "Failed to DER encode digest during sig verify");
+                    }
+
+                    try {
+                        verify = this.rsa.verify(sigBytes);
+                    } catch (WolfCryptException e) {
+                        verified = false;
+                    }
+
+                    /* compare expected digest to one unwrapped from verify */
+                    if ((encodedSz > encDigest.length) ||
+                        (verify.length != encodedSz)) {
+                        verified = false;
+                    }
+                    else {
+                        for (int i = 0; i < verify.length; i++) {
+                            if (verify[i] != encDigest[i]) {
+                                verified = false;
+                            }
                         }
                     }
                 }
@@ -655,6 +884,11 @@ public class WolfCryptSignature extends SignatureSpi {
         return verified;
     }
 
+    /**
+     * Helper method to zero out a byte array.
+     *
+     * @param in byte array to zero out
+     */
     private void zeroArray(byte[] in) {
 
         if (in == null)
@@ -665,7 +899,14 @@ public class WolfCryptSignature extends SignatureSpi {
         }
     }
 
-    private String typeToString(KeyType type) {
+    /**
+     * Helper method for converting KeyType to String
+     *
+     * @param type KeyType to convert
+     *
+     * @return String representation of the key type
+     */
+    private String keyTypeToString(KeyType type) {
         switch (type) {
             case WC_RSA:
                 return "RSA";
@@ -676,7 +917,14 @@ public class WolfCryptSignature extends SignatureSpi {
         }
     }
 
-    private String digestToString(DigestType type) {
+    /**
+     * Helper method for converting DigestType to String
+     *
+     * @param type DigestType to convert
+     *
+     * @return String representation of the digest type
+     */
+    private String digestTypeToString(DigestType type) {
         switch (type) {
             case WC_MD5:
                 return "MD5";
@@ -703,6 +951,302 @@ public class WolfCryptSignature extends SignatureSpi {
         }
     }
 
+    /**
+     * Helper method for converting DigestType to Java name
+     *
+     * @param dtype DigestType to convert
+     *
+     * @return String representation of the digest type
+     */
+    private String digestTypeToJavaName(DigestType dtype) {
+        switch (dtype) {
+            case WC_SHA1:
+                return "SHA-1";
+            case WC_SHA224:
+                return "SHA-224";
+            case WC_SHA256:
+                return "SHA-256";
+            case WC_SHA384:
+                return "SHA-384";
+            case WC_SHA512:
+                return "SHA-512";
+            default:
+                throw new IllegalArgumentException(
+                    "Unsupported digest for PSS: " + dtype);
+        }
+    }
+
+    /**
+     * Helper method for converting Java digest name to DigestType
+     *
+     * @param javaName Java digest algorithm name
+     *
+     * @return DigestType corresponding to the Java name
+     */
+    private DigestType javaNameToDigestType(String javaName)
+        throws InvalidAlgorithmParameterException {
+        switch (javaName.toUpperCase()) {
+            case "SHA-1":
+                return DigestType.WC_SHA1;
+            case "SHA-224":
+                return DigestType.WC_SHA224;
+            case "SHA-256":
+                return DigestType.WC_SHA256;
+            case "SHA-384":
+                return DigestType.WC_SHA384;
+            case "SHA-512":
+                return DigestType.WC_SHA512;
+            default:
+                throw new InvalidAlgorithmParameterException(
+                    "Unsupported digest algorithm: " + javaName);
+        }
+    }
+
+    /**
+     * Helper method to get MGF1ParameterSpec for a given digest algorithm
+     *
+     * @param digestAlg Digest algorithm name
+     *
+     * @return MGF1ParameterSpec corresponding to the digest algorithm
+     */
+    private MGF1ParameterSpec getMGF1SpecForDigest(String digestAlg) {
+        switch (digestAlg) {
+            case "SHA-1":
+                return MGF1ParameterSpec.SHA1;
+            case "SHA-224":
+                return MGF1ParameterSpec.SHA224;
+            case "SHA-256":
+                return MGF1ParameterSpec.SHA256;
+            case "SHA-384":
+                return MGF1ParameterSpec.SHA384;
+            case "SHA-512":
+                return MGF1ParameterSpec.SHA512;
+            case "SHA-512/224":
+                /* MGF1ParameterSpec.SHA512_224 added in Java 11,
+                 * fallback for Java 8 */
+                try {
+                    return (MGF1ParameterSpec) MGF1ParameterSpec.class
+                        .getField("SHA512_224").get(null);
+                } catch (Exception e) {
+                    return new MGF1ParameterSpec("SHA-512/224");
+                }
+            case "SHA-512/256":
+                /* MGF1ParameterSpec.SHA512_256 added in Java 11,
+                 * fallback for Java 8 */
+                try {
+                    return (MGF1ParameterSpec) MGF1ParameterSpec.class
+                        .getField("SHA512_256").get(null);
+                } catch (Exception e) {
+                    return new MGF1ParameterSpec("SHA-512/256");
+                }
+            default:
+                throw new IllegalArgumentException(
+                    "Unsupported digest for MGF1: " + digestAlg);
+        }
+    }
+
+    /**
+     * Helper method to get MGF type from PSS parameters
+     *
+     * @return MGF type constant corresponding to the digest algorithm.
+     *         If no parameters are set, defaults to WC_MGF1SHA256.
+     */
+    private int getMgfTypeFromParams() {
+
+        /* Default MGF type is SHA-256 */
+        int ret = Rsa.WC_MGF1SHA256;
+
+        if (pssParams != null) {
+            if (pssParams.getMGFParameters() instanceof MGF1ParameterSpec) {
+                MGF1ParameterSpec mgf1Spec =
+                    (MGF1ParameterSpec)pssParams.getMGFParameters();
+                String digestAlg = mgf1Spec.getDigestAlgorithm();
+                switch (digestAlg.toUpperCase()) {
+                    case "SHA-1":
+                        return Rsa.WC_MGF1SHA1;
+                    case "SHA-224":
+                        return Rsa.WC_MGF1SHA224;
+                    case "SHA-256":
+                        return Rsa.WC_MGF1SHA256;
+                    case "SHA-384":
+                        return Rsa.WC_MGF1SHA384;
+                    case "SHA-512":
+                        return Rsa.WC_MGF1SHA512;
+                    case "SHA-512/224":
+                        return Rsa.WC_MGF1SHA512_224;
+                    case "SHA-512/256":
+                        return Rsa.WC_MGF1SHA512_256;
+                    default:
+                        throw new IllegalArgumentException(
+                            "Unsupported MGF1 digest: " + digestAlg);
+                }
+            }
+        }
+
+        return ret;
+    }
+
+    /**
+     * Validates the PSS parameters are supported by wolfJCE.
+     *
+     * @param pss PSSParameterSpec to validate
+     *
+     * @throws InvalidAlgorithmParameterException if the parameters are not
+     */
+    private void validatePSSParameters(PSSParameterSpec pss)
+            throws InvalidAlgorithmParameterException {
+
+        /* Validate hash algorithm */
+        String hashAlg = pss.getDigestAlgorithm();
+        if (!isDigestSupported(hashAlg)) {
+            throw new InvalidAlgorithmParameterException(
+                "Hash algorithm not supported: " + hashAlg);
+        }
+
+        /* Validate MGF algorithm */
+        String mgfAlg = pss.getMGFAlgorithm();
+        if (!"MGF1".equalsIgnoreCase(mgfAlg)) {
+            throw new InvalidAlgorithmParameterException(
+                "Only MGF1 supported, got " + mgfAlg);
+        }
+
+        /* Validate salt length is reasonable */
+        int saltLen = pss.getSaltLength();
+        if (saltLen < -2) {
+            throw new InvalidAlgorithmParameterException(
+                "Invalid salt length: " + saltLen);
+        }
+
+        /* Validate trailer field is 1 */
+        if (pss.getTrailerField() != 1) {
+            throw new InvalidAlgorithmParameterException(
+                "Trailer field must be 1, got " + pss.getTrailerField());
+        }
+    }
+
+    /**
+     * Checks if the given digest algorithm is supported by wolfJCE.
+     *
+     * @param digestAlg Digest algorithm name
+     *
+     * @return true if supported, false otherwise
+     */
+    private boolean isDigestSupported(String digestAlg) {
+        switch (digestAlg.toUpperCase()) {
+            case "SHA-1":
+            case "SHA-224":
+            case "SHA-256":
+            case "SHA-384":
+            case "SHA-512":
+            case "SHA-512/224":
+            case "SHA-512/256":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Release existing hash objects to prevent memory leaks
+     */
+    private void releaseHashObjects() {
+        if (this.md5 != null) {
+            this.md5.releaseNativeStruct();
+            this.md5 = null;
+        }
+        if (this.sha != null) {
+            this.sha.releaseNativeStruct();
+            this.sha = null;
+        }
+        if (this.sha224 != null) {
+            this.sha224.releaseNativeStruct();
+            this.sha224 = null;
+        }
+        if (this.sha256 != null) {
+            this.sha256.releaseNativeStruct();
+            this.sha256 = null;
+        }
+        if (this.sha384 != null) {
+            this.sha384.releaseNativeStruct();
+            this.sha384 = null;
+        }
+        if (this.sha512 != null) {
+            this.sha512.releaseNativeStruct();
+            this.sha512 = null;
+        }
+        if (this.sha3 != null) {
+            this.sha3.releaseNativeStruct();
+            this.sha3 = null;
+        }
+    }
+
+    /**
+     * Initialize hash object based on current digest type
+     */
+    private void initHashObject() {
+        switch (this.digestType) {
+            case WC_MD5:
+                this.md5.init();
+                break;
+            case WC_SHA1:
+                this.sha.init();
+                break;
+            case WC_SHA224:
+                this.sha224.init();
+                break;
+            case WC_SHA256:
+                this.sha256.init();
+                break;
+            case WC_SHA384:
+                this.sha384.init();
+                break;
+            case WC_SHA512:
+                this.sha512.init();
+                break;
+            case WC_SHA3_224:
+            case WC_SHA3_256:
+            case WC_SHA3_384:
+            case WC_SHA3_512:
+                this.sha3.init();
+                break;
+        }
+    }
+
+    /**
+     * Converts DigestType to corresponding wolfCrypt hash type.
+     *
+     * @param dtype DigestType to convert
+     *
+     * @return wolfCrypt hash type constant
+     */
+    private long digestTypeToHashType(DigestType dtype) {
+        switch (dtype) {
+            case WC_MD5:
+                return WolfCrypt.WC_HASH_TYPE_MD5;
+            case WC_SHA1:
+                return WolfCrypt.WC_HASH_TYPE_SHA;
+            case WC_SHA224:
+                return WolfCrypt.WC_HASH_TYPE_SHA224;
+            case WC_SHA256:
+                return WolfCrypt.WC_HASH_TYPE_SHA256;
+            case WC_SHA384:
+                return WolfCrypt.WC_HASH_TYPE_SHA384;
+            case WC_SHA512:
+                return WolfCrypt.WC_HASH_TYPE_SHA512;
+            case WC_SHA3_224:
+                return WolfCrypt.WC_HASH_TYPE_SHA3_224;
+            case WC_SHA3_256:
+                return WolfCrypt.WC_HASH_TYPE_SHA3_256;
+            case WC_SHA3_384:
+                return WolfCrypt.WC_HASH_TYPE_SHA3_384;
+            case WC_SHA3_512:
+                return WolfCrypt.WC_HASH_TYPE_SHA3_512;
+            default:
+                throw new IllegalArgumentException(
+                    "Unsupported digest type: " + dtype);
+        }
+    }
+
     private void log(String msg) {
         WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
             () -> "[" + keyString + "-" + digestString + "] " + msg);
@@ -713,26 +1257,7 @@ public class WolfCryptSignature extends SignatureSpi {
     protected synchronized void finalize() throws Throwable {
         try {
             /* free native digest objects */
-            if (this.md5 != null)
-                this.md5.releaseNativeStruct();
-
-            if (this.sha != null)
-                this.sha.releaseNativeStruct();
-
-            if (this.sha224 != null)
-                this.sha224.releaseNativeStruct();
-
-            if (this.sha256 != null)
-                this.sha256.releaseNativeStruct();
-
-            if (this.sha384 != null)
-                this.sha384.releaseNativeStruct();
-
-            if (this.sha512 != null)
-                this.sha512.releaseNativeStruct();
-
-            if (this.sha3 != null)
-                this.sha3.releaseNativeStruct();
+            releaseHashObjects();
 
             /* free native key objects */
             if (this.rsa != null)
@@ -1037,6 +1562,86 @@ public class WolfCryptSignature extends SignatureSpi {
          */
         public wcSHA3_512wECDSA() throws NoSuchAlgorithmException {
             super(KeyType.WC_ECDSA, DigestType.WC_SHA3_512);
+        }
+    }
+
+    /**
+     * wolfJCE RSA-PSS signature class (generic)
+     */
+    public static final class wcRSAPSS extends WolfCryptSignature {
+        /**
+         * Create new wcRSAPSS object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcRSAPSS() throws NoSuchAlgorithmException {
+            /* No default digest - must be set via parameters */
+            super(KeyType.WC_RSA, null, PaddingType.WC_RSA_PSS);
+        }
+    }
+
+    /**
+     * wolfJCE SHA224withRSA/PSS signature class
+     */
+    public static final class wcSHA224wRSAPSS extends WolfCryptSignature {
+        /**
+         * Create new wcSHA224wRSAPSS object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA224wRSAPSS() throws NoSuchAlgorithmException {
+            super(KeyType.WC_RSA, DigestType.WC_SHA224,
+                  PaddingType.WC_RSA_PSS);
+        }
+    }
+
+    /**
+     * wolfJCE SHA256withRSA/PSS signature class
+     */
+    public static final class wcSHA256wRSAPSS extends WolfCryptSignature {
+        /**
+         * Create new wcSHA256wRSAPSS object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA256wRSAPSS() throws NoSuchAlgorithmException {
+            super(KeyType.WC_RSA, DigestType.WC_SHA256,
+                  PaddingType.WC_RSA_PSS);
+        }
+    }
+
+    /**
+     * wolfJCE SHA384withRSA/PSS signature class
+     */
+    public static final class wcSHA384wRSAPSS extends WolfCryptSignature {
+        /**
+         * Create new wcSHA384wRSAPSS object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA384wRSAPSS() throws NoSuchAlgorithmException {
+            super(KeyType.WC_RSA, DigestType.WC_SHA384,
+                  PaddingType.WC_RSA_PSS);
+        }
+    }
+
+    /**
+     * wolfJCE SHA512withRSA/PSS signature class
+     */
+    public static final class wcSHA512wRSAPSS extends WolfCryptSignature {
+        /**
+         * Create new wcSHA512wRSAPSS object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA512wRSAPSS() throws NoSuchAlgorithmException {
+            super(KeyType.WC_RSA, DigestType.WC_SHA512,
+                  PaddingType.WC_RSA_PSS);
         }
     }
 }
