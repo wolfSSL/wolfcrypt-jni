@@ -676,10 +676,8 @@ public class WolfCryptSignature extends SignatureSpi {
 
             case WC_ECDSA:
 
-                /* ECC sign */
-                synchronized (rngLock) {
-                    signature = this.ecc.sign(digest, this.rng);
-                }
+                /* Ecc.sign() internally has a rngLock unlike Rsa.sign() */
+                signature = this.ecc.sign(digest, this.rng);
 
                 break;
 
