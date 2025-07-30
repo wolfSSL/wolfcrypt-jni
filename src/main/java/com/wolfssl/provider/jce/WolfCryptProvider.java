@@ -38,6 +38,11 @@ public final class WolfCryptProvider extends Provider {
      */
     public WolfCryptProvider() {
         super("wolfJCE", 1.8, "wolfCrypt JCE Provider");
+
+        /* Refresh debug flags in case system properties were set after
+         * WolfCryptDebug class was first loaded (e.g., via JAVA_OPTS) */
+        WolfCryptDebug.refreshDebugFlags();
+
         registerServices();
     }
 
