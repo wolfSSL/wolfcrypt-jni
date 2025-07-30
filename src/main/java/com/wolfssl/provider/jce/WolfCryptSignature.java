@@ -126,6 +126,9 @@ public class WolfCryptSignature extends SignatureSpi {
     private Rng rng = null;
     private final Object rngLock = new Object();
 
+    /* Lock for hash object synchronization */
+    private final Object hashLock = new Object();
+
     /**
      * Create a WolfCryptSignature instance with the specified key type
      * and digest type.
@@ -390,37 +393,39 @@ public class WolfCryptSignature extends SignatureSpi {
             return;
         }
 
-        switch (this.digestType) {
-            case WC_MD5:
-                this.md5.init();
-                break;
+        synchronized (hashLock) {
+            switch (this.digestType) {
+                case WC_MD5:
+                    this.md5.init();
+                    break;
 
-            case WC_SHA1:
-                this.sha.init();
-                break;
+                case WC_SHA1:
+                    this.sha.init();
+                    break;
 
-            case WC_SHA224:
-                this.sha224.init();
-                break;
+                case WC_SHA224:
+                    this.sha224.init();
+                    break;
 
-            case WC_SHA256:
-                this.sha256.init();
-                break;
+                case WC_SHA256:
+                    this.sha256.init();
+                    break;
 
-            case WC_SHA384:
-                this.sha384.init();
-                break;
+                case WC_SHA384:
+                    this.sha384.init();
+                    break;
 
-            case WC_SHA512:
-                this.sha512.init();
-                break;
+                case WC_SHA512:
+                    this.sha512.init();
+                    break;
 
-            case WC_SHA3_224:
-            case WC_SHA3_256:
-            case WC_SHA3_384:
-            case WC_SHA3_512:
-                this.sha3.init();
-                break;
+                case WC_SHA3_224:
+                case WC_SHA3_256:
+                case WC_SHA3_384:
+                case WC_SHA3_512:
+                    this.sha3.init();
+                    break;
+            }
         }
 
         log("init sign with PrivateKey");
@@ -473,36 +478,39 @@ public class WolfCryptSignature extends SignatureSpi {
             return;
         }
 
-        switch (this.digestType) {
-            case WC_MD5:
-                this.md5.init();
-                break;
+        synchronized (hashLock) {
+            switch (this.digestType) {
+                case WC_MD5:
+                    this.md5.init();
+                    break;
 
-            case WC_SHA1:
-                this.sha.init();
-                break;
+                case WC_SHA1:
+                    this.sha.init();
+                    break;
 
-            case WC_SHA224:
-                this.sha224.init();
-                break;
+                case WC_SHA224:
+                    this.sha224.init();
+                    break;
 
-            case WC_SHA256:
-                this.sha256.init();
-                break;
+                case WC_SHA256:
+                    this.sha256.init();
+                    break;
 
-            case WC_SHA384:
-                this.sha384.init();
-                break;
+                case WC_SHA384:
+                    this.sha384.init();
+                    break;
 
-            case WC_SHA512:
-                this.sha512.init();
-                break;
+                case WC_SHA512:
+                    this.sha512.init();
+                    break;
 
-            case WC_SHA3_224:
-            case WC_SHA3_256:
-            case WC_SHA3_384:
-            case WC_SHA3_512:
-                this.sha3.init();
+                case WC_SHA3_224:
+                case WC_SHA3_256:
+                case WC_SHA3_384:
+                case WC_SHA3_512:
+                    this.sha3.init();
+                    break;
+            }
         }
 
         log("init verify with PublicKey");
@@ -600,37 +608,39 @@ public class WolfCryptSignature extends SignatureSpi {
 
         /* get final digest */
         try {
-            switch (this.digestType) {
-                case WC_MD5:
-                    this.md5.digest(digest);
-                    break;
+            synchronized (hashLock) {
+                switch (this.digestType) {
+                    case WC_MD5:
+                        this.md5.digest(digest);
+                        break;
 
-                case WC_SHA1:
-                    this.sha.digest(digest);
-                    break;
+                    case WC_SHA1:
+                        this.sha.digest(digest);
+                        break;
 
-                case WC_SHA224:
-                    this.sha224.digest(digest);
-                    break;
+                    case WC_SHA224:
+                        this.sha224.digest(digest);
+                        break;
 
-                case WC_SHA256:
-                    this.sha256.digest(digest);
-                    break;
+                    case WC_SHA256:
+                        this.sha256.digest(digest);
+                        break;
 
-                case WC_SHA384:
-                    this.sha384.digest(digest);
-                    break;
+                    case WC_SHA384:
+                        this.sha384.digest(digest);
+                        break;
 
-                case WC_SHA512:
-                    this.sha512.digest(digest);
-                    break;
+                    case WC_SHA512:
+                        this.sha512.digest(digest);
+                        break;
 
-                case WC_SHA3_224:
-                case WC_SHA3_256:
-                case WC_SHA3_384:
-                case WC_SHA3_512:
-                    this.sha3.digest(digest);
-                    break;
+                    case WC_SHA3_224:
+                    case WC_SHA3_256:
+                    case WC_SHA3_384:
+                    case WC_SHA3_512:
+                        this.sha3.digest(digest);
+                        break;
+                }
             }
         } catch (ShortBufferException e) {
             throw new SignatureException(e.getMessage());
@@ -717,36 +727,39 @@ public class WolfCryptSignature extends SignatureSpi {
                 "Parameters must be set before updating with RSASSA-PSS");
         }
 
-        switch (this.digestType) {
-            case WC_MD5:
-                this.md5.update(b, off, len);
-                break;
+        synchronized (hashLock) {
+            switch (this.digestType) {
+                case WC_MD5:
+                    this.md5.update(b, off, len);
+                    break;
 
-            case WC_SHA1:
-                this.sha.update(b, off, len);
-                break;
+                case WC_SHA1:
+                    this.sha.update(b, off, len);
+                    break;
 
-            case WC_SHA224:
-                this.sha224.update(b, off, len);
-                break;
+                case WC_SHA224:
+                    this.sha224.update(b, off, len);
+                    break;
 
-            case WC_SHA256:
-                this.sha256.update(b, off, len);
-                break;
+                case WC_SHA256:
+                    this.sha256.update(b, off, len);
+                    break;
 
-            case WC_SHA384:
-                this.sha384.update(b, off, len);
-                break;
+                case WC_SHA384:
+                    this.sha384.update(b, off, len);
+                    break;
 
-            case WC_SHA512:
-                this.sha512.update(b, off, len);
-                break;
+                case WC_SHA512:
+                    this.sha512.update(b, off, len);
+                    break;
 
-            case WC_SHA3_224:
-            case WC_SHA3_256:
-            case WC_SHA3_384:
-            case WC_SHA3_512:
-                this.sha3.update(b, off, len);
+                case WC_SHA3_224:
+                case WC_SHA3_256:
+                case WC_SHA3_384:
+                case WC_SHA3_512:
+                    this.sha3.update(b, off, len);
+                    break;
+            }
         }
 
         log("update, offset: " + off + ", len: " + len);
@@ -772,37 +785,39 @@ public class WolfCryptSignature extends SignatureSpi {
 
         /* get final digest */
         try {
-            switch (this.digestType) {
-                case WC_MD5:
-                    this.md5.digest(digest);
-                    break;
+            synchronized (hashLock) {
+                switch (this.digestType) {
+                    case WC_MD5:
+                        this.md5.digest(digest);
+                        break;
 
-                case WC_SHA1:
-                    this.sha.digest(digest);
-                    break;
+                    case WC_SHA1:
+                        this.sha.digest(digest);
+                        break;
 
-                case WC_SHA224:
-                    this.sha224.digest(digest);
-                    break;
+                    case WC_SHA224:
+                        this.sha224.digest(digest);
+                        break;
 
-                case WC_SHA256:
-                    this.sha256.digest(digest);
-                    break;
+                    case WC_SHA256:
+                        this.sha256.digest(digest);
+                        break;
 
-                case WC_SHA384:
-                    this.sha384.digest(digest);
-                    break;
+                    case WC_SHA384:
+                        this.sha384.digest(digest);
+                        break;
 
-                case WC_SHA512:
-                    this.sha512.digest(digest);
-                    break;
+                    case WC_SHA512:
+                        this.sha512.digest(digest);
+                        break;
 
-                case WC_SHA3_224:
-                case WC_SHA3_256:
-                case WC_SHA3_384:
-                case WC_SHA3_512:
-                    this.sha3.digest(digest);
-                    break;
+                    case WC_SHA3_224:
+                    case WC_SHA3_256:
+                    case WC_SHA3_384:
+                    case WC_SHA3_512:
+                        this.sha3.digest(digest);
+                        break;
+                }
             }
 
         } catch (ShortBufferException e) {
@@ -1148,33 +1163,35 @@ public class WolfCryptSignature extends SignatureSpi {
      * Release existing hash objects to prevent memory leaks
      */
     private void releaseHashObjects() {
-        if (this.md5 != null) {
-            this.md5.releaseNativeStruct();
-            this.md5 = null;
-        }
-        if (this.sha != null) {
-            this.sha.releaseNativeStruct();
-            this.sha = null;
-        }
-        if (this.sha224 != null) {
-            this.sha224.releaseNativeStruct();
-            this.sha224 = null;
-        }
-        if (this.sha256 != null) {
-            this.sha256.releaseNativeStruct();
-            this.sha256 = null;
-        }
-        if (this.sha384 != null) {
-            this.sha384.releaseNativeStruct();
-            this.sha384 = null;
-        }
-        if (this.sha512 != null) {
-            this.sha512.releaseNativeStruct();
-            this.sha512 = null;
-        }
-        if (this.sha3 != null) {
-            this.sha3.releaseNativeStruct();
-            this.sha3 = null;
+        synchronized (hashLock) {
+            if (this.md5 != null) {
+                this.md5.releaseNativeStruct();
+                this.md5 = null;
+            }
+            if (this.sha != null) {
+                this.sha.releaseNativeStruct();
+                this.sha = null;
+            }
+            if (this.sha224 != null) {
+                this.sha224.releaseNativeStruct();
+                this.sha224 = null;
+            }
+            if (this.sha256 != null) {
+                this.sha256.releaseNativeStruct();
+                this.sha256 = null;
+            }
+            if (this.sha384 != null) {
+                this.sha384.releaseNativeStruct();
+                this.sha384 = null;
+            }
+            if (this.sha512 != null) {
+                this.sha512.releaseNativeStruct();
+                this.sha512 = null;
+            }
+            if (this.sha3 != null) {
+                this.sha3.releaseNativeStruct();
+                this.sha3 = null;
+            }
         }
     }
 
@@ -1182,31 +1199,33 @@ public class WolfCryptSignature extends SignatureSpi {
      * Initialize hash object based on current digest type
      */
     private void initHashObject() {
-        switch (this.digestType) {
-            case WC_MD5:
-                this.md5.init();
-                break;
-            case WC_SHA1:
-                this.sha.init();
-                break;
-            case WC_SHA224:
-                this.sha224.init();
-                break;
-            case WC_SHA256:
-                this.sha256.init();
-                break;
-            case WC_SHA384:
-                this.sha384.init();
-                break;
-            case WC_SHA512:
-                this.sha512.init();
-                break;
-            case WC_SHA3_224:
-            case WC_SHA3_256:
-            case WC_SHA3_384:
-            case WC_SHA3_512:
-                this.sha3.init();
-                break;
+        synchronized (hashLock) {
+            switch (this.digestType) {
+                case WC_MD5:
+                    this.md5.init();
+                    break;
+                case WC_SHA1:
+                    this.sha.init();
+                    break;
+                case WC_SHA224:
+                    this.sha224.init();
+                    break;
+                case WC_SHA256:
+                    this.sha256.init();
+                    break;
+                case WC_SHA384:
+                    this.sha384.init();
+                    break;
+                case WC_SHA512:
+                    this.sha512.init();
+                    break;
+                case WC_SHA3_224:
+                case WC_SHA3_256:
+                case WC_SHA3_384:
+                case WC_SHA3_512:
+                    this.sha3.init();
+                    break;
+            }
         }
     }
 
