@@ -255,59 +255,183 @@ public class WolfCryptSignatureTest {
                 /* Collect diagnostic information for sporadic failures */
                 StringBuilder diagnostics = new StringBuilder();
 
-                /* Algorithm Context */
-                diagnostics.append("FAILURE DETAILS:\n");
-                diagnostics.append("  Algorithm: ")
+                /* Test Details */
+                diagnostics.append("Algorithm: ")
                     .append(enabledAlgos.get(i)).append("\n");
-                diagnostics.append("  Loop iteration: ").append(i).append("\n");
-                diagnostics.append("  Total enabled algorithms: ")
+                diagnostics.append("Loop iteration: ").append(i).append("\n");
+                diagnostics.append("Total enabled algorithms: ")
                     .append(enabledAlgos.size()).append("\n");
+                diagnostics.append("Test Message: \"")
+                    .append(toSign).append("\"\n");
+                diagnostics.append("Test Message Bytes (hex): ")
+                    .append(bytesToHex(toSignBuf, 0, toSignBuf.length))
+                    .append("\n");
 
-                /* Signature Byte Analysis */
-                diagnostics.append("  Signature length: ").append(
-                    signature.length).append("\n");
-                if (signature.length > 0) {
-                    diagnostics.append("  Signature first 8 bytes: ");
-                    for (int b = 0; b < Math.min(8, signature.length); b++) {
-                        diagnostics.append(String.format("%02X ",
-                            signature[b]));
-                    }
-                    diagnostics.append("\n");
-                    diagnostics.append("  Signature has leading zeros: ")
-                        .append(signature[0] == 0).append("\n");
-                }
+                /* Provider Information */
+                diagnostics.append("Signer Provider: ")
+                    .append(signer.getProvider().getName())
+                    .append(" v").append(signer.getProvider().getVersion())
+                    .append("\n");
+                diagnostics.append("Signer Provider Info: ")
+                    .append(signer.getProvider().getInfo()).append("\n");
+                diagnostics.append("Verifier Provider: ")
+                    .append(verifier.getProvider().getName())
+                    .append(" v").append(verifier.getProvider().getVersion())
+                    .append("\n");
+                diagnostics.append("Verifier Provider Info: ")
+                    .append(verifier.getProvider().getInfo()).append("\n");
 
                 /* Key Information */
-                diagnostics.append("  Private key algorithm: ")
+                diagnostics.append("Private Key Algorithm: ")
                     .append(priv.getAlgorithm()).append("\n");
-                diagnostics.append("  Public key algorithm: ")
-                    .append(pub.getAlgorithm()).append("\n");
-                diagnostics.append("  Private key format: ")
+                diagnostics.append("Private Key Format: ")
                     .append(priv.getFormat()).append("\n");
-                diagnostics.append("  Public key format: ").
-                    append(pub.getFormat()).append("\n");
+                diagnostics.append("Public Key Algorithm: ")
+                    .append(pub.getAlgorithm()).append("\n");
+                diagnostics.append("Public Key Format: ")
+                    .append(pub.getFormat()).append("\n");
 
+                /* RSA Specific Information */
                 if (priv instanceof java.security.interfaces.RSAPrivateKey) {
                     java.security.interfaces.RSAPrivateKey rsaPriv =
                         (java.security.interfaces.RSAPrivateKey) priv;
-                    diagnostics.append("  RSA key size: ")
-                        .append(rsaPriv.getModulus().bitLength()).append("\n");
+                    java.security.interfaces.RSAPublicKey rsaPub =
+                        (java.security.interfaces.RSAPublicKey) pub;
+
+                    diagnostics.append("RSA Key Size: ")
+                        .append(rsaPriv.getModulus().bitLength())
+                        .append(" bits\n");
+                    diagnostics.append("RSA Modulus (hex): ")
+                        .append(rsaPriv.getModulus().toString(16))
+                        .append("\n");
+                    diagnostics.append("RSA Private Exponent (hex): ")
+                        .append(rsaPriv.getPrivateExponent().toString(16))
+                        .append("\n");
+                    diagnostics.append("RSA Public Exponent: ")
+                        .append(rsaPub.getPublicExponent().toString())
+                        .append("\n");
                 }
 
-                /* Signature Object State */
-                diagnostics.append("  Signer provider: ")
-                    .append(signer.getProvider().getName()).append("\n");
-                diagnostics.append("  Verifier provider: ")
-                    .append(verifier.getProvider().getName()).append("\n");
-                diagnostics.append("  Signer algorithm: ")
-                    .append(signer.getAlgorithm()).append("\n");
-                diagnostics.append("  Verifier algorithm: ")
-                    .append(verifier.getAlgorithm()).append("\n");
+                /* ECC Specific Information */
+                if (priv instanceof java.security.interfaces.ECPrivateKey) {
+                    java.security.interfaces.ECPrivateKey ecPriv =
+                        (java.security.interfaces.ECPrivateKey) priv;
+                    java.security.interfaces.ECPublicKey ecPub =
+                        (java.security.interfaces.ECPublicKey) pub;
 
+                    diagnostics.append("EC Curve: ")
+                        .append(ecPriv.getParams().getCurve()).append("\n");
+                    diagnostics.append("EC Field Size: ")
+                        .append(ecPriv.getParams().getCurve().getField()
+                                .getFieldSize()).append("\n");
+                    diagnostics.append("EC Order: ")
+                        .append(ecPriv.getParams().getOrder()).append("\n");
+                    diagnostics.append("EC Cofactor: ")
+                        .append(ecPriv.getParams().getCofactor()).append("\n");
+
+                    /* Try to determine curve name for reproduction */
+                    try {
+                        java.security.spec.ECParameterSpec params =
+                            ecPriv.getParams();
+                        if (params.getCurve().getField()
+                            .getFieldSize() == 256) {
+                            diagnostics.append(
+                                "Likely Curve Name: secp256r1/prime256v1\n");
+                        } else if (params.getCurve().getField()
+                            .getFieldSize() == 384) {
+                            diagnostics.append(
+                                "Likely Curve Name: secp384r1\n");
+                        } else if (params.getCurve().getField()
+                                .getFieldSize() == 521) {
+                            diagnostics.append(
+                                "Likely Curve Name: secp521r1\n");
+                        }
+                    } catch (Exception e) {
+                        diagnostics.append("Could not determine curve name\n");
+                    }
+
+                    /* Private key S value (full key for test reproduction) */
+                    byte[] sBytes = ecPriv.getS().toByteArray();
+                    diagnostics.append("Private Key S (full): ")
+                        .append(bytesToHex(sBytes, 0, sBytes.length))
+                        .append("\n");
+                    diagnostics.append("Private Key S (decimal): ")
+                        .append(ecPriv.getS().toString()).append("\n");
+
+                    /* Public key point (full coordinates for test repro) */
+                    diagnostics.append("Public Key X (hex): ")
+                        .append(ecPub.getW().getAffineX().toString(16))
+                        .append("\n");
+                    diagnostics.append("Public Key Y (hex): ")
+                        .append(ecPub.getW().getAffineY().toString(16))
+                        .append("\n");
+                    diagnostics.append("Public Key X (decimal): ")
+                        .append(ecPub.getW().getAffineX().toString())
+                        .append("\n");
+                    diagnostics.append("Public Key Y (decimal): ")
+                        .append(ecPub.getW().getAffineY().toString())
+                        .append("\n");
+                }
+
+                /* Key encoding for reproduction */
+                if (priv.getEncoded() != null) {
+                    diagnostics.append("Private Key Encoded (hex): ")
+                        .append(bytesToHex(priv.getEncoded(), 0,
+                                    priv.getEncoded().length))
+                        .append("\n");
+                }
+                if (pub.getEncoded() != null) {
+                    diagnostics.append("Public Key Encoded (hex): ")
+                        .append(bytesToHex(pub.getEncoded(), 0,
+                                    pub.getEncoded().length))
+                        .append("\n");
+                }
+
+                /* Signature Information */
+                diagnostics.append("Signature Length: ")
+                    .append(signature.length).append(" bytes\n");
+                diagnostics.append("Signature (hex): ")
+                    .append(bytesToHex(signature, 0, signature.length))
+                    .append("\n");
+
+                /* ASN.1 Analysis for ECDSA/DSA signatures */
+                if (signature.length > 6 && signature[0] == 0x30) {
+                    diagnostics.append("ASN.1 SEQUENCE Length: ")
+                        .append(signature[1] & 0xFF).append("\n");
+                    if (signature[2] == 0x02) {
+                        int rLen = signature[3] & 0xFF;
+                        diagnostics.append("ASN.1 R Length: ")
+                            .append(rLen).append("\n");
+                        if (4 + rLen < signature.length &&
+                            signature[4 + rLen] == 0x02) {
+                            int sLen = signature[5 + rLen] & 0xFF;
+                            diagnostics.append("ASN.1 S Length: ")
+                                .append(sLen).append("\n");
+                        }
+                    }
+                }
+
+                /* Timing and Thread Information */
+                diagnostics.append("Failure Timestamp: ")
+                    .append(System.currentTimeMillis()).append("\n");
+                diagnostics.append("Thread ID: ")
+                    .append(Thread.currentThread().getId()).append("\n");
+                diagnostics.append("Thread Name: ")
+                    .append(Thread.currentThread().getName()).append("\n");
+
+                /* All Available Providers */
+                diagnostics.append("All Available Providers:\n");
+                Provider[] allProviders = Security.getProviders();
+                for (Provider p : allProviders) {
+                    diagnostics.append("  ").append(p.getName())
+                        .append(" v").append(p.getVersion())
+                        .append(" - ").append(p.getInfo()).append("\n");
+                }
+
+                System.err.println(diagnostics.toString());
 
                 fail("Signature verification failed when generating and " +
-                     "verifying with wolfJCE provider.\n" +
-                     diagnostics.toString());
+                     "verifying with wolfJCE provider.");
             }
         }
     }
@@ -368,9 +492,164 @@ public class WolfCryptSignatureTest {
             boolean verified = verifier.verify(signature);
 
             if (verified != true) {
+                /* Collect diagnostic information for sporadic failures */
+                StringBuilder diagnostics = new StringBuilder();
+
+                /* Test Details */
+                diagnostics.append("Algorithm: ")
+                    .append(enabledAlgos.get(i)).append("\n");
+                diagnostics.append("Test Message: \"")
+                    .append(toSign).append("\"\n");
+                diagnostics.append("Test Message Bytes (hex): ")
+                    .append(bytesToHex(toSignBuf, 0, toSignBuf.length))
+                    .append("\n");
+
+                /* Provider Information */
+                diagnostics.append("Signer Provider: ")
+                    .append(signer.getProvider().getName())
+                    .append(" v").append(signer.getProvider().getVersion())
+                    .append("\n");
+                diagnostics.append("Signer Provider Info: ")
+                    .append(signer.getProvider().getInfo()).append("\n");
+                diagnostics.append("Verifier Provider: ")
+                    .append(verifier.getProvider().getName())
+                    .append(" v").append(verifier.getProvider().getVersion())
+                    .append("\n");
+                diagnostics.append("Verifier Provider Info: ")
+                    .append(verifier.getProvider().getInfo()).append("\n");
+
+                /* Key Information */
+                diagnostics.append("Private Key Algorithm: ")
+                    .append(priv.getAlgorithm()).append("\n");
+                diagnostics.append("Private Key Format: ")
+                    .append(priv.getFormat()).append("\n");
+                diagnostics.append("Public Key Algorithm: ")
+                    .append(pub.getAlgorithm()).append("\n");
+                diagnostics.append("Public Key Format: ")
+                    .append(pub.getFormat()).append("\n");
+
+                /* ECC Specific Information */
+                if (priv instanceof java.security.interfaces.ECPrivateKey) {
+                    java.security.interfaces.ECPrivateKey ecPriv =
+                        (java.security.interfaces.ECPrivateKey) priv;
+                    java.security.interfaces.ECPublicKey ecPub =
+                        (java.security.interfaces.ECPublicKey) pub;
+
+                    diagnostics.append("EC Curve: ")
+                        .append(ecPriv.getParams().getCurve()).append("\n");
+                    diagnostics.append("EC Field Size: ")
+                        .append(ecPriv.getParams().getCurve().getField()
+                                .getFieldSize()).append("\n");
+                    diagnostics.append("EC Order: ")
+                        .append(ecPriv.getParams().getOrder()).append("\n");
+                    diagnostics.append("EC Cofactor: ")
+                        .append(ecPriv.getParams().getCofactor()).append("\n");
+
+                    /* Try to determine curve name for reproduction */
+                    try {
+                        java.security.spec.ECParameterSpec params =
+                            ecPriv.getParams();
+                        if (params.getCurve().getField()
+                            .getFieldSize() == 256) {
+                            diagnostics.append(
+                                "Likely Curve Name: secp256r1/prime256v1\n");
+                        } else if (params.getCurve().getField()
+                            .getFieldSize() == 384) {
+                            diagnostics.append(
+                                "Likely Curve Name: secp384r1\n");
+                        } else if (params.getCurve().getField()
+                                .getFieldSize() == 521) {
+                            diagnostics.append(
+                                "Likely Curve Name: secp521r1\n");
+                        }
+                    } catch (Exception e) {
+                        diagnostics.append("Could not determine curve name\n");
+                    }
+
+                    /* Private key S value (full key for test reproduction) */
+                    byte[] sBytes = ecPriv.getS().toByteArray();
+                    diagnostics.append("Private Key S (full): ")
+                        .append(bytesToHex(sBytes, 0, sBytes.length))
+                        .append("\n");
+                    diagnostics.append("Private Key S (decimal): ")
+                        .append(ecPriv.getS().toString()).append("\n");
+
+                    /* Public key point (full coordinates for test repro) */
+                    diagnostics.append("Public Key X (hex): ")
+                        .append(ecPub.getW().getAffineX().toString(16))
+                        .append("\n");
+                    diagnostics.append("Public Key Y (hex): ")
+                        .append(ecPub.getW().getAffineY().toString(16))
+                        .append("\n");
+                    diagnostics.append("Public Key X (decimal): ")
+                        .append(ecPub.getW().getAffineX().toString())
+                        .append("\n");
+                    diagnostics.append("Public Key Y (decimal): ")
+                        .append(ecPub.getW().getAffineY().toString())
+                        .append("\n");
+
+                    /* Key encoding for complete reproduction */
+                    if (priv.getEncoded() != null) {
+                        diagnostics.append("Private Key Encoded (hex): ")
+                            .append(bytesToHex(priv.getEncoded(), 0,
+                                        priv.getEncoded().length))
+                            .append("\n");
+                    }
+                    if (pub.getEncoded() != null) {
+                        diagnostics.append("Public Key Encoded (hex): ")
+                            .append(bytesToHex(pub.getEncoded(), 0,
+                                        pub.getEncoded().length))
+                            .append("\n");
+                    }
+                }
+
+                /* Signature Information */
+                diagnostics.append("Signature Length: ")
+                    .append(signature.length).append(" bytes\n");
+                diagnostics.append("Signature (hex): ")
+                    .append(bytesToHex(signature, 0, signature.length))
+                    .append("\n");
+
+                /* ASN.1 Analysis */
+                if (signature.length > 6 && signature[0] == 0x30) {
+                    diagnostics.append("ASN.1 SEQUENCE Length: ")
+                        .append(signature[1] & 0xFF).append("\n");
+                    if (signature[2] == 0x02) {
+                        int rLen = signature[3] & 0xFF;
+                        diagnostics.append("ASN.1 R Length: ")
+                            .append(rLen).append("\n");
+                        if (4 + rLen < signature.length &&
+                            signature[4 + rLen] == 0x02) {
+                            int sLen = signature[5 + rLen] & 0xFF;
+                            diagnostics.append("ASN.1 S Length: ")
+                                .append(sLen).append("\n");
+                        }
+                    }
+                }
+
+                /* Timing and Thread Information */
+                diagnostics.append("Failure Timestamp: ")
+                    .append(System.currentTimeMillis()).append("\n");
+                diagnostics.append("Thread ID: ")
+                    .append(Thread.currentThread().getId()).append("\n");
+                diagnostics.append("Thread Name: ")
+                    .append(Thread.currentThread().getName()).append("\n");
+
+                /* All Available Providers */
+                diagnostics.append("All Available Providers:\n");
+                Provider[] allProviders = Security.getProviders();
+                for (Provider p : allProviders) {
+                    diagnostics.append("  ").append(p.getName())
+                        .append(" v").append(p.getVersion())
+                        .append(" - ").append(p.getInfo()).append("\n");
+                }
+
+                System.err.println(diagnostics.toString());
+
                 fail("Signature verification failed when generating with " +
                         "wolfJCE and verifying with system default JCE " +
-                        "provider");
+                        "provider. See diagnostics above for " +
+                        "reproduction details.");
             }
         }
     }
