@@ -52,19 +52,19 @@ public final class WolfCryptRandom extends SecureRandomSpi {
     }
 
     @Override
-    protected byte[] engineGenerateSeed(int numBytes) {
+    protected synchronized byte[] engineGenerateSeed(int numBytes) {
 
         return rng.generateBlock(numBytes);
     }
 
     @Override
-    protected void engineNextBytes(byte[] bytes) {
+    protected synchronized void engineNextBytes(byte[] bytes) {
 
         rng.generateBlock(bytes);
     }
 
     @Override
-    protected void engineSetSeed(byte[] seed) {
+    protected synchronized void engineSetSeed(byte[] seed) {
         /* wolfCrypt reseeds internally automatically */
         log("setSeed() not supported by wolfJCE");
     }
@@ -75,7 +75,7 @@ public final class WolfCryptRandom extends SecureRandomSpi {
 
     @SuppressWarnings("deprecation")
     @Override
-    protected void finalize() throws Throwable {
+    protected synchronized void finalize() throws Throwable {
         try {
 
             if (this.rng != null) {
@@ -98,7 +98,9 @@ public final class WolfCryptRandom extends SecureRandomSpi {
      *
      * @throws IOException on error writing to ObjectOutputStream
      */
-    private void writeObject(ObjectOutputStream out) throws IOException {
+    private synchronized void writeObject(ObjectOutputStream out)
+        throws IOException {
+
         if (this.rng != null) {
             this.rng.free();
             this.rng.releaseNativeStruct();
@@ -118,7 +120,7 @@ public final class WolfCryptRandom extends SecureRandomSpi {
      * @throws IOException on error reading from ObjectInputStream
      * @throws ClassNotFoundException if object class not found
      */
-    private void readObject(ObjectInputStream in)
+    private synchronized void readObject(ObjectInputStream in)
         throws IOException, ClassNotFoundException {
 
         if (rng == null) {

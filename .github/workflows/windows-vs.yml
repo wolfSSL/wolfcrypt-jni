@@ -274,7 +274,7 @@ jobs:
           $content = Get-Content $userSettingsPath -Raw
           Write-Output "Original file size: $($content.Length) characters"
 
-          $newDefines = "#define WOLFSSL_KEY_GEN`n#define HAVE_CRL`n#define OPENSSL_ALL`n`n"
+          $newDefines = "#define WOLFSSL_KEY_GEN`n#define HAVE_CRL`n#define OPENSSL_ALL`n#define WOLFSSL_SHA224`n`n"
 
           # Try multiple possible insertion points
           $insertPoints = @(
