@@ -21,7 +21,9 @@
 
 package com.wolfssl.provider.jce;
 
-import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.logging.*;
 import java.util.logging.Formatter;
 import java.util.logging.Handler;
@@ -39,6 +41,11 @@ class WolfCryptDebug {
 
     /** Info level debug message */
     public static final String INFO = "INFO";
+
+    /** Time formatter for log messages */
+    private static final DateTimeFormatter TimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
+            .withZone(ZoneId.systemDefault());
 
     static {
         configureLoggers();
@@ -114,7 +121,8 @@ class WolfCryptDebug {
             }
 
             return String.format("%s [%s %s: TID %d: %s] %s\n",
-                    new Timestamp(record.getMillis()),
+                    TimeFormatter.format(
+                        Instant.ofEpochMilli(record.getMillis())),
                     "wolfJCE",
                     levelStr,
                     threadId,
