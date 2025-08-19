@@ -1046,7 +1046,21 @@ public class WolfCryptCipher extends CipherSpi {
             }
 
             InitializeNativeStructs();
-            wolfCryptSetIV(storedSpec, null);
+
+            /* Preserve the existing IV during cipher reset to maintain
+             * consistency with JCE getIV() behavior. If storedSpec is null
+             * (no IV was provided initially), wolfCryptSetIV would generate
+             * a new random IV, overwriting the original one. */
+            if (storedSpec == null && this.iv != null) {
+                /* Create an IvParameterSpec with the current IV to avoid
+                 * generating a new random IV during reset */
+                AlgorithmParameterSpec currentIvSpec =
+                    new IvParameterSpec(this.iv.clone());
+                wolfCryptSetIV(currentIvSpec, null);
+            } else {
+                wolfCryptSetIV(storedSpec, null);
+            }
+
             wolfCryptSetKey(storedKey);
 
             this.aadData = null;
