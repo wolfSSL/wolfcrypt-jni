@@ -47,6 +47,7 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.BadPaddingException;
+import javax.crypto.AEADBadTagException;
 
 import java.security.Security;
 import java.security.Provider;
@@ -2325,6 +2326,72 @@ public class WolfCryptCipherTest {
             fail("Expected IllegalStateException for uninitialized cipher");
         } catch (IllegalStateException e) {
             /* Expected exception */
+        }
+    }
+
+    /**
+     * AES-GCM decrypt failure should throw AEADBadTagException instead
+     * of generic exception.
+     */
+    @Test
+    public void testAesGcmBadTagExceptionRegression()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            /* skip if AES-GCM is not enabled */
+            return;
+        }
+
+        byte[] key = new byte[] {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        byte[] iv = new byte[] {
+            (byte)0x01, (byte)0x02, (byte)0x03, (byte)0x04,
+            (byte)0x05, (byte)0x06, (byte)0x07, (byte)0x08,
+            (byte)0x09, (byte)0x0a, (byte)0x0b, (byte)0x0c
+        };
+
+        byte[] plaintext = new byte[] {
+            (byte)0x48, (byte)0x65, (byte)0x6c, (byte)0x6c,
+            (byte)0x6f, (byte)0x20, (byte)0x57, (byte)0x6f,
+            (byte)0x72, (byte)0x6c, (byte)0x64, (byte)0x21
+        };
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
+
+        /* First encrypt to get valid ciphertext */
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
+        byte[] ciphertext = cipher.doFinal(plaintext);
+
+        /* Corrupt the authentication tag (last 16 bytes) */
+        byte[] corruptedCiphertext = ciphertext.clone();
+        int tagStart = corruptedCiphertext.length - 16;
+        for (int i = tagStart; i < corruptedCiphertext.length; i++) {
+            corruptedCiphertext[i] = (byte)0xFF;
+        }
+
+        /* Attempt to decrypt with corrupted tag - should throw
+         * AEADBadTagException */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, gcmSpec);
+        try {
+            cipher.doFinal(corruptedCiphertext);
+            fail("Expected AEADBadTagException for corrupted GCM tag");
+        } catch (AEADBadTagException e) {
+            /* Expected */
+            assertTrue("Exception message should mention authentication",
+                e.getMessage().contains("Authentication check fail"));
+        } catch (Exception e) {
+            fail("Expected AEADBadTagException but got: " +
+                e.getClass().getSimpleName() + " - " + e.getMessage());
         }
     }
 

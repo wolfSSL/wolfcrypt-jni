@@ -30,6 +30,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.BadPaddingException;
 import javax.crypto.ShortBufferException;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.AEADBadTagException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.GCMParameterSpec;
@@ -54,6 +55,8 @@ import com.wolfssl.wolfcrypt.AesCcm;
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Rng;
+import com.wolfssl.wolfcrypt.WolfCryptError;
+import com.wolfssl.wolfcrypt.WolfCryptException;
 
 /**
  * wolfCrypt JCE Cipher (AES, 3DES) wrapper
@@ -938,8 +941,19 @@ public class WolfCryptCipher extends CipherSpi {
                         tmpIn = Arrays.copyOfRange(tmpIn, 0,
                                     tmpIn.length - this.gcmTagLen);
 
-                        tmpOut = this.aesGcm.decrypt(tmpIn, this.iv, tag,
-                                    this.aadData);
+                        try {
+                            tmpOut = this.aesGcm.decrypt(tmpIn, this.iv,
+                                tag, this.aadData);
+
+                        } catch (WolfCryptException e) {
+                            /* Convert to AEADBadTagException */
+                            if (e.getCode() ==
+                                WolfCryptError.AES_GCM_AUTH_E.getCode()) {
+                                /* Authentication check fail */
+                                throw new AEADBadTagException(e.getMessage());
+                            }
+                            throw e;
+                        }
                     }
                 }
                 else if (cipherMode == CipherMode.WC_CCM) {
