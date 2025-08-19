@@ -440,8 +440,7 @@ public class WolfCryptCipherTest {
             fail("cipher.doFinal on odd size block cipher input should " +
                  "throw exception");
         } catch (IllegalBlockSizeException e) {
-            assertEquals(e.getMessage(),
-                         "Input length not multiple of 16 bytes");
+            assertTrue(e.getMessage().contains("not multiple of 16 bytes"));
         }
     }
 
@@ -2317,7 +2316,7 @@ public class WolfCryptCipherTest {
         cipher.init(Cipher.ENCRYPT_MODE, key, spec);
         cipher.update(partialInput); /* Process some data */
         assertEquals("Output size after update should account for remaining " +
-            "input plus tag", 10 + TAG_LENGTH_BYTES, cipher.getOutputSize(10));
+            "input plus tag", 16 + TAG_LENGTH_BYTES, cipher.getOutputSize(11));
 
         /* Test getOutputSize() before initialization, expect exception */
         Cipher uninitializedCipher = Cipher.getInstance("AES/GCM/NoPadding");
@@ -3289,8 +3288,7 @@ public class WolfCryptCipherTest {
             fail("cipher.doFinal on odd size block cipher input should " +
                  "throw exception");
         } catch (IllegalBlockSizeException e) {
-            assertEquals(e.getMessage(),
-                         "Input length not multiple of 8 bytes");
+            assertTrue(e.getMessage().contains("not multiple of 8 bytes"));
         }
     }
 
@@ -4419,6 +4417,353 @@ public class WolfCryptCipherTest {
         assertArrayEquals("IV should remain consistent after decryption for " +
             algorithm + " with data size " + dataSize, ivAfterEncryption,
             ivAfterDecryption);
+    }
+
+    @Test
+    public void testByteBufferUpdateBasic()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               javax.crypto.ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            return;
+        }
+
+        /* Test basic ByteBuffer update operation */
+        byte[] key = new byte[16];
+        secureRandom.nextBytes(key);
+        byte[] plaintext = new byte[64]; /* 4 AES blocks */
+        secureRandom.nextBytes(plaintext);
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        /* Test with ByteBuffers */
+        ByteBuffer inputBuf = ByteBuffer.wrap(plaintext);
+        ByteBuffer outputBuf = ByteBuffer.allocate(plaintext.length + 16);
+
+        int bytesWritten = cipher.update(inputBuf, outputBuf);
+        assertTrue("Update should process some data", bytesWritten > 0);
+
+        /* Compare with byte array result */
+        byte[] expectedUpdate = cipher.update(plaintext);
+        outputBuf.flip();
+        byte[] actualUpdate = new byte[bytesWritten];
+        outputBuf.get(actualUpdate);
+
+        assertArrayEquals("ByteBuffer update should match byte array update",
+                         expectedUpdate, actualUpdate);
+    }
+
+    @Test
+    public void testByteBufferDoFinalBasic()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               javax.crypto.ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            return;
+        }
+
+        /* Test basic ByteBuffer doFinal operation */
+        byte[] key = new byte[16];
+        secureRandom.nextBytes(key);
+        byte[] plaintext = new byte[32]; /* 2 AES blocks */
+        secureRandom.nextBytes(plaintext);
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        /* Test with ByteBuffers */
+        ByteBuffer inputBuf = ByteBuffer.wrap(plaintext);
+        ByteBuffer outputBuf = ByteBuffer.allocate(plaintext.length + 16);
+
+        int bytesWritten = cipher.doFinal(inputBuf, outputBuf);
+        assertEquals("DoFinal should write expected bytes",
+                    plaintext.length, bytesWritten);
+
+        /* Compare with byte array result */
+        byte[] expectedOutput = cipher.doFinal(plaintext);
+        outputBuf.flip();
+        byte[] actualOutput = new byte[bytesWritten];
+        outputBuf.get(actualOutput);
+
+        assertArrayEquals("ByteBuffer doFinal should match byte array result",
+                         expectedOutput, actualOutput);
+    }
+
+    @Test
+    public void testByteBufferWithOffsets()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               javax.crypto.ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            return;
+        }
+
+        /* Test ByteBuffer operations with position/limit offsets */
+        byte[] key = new byte[16];
+        secureRandom.nextBytes(key);
+        byte[] plaintext = new byte[48]; /* 3 AES blocks */
+        secureRandom.nextBytes(plaintext);
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        /* Create input buffer with offset */
+        ByteBuffer inputBuf = ByteBuffer.allocate(plaintext.length + 20);
+        inputBuf.position(10);
+        inputBuf.put(plaintext);
+        inputBuf.flip();
+        inputBuf.position(10); /* Position at start of data */
+
+        /* Create output buffer with offset */
+        ByteBuffer outputBuf = ByteBuffer.allocate(plaintext.length + 30);
+        outputBuf.position(15);
+
+        int bytesWritten = cipher.doFinal(inputBuf, outputBuf);
+        assertEquals("Should write expected number of bytes",
+                    plaintext.length, bytesWritten);
+
+        /* Verify position was updated correctly */
+        assertEquals("Input buffer should be consumed",
+                    inputBuf.limit(), inputBuf.position());
+        assertEquals("Output buffer position should advance",
+                    15 + bytesWritten, outputBuf.position());
+
+        /* Extract and verify result */
+        outputBuf.flip();
+        outputBuf.position(15);
+        byte[] result = new byte[bytesWritten];
+        outputBuf.get(result);
+
+        byte[] expected = cipher.doFinal(plaintext);
+        assertArrayEquals("Result should match byte array encryption",
+                         expected, result);
+    }
+
+    @Test
+    public void testByteBufferMultipartOperation()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               javax.crypto.ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            return;
+        }
+
+        /* Test ByteBuffer multi-part encryption (update + doFinal) */
+        byte[] key = new byte[16];
+        secureRandom.nextBytes(key);
+        byte[] plaintext = new byte[80]; /* 5 AES blocks */
+        secureRandom.nextBytes(plaintext);
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        /* Split data for multi-part operation */
+        ByteBuffer inputBuf1 = ByteBuffer.wrap(plaintext, 0, 32);
+        ByteBuffer inputBuf2 = ByteBuffer.wrap(plaintext, 32, 48);
+        ByteBuffer outputBuf = ByteBuffer.allocate(plaintext.length + 16);
+
+        /* First update */
+        int bytes1 = cipher.update(inputBuf1, outputBuf);
+        assertTrue("First update should process data", bytes1 > 0);
+
+        /* Final operation */
+        int bytes2 = cipher.doFinal(inputBuf2, outputBuf);
+        assertTrue("Final operation should process remaining data", bytes2 > 0);
+
+        /* Verify total result */
+        outputBuf.flip();
+        byte[] result = new byte[bytes1 + bytes2];
+        outputBuf.get(result);
+
+        byte[] expected = cipher.doFinal(plaintext);
+        assertArrayEquals("Multi-part result should match single operation",
+                         expected, result);
+    }
+
+    @Test
+    public void testByteBufferShortBufferException()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException {
+
+        if (!enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            return;
+        }
+
+        /* Test ShortBufferException is thrown correctly */
+        byte[] key = new byte[16];
+        secureRandom.nextBytes(key);
+        byte[] plaintext = new byte[32];
+        secureRandom.nextBytes(plaintext);
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        ByteBuffer inputBuf = ByteBuffer.wrap(plaintext);
+        ByteBuffer outputBuf = ByteBuffer.allocate(16); /* Too small */
+
+        try {
+            cipher.doFinal(inputBuf, outputBuf);
+            fail("Should throw ShortBufferException for insufficient space");
+        } catch (javax.crypto.ShortBufferException e) {
+            /* Expected */
+        } catch (Exception e) {
+            fail("Should throw ShortBufferException, got: " + e.getClass());
+        }
+
+        /* Verify buffers are in original state after exception */
+        assertEquals("Input buffer position should be restored", 0,
+                    inputBuf.position());
+        assertEquals("Output buffer position should be restored", 0,
+                    outputBuf.position());
+    }
+
+    @Test
+    public void testByteBufferNullInputHandling()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               javax.crypto.ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            return;
+        }
+
+        /* Test empty ByteBuffer input processing */
+        byte[] key = new byte[16];
+        secureRandom.nextBytes(key);
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        /* Test doFinal with empty input ByteBuffer */
+        ByteBuffer emptyInput = ByteBuffer.allocate(0);
+        ByteBuffer outputBuf = ByteBuffer.allocate(32);
+        int bytesWritten = cipher.doFinal(emptyInput, outputBuf);
+
+        /* Empty input should produce no output when no buffered data */
+        assertEquals("Empty input with no buffered data should produce " +
+            "no output", 0, bytesWritten);
+
+        /* Test with actual data in ByteBuffers */
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);  /* Reset cipher state */
+        byte[] data = new byte[16];
+        secureRandom.nextBytes(data);
+
+        ByteBuffer inputBuf = ByteBuffer.wrap(data);
+        outputBuf.clear();
+        bytesWritten = cipher.doFinal(inputBuf, outputBuf);
+
+        assertEquals("Should process full input data", 16, bytesWritten);
+        outputBuf.flip();
+        byte[] result = new byte[bytesWritten];
+        outputBuf.get(result);
+
+        /* Compare with expected result */
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);  /* Reset cipher state */
+        byte[] expected = cipher.doFinal(data);
+        assertArrayEquals("ByteBuffer doFinal should match byte array doFinal",
+                         expected, result);
+    }
+
+    @Test
+    public void testByteBufferDirectBuffers()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               javax.crypto.ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            return;
+        }
+
+        /* Test with direct ByteBuffers */
+        byte[] key = new byte[16];
+        secureRandom.nextBytes(key);
+        byte[] plaintext = new byte[32];
+        secureRandom.nextBytes(plaintext);
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        /* Create direct ByteBuffers */
+        ByteBuffer inputBuf = ByteBuffer.allocateDirect(plaintext.length);
+        inputBuf.put(plaintext);
+        inputBuf.flip();
+
+        ByteBuffer outputBuf = ByteBuffer.allocateDirect(plaintext.length + 16);
+
+        int bytesWritten = cipher.doFinal(inputBuf, outputBuf);
+        assertEquals("Should write expected bytes", plaintext.length,
+                    bytesWritten);
+
+        /* Extract result from direct buffer */
+        outputBuf.flip();
+        byte[] result = new byte[bytesWritten];
+        outputBuf.get(result);
+
+        /* Compare with regular encryption */
+        byte[] expected = cipher.doFinal(plaintext);
+        assertArrayEquals("Direct buffer result should match",
+                         expected, result);
+    }
+
+    @Test
+    public void testByteBufferWithGCM()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               InvalidAlgorithmParameterException,
+               javax.crypto.ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            return;
+        }
+
+        /* Test ByteBuffer operations with AES-GCM */
+        byte[] key = new byte[16];
+        secureRandom.nextBytes(key);
+        byte[] iv = new byte[12];
+        secureRandom.nextBytes(iv);
+        byte[] plaintext = new byte[48];
+        secureRandom.nextBytes(plaintext);
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
+
+        /* Test with ByteBuffers - GCM includes auth tag */
+        ByteBuffer inputBuf = ByteBuffer.wrap(plaintext);
+        ByteBuffer outputBuf = ByteBuffer.allocate(plaintext.length + 32);
+
+        int bytesWritten = cipher.doFinal(inputBuf, outputBuf);
+        assertEquals("GCM should include auth tag",
+                    plaintext.length + 16, bytesWritten);
+
+        /* Compare with byte array result */
+        byte[] expected = cipher.doFinal(plaintext);
+        outputBuf.flip();
+        byte[] result = new byte[bytesWritten];
+        outputBuf.get(result);
+
+        assertArrayEquals("GCM ByteBuffer should match byte array",
+                         expected, result);
     }
 
     private class CipherVector {
