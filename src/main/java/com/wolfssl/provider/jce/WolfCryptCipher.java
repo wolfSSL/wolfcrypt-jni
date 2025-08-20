@@ -362,11 +362,24 @@ public class WolfCryptCipher extends CipherSpi {
     protected int engineGetOutputSize(int inputLen)
         throws IllegalStateException {
 
-        int size = 0;
+        int outSize = 0;
+        int totalSz = inputLen;
+        int totalBlocks = 0;
 
         if (!this.cipherInitialized) {
             throw new IllegalStateException(
                 "Cipher has not been initialized yet");
+        }
+
+        /* Add buffered data size to input length, calculate total blocks */
+        if (isBlockCipher()) {
+            if (buffered != null && buffered.length > 0) {
+                totalSz = inputLen + buffered.length;
+                totalBlocks = totalSz / blockSize;
+                totalSz = totalBlocks * blockSize;
+            } else {
+                totalBlocks = inputLen / blockSize;
+            }
         }
 
         switch (this.cipherType) {
@@ -377,22 +390,28 @@ public class WolfCryptCipher extends CipherSpi {
                          * to the end of ciphertext, When decrypting, output
                          * size will have it taken off. */
                         if (this.direction == OpMode.WC_ENCRYPT) {
-                            size = inputLen + this.gcmTagLen;
+                            outSize = totalSz + this.gcmTagLen;
                         }
                         else {
-                            size = inputLen - this.gcmTagLen;
+                            outSize = totalSz - this.gcmTagLen;
                         }
-                        size = Math.max(size, 0);
+                        outSize = Math.max(outSize, 0);
                     }
                     else {
                         /* wolfCrypt expects input to be padded by application
-                         * to block size, thus output is same size as input */
-                        size = inputLen;
+                         * to block size, thus output is same size as input.
+                         * If we have buffered data, and that plus inputLen
+                         * makes another block, we will have one more block of
+                         * data. */
+                        outSize = totalSz;
                     }
                 }
                 else if (paddingType == PaddingType.WC_PKCS5) {
-                    size = buffered.length + inputLen;
-                    size += Aes.getPKCS7PadSize(size, Aes.BLOCK_SIZE);
+                    outSize = inputLen;
+                    if (buffered != null && buffered.length > 0) {
+                        outSize += buffered.length;
+                    }
+                    outSize += Aes.getPKCS7PadSize(outSize, Aes.BLOCK_SIZE);
                 }
                 else {
                     throw new IllegalStateException(
@@ -405,11 +424,14 @@ public class WolfCryptCipher extends CipherSpi {
                 if (paddingType == PaddingType.WC_NONE) {
                     /* wolfCrypt expects input to be padded by application to
                      * block size, thus output is same size as input */
-                    size = inputLen;
+                    outSize = totalSz;
                 }
                 else if (paddingType == PaddingType.WC_PKCS5) {
-                    size = buffered.length + inputLen;
-                    size += Des3.getPKCS7PadSize(size, Des3.BLOCK_SIZE);
+                    outSize = inputLen;
+                    if (buffered != null && buffered.length > 0) {
+                        outSize += buffered.length;
+                    }
+                    outSize += Des3.getPKCS7PadSize(outSize, Des3.BLOCK_SIZE);
                 }
                 else {
                     throw new IllegalStateException(
@@ -419,11 +441,11 @@ public class WolfCryptCipher extends CipherSpi {
                 break;
 
             case WC_RSA:
-                size = this.rsa.getEncryptSize();
+                outSize = this.rsa.getEncryptSize();
                 break;
         }
 
-        return size;
+        return outSize;
     }
 
     @Override
@@ -887,7 +909,8 @@ public class WolfCryptCipher extends CipherSpi {
              this.paddingType != PaddingType.WC_PKCS5)) &&
             (totalSz % blockSize != 0)) {
             throw new IllegalBlockSizeException(
-                    "Input length not multiple of " + blockSize + " bytes");
+                "Input length (" + totalSz + ") not multiple of " +
+                blockSize + " bytes. (" + buffered.length +" buffered)");
         }
 
         /* do final encrypt over totalSz */
@@ -1113,6 +1136,13 @@ public class WolfCryptCipher extends CipherSpi {
         if (tmpOut == null) {
             return 0;
         }
+
+        if (output.length - outputOffset < tmpOut.length) {
+            throw new ShortBufferException(
+                "Output buffer too small, need " + tmpOut.length +
+                " bytes, got " + (output.length - outputOffset));
+        }
+
         System.arraycopy(tmpOut, 0, output, outputOffset, tmpOut.length);
 
         return tmpOut.length;
@@ -1139,7 +1169,8 @@ public class WolfCryptCipher extends CipherSpi {
                 "Cipher has not been initialized yet");
         }
 
-        log("final (offset: " + inputOffset + ", len: " + inputLen + ")");
+        log("final (offset: " + inputOffset + ", len: " + inputLen +
+            ", buffered: " + buffered.length + ")");
 
         return wolfCryptFinal(input, inputOffset, inputLen);
     }
@@ -1158,9 +1189,16 @@ public class WolfCryptCipher extends CipherSpi {
         }
 
         log("final (in offset: " + inputOffset + ", len: " +
-            inputLen + ", out offset: " + outputOffset + ")");
+            inputLen + ", out offset: " + outputOffset +
+            ", buffered: " + buffered.length + ")");
 
         tmpOut = wolfCryptFinal(input, inputOffset, inputLen);
+
+        if (output.length - outputOffset < tmpOut.length) {
+            throw new ShortBufferException(
+                "Output buffer too small, need " + tmpOut.length +
+                " bytes, got " + (output.length - outputOffset));
+        }
 
         System.arraycopy(tmpOut, 0, output, outputOffset, tmpOut.length);
 
