@@ -77,6 +77,7 @@ public class WolfCryptCipherTest {
         "AES/CCM/NoPadding",
         "AES/CTR/NoPadding",
         "AES/ECB/NoPadding",
+        "AES", /* maps to AES/ECB/PKCS5Padding */
         "AES/ECB/PKCS5Padding",
         "AES/GCM/NoPadding",
         "AES/OFB/NoPadding",
@@ -137,6 +138,7 @@ public class WolfCryptCipherTest {
         expectedBlockSizes.put("AES/CCM/NoPadding", 16);
         expectedBlockSizes.put("AES/CTR/NoPadding", 16);
         expectedBlockSizes.put("AES/ECB/NoPadding", 16);
+        expectedBlockSizes.put("AES", 16);
         expectedBlockSizes.put("AES/ECB/PKCS5Padding", 16);
         expectedBlockSizes.put("AES/GCM/NoPadding", 16);
         expectedBlockSizes.put("AES/OFB/NoPadding", 16);
@@ -758,6 +760,63 @@ public class WolfCryptCipherTest {
         plain = ciph.doFinal(cipher);
 
         assertArrayEquals(plain, input);
+    }
+
+    /* Cipher.getInstance("AES") is just AES/ECB/PKCS5Padding, so we
+     * do one test that here. */
+    @Test
+    public void testAesGeneric()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!FeatureDetect.AesEcbEnabled()) {
+            /* skip if AES is not enabled */
+            return;
+        }
+
+        byte key[] = new byte[] {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+
+        /* Test with data that needs padding.
+         * 12 bytes, needs 4 bytes padding */
+        byte input[] = "Hello World!".getBytes();
+
+        Cipher cipher = Cipher.getInstance("AES", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+
+        /* Test encryption */
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] ciphertext = cipher.doFinal(input);
+
+        /* Ciphertext should be block-aligned (16 bytes) */
+        assertEquals(16, ciphertext.length);
+
+        /* Test decryption */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+
+        assertArrayEquals(input, decrypted);
+
+        /* Test with exact block size data */
+        byte blockSizeInput[] = new byte[16];
+        Arrays.fill(blockSizeInput, (byte)0x41); /* Fill with 'A' */
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] blockCiphertext = cipher.doFinal(blockSizeInput);
+
+        /* Should be 32 bytes (original 16 + 16 bytes padding) */
+        assertEquals(32, blockCiphertext.length);
+
+        cipher.init(Cipher.DECRYPT_MODE, keySpec);
+        byte[] blockDecrypted = cipher.doFinal(blockCiphertext);
+
+        assertArrayEquals(blockSizeInput, blockDecrypted);
     }
 
     @Test
@@ -4338,7 +4397,8 @@ public class WolfCryptCipherTest {
         /* Test all enabled cipher modes that use IVs (exclude RSA and ECB) */
         for (String mode : enabledJCEAlgos) {
             /* Skip modes that don't use IVs */
-            if (mode.startsWith("RSA") || mode.contains("/ECB/")) {
+            if (mode.startsWith("RSA") || mode.contains("/ECB/") ||
+                mode.equals("AES")) {
                 continue;
             }
 
@@ -4367,14 +4427,15 @@ public class WolfCryptCipherTest {
         /* Generate test key */
         if (algorithm.startsWith("AES")) {
             key = new byte[16]; /* AES-128 */
+            keySpec = new SecretKeySpec(key, "AES");
         } else if (algorithm.startsWith("DESede")) {
             key = new byte[24]; /* 3DES */
+            keySpec = new SecretKeySpec(key, "DESede");
         } else {
             return; /* Unsupported algorithm */
         }
 
         secureRandom.nextBytes(key);
-        keySpec = new SecretKeySpec(key, algorithm.split("/")[0]);
 
         /* Generate test data of various sizes to ensure robustness */
         for (int dataSize : testSizes) {
@@ -4398,8 +4459,9 @@ public class WolfCryptCipherTest {
         byte[] ivAfterDecryption;
 
         /* Skip sizes that would cause issues with block ciphers */
-        if ((algorithm.contains("CBC") || algorithm.contains("ECB")) &&
-            algorithm.contains("NoPadding") && (dataSize % 16 != 0)) {
+        if ((algorithm.equals("AES") ||
+            ((algorithm.contains("CBC") || algorithm.contains("ECB")) &&
+            algorithm.contains("NoPadding"))) && (dataSize % 16 != 0)) {
             return; /* Block size must be multiple of 16 for NoPadding */
         }
         if (algorithm.startsWith("DESede") &&
