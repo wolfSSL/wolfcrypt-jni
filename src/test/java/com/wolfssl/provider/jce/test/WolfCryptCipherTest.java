@@ -61,6 +61,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.spec.AlgorithmParameterSpec;
+import java.security.AlgorithmParameters;
 
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Fips;
@@ -4831,6 +4832,441 @@ public class WolfCryptCipherTest {
 
         assertArrayEquals("GCM ByteBuffer should match byte array",
                          expected, result);
+    }
+
+    /*
+     * Test Cipher.getParameters() method for all supported algorithms
+     * and modes. This method calls engineGetParameters() internally.
+     */
+    @Test
+    public void testGetParameters()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               InvalidKeyException, InvalidAlgorithmParameterException,
+               NoSuchPaddingException {
+
+        if (!FeatureDetect.AesEnabled()) {
+            /* skip if AES is not enabled */
+            return;
+        }
+
+        /* Test AES-CBC mode */
+        if (enabledJCEAlgos.contains("AES/CBC/NoPadding")) {
+            testGetParametersAesCbc();
+        }
+
+        /* Test AES-GCM mode */
+        if (enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            testGetParametersAesGcm();
+        }
+
+        /* Test AES-CCM mode */
+        if (enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            testGetParametersAesCcm();
+        }
+
+        /* Test AES-ECB modes */
+        if (enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            testGetParametersAesEcb();
+        }
+
+        /* Test AES-CTR mode */
+        if (enabledJCEAlgos.contains("AES/CTR/NoPadding")) {
+            testGetParametersAesCtr();
+        }
+
+        /* Test AES-OFB mode */
+        if (enabledJCEAlgos.contains("AES/OFB/NoPadding")) {
+            testGetParametersAesOfb();
+        }
+
+        /* Test 3DES-CBC mode */
+        if (enabledJCEAlgos.contains("DESede/CBC/NoPadding")) {
+            testGetParametersDesEdeCbc();
+        }
+
+        /* Test RSA mode */
+        if (enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            testGetParametersRsa();
+        }
+    }
+
+    private void testGetParametersAesCbc()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               InvalidKeyException, InvalidAlgorithmParameterException,
+               NoSuchPaddingException {
+
+        byte[] keyBytes = new byte[16];
+        byte[] ivBytes = new byte[16];
+        secureRandom.nextBytes(keyBytes);
+        secureRandom.nextBytes(ivBytes);
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        IvParameterSpec iv = new IvParameterSpec(ivBytes);
+
+        /* Test AES/CBC/NoPadding */
+        if (enabledJCEAlgos.contains("AES/CBC/NoPadding")) {
+            Cipher cipher =
+                Cipher.getInstance("AES/CBC/NoPadding", jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+
+            AlgorithmParameters params = cipher.getParameters();
+            assertNotNull("AES/CBC/NoPadding should return AlgorithmParameters",
+                params);
+            assertEquals("Algorithm should be AES", "AES",
+                params.getAlgorithm());
+
+            /* Verify we can extract the IV from parameters */
+            try {
+                IvParameterSpec extractedSpec = params.getParameterSpec(
+                    IvParameterSpec.class);
+                assertNotNull("Should be able to extract IvParameterSpec",
+                    extractedSpec);
+                assertArrayEquals("IV should match", ivBytes,
+                    extractedSpec.getIV());
+
+            } catch (java.security.spec.InvalidParameterSpecException e) {
+                fail("Should be able to extract IvParameterSpec: " +
+                     e.getMessage());
+            }
+        }
+
+        /* Test AES/CBC/PKCS5Padding */
+        if (enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding",
+                                              jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+
+            AlgorithmParameters params = cipher.getParameters();
+            assertNotNull("AES/CBC/PKCS5Padding should return " +
+                "AlgorithmParameters", params);
+            assertEquals("Algorithm should be AES", "AES",
+                params.getAlgorithm());
+        }
+    }
+
+    private void testGetParametersAesGcm()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               InvalidKeyException, InvalidAlgorithmParameterException,
+               NoSuchPaddingException {
+
+        byte[] keyBytes = new byte[16];
+        byte[] ivBytes = new byte[12]; /* 96-bit IV for GCM */
+        secureRandom.nextBytes(keyBytes);
+        secureRandom.nextBytes(ivBytes);
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, ivBytes);
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, key, gcmSpec);
+
+        AlgorithmParameters params = cipher.getParameters();
+        assertNotNull("AES/GCM/NoPadding should return AlgorithmParameters",
+            params);
+        assertEquals("Algorithm should be GCM", "GCM", params.getAlgorithm());
+
+        /* Verify we can extract the GCMParameterSpec from parameters */
+        try {
+            GCMParameterSpec extractedSpec = params.getParameterSpec(
+                GCMParameterSpec.class);
+            assertNotNull("Should be able to extract GCMParameterSpec",
+                extractedSpec);
+            assertArrayEquals("IV should match", ivBytes,
+                extractedSpec.getIV());
+            assertEquals("Tag length should match", 128,
+                extractedSpec.getTLen());
+
+        } catch (java.security.spec.InvalidParameterSpecException e) {
+            fail("Should be able to extract GCMParameterSpec: " +
+                 e.getMessage());
+        }
+    }
+
+    private void testGetParametersAesCcm()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               InvalidKeyException, InvalidAlgorithmParameterException,
+               NoSuchPaddingException {
+
+        byte[] keyBytes = new byte[16];
+        byte[] nonceBytes = new byte[11]; /* 88-bit nonce for CCM */
+        secureRandom.nextBytes(keyBytes);
+        secureRandom.nextBytes(nonceBytes);
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        /* Use GCMParameterSpec for CCM compatibility */
+        GCMParameterSpec ccmSpec = new GCMParameterSpec(128, nonceBytes);
+
+        Cipher cipher = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, key, ccmSpec);
+
+        AlgorithmParameters params = cipher.getParameters();
+        assertNotNull("AES/CCM/NoPadding should return AlgorithmParameters",
+            params);
+        assertEquals("Algorithm should be GCM (CCM compatibility)", "GCM",
+                    params.getAlgorithm());
+
+        /* Verify we can extract the GCMParameterSpec from parameters */
+        try {
+            GCMParameterSpec extractedSpec = params.getParameterSpec(
+                GCMParameterSpec.class);
+            assertNotNull("Should be able to extract GCMParameterSpec",
+                extractedSpec);
+            assertArrayEquals("Nonce should match", nonceBytes,
+                extractedSpec.getIV());
+            assertEquals("Tag length should match", 128,
+                extractedSpec.getTLen());
+
+        } catch (java.security.spec.InvalidParameterSpecException e) {
+            fail("Should be able to extract GCMParameterSpec: " +
+                 e.getMessage());
+        }
+    }
+
+    private void testGetParametersAesEcb()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               InvalidKeyException, NoSuchPaddingException {
+
+        byte[] keyBytes = new byte[16];
+        secureRandom.nextBytes(keyBytes);
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+
+        /* Test AES/ECB/NoPadding */
+        if (enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            Cipher cipher =
+                Cipher.getInstance("AES/ECB/NoPadding", jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+
+            AlgorithmParameters params = cipher.getParameters();
+            assertNull("AES/ECB/NoPadding should return null " +
+                "(no parameters)", params);
+        }
+
+        /* Test AES/ECB/PKCS5Padding */
+        if (enabledJCEAlgos.contains("AES/ECB/PKCS5Padding")) {
+            Cipher cipher =
+                Cipher.getInstance("AES/ECB/PKCS5Padding", jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+
+            AlgorithmParameters params = cipher.getParameters();
+            assertNull("AES/ECB/PKCS5Padding should return null " +
+                "(no parameters)", params);
+        }
+    }
+
+    private void testGetParametersAesCtr()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               InvalidKeyException, InvalidAlgorithmParameterException,
+               NoSuchPaddingException {
+
+        byte[] keyBytes = new byte[16];
+        byte[] ivBytes = new byte[16]; /* 128-bit IV for CTR */
+        secureRandom.nextBytes(keyBytes);
+        secureRandom.nextBytes(ivBytes);
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        IvParameterSpec iv = new IvParameterSpec(ivBytes);
+
+        Cipher cipher = Cipher.getInstance("AES/CTR/NoPadding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+
+        AlgorithmParameters params = cipher.getParameters();
+        assertNotNull("AES/CTR/NoPadding should return AlgorithmParameters",
+            params);
+        assertEquals("Algorithm should be AES", "AES", params.getAlgorithm());
+
+        /* Verify we can extract the IV from parameters */
+        try {
+            IvParameterSpec extractedSpec = params.getParameterSpec(
+                IvParameterSpec.class);
+            assertNotNull("Should be able to extract IvParameterSpec",
+                extractedSpec);
+            assertArrayEquals("IV should match", ivBytes,
+                extractedSpec.getIV());
+
+        } catch (java.security.spec.InvalidParameterSpecException e) {
+            fail("Should be able to extract IvParameterSpec: " +
+                 e.getMessage());
+        }
+    }
+
+    private void testGetParametersAesOfb()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               InvalidKeyException, InvalidAlgorithmParameterException,
+               NoSuchPaddingException {
+
+        byte[] keyBytes = new byte[16];
+        byte[] ivBytes = new byte[16]; /* 128-bit IV for OFB */
+        secureRandom.nextBytes(keyBytes);
+        secureRandom.nextBytes(ivBytes);
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        IvParameterSpec iv = new IvParameterSpec(ivBytes);
+
+        Cipher cipher = Cipher.getInstance("AES/OFB/NoPadding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+
+        AlgorithmParameters params = cipher.getParameters();
+        assertNotNull("AES/OFB/NoPadding should return AlgorithmParameters",
+            params);
+        assertEquals("Algorithm should be AES", "AES", params.getAlgorithm());
+
+        /* Verify we can extract the IV from parameters */
+        try {
+            IvParameterSpec extractedSpec = params.getParameterSpec(
+                IvParameterSpec.class);
+            assertNotNull("Should be able to extract IvParameterSpec",
+                extractedSpec);
+            assertArrayEquals("IV should match", ivBytes,
+                extractedSpec.getIV());
+
+        } catch (java.security.spec.InvalidParameterSpecException e) {
+            fail("Should be able to extract IvParameterSpec: " +
+                 e.getMessage());
+        }
+    }
+
+    private void testGetParametersDesEdeCbc()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               InvalidKeyException, InvalidAlgorithmParameterException,
+               NoSuchPaddingException {
+
+        byte[] keyBytes = new byte[24]; /* 3DES key is 192 bits (24 bytes) */
+        byte[] ivBytes = new byte[8];   /* 3DES IV is 64 bits (8 bytes) */
+        secureRandom.nextBytes(keyBytes);
+        secureRandom.nextBytes(ivBytes);
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "DESede");
+        IvParameterSpec iv = new IvParameterSpec(ivBytes);
+
+        Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+
+        AlgorithmParameters params = cipher.getParameters();
+        assertNotNull("DESede/CBC/NoPadding should return " +
+            "AlgorithmParameters", params);
+        assertEquals("Algorithm should be DESede", "DESede",
+            params.getAlgorithm());
+
+        /* Verify we can extract the IV from parameters */
+        try {
+            IvParameterSpec extractedSpec = params.getParameterSpec(
+                IvParameterSpec.class);
+            assertNotNull("Should be able to extract IvParameterSpec",
+                extractedSpec);
+            assertArrayEquals("IV should match", ivBytes,
+                extractedSpec.getIV());
+
+        } catch (java.security.spec.InvalidParameterSpecException e) {
+            fail("Should be able to extract IvParameterSpec: " +
+                 e.getMessage());
+        }
+    }
+
+    private void testGetParametersRsa()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               InvalidKeyException, NoSuchPaddingException {
+
+        /* Generate RSA key pair for testing */
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        KeyPair keyPair = kpg.generateKeyPair();
+
+        /* Test RSA/ECB/PKCS1Padding with public key */
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, keyPair.getPublic());
+
+        java.security.AlgorithmParameters params = cipher.getParameters();
+        assertNull("RSA/ECB/PKCS1Padding should return null (no parameters)",
+            params);
+
+        /* Test RSA/ECB/PKCS1Padding with private key */
+        cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        cipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
+
+        params = cipher.getParameters();
+        assertNull("RSA/ECB/PKCS1Padding should return null (no parameters)",
+            params);
+
+        /* Test RSA (default) with public key */
+        if (enabledJCEAlgos.contains("RSA")) {
+            cipher = Cipher.getInstance("RSA", jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, keyPair.getPublic());
+
+            params = cipher.getParameters();
+            assertNull("RSA should return null (no parameters)", params);
+        }
+    }
+
+    /*
+     * Test that getParameters() returns null when cipher is not initialized
+     */
+    @Test
+    public void testGetParametersUninitializedCipher()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               NoSuchPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/CBC/NoPadding")) {
+            /* skip if AES is not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding", jceProvider);
+        /* Don't initialize the cipher */
+
+        java.security.AlgorithmParameters params = cipher.getParameters();
+        assertNull("Uninitialized cipher should return null parameters",
+            params);
+    }
+
+    /*
+     * Test getParameters() after cipher operations (encrypt/decrypt)
+     */
+    @Test
+    public void testGetParametersAfterCipherOperations()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               InvalidKeyException, InvalidAlgorithmParameterException,
+               NoSuchPaddingException, IllegalBlockSizeException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            /* skip if AES/CBC/PKCS5Padding is not enabled */
+            return;
+        }
+
+        byte[] keyBytes = new byte[16];
+        byte[] ivBytes = new byte[16];
+        byte[] plaintext = "Test message for cipher operations".getBytes();
+        secureRandom.nextBytes(keyBytes);
+        secureRandom.nextBytes(ivBytes);
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        IvParameterSpec iv = new IvParameterSpec(ivBytes);
+
+        /* Test after encryption */
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+
+        /* Encrypt data */
+        byte[] ciphertext = cipher.doFinal(plaintext);
+
+        /* getParameters() should still work after encryption */
+        AlgorithmParameters params = cipher.getParameters();
+        assertNotNull("Should return parameters after encryption", params);
+        assertEquals("Algorithm should be AES", "AES", params.getAlgorithm());
+
+        /* Test after decryption */
+        cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+
+        /* getParameters() should still work after decryption */
+        params = cipher.getParameters();
+        assertNotNull("Should return parameters after decryption", params);
+        assertEquals("Algorithm should be AES", "AES", params.getAlgorithm());
+
+        /* Verify decryption worked correctly */
+        assertArrayEquals("Decrypted text should match original", plaintext,
+            decrypted);
     }
 
     private class CipherVector {

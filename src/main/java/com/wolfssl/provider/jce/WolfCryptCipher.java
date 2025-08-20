@@ -458,8 +458,53 @@ public class WolfCryptCipher extends CipherSpi {
 
     @Override
     protected AlgorithmParameters engineGetParameters() {
-        /* not currently supported by wolfCrypt JCE provider */
-        return null;
+
+        AlgorithmParameters params = null;
+
+        try {
+            switch (this.cipherMode) {
+                case WC_GCM:
+                case WC_CCM:
+                    /* For AES-GCM/CCM, return GCM parameters */
+                    params = AlgorithmParameters.getInstance("GCM");
+                    if (this.iv != null && this.gcmTagLen > 0) {
+                        GCMParameterSpec gcmSpec = new GCMParameterSpec(
+                            this.gcmTagLen * 8, this.iv);
+                        params.init(gcmSpec);
+                    }
+                    break;
+
+                case WC_CBC:
+                case WC_CTR:
+                case WC_OFB:
+                    if (this.iv != null) {
+                        if (this.cipherType == CipherType.WC_AES) {
+                            params = AlgorithmParameters.getInstance("AES");
+                        }
+                        else if (this.cipherType == CipherType.WC_DES3) {
+                            params = AlgorithmParameters.getInstance("DESede");
+                        }
+
+                        if (params != null) {
+                            IvParameterSpec ivSpec =
+                                new IvParameterSpec(this.iv);
+                            params.init(ivSpec);
+                        }
+                    }
+                    break;
+
+                /* ECB mode doesn't have parameters to return */
+                case WC_ECB:
+                    break;
+            }
+
+        } catch (NoSuchAlgorithmException |
+                 InvalidParameterSpecException e) {
+            /* Return null if parameter creation fails */
+            params = null;
+        }
+
+        return params;
     }
 
     private void wolfCryptSetDirection(int opmode)
