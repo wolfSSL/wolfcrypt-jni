@@ -42,6 +42,7 @@ import java.security.spec.InvalidParameterSpecException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidParameterException;
 import java.security.InvalidKeyException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -522,8 +523,8 @@ public class WolfCryptCipher extends CipherSpi {
                 break;
 
             default:
-                throw new InvalidKeyException(
-                    "Cipher opmode must be ENCRYPT_MODE or DECRPYT_MODE");
+                throw new InvalidParameterException(
+                    "Cipher opmode must be ENCRYPT_MODE or DECRYPT_MODE");
         }
     }
 
