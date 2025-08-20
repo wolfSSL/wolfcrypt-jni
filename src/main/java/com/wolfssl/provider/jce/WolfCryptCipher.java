@@ -739,15 +739,17 @@ public class WolfCryptCipher extends CipherSpi {
             AlgorithmParameters params, SecureRandom random)
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
-        AlgorithmParameterSpec spec;
+        AlgorithmParameterSpec spec = null;
 
         try {
 
-            if (this.cipherMode == CipherMode.WC_GCM) {
-                spec = params.getParameterSpec(GCMParameterSpec.class);
-            }
-            else {
-                spec = params.getParameterSpec(IvParameterSpec.class);
+            if (params != null) {
+                if (this.cipherMode == CipherMode.WC_GCM) {
+                    spec = params.getParameterSpec(GCMParameterSpec.class);
+                }
+                else {
+                    spec = params.getParameterSpec(IvParameterSpec.class);
+                }
             }
 
             log("initialized with key and AlgorithmParameters");
@@ -1024,12 +1026,14 @@ public class WolfCryptCipher extends CipherSpi {
 
                 /* strip PKCS#5/PKCS#7 padding if required,
                  * CCM, CTR and OFB modes do not use padding */
-                if (this.direction == OpMode.WC_DECRYPT &&
-                    this.paddingType == PaddingType.WC_PKCS5 &&
-                    cipherMode != CipherMode.WC_CCM &&
-                    cipherMode != CipherMode.WC_CTR &&
-                    cipherMode != CipherMode.WC_OFB) {
-                    tmpOut = Aes.unPadPKCS7(tmpOut, Aes.BLOCK_SIZE);
+                if (tmpOut != null && tmpOut.length > 0) {
+                    if (this.direction == OpMode.WC_DECRYPT &&
+                        this.paddingType == PaddingType.WC_PKCS5 &&
+                        cipherMode != CipherMode.WC_CCM &&
+                        cipherMode != CipherMode.WC_CTR &&
+                        cipherMode != CipherMode.WC_OFB) {
+                        tmpOut = Aes.unPadPKCS7(tmpOut, Aes.BLOCK_SIZE);
+                    }
                 }
 
                 break;
@@ -1041,9 +1045,11 @@ public class WolfCryptCipher extends CipherSpi {
                 tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
 
                 /* strip PKCS#5/PKCS#7 padding if required */
-                if (this.direction == OpMode.WC_DECRYPT &&
-                    this.paddingType == PaddingType.WC_PKCS5) {
-                    tmpOut = Des3.unPadPKCS7(tmpOut, Des3.BLOCK_SIZE);
+                if (tmpOut != null && tmpOut.length > 0) {
+                    if (this.direction == OpMode.WC_DECRYPT &&
+                        this.paddingType == PaddingType.WC_PKCS5) {
+                        tmpOut = Des3.unPadPKCS7(tmpOut, Des3.BLOCK_SIZE);
+                    }
                 }
 
                 break;
