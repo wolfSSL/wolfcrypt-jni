@@ -61,6 +61,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.AlgorithmParameters;
+import java.security.InvalidParameterException;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.AlgorithmParameters;
 
@@ -191,6 +192,35 @@ public class WolfCryptCipherTest {
                 fail("Expected Cipher block size did not match, " +
                         "algo = " + enabledJCEAlgos.get(i));
             }
+        }
+    }
+
+    @Test
+    public void testAesInvalidModeThrowsInvalidParameterException()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        Cipher cipher;
+
+        try {
+            cipher = Cipher.getInstance("AES/CBC/NoPadding", jceProvider);
+        } catch (NoSuchAlgorithmException e) {
+            /* skip if AES-CBC is not enabled */
+            return;
+        }
+
+        SecretKeySpec keySpec = new SecretKeySpec(new byte[16], "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(new byte[16]);
+
+        int invalidMode = 100;
+
+        try {
+            cipher.init(invalidMode, keySpec, ivSpec);
+            fail("Cipher.init() with invalid mode should throw " +
+                 "InvalidParameterException");
+        } catch (InvalidParameterException e) {
+            /* expected */
         }
     }
 
