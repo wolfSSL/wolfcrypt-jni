@@ -107,7 +107,7 @@ The JCE provider currently supports the following algorithms:
         AES/CCM/NoPadding
         AES/CTR/NoPadding
         AES/ECB/NoPadding
-        AES/ECB/PKCS5Padding
+        AES/ECB/PKCS5Padding (aliased also as: AES)
         AES/GCM/NoPadding
         AES/OFB/NoPadding
         DESede/CBC/NoPadding

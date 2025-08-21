@@ -281,6 +281,13 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESECBNoPadding");
             put("Cipher.AES/ECB/PKCS5Padding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESECBPKCS5Padding");
+
+            /* SunJCE and Bouncy Castle alias AES to AES/ECB/PKCS5Padding,
+             * we do the same here for compatibility. */
+            put("Cipher.AES",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESECBPKCS5Padding");
+            put("Cipher.AES SupportedModes", "ECB");
+            put("Cipher.AES SupportedPaddings", "NoPadding, PKCS5Padding");
         }
         if (FeatureDetect.AesCtrEnabled()) {
             put("Cipher.AES/CTR/NoPadding",
