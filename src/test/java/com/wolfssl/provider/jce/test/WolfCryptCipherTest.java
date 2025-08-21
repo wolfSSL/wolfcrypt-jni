@@ -60,6 +60,7 @@ import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.AlgorithmParameters;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.AlgorithmParameters;
 
@@ -5310,6 +5311,52 @@ public class WolfCryptCipherTest {
 
         public byte[] getAAD() {
             return this.aad;
+        }
+    }
+
+    /**
+     * Test for regression of NPE when AlgorithmParameters is null.
+     */
+    @Test
+    public void testNullAlgorithmParametersNPERegression()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException, IllegalBlockSizeException,
+               BadPaddingException {
+
+        Cipher c;
+        SecretKeySpec key = new SecretKeySpec(new byte[16], "AES");
+
+        /* Test AES/ECB/PKCS5Padding - mode that doesn't require IV */
+        if (enabledJCEAlgos.contains("AES/ECB/PKCS5Padding")) {
+            c = Cipher.getInstance("AES/ECB/PKCS5Padding", jceProvider);
+            c.init(Cipher.ENCRYPT_MODE, key);
+
+            /* Get parameters (may be null for ECB mode) */
+            AlgorithmParameters params = c.getParameters();
+
+            /* This should not throw NPE even if params is null */
+            c.init(Cipher.DECRYPT_MODE, key, params);
+
+            /* Should be able to call doFinal with empty buffer */
+            byte[] result = c.doFinal(new byte[0]);
+            assertNotNull("doFinal should not return null", result);
+        }
+
+        /* Test AES/CBC/PKCS5Padding - mode that has parameters */
+        if (enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            c = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+            c.init(Cipher.ENCRYPT_MODE, key);
+
+            /* Get parameters (should contain IV for CBC mode) */
+            AlgorithmParameters params = c.getParameters();
+
+            /* This should not throw NPE */
+            c.init(Cipher.DECRYPT_MODE, key, params);
+
+            /* Should be able to call doFinal with empty buffer */
+            byte[] result = c.doFinal(new byte[0]);
+            assertNotNull("doFinal should not return null", result);
         }
     }
 }
