@@ -5451,5 +5451,193 @@ public class WolfCryptCipherTest {
             assertNotNull("doFinal should not return null", result);
         }
     }
+
+    /*
+     * Test AES-GCM cipher reinitalization with getParameters().
+     * This tests where cipher reinitialization after using getParameters()
+     * should properly handle GCM mode with correct tag length.
+     */
+    @Test
+    public void testAESGCMReinitializationWithGetParameters()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            return;
+        }
+
+        /* Test multiple key sizes */
+        int[] keySizes = {128, 192, 256};
+        for (int keySize : keySizes) {
+            testAESGCMReinitWithKeySize(keySize);
+        }
+    }
+
+    private void testAESGCMReinitWithKeySize(int keySize)
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               InvalidAlgorithmParameterException {
+
+        byte[] key = new byte[keySize / 8];
+        secureRandom.nextBytes(key);
+        byte[] plaintext = "Hello, World! This is a test message.".getBytes();
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+
+        /* First encryption - let cipher generate IV automatically */
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] ciphertext1 = cipher.doFinal(plaintext);
+
+        /* Get parameters after first encryption */
+        AlgorithmParameters params = cipher.getParameters();
+        assertNotNull("GCM should return AlgorithmParameters", params);
+
+        /* Decrypt using getParameters() */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, params);
+        byte[] decrypted1 = cipher.doFinal(ciphertext1);
+        assertArrayEquals("First decryption should match plaintext",
+            plaintext, decrypted1);
+
+        /* Second encryption after reinit */
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] ciphertext2 = cipher.doFinal(plaintext);
+
+        /* Get parameters again */
+        AlgorithmParameters params2 = cipher.getParameters();
+        assertNotNull("GCM should return AlgorithmParameters on reuse",
+            params2);
+
+        /* Decrypt second ciphertext using getParameters() */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, params2);
+        byte[] decrypted2 = cipher.doFinal(ciphertext2);
+        assertArrayEquals("Second decryption should match plaintext",
+            plaintext, decrypted2);
+
+        /* Test multiple reinitializations in sequence */
+        for (int i = 0; i < 5; i++) {
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+            byte[] ctext = cipher.doFinal(plaintext);
+            AlgorithmParameters p = cipher.getParameters();
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, p);
+            byte[] ptext = cipher.doFinal(ctext);
+            assertArrayEquals("Reinit iteration " + i + " should work",
+                plaintext, ptext);
+        }
+    }
+
+    /*
+     * Test AES-GCM with explicit GCMParameterSpec and getParameters() reuse.
+     * This ensures we handle explicit parameter specs correctly.
+     */
+    @Test
+    public void testAESGCMExplicitParamsWithGetParameters()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            return;
+        }
+
+        byte[] key = new byte[16];
+        secureRandom.nextBytes(key);
+        byte[] iv = new byte[12];
+        secureRandom.nextBytes(iv);
+        byte[] plaintext = "Test message for explicit GCM params.".getBytes();
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+
+        /* Test different tag lengths */
+        int[] tagLengths = {96, 104, 112, 120, 128};
+
+        for (int tagLen : tagLengths) {
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(tagLen, iv);
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
+            byte[] ciphertext = cipher.doFinal(plaintext);
+
+            /* Get parameters and verify they contain correct tag length */
+            AlgorithmParameters params = cipher.getParameters();
+            assertNotNull("Should return parameters for tag length " + tagLen,
+                params);
+
+            /* Decrypt using getParameters() */
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, params);
+            byte[] decrypted = cipher.doFinal(ciphertext);
+            assertArrayEquals("Decryption with tag length " + tagLen +
+                " should work", plaintext, decrypted);
+        }
+    }
+
+    /*
+     * Test AES-CCM cipher reinitalization with getParameters().
+     */
+    @Test
+    public void testAESCCMReinitializationWithGetParameters()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            return;
+        }
+
+        /* Test multiple key sizes */
+        int[] keySizes = {128, 192, 256};
+        for (int keySize : keySizes) {
+            testAESCCMReinitWithKeySize(keySize);
+        }
+    }
+
+    private void testAESCCMReinitWithKeySize(int keySize)
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               InvalidAlgorithmParameterException {
+
+        byte[] key = new byte[keySize / 8];
+        secureRandom.nextBytes(key);
+        byte[] plaintext = "Hello CCM mode test!".getBytes();
+
+        Cipher cipher = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+
+        /* CCM uses GCMParameterSpec for Java 8+ compatibility */
+        byte[] iv = new byte[12]; /* CCM IV length */
+        secureRandom.nextBytes(iv);
+
+        /* Use GCMParameterSpec for CCM mode, 128-bit tag */
+        GCMParameterSpec ccmSpec = new GCMParameterSpec(128, iv);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ccmSpec);
+        byte[] ciphertext1 = cipher.doFinal(plaintext);
+
+        /* Get parameters after first encryption */
+        AlgorithmParameters params = cipher.getParameters();
+        assertNotNull("CCM should return AlgorithmParameters", params);
+
+        /* Decrypt using getParameters() */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, params);
+        byte[] decrypted1 = cipher.doFinal(ciphertext1);
+        assertArrayEquals("CCM decryption should match plaintext",
+                         plaintext, decrypted1);
+
+        /* Test reinitializtion sequence */
+        for (int i = 0; i < 3; i++) {
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ccmSpec);
+            byte[] ctext = cipher.doFinal(plaintext);
+            AlgorithmParameters p = cipher.getParameters();
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, p);
+            byte[] ptext = cipher.doFinal(ctext);
+            assertArrayEquals("CCM reinit iteration " + i + " should work",
+                plaintext, ptext);
+        }
+    }
 }
 
