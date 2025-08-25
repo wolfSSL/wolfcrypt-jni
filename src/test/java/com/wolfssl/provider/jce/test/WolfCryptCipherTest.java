@@ -63,6 +63,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.AlgorithmParameters;
 import java.security.InvalidParameterException;
 import java.security.spec.AlgorithmParameterSpec;
+import java.security.spec.InvalidParameterSpecException;
 import java.security.AlgorithmParameters;
 
 import com.wolfssl.wolfcrypt.FeatureDetect;
@@ -5768,11 +5769,15 @@ public class WolfCryptCipherTest {
             byte[] iv = new byte[12];
             GCMParameterSpec invalidSpec = new GCMParameterSpec(-1, iv);
             params.init(invalidSpec);
-            fail("Should throw InvalidParameterSpecException for " +
-                "negative tag length");
+            fail("Should throw Exception for negative tag length");
         } catch (Exception e) {
-            assertTrue("Should be InvalidParameterSpecException",
-                e instanceof java.security.spec.InvalidParameterSpecException);
+            if (e instanceof InvalidParameterSpecException) {
+                /* Expected */
+            } else if (e instanceof IllegalArgumentException) {
+                /* Some JDK versions may throw IllegalArgumentException */
+            } else {
+                fail("Unexpected exception type: " + e.getClass().getName());
+            }
         }
 
         /* Test with non-GCMParameterSpec */
@@ -6034,6 +6039,345 @@ public class WolfCryptCipherTest {
         cipher.init(Cipher.DECRYPT_MODE, keySpec, cipherParams);
         byte[] decrypted2 = cipher.doFinal(ciphertext2);
 
+        assertArrayEquals("Should decrypt correctly with cipher parameters",
+            plaintext, decrypted2);
+    }
+
+    /**
+     * Test AlgorithmParameters.getInstance("AES") basic functionality
+     */
+    @Test
+    public void testAESAlgorithmParametersGetInstance()
+            throws Exception {
+        if (!enabledJCEAlgos.contains("AES")) {
+            /* AES not compiled in */
+            return;
+        }
+
+        /* Test getting instance with "AES" algorithm */
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        assertNotNull("AES AlgorithmParameters should not be null", params);
+        assertEquals("Provider should be wolfJCE", jceProvider,
+            params.getProvider().getName());
+    }
+
+    /**
+     * Test AES AlgorithmParameters initialization with IvParameterSpec
+     */
+    @Test
+    public void testAESAlgorithmParametersInit()
+            throws Exception {
+        if (!enabledJCEAlgos.contains("AES")) {
+            /* AES not compiled in */
+            return;
+        }
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+
+        /* Test with valid IvParameterSpec */
+        byte[] iv = new byte[16];
+        new SecureRandom().nextBytes(iv);
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        params.init(ivSpec);
+
+        /* Get the spec back and verify */
+        IvParameterSpec retrievedSpec =
+            params.getParameterSpec(IvParameterSpec.class);
+        assertNotNull("Retrieved spec should not be null", retrievedSpec);
+        assertArrayEquals("IV should match", iv, retrievedSpec.getIV());
+    }
+
+    /**
+     * Test AES AlgorithmParameters invalid initialization scenarios
+     */
+    @Test
+    public void testAESAlgorithmParametersInvalidInit()
+            throws Exception {
+        if (!enabledJCEAlgos.contains("AES")) {
+            /* AES not compiled in */
+            return;
+        }
+
+        /* Test with null IV - expect NullPointerException */
+        try {
+            AlgorithmParameters params =
+                AlgorithmParameters.getInstance("AES", jceProvider);
+            IvParameterSpec invalidSpec = new IvParameterSpec(null);
+            params.init(invalidSpec);
+            fail("Should throw NullPointerException for null IV");
+        } catch (Exception e) {
+            assertTrue("Should be NullPointerException",
+                e instanceof NullPointerException);
+        }
+
+        /* Test with empty IV */
+        try {
+            AlgorithmParameters params =
+                AlgorithmParameters.getInstance("AES", jceProvider);
+            IvParameterSpec invalidSpec = new IvParameterSpec(new byte[0]);
+            params.init(invalidSpec);
+            fail("Should throw InvalidParameterSpecException for empty IV");
+        } catch (Exception e) {
+            assertTrue("Should be InvalidParameterSpecException",
+                e instanceof InvalidParameterSpecException);
+        }
+
+        /* Test with wrong IV length (not 16 bytes for AES) */
+        try {
+            AlgorithmParameters params =
+                AlgorithmParameters.getInstance("AES", jceProvider);
+            IvParameterSpec invalidSpec = new IvParameterSpec(new byte[12]);
+            params.init(invalidSpec);
+            fail("Should throw InvalidParameterSpecException for " +
+                 "wrong IV length");
+        } catch (Exception e) {
+            assertTrue("Should be InvalidParameterSpecException",
+                e instanceof InvalidParameterSpecException);
+        }
+
+        /* Test with non-IvParameterSpec */
+        try {
+            AlgorithmParameters params =
+                AlgorithmParameters.getInstance("AES", jceProvider);
+            GCMParameterSpec invalidSpec = new GCMParameterSpec(128,
+                new byte[16]);
+            params.init(invalidSpec);
+            fail("Should throw InvalidParameterSpecException for " +
+                 "non-IvParameterSpec");
+        } catch (Exception e) {
+            assertTrue("Should be InvalidParameterSpecException",
+                e instanceof InvalidParameterSpecException);
+        }
+    }
+
+    /**
+     * Test AES AlgorithmParameters getParameterSpec functionality
+     */
+    @Test
+    public void testAESAlgorithmParametersGetParameterSpec()
+            throws Exception {
+        if (!enabledJCEAlgos.contains("AES")) {
+            /* AES not compiled in */
+            return;
+        }
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        byte[] iv = new byte[16];
+        new SecureRandom().nextBytes(iv);
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        params.init(ivSpec);
+
+        /* Test getting IvParameterSpec */
+        IvParameterSpec retrievedSpec =
+            params.getParameterSpec(IvParameterSpec.class);
+        assertNotNull("Should return IvParameterSpec", retrievedSpec);
+        assertArrayEquals("IV should match original", iv,
+            retrievedSpec.getIV());
+
+        /* Test getting AlgorithmParameterSpec (parent class) */
+        AlgorithmParameterSpec genericSpec =
+            params.getParameterSpec(AlgorithmParameterSpec.class);
+        assertNotNull("Should return AlgorithmParameterSpec", genericSpec);
+        assertTrue("Should be instance of IvParameterSpec",
+            genericSpec instanceof IvParameterSpec);
+
+        /* Test getting unsupported parameter spec */
+        try {
+            params.getParameterSpec(GCMParameterSpec.class);
+            fail("Should throw InvalidParameterSpecException for " +
+                 "unsupported spec");
+        } catch (Exception e) {
+            assertTrue("Should be InvalidParameterSpecException",
+                e instanceof InvalidParameterSpecException);
+        }
+
+        /* Test getting spec from uninitialized parameters */
+        try {
+            AlgorithmParameters uninitParams =
+                AlgorithmParameters.getInstance("AES", jceProvider);
+            uninitParams.getParameterSpec(IvParameterSpec.class);
+            fail("Should throw InvalidParameterSpecException for " +
+                 "uninitialized parameters");
+        } catch (Exception e) {
+            assertTrue("Should be InvalidParameterSpecException",
+                e instanceof InvalidParameterSpecException);
+        }
+    }
+
+    /**
+     * Test AES AlgorithmParameters encoded operations (should be unsupported)
+     */
+    @Test
+    public void testAESAlgorithmParametersEncodedOperations()
+            throws Exception {
+        if (!enabledJCEAlgos.contains("AES")) {
+            /* AES not compiled in */
+            return;
+        }
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+
+        /* Test encoded parameter operations (should be unsupported) */
+        try {
+            params.init(new byte[16]);
+            fail("Should throw IOException for encoded init");
+        } catch (Exception e) {
+            assertTrue("Should be IOException",
+                e instanceof java.io.IOException);
+        }
+
+        try {
+            params.init(new byte[16], "ASN.1");
+            fail("Should throw IOException for encoded init with format");
+        } catch (Exception e) {
+            assertTrue("Should be IOException",
+                e instanceof java.io.IOException);
+        }
+
+        /* Initialize properly first */
+        byte[] iv = new byte[16];
+        new SecureRandom().nextBytes(iv);
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        params.init(ivSpec);
+
+        /* Test encoded getters */
+        try {
+            params.getEncoded();
+            fail("Should throw IOException for getEncoded");
+        } catch (Exception e) {
+            assertTrue("Should be IOException",
+                e instanceof java.io.IOException);
+        }
+
+        try {
+            params.getEncoded("ASN.1");
+            fail("Should throw IOException for getEncoded with format");
+        } catch (Exception e) {
+            assertTrue("Should be IOException",
+                e instanceof java.io.IOException);
+        }
+    }
+
+    /**
+     * Test AES AlgorithmParameters toString functionality
+     */
+    @Test
+    public void testAESAlgorithmParametersToString()
+            throws Exception {
+        if (!enabledJCEAlgos.contains("AES")) {
+            /* AES not compiled in */
+            return;
+        }
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+
+        /* Test toString for uninitialized parameters */
+        String uninitString = params.toString();
+        assertNull("toString should return null for uninitialized parameters ",
+                   uninitString);
+
+        /* Test toString for initialized parameters */
+        byte[] iv = new byte[16];
+        new SecureRandom().nextBytes(iv);
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        params.init(ivSpec);
+
+        String initString = params.toString();
+        assertNotNull("toString should not return null", initString);
+        assertTrue("Should contain IV length",
+            initString.contains("ivLen=16"));
+    }
+
+    /**
+     * Test AES AlgorithmParameters IV isolation (no external modification)
+     */
+    @Test
+    public void testAESAlgorithmParametersIVIsolation()
+            throws Exception {
+        if (!enabledJCEAlgos.contains("AES")) {
+            /* AES not compiled in */
+            return;
+        }
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+
+        /* Create IV and modify original after init */
+        byte[] originalIV = new byte[16];
+        new SecureRandom().nextBytes(originalIV);
+        byte[] originalIVCopy = originalIV.clone();
+        IvParameterSpec ivSpec = new IvParameterSpec(originalIV);
+        params.init(ivSpec);
+
+        /* Modify the original IV array */
+        Arrays.fill(originalIV, (byte)0xFF);
+
+        /* Get IV back and verify it wasn't affected */
+        IvParameterSpec retrievedSpec =
+            params.getParameterSpec(IvParameterSpec.class);
+        assertArrayEquals("IV should not be affected by external " +
+                         "modification", originalIVCopy, retrievedSpec.getIV());
+
+        /* Modify the retrieved IV and verify original stays intact */
+        byte[] retrievedIV = retrievedSpec.getIV();
+        Arrays.fill(retrievedIV, (byte)0x00);
+
+        /* Get IV again and verify it's still correct */
+        IvParameterSpec retrievedSpec2 =
+            params.getParameterSpec(IvParameterSpec.class);
+        assertArrayEquals("IV should not be affected by modification of " +
+                         "retrieved array", originalIVCopy,
+                         retrievedSpec2.getIV());
+    }
+
+    /**
+     * Test AES AlgorithmParameters with AES/CBC cipher integration
+     */
+    @Test
+    public void testAESAlgorithmParametersWithCipher()
+            throws Exception {
+        if (!enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            /* AES/CBC not compiled in */
+            return;
+        }
+
+        /* Create AlgorithmParameters with IV spec */
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        byte[] iv = new byte[16];
+        new SecureRandom().nextBytes(iv);
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+        params.init(ivSpec);
+
+        /* Use with cipher for encryption */
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding",
+            jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(new byte[16], "AES");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, params);
+
+        byte[] plaintext = "Test message for AES cipher integration".getBytes();
+        byte[] ciphertext = cipher.doFinal(plaintext);
+
+        /* Decrypt using the same parameters */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, params);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+        assertArrayEquals("Decrypted text should match original",
+            plaintext, decrypted);
+
+        /* Verify cipher returns compatible parameters */
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        AlgorithmParameters cipherParams = cipher.getParameters();
+        assertNotNull("Cipher should return parameters", cipherParams);
+
+        /* Should be able to use cipher-returned params for decryption */
+        byte[] ciphertext2 = cipher.doFinal(plaintext);
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, cipherParams);
+        byte[] decrypted2 = cipher.doFinal(ciphertext2);
         assertArrayEquals("Should decrypt correctly with cipher parameters",
             plaintext, decrypted2);
     }
