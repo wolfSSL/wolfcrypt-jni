@@ -70,8 +70,10 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/WolfCryptState.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfObject.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfSSLCertManager.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptAesParameters.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptCipher.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptDebug.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptGcmParameters.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyAgreement.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyGenerator.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyPairGenerator.java \

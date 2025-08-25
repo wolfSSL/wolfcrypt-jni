@@ -122,8 +122,8 @@ public class WolfCryptCipher extends CipherSpi {
     private AlgorithmParameterSpec storedSpec = null;
     private byte[] iv = null;
 
-    /* AES-GCM tag length (bytes) */
-    private int gcmTagLen = 0;
+    /* AES-GCM/CCM tag length (bytes), default to 128 bits */
+    private int gcmTagLen = 16;
 
     /* AAD data for AES-GCM, populated via engineUpdateAAD() */
     private byte[] aadData = null;
@@ -466,9 +466,9 @@ public class WolfCryptCipher extends CipherSpi {
             switch (this.cipherMode) {
                 case WC_GCM:
                 case WC_CCM:
-                    /* For AES-GCM/CCM, return GCM parameters */
-                    params = AlgorithmParameters.getInstance("GCM");
+                    /* Return parameters only if initialized */
                     if (this.iv != null && this.gcmTagLen > 0) {
+                        params = AlgorithmParameters.getInstance("GCM");
                         GCMParameterSpec gcmSpec = new GCMParameterSpec(
                             this.gcmTagLen * 8, this.iv);
                         params.init(gcmSpec);
@@ -550,6 +550,7 @@ public class WolfCryptCipher extends CipherSpi {
                 SecureRandom rand = new SecureRandom();
                 rand.nextBytes(this.iv);
             }
+
 
         } else {
             if (cipherMode == CipherMode.WC_GCM) {
@@ -790,7 +791,8 @@ public class WolfCryptCipher extends CipherSpi {
         try {
 
             if (params != null) {
-                if (this.cipherMode == CipherMode.WC_GCM) {
+                if (this.cipherMode == CipherMode.WC_GCM ||
+                    this.cipherMode == CipherMode.WC_CCM) {
                     spec = params.getParameterSpec(GCMParameterSpec.class);
                 }
                 else {
@@ -1141,10 +1143,18 @@ public class WolfCryptCipher extends CipherSpi {
              * (no IV was provided initially), wolfCryptSetIV would generate
              * a new random IV, overwriting the original one. */
             if (storedSpec == null && this.iv != null) {
-                /* Create an IvParameterSpec with the current IV to avoid
+                /* Create appropriate ParameterSpec with the current IV to avoid
                  * generating a new random IV during reset */
-                AlgorithmParameterSpec currentIvSpec =
-                    new IvParameterSpec(this.iv.clone());
+                AlgorithmParameterSpec currentIvSpec;
+                if (cipherMode == CipherMode.WC_GCM) {
+                    /* For GCM mode, create GCMParameterSpec with current
+                     * IV and tag length */
+                    currentIvSpec = new GCMParameterSpec(
+                        this.gcmTagLen * 8, this.iv.clone());
+                } else {
+                    /* For other modes, use IvParameterSpec */
+                    currentIvSpec = new IvParameterSpec(this.iv.clone());
+                }
                 wolfCryptSetIV(currentIvSpec, null);
             } else {
                 wolfCryptSetIV(storedSpec, null);
