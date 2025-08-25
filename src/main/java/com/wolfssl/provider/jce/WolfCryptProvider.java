@@ -339,6 +339,10 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.AesEnabled()) {
             put("KeyGenerator.AES",
                 "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcAESKeyGenerator");
+
+            /* AES Algorithm Parameters */
+            put("AlgorithmParameters.AES",
+                "com.wolfssl.provider.jce.WolfCryptAesParameters");
         }
         if (FeatureDetect.HmacShaEnabled()) {
             put("KeyGenerator.HmacSHA1",
