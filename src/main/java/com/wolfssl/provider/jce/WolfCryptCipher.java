@@ -466,9 +466,9 @@ public class WolfCryptCipher extends CipherSpi {
             switch (this.cipherMode) {
                 case WC_GCM:
                 case WC_CCM:
-                    /* For AES-GCM/CCM, return GCM parameters */
-                    params = AlgorithmParameters.getInstance("GCM");
+                    /* Return parameters only if initialized */
                     if (this.iv != null && this.gcmTagLen > 0) {
+                        params = AlgorithmParameters.getInstance("GCM");
                         GCMParameterSpec gcmSpec = new GCMParameterSpec(
                             this.gcmTagLen * 8, this.iv);
                         params.init(gcmSpec);
