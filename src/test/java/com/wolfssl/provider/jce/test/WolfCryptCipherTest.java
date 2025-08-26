@@ -2422,6 +2422,55 @@ public class WolfCryptCipherTest {
     }
 
     /**
+     * Verify that getOutputSize() in DECRYPT mode does not add pad bytes.
+     */
+    @Test
+    public void testAesEcbPkcs5GetOutputSizeRegression() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/ECB/PKCS5Padding")) {
+            /* skip if AES-ECB-PKCS5 is not enabled */
+            return;
+        }
+
+        /* 16-byte AES key */
+        byte[] key = new byte[] {
+            (byte)0x30, (byte)0x31, (byte)0x32, (byte)0x33,
+            (byte)0x34, (byte)0x35, (byte)0x36, (byte)0x37,
+            (byte)0x38, (byte)0x39, (byte)0x61, (byte)0x62,
+            (byte)0x63, (byte)0x64, (byte)0x65, (byte)0x66
+        };
+
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding", jceProvider);
+
+        /* Test ENCRYPT mode - should add padding bytes to output size */
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        /* For 16-byte input with PKCS5 padding, output should be 32 bytes
+         * (16 bytes input + 16 bytes padding) */
+        assertEquals("ENCRYPT mode output size should include padding bytes",
+            32, cipher.getOutputSize(16));
+
+        /* For 17-byte input with PKCS5 padding, output should be 32 bytes
+         * (17 bytes input + 15 bytes padding) */
+        assertEquals("ENCRYPT mode output size should include padding bytes",
+            32, cipher.getOutputSize(17));
+
+        /* Test DECRYPT mode - should NOT add padding bytes to output size */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec);
+
+        /* For 16-byte input in DECRYPT mode, output should be 16 bytes
+         * (padding will be stripped off) */
+        assertEquals("DECRYPT mode output size shouldn't include padding bytes",
+            16, cipher.getOutputSize(16));
+
+        /* For 32-byte input in DECRYPT mode, output should be 32 bytes
+         * (padding will be stripped off) */
+        assertEquals("DECRYPT mode output size shouldn't include padding bytes",
+            32, cipher.getOutputSize(32));
+    }
+
+    /**
      * AES-GCM decrypt failure should throw AEADBadTagException instead
      * of generic exception.
      */
