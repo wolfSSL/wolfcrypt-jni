@@ -287,12 +287,16 @@ public abstract class BlockCipher extends NativeStruct {
 
         int padSz = 0;
 
-        if (inputSize == 0 || blockSize == 0) {
-            throw new WolfCryptException(
-                "Input or block size is 0");
+        if (blockSize == 0) {
+            throw new WolfCryptException("Block size is 0");
         }
 
-        padSz = blockSize - (inputSize % blockSize);
+        /* PKCS#7 padding: if input size is 0, pad with full block */
+        if (inputSize == 0) {
+            padSz = blockSize;
+        } else {
+            padSz = blockSize - (inputSize % blockSize);
+        }
 
         return padSz;
     }
@@ -366,20 +370,20 @@ public abstract class BlockCipher extends NativeStruct {
         padValue = in[in.length - 1];
 
         /* verify pad value is less than or equal to block size */
-        if (padValue > (byte)blockSize) {
+        if ((padValue & 0xff) > blockSize) {
             throw new WolfCryptException(
                 "Invalid pad value, larger than block size");
         }
 
         /* verify pad bytes are consistent */
-        for (int i = in.length; i > in.length - padValue; i--) {
+        for (int i = in.length; i > in.length - (padValue & 0xff); i--) {
             if (in[i - 1] != padValue) {
                 valid = false;
             }
         }
 
-        unpadded = new byte[in.length - padValue];
-        System.arraycopy(in, 0, unpadded, 0, in.length - padValue);
+        unpadded = new byte[in.length - (padValue & 0xff)];
+        System.arraycopy(in, 0, unpadded, 0, in.length - (padValue & 0xff));
 
         if (!valid) {
             throw new WolfCryptException(

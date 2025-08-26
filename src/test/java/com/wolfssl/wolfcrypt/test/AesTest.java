@@ -557,6 +557,49 @@ public class AesTest {
         }
     }
 
+    /**
+     * Tests that padding bytes with values greater than or equal to 128 are
+     * handled correctly.
+     */
+    @Test
+    public void testUnPadPKCS7HighValueBytes() {
+
+        /* Test with pad value 0x80 (128) - first problematic value */
+        byte[] input = new byte[128 - Aes.BLOCK_SIZE]; /* 112 bytes */
+        Arrays.fill(input, (byte)0xAA);
+        byte[] padded = new byte[8 * Aes.BLOCK_SIZE]; /* 128 bytes */
+        System.arraycopy(input, 0, padded, 0, input.length);
+        /* 16 pad bytes */
+        Arrays.fill(padded, input.length, padded.length, (byte)0x10);
+
+        /* This should work without throwing ArrayIndexOutOfBoundsException */
+        byte[] unpadded = Aes.unPadPKCS7(padded, Aes.BLOCK_SIZE);
+        assertEquals(input.length, unpadded.length);
+        assertArrayEquals(input, unpadded);
+
+        /* Test with various high-value padding bytes */
+        int[] testPadValues = {128, 129, 200, 255};
+        for (int padValue : testPadValues) {
+            if (padValue <= Aes.BLOCK_SIZE) {
+                int dataSize = Aes.BLOCK_SIZE - padValue;
+                byte[] data = new byte[dataSize];
+                Arrays.fill(data, (byte)0xBB);
+
+                byte[] paddedData = new byte[Aes.BLOCK_SIZE];
+                System.arraycopy(data, 0, paddedData, 0, dataSize);
+                Arrays.fill(paddedData, dataSize, paddedData.length,
+                    (byte)(padValue & 0xff));
+
+                byte[] unpaddedData =
+                    Aes.unPadPKCS7(paddedData, Aes.BLOCK_SIZE);
+                assertEquals("Failed for pad value " + padValue,
+                    dataSize, unpaddedData.length);
+                assertArrayEquals("Data mismatch for pad value " + padValue,
+                    data, unpaddedData);
+            }
+        }
+    }
+
     @Test
     public void threadedAesTest() throws InterruptedException {
 
