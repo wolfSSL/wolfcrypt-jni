@@ -415,7 +415,12 @@ public class WolfCryptCipher extends CipherSpi {
                     if (buffered != null && buffered.length > 0) {
                         outSize += buffered.length;
                     }
-                    outSize += Aes.getPKCS7PadSize(outSize, Aes.BLOCK_SIZE);
+                    /* Only add padding size when encrypting. When decrypting,
+                     * the output size should not include padding bytes since
+                     * they will be stripped off during decryption. */
+                    if (this.direction == OpMode.WC_ENCRYPT) {
+                        outSize += Aes.getPKCS7PadSize(outSize, Aes.BLOCK_SIZE);
+                    }
                 }
                 else {
                     throw new IllegalStateException(
@@ -435,7 +440,13 @@ public class WolfCryptCipher extends CipherSpi {
                     if (buffered != null && buffered.length > 0) {
                         outSize += buffered.length;
                     }
-                    outSize += Des3.getPKCS7PadSize(outSize, Des3.BLOCK_SIZE);
+                    /* Only add padding size when encrypting. When decrypting,
+                     * the output size should not include padding bytes since
+                     * they will be stripped off during decryption. */
+                    if (this.direction == OpMode.WC_ENCRYPT) {
+                        outSize += Des3.getPKCS7PadSize(outSize,
+                            Des3.BLOCK_SIZE);
+                    }
                 }
                 else {
                     throw new IllegalStateException(
