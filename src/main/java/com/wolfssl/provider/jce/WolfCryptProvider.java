@@ -300,6 +300,12 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.AesGcmEnabled()) {
             put("Cipher.AES/GCM/NoPadding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESGCMNoPadding");
+
+            /* GCM Algorithm Parameters */
+            put("AlgorithmParameters.GCM",
+                "com.wolfssl.provider.jce.WolfCryptGcmParameters");
+            /* Alias for AES-GCM */
+            put("Alg.Alias.AlgorithmParameters.AES-GCM", "GCM");
         }
         if (FeatureDetect.AesCcmEnabled()) {
             put("Cipher.AES/CCM/NoPadding",
@@ -333,6 +339,10 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.AesEnabled()) {
             put("KeyGenerator.AES",
                 "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcAESKeyGenerator");
+
+            /* AES Algorithm Parameters */
+            put("AlgorithmParameters.AES",
+                "com.wolfssl.provider.jce.WolfCryptAesParameters");
         }
         if (FeatureDetect.HmacShaEnabled()) {
             put("KeyGenerator.HmacSHA1",

@@ -191,6 +191,8 @@ The JCE provider currently supports the following algorithms:
         WKS
 
     AlgorithmParameters
+        AES
+        GCM
         RSASSA-PSS
 
 ### SecureRandom.getInstanceStrong()
