@@ -6381,5 +6381,58 @@ public class WolfCryptCipherTest {
         assertArrayEquals("Should decrypt correctly with cipher parameters",
             plaintext, decrypted2);
     }
+
+    /**
+     * Test that calling getOutputSize(0) doesn't throw an exception
+     * when using PKCS5 padding modes.
+     */
+    @Test
+    public void testGetOutputSizeZeroInputPKCS5Padding() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/ECB/PKCS5Padding")) {
+            /* skip test if AES/ECB/PKCS5Padding not supported */
+            return;
+        }
+
+        byte[] key = new byte[] {
+            0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+            (byte)0x88, (byte)0x99, (byte)0xAA, (byte)0xBB,
+            (byte)0xCC, (byte)0xDD, (byte)0xEE, (byte)0xFF
+        };
+
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        /* This should not throw an exception and should return block size */
+        int outputSize = cipher.getOutputSize(0);
+        assertEquals("Output size for zero input should be one block " +
+            "(16 bytes)", 16, outputSize);
+
+        /* Test AES/CBC/PKCS5Padding if available */
+        if (enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+            outputSize = cipher.getOutputSize(0);
+            assertEquals("CBC: Output size for zero input should be one " +
+                "block (16 bytes)", 16, outputSize);
+        }
+
+        /* Test DESede if available */
+        if (enabledJCEAlgos.contains("DESede/CBC/PKCS5Padding")) {
+            byte[] desKey = new byte[24]; /* 3DES requires 24-byte key */
+            Arrays.fill(desKey, (byte)0x42);
+            SecretKeySpec desKeySpec = new SecretKeySpec(desKey, "DESede");
+
+            cipher = Cipher.getInstance("DESede/CBC/PKCS5Padding", jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, desKeySpec);
+
+            outputSize = cipher.getOutputSize(0);
+            assertEquals("DESede: Output size for zero input should be one " +
+                "block (8 bytes)", 8, outputSize);
+        }
+    }
 }
 
