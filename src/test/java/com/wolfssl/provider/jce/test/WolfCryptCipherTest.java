@@ -6483,5 +6483,113 @@ public class WolfCryptCipherTest {
                 "block (8 bytes)", 8, outputSize);
         }
     }
+
+    /**
+     * Test AES-GCM with null plaintext input. This tests scenarios where
+     * users may only provide AAD to generate an authentication tag.
+     * Uses test vectors from OpenJDK SunJCE tests that have null plaintext.
+     */
+    @Test
+    public void testAesGcmWithNullPlaintext()
+        throws NoSuchAlgorithmException, InvalidKeyException,
+               IllegalBlockSizeException, NoSuchProviderException,
+               InvalidAlgorithmParameterException, BadPaddingException,
+               NoSuchPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            /* skip if AES-GCM is not enabled */
+            return;
+        }
+
+        /*
+         * Test vector from OpenJDK TestKATForGCM.java - Test case 1
+         * 96-bit iv with 128-bit tag, no plaintext, no AAD
+         */
+        byte[] key = new byte[] {
+            (byte)0x11, (byte)0x75, (byte)0x4c, (byte)0xd7,
+            (byte)0x2a, (byte)0xec, (byte)0x30, (byte)0x9b,
+            (byte)0xf5, (byte)0x2f, (byte)0x76, (byte)0x87,
+            (byte)0x21, (byte)0x2e, (byte)0x89, (byte)0x57
+        };
+        byte[] iv = new byte[] {
+            (byte)0x3c, (byte)0x81, (byte)0x9d, (byte)0x9a,
+            (byte)0x9b, (byte)0xed, (byte)0x08, (byte)0x76,
+            (byte)0x15, (byte)0x03, (byte)0x0b, (byte)0x65
+        };
+        byte[] expectedTag = new byte[] {
+            (byte)0x25, (byte)0x03, (byte)0x27, (byte)0xc6,
+            (byte)0x74, (byte)0xaa, (byte)0xf4, (byte)0x77,
+            (byte)0xae, (byte)0xf2, (byte)0x67, (byte)0x57,
+            (byte)0x48, (byte)0xcf, (byte)0x69, (byte)0x71
+        };
+
+        /*
+         * Test vector from OpenJDK TestKATForGCM.java - Test case 6
+         * 96-bit iv with 128-bit tag, no plaintext, 16-byte AAD
+         */
+        byte[] key2 = new byte[] {
+            (byte)0x77, (byte)0xbe, (byte)0x63, (byte)0x70,
+            (byte)0x89, (byte)0x71, (byte)0xc4, (byte)0xe2,
+            (byte)0x40, (byte)0xd1, (byte)0xcb, (byte)0x79,
+            (byte)0xe8, (byte)0xd7, (byte)0x7f, (byte)0xeb
+        };
+        byte[] iv2 = new byte[] {
+            (byte)0xe0, (byte)0xe0, (byte)0x0f, (byte)0x19,
+            (byte)0xfe, (byte)0xd7, (byte)0xba, (byte)0x01,
+            (byte)0x36, (byte)0xa7, (byte)0x97, (byte)0xf3
+        };
+        byte[] aad2 = new byte[] {
+            (byte)0x7a, (byte)0x43, (byte)0xec, (byte)0x1d,
+            (byte)0x9c, (byte)0x0a, (byte)0x5a, (byte)0x78,
+            (byte)0xa0, (byte)0xb1, (byte)0x65, (byte)0x33,
+            (byte)0xa6, (byte)0x21, (byte)0x3c, (byte)0xab
+        };
+        byte[] expectedTag2 = new byte[] {
+            (byte)0x20, (byte)0x9f, (byte)0xcc, (byte)0x8d,
+            (byte)0x36, (byte)0x75, (byte)0xed, (byte)0x93,
+            (byte)0x8e, (byte)0x9c, (byte)0x71, (byte)0x66,
+            (byte)0x70, (byte)0x9d, (byte)0xd9, (byte)0x46
+        };
+
+        /* Using byte[0] instead of null because OpenJDK Cipher.java
+         * throws IllegalArgumentException when in is null. */
+        byte[] nullInput = new byte[0];
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+
+        /* Test case 1: No plaintext, no AAD */
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(
+            expectedTag.length * 8, iv);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
+        byte[] output = cipher.doFinal(nullInput);
+
+        /* Output should just be the tag since no ciphertext */
+        assertArrayEquals("Tag should match expected for null plaintext",
+            expectedTag, output);
+
+        /* Test case 2: No plaintext, with AAD */
+        SecretKeySpec keySpec2 = new SecretKeySpec(key2, "AES");
+        GCMParameterSpec gcmSpec2 = new GCMParameterSpec(
+            expectedTag2.length * 8, iv2);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec2, gcmSpec2);
+        cipher.updateAAD(aad2);
+        byte[] output2 = cipher.doFinal(nullInput);
+
+        /* Output should just be the tag since no ciphertext */
+        assertArrayEquals("Tag should match expected for null plaintext " +
+            "with AAD", expectedTag2, output2);
+
+        /* Verify decryption works too */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec2, gcmSpec2);
+        cipher.updateAAD(aad2);
+        byte[] decrypted = cipher.doFinal(output2);
+
+        /* Decrypted should be empty/null since original plaintext was null */
+        assertTrue("Decrypted plaintext should be empty when original " +
+            "plaintext was null", decrypted == null || decrypted.length == 0);
+    }
 }
 

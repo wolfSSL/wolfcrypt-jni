@@ -341,12 +341,11 @@ public class AesGcmTest {
         plain = dec.decrypt(cipher, iv3, tag, a3);
         assertArrayEquals(p3, plain);
 
-        /* bad encrypt arguments: null input */
+        /* encrypt with null input should pass */
         try {
             enc.encrypt(null, iv3, tag, a3);
-            fail("encrypt() with null input should fail");
         } catch (WolfCryptException e) {
-            /* expected */
+            fail("encrypt() with null input should pass");
         }
 
         /* bad encrypt arguments: null iv */
@@ -365,12 +364,11 @@ public class AesGcmTest {
             /* expected */
         }
 
-        /* bad decrypt arguments: null input */
+        /* decrypt with null input but valid tag and AAD should pass */
         try {
             enc.decrypt(null, iv3, tag, a3);
-            fail("decrypt() with null input should fail");
         } catch (WolfCryptException e) {
-            /* expected */
+            fail("decrypt() with null input should pass");
         }
 
         /* bad decrypt arguments: null iv */
@@ -422,12 +420,11 @@ public class AesGcmTest {
         assertNotNull(plain);
         assertArrayEquals(p, plain);
 
-        /* bad encrypt arguments: null input */
+        /* encrypt with null input should pass */
         try {
             enc.encrypt(null, iv2, tag, a);
-            fail("encrypt() with null input should fail");
         } catch (WolfCryptException e) {
-            /* expected */
+            fail("encrypt() with null input should pass");
         }
 
         /* bad encrypt arguments: null iv */
@@ -446,12 +443,11 @@ public class AesGcmTest {
             /* expected */
         }
 
-        /* bad decrypt arguments: null input */
+        /* decrypt with null input but valid tag and AAD should pass */
         try {
             enc.decrypt(null, iv2, tag, a);
-            fail("decrypt() with null input should fail");
         } catch (WolfCryptException e) {
-            /* expected */
+            fail("decrypt() with null input should pass");
         }
 
         /* bad decrypt arguments: null iv */
@@ -503,12 +499,11 @@ public class AesGcmTest {
         assertNotNull(plain);
         assertArrayEquals(p, plain);
 
-        /* bad encrypt arguments: null input */
+        /* encrypt with null input should pass */
         try {
             enc.encrypt(null, iv1, tag, a);
-            fail("encrypt() with null input should fail");
         } catch (WolfCryptException e) {
-            /* expected */
+            fail("encrypt() with null input should pass");
         }
 
         /* bad encrypt arguments: null iv */
@@ -527,12 +522,11 @@ public class AesGcmTest {
             /* expected */
         }
 
-        /* bad decrypt arguments: null input */
+        /* decrypt with null input but valid tag and AAD should pass */
         try {
             enc.decrypt(null, iv1, tag, a);
-            fail("decrypt() with null input should fail");
         } catch (WolfCryptException e) {
-            /* expected */
+            fail("decrypt() with null input should pass");
         }
 
         /* bad decrypt arguments: null iv */
@@ -1041,6 +1035,112 @@ public class AesGcmTest {
                 fail("Threading error in AES-GCM-256 thread test");
             }
         }
+    }
+
+    /**
+     * Test AES-GCM with null plaintext using test vectors from
+     * OpenJDK TestKATForGCM.java that have null plaintext input.
+     * This tests scenarios where users may only provide AAD to
+     * generate an authentication tag.
+     */
+    @Test
+    public void testAesGcmWithNullPlaintext() throws WolfCryptException {
+
+        /*
+         * Test vector 1 from OpenJDK: AES-128, 96-bit IV,
+         * no plaintext, no AAD, 128-bit tag
+         */
+        byte[] key1 = new byte[] {
+            (byte)0x11, (byte)0x75, (byte)0x4c, (byte)0xd7,
+            (byte)0x2a, (byte)0xec, (byte)0x30, (byte)0x9b,
+            (byte)0xf5, (byte)0x2f, (byte)0x76, (byte)0x87,
+            (byte)0x21, (byte)0x2e, (byte)0x89, (byte)0x57
+        };
+        byte[] iv1 = new byte[] {
+            (byte)0x3c, (byte)0x81, (byte)0x9d, (byte)0x9a,
+            (byte)0x9b, (byte)0xed, (byte)0x08, (byte)0x76,
+            (byte)0x15, (byte)0x03, (byte)0x0b, (byte)0x65
+        };
+        byte[] expectedTag1 = new byte[] {
+            (byte)0x25, (byte)0x03, (byte)0x27, (byte)0xc6,
+            (byte)0x74, (byte)0xaa, (byte)0xf4, (byte)0x77,
+            (byte)0xae, (byte)0xf2, (byte)0x67, (byte)0x57,
+            (byte)0x48, (byte)0xcf, (byte)0x69, (byte)0x71
+        };
+
+        /*
+         * Test vector 6 from OpenJDK: AES-128, 96-bit IV,
+         * no plaintext, 16-byte AAD, 128-bit tag
+         */
+        byte[] key2 = new byte[] {
+            (byte)0x77, (byte)0xbe, (byte)0x63, (byte)0x70,
+            (byte)0x89, (byte)0x71, (byte)0xc4, (byte)0xe2,
+            (byte)0x40, (byte)0xd1, (byte)0xcb, (byte)0x79,
+            (byte)0xe8, (byte)0xd7, (byte)0x7f, (byte)0xeb
+        };
+        byte[] iv2 = new byte[] {
+            (byte)0xe0, (byte)0xe0, (byte)0x0f, (byte)0x19,
+            (byte)0xfe, (byte)0xd7, (byte)0xba, (byte)0x01,
+            (byte)0x36, (byte)0xa7, (byte)0x97, (byte)0xf3
+        };
+        byte[] aad2 = new byte[] {
+            (byte)0x7a, (byte)0x43, (byte)0xec, (byte)0x1d,
+            (byte)0x9c, (byte)0x0a, (byte)0x5a, (byte)0x78,
+            (byte)0xa0, (byte)0xb1, (byte)0x65, (byte)0x33,
+            (byte)0xa6, (byte)0x21, (byte)0x3c, (byte)0xab
+        };
+        byte[] expectedTag2 = new byte[] {
+            (byte)0x20, (byte)0x9f, (byte)0xcc, (byte)0x8d,
+            (byte)0x36, (byte)0x75, (byte)0xed, (byte)0x93,
+            (byte)0x8e, (byte)0x9c, (byte)0x71, (byte)0x66,
+            (byte)0x70, (byte)0x9d, (byte)0xd9, (byte)0x46
+        };
+
+        /* skip test if AES-128 is not compiled in native library */
+        if (!FeatureDetect.Aes128Enabled()) {
+            return;
+        }
+
+        /* Test case 1: null plaintext, no AAD */
+        AesGcm enc = new AesGcm();
+        enc.setKey(key1);
+        byte[] tag = new byte[expectedTag1.length];
+        byte[] ciphertext = enc.encrypt(null, iv1, tag, null);
+
+        /* Should return null/empty ciphertext since input was null */
+        assertTrue("Ciphertext should be null or empty when input is null",
+            ciphertext == null || ciphertext.length == 0);
+
+        /* Tag should match expected value */
+        assertArrayEquals("Tag should match expected value for null " +
+            "plaintext, no AAD", expectedTag1, tag);
+        enc.releaseNativeStruct();
+
+        /* Test case 2: null plaintext, with AAD */
+        enc = new AesGcm();
+        enc.setKey(key2);
+        tag = new byte[expectedTag2.length];
+        ciphertext = enc.encrypt(null, iv2, tag, aad2);
+
+        /* Should return null/empty ciphertext since input was null */
+        assertTrue("Ciphertext should be null or empty when input is null",
+            ciphertext == null || ciphertext.length == 0);
+
+        /* Tag should match expected value */
+        assertArrayEquals("Tag should match expected value for null " +
+            "plaintext with AAD", expectedTag2, tag);
+
+        /* Test decryption with null ciphertext */
+        AesGcm dec = new AesGcm();
+        dec.setKey(key2);
+        byte[] plaintext = dec.decrypt(null, iv2, tag, aad2);
+
+        /* Should return null/empty plaintext since ciphertext was null */
+        assertTrue("Plaintext should be null or empty when ciphertext " +
+            "is null", plaintext == null || plaintext.length == 0);
+
+        enc.releaseNativeStruct();
+        dec.releaseNativeStruct();
     }
 }
 
