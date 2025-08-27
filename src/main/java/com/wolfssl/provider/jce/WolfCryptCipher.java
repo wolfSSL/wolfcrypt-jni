@@ -979,9 +979,12 @@ public class WolfCryptCipher extends CipherSpi {
 
         /* do final encrypt over totalSz */
         tmpIn = new byte[totalSz];
-        System.arraycopy(buffered, 0, tmpIn, 0, buffered.length);
-        if (input != null && len > 0) {
-            System.arraycopy(input, inputOffset, tmpIn, buffered.length, len);
+        if (totalSz > 0) {
+            System.arraycopy(buffered, 0, tmpIn, 0, buffered.length);
+            if (input != null && len > 0) {
+                System.arraycopy(input, inputOffset, tmpIn,
+                    buffered.length, len);
+            }
         }
 
         /* add padding if encrypting and PKCS5 padding is used. PKCS#5 padding
