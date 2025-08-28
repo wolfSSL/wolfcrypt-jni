@@ -457,10 +457,35 @@ wolfcrypt-jni-X.X.X/lib/signed/release/wolfcrypt-jni.jar
 This pre-signed JAR can be used with the JUnit tests, without having to
 re-compile the Java source files.  To run the JUnit tests against this
 JAR file:
- 
+
 $ cd wolfcrypt-jni-X.X.X
 $ cp ./lib/signed/release/wolfcrypt-jni.jar ./lib
 $ ant test
+
+### Behavior Discrepancies with SunJCE
+---------
+
+#### Cipher PKCS5Padding `doFinal()` Output Buffer Size Requirement
+
+When using the Cipher class with PKCS5Padding mode, the output buffer size
+required for some calls to `doFinal()` may be larger than SunJCE.
+
+SunJCE has the ability to save the internal AES/3DES algorithm state, do the
+decrypt operation to see how much padding was applied, then restore the state
+to where it was before the decrypt happened in order to throw a
+ShortBufferException back to the user for a precise output buffer size
+restriction requirement.
+
+Native wolfSSL does not have the ability to save and restore the internal
+AES/3DES state, so wolfJCE has to be more conservative in the output buffer
+size it requires for `doFinal()` calls. wolfJCE will require the output buffer
+size to be equal to the incoming ciphertext size (plus any buffered data held
+internally), which essentially includes the plaintext that will be decrypted
+plus the padding bytes.
+
+This descrepancy should not be an issue, since `doFinal()` returns the
+actual number of bytes written to the output buffer, so applications can use
+that to know the true output size in the output buffer returned.
 
 
 ### Support

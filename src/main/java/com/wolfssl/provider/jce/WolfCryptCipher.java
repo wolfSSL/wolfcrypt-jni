@@ -838,6 +838,45 @@ public class WolfCryptCipher extends CipherSpi {
         return isBlockCipher;
     }
 
+    /**
+     * If a call to update() would be a no-op (or just return byte[0]) for the
+     * selected cipher type, mode, and buffered data, return true.
+     *
+     * This happens in cases like RSA, or AES-GCM/CCM which don't support
+     * streaming and buffer all data until doFinal() is called.
+     *
+     * @param inputSz total size in bytes of data available for processing,
+     *        including input data and buffered data.
+     *
+     * @return true if update() would be a no-op, otherwise false
+     */
+    private boolean isNoOpUpdate(int inputSz) {
+
+        /* RSA keeps buffered data until final() call */
+        if (cipherType == CipherType.WC_RSA) {
+            return true;
+        }
+
+        /* AES-GCM and AES-CCM keep all data buffered until final() call,
+         * wolfJCE does not support streaming GCM/CCM yet. */
+        if (cipherType == CipherType.WC_AES &&
+            (cipherMode == CipherMode.WC_GCM ||
+             cipherMode == CipherMode.WC_CCM)) {
+            return true;
+        }
+
+        /* If total data input (plus buffered) is less than block size,
+         * update() is a no-op, except for CTR and OFB which are stream
+         * ciphers */
+        if ((inputSz < blockSize) &&
+            (cipherMode != CipherMode.WC_CTR) &&
+            (cipherMode != CipherMode.WC_OFB)) {
+            return true;
+        }
+
+        return false;
+    }
+
     private byte[] wolfCryptUpdate(byte[] input, int inputOffset, int len)
         throws IllegalArgumentException {
 
@@ -847,8 +886,15 @@ public class WolfCryptCipher extends CipherSpi {
         byte[] tmpIn   = null;
         byte[] tmpBuf  = null;
 
-        if (input == null || len < 0)
-            throw new IllegalArgumentException("Null input buffer or len < 0");
+        if (input == null || len < 0 || inputOffset < 0) {
+            throw new IllegalArgumentException(
+                "Null input buffer or len/offset < 0");
+        }
+
+        if (input.length < (inputOffset + len)) {
+            throw new IllegalArgumentException(
+                "Input buffer length smaller than inputOffset + len");
+        }
 
         this.operationStarted = true;
 
@@ -865,21 +911,15 @@ public class WolfCryptCipher extends CipherSpi {
             buffered = tmpIn;
         }
 
-        /* keep buffered data if RSA or data is less than block size, or doing
-         * AES-GCM/CCM without stream mode compiled natively, but not for
-         * CTR/OFB which are stream ciphers */
-        if ((cipherType == CipherType.WC_RSA) ||
-            ((cipherType == CipherType.WC_AES) &&
-             (cipherMode == CipherMode.WC_GCM ||
-              cipherMode == CipherMode.WC_CCM)) ||
-            ((buffered.length < blockSize) &&
-             (cipherMode != CipherMode.WC_CTR) &&
-             (cipherMode != CipherMode.WC_OFB))) {
+        /* Some algos/modes keep data buffered until the doFinal() call, like
+         * RSA or AES-GCM/CCM without stream mode compiled natively. Just
+         * return an empty byte array in those cases here. */
+        if (isNoOpUpdate(len + buffered.length)) {
             return new byte[0];
         }
 
-        /* calculate blocks and partial non-block size remaining */
-        blocks    = buffered.length / blockSize;
+        /* Calculate blocks and partial non-block size remaining */
+        blocks = buffered.length / blockSize;
         bytesToProcess = blocks * blockSize;
 
         /* CTR and OFB are stream ciphers, process all available data */
@@ -887,14 +927,16 @@ public class WolfCryptCipher extends CipherSpi {
             cipherMode == CipherMode.WC_OFB) {
             bytesToProcess = buffered.length;
         }
-        /* if PKCS#5/7 padding, and decrypting, hold on to last block for
+
+        /* If PKCS#5/7 padding, and decrypting, hold on to last block for
          * padding check in wolfCryptFinal() */
         else if (paddingType == PaddingType.WC_PKCS5 &&
-                 direction == OpMode.WC_DECRYPT) {
+                 direction == OpMode.WC_DECRYPT &&
+                 bytesToProcess > 0) {
             bytesToProcess -= blockSize;
         }
 
-        /* not enough data to process yet return until more or final */
+        /* Not enough data to process yet return until more or final */
         if (bytesToProcess == 0) {
             return new byte[0];
         }
@@ -1207,6 +1249,43 @@ public class WolfCryptCipher extends CipherSpi {
         return output;
     }
 
+    /**
+     * Sanity check output buffer size is large enough for update() call,
+     * based on padding and buffered data.
+     *
+     * @param inputSz size of input data to update()
+     * @param outputSz total size of output buffer provided
+     *
+     * @throws ShortBufferException if output buffer is too small
+     */
+    private void checkUpdateOutputBufferSize(int inputSz, int outputSz)
+        throws ShortBufferException {
+
+        int outSize;
+
+        if (!isNoOpUpdate(inputSz)) {
+            outSize = engineGetOutputSize(inputSz);
+
+            /* update() in DECRYPT mode with PKCS5 padding will hold
+             * back one block of data for padding check in final() */
+            if (direction == OpMode.WC_DECRYPT &&
+                paddingType == PaddingType.WC_PKCS5) {
+                if (outSize % blockSize == 0) {
+                    outSize -= blockSize;
+                }
+                else {
+                    outSize -= (outSize % blockSize);
+                }
+            }
+
+            if (outputSz < outSize) {
+                throw new ShortBufferException(
+                    "Output buffer too small, need " + outSize +
+                    " bytes, got " + outputSz);
+            }
+        }
+    }
+
     @Override
     protected int engineUpdate(byte[] input, int inputOffset, int inputLen,
             byte[] output, int outputOffset)
@@ -1219,8 +1298,21 @@ public class WolfCryptCipher extends CipherSpi {
                 "Cipher has not been initialized yet");
         }
 
-        log("update (in offset: " + inputOffset + ", len: " +
-            inputLen + ", out offset: " + outputOffset + ")");
+        log("update (inputOffset: " + inputOffset + ", inputLen: " +
+            inputLen + ", outputOffset: " + outputOffset + ")");
+
+        if (output == null || (output.length < outputOffset)) {
+            throw new IllegalArgumentException(
+                "output is null or offset past output array sz");
+        }
+
+        if (input == null || (inputLen + inputOffset > input.length)) {
+            throw new IllegalArgumentException(
+                "input is null or inOffset + inputLen past input array size");
+        }
+
+        /* Sanitize output buffer size, throws ShortBufferException if needed */
+        checkUpdateOutputBufferSize(inputLen, output.length - outputOffset);
 
         tmpOut = wolfCryptUpdate(input, inputOffset, inputLen);
         if (tmpOut == null) {
@@ -1278,9 +1370,25 @@ public class WolfCryptCipher extends CipherSpi {
                 "Cipher has not been initialized yet");
         }
 
-        log("final (in offset: " + inputOffset + ", len: " +
-            inputLen + ", out offset: " + outputOffset +
-            ", buffered: " + buffered.length + ")");
+        log("final (inputOffset: " + inputOffset + ", inputLen: " +
+            inputLen + ", outputOffset: " + outputOffset + ", buffered: " +
+            buffered.length + ")");
+
+        if (output == null || (outputOffset > output.length)) {
+            throw new IllegalArgumentException(
+                "output is null or offset past output array sz");
+        }
+
+        /* SunJCE can save Cipher state so it can throw a more precise
+         * ShortBufferException after checking the actual length after
+         * stripping padding. But, native wolfCrypt does not support
+         * saving/restoring Aes state, so we err on the side of making callers
+         * give us up to the next block size of output space */
+        if ((output.length - outputOffset) < engineGetOutputSize(inputLen)) {
+            throw new ShortBufferException("Output buffer too small, need " +
+                engineGetOutputSize(inputLen) + " bytes, got " +
+                (output.length - outputOffset));
+        }
 
         tmpOut = wolfCryptFinal(input, inputOffset, inputLen);
 
