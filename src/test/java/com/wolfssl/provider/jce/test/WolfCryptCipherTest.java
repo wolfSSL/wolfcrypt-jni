@@ -6591,5 +6591,332 @@ public class WolfCryptCipherTest {
         assertTrue("Decrypted plaintext should be empty when original " +
             "plaintext was null", decrypted == null || decrypted.length == 0);
     }
+
+    @Test
+    public void testUpdateInputValidation()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException {
+
+        /* Test with AES/CBC/PKCS5Padding */
+        if (!enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        SecretKeySpec keySpec =
+            new SecretKeySpec("1234567890123456".getBytes(), "AES");
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        byte[] input = "Hello World Test".getBytes();
+
+        /* Test null input */
+        try {
+            cipher.update(null, 0, 5);
+            fail("Expected IllegalArgumentException for null input");
+        } catch (IllegalArgumentException e) {
+            /* Expected */
+        }
+
+        /* Test negative length */
+        try {
+            cipher.update(input, 0, -1);
+            fail("Expected IllegalArgumentException for negative length");
+        } catch (IllegalArgumentException e) {
+            /* Expected */
+        }
+
+        /* Test negative offset */
+        try {
+            cipher.update(input, -1, 5);
+            fail("Expected IllegalArgumentException for negative offset");
+        } catch (IllegalArgumentException e) {
+            /* Expected */
+        }
+
+        /* Test offset + length > input.length */
+        try {
+            cipher.update(input, 10, 10);
+            fail("Expected IllegalArgumentException for offset+len > " +
+                 "input.length");
+        } catch (IllegalArgumentException e) {
+            /* Expected */
+        }
+    }
+
+    @Test
+    public void testUpdateOutputValidation()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               javax.crypto.ShortBufferException {
+
+        /* Test with AES/CBC/PKCS5Padding */
+        if (!enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        SecretKeySpec keySpec =
+            new SecretKeySpec("1234567890123456".getBytes(), "AES");
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        byte[] input = "Hello World Test".getBytes();
+
+        /* Test null output */
+        try {
+            cipher.update(input, 0, input.length, null, 0);
+            fail("Expected IllegalArgumentException for null output");
+        } catch (IllegalArgumentException e) {
+            /* Expected */
+        }
+
+        /* Test output offset past array size */
+        byte[] output = new byte[16];
+        try {
+            cipher.update(input, 0, input.length, output, 20);
+            fail("Expected IllegalArgumentException for offset past " +
+                 "output array size");
+        } catch (IllegalArgumentException e) {
+            /* Expected */
+        }
+
+        /* Test output buffer too small */
+        byte[] smallOutput = new byte[1];
+        try {
+            cipher.update(input, 0, input.length, smallOutput, 0);
+            fail("Expected ShortBufferException for too small output buffer");
+        } catch (javax.crypto.ShortBufferException e) {
+            /* Expected */
+        }
+    }
+
+    @Test
+    public void testDoFinalInputValidation()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException {
+
+        /* Test with AES/CBC/PKCS5Padding */
+        if (!enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        SecretKeySpec keySpec =
+            new SecretKeySpec("1234567890123456".getBytes(), "AES");
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        byte[] input = "Hello World Test".getBytes();
+        byte[] output = new byte[32];
+
+        /* Test offset past output array size */
+        try {
+            cipher.doFinal(input, 0, input.length, output, 50);
+            fail("Expected IllegalArgumentException for offset past " +
+                 "output array size");
+        } catch (IllegalArgumentException e) {
+            /* Expected */
+        } catch (javax.crypto.ShortBufferException e) {
+            /* Expected - could also throw ShortBufferException */
+        } catch (IllegalBlockSizeException e) {
+            /* Expected - could also throw IllegalBlockSizeException */
+        } catch (BadPaddingException e) {
+            /* Expected - could also throw BadPaddingException */
+        }
+
+        /* Test output buffer too small for doFinal */
+        byte[] smallOutput = new byte[5];
+        try {
+            cipher.doFinal(input, 0, input.length, smallOutput, 0);
+            fail("Expected ShortBufferException for too small output buffer " +
+                 "in doFinal");
+        } catch (javax.crypto.ShortBufferException e) {
+            /* Expected */
+        } catch (IllegalBlockSizeException e) {
+            /* Expected - could also throw IllegalBlockSizeException */
+        } catch (BadPaddingException e) {
+            /* Expected - could also throw BadPaddingException */
+        }
+    }
+
+    @Test
+    public void testNoOpUpdateBehavior()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        /* Test RSA no-op update behavior */
+        if (enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            try {
+                KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+                keyGen.initialize(2048);
+                KeyPair keyPair = keyGen.generateKeyPair();
+
+                Cipher cipher =
+                    Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+                cipher.init(Cipher.ENCRYPT_MODE, keyPair.getPublic());
+
+                byte[] input = "Test RSA".getBytes();
+
+                /* RSA update() should return empty array (no-op) */
+                byte[] updateResult = cipher.update(input);
+                assertNotNull("RSA update should return non-null array",
+                    updateResult);
+                assertEquals("RSA update should return empty array", 0,
+                    updateResult.length);
+
+                /* All processing should happen in doFinal() */
+                byte[] finalResult = cipher.doFinal();
+                assertTrue("RSA doFinal should return encrypted data",
+                    finalResult.length > 0);
+
+            } catch (NoSuchAlgorithmException e) {
+                /* RSA key generation not available, skip test */
+            }
+        }
+
+        /* Test AES-GCM no-op update behavior */
+        if (enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            Cipher cipher =
+                Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+
+            SecretKeySpec keySpec =
+                new SecretKeySpec("1234567890123456".getBytes(), "AES");
+            GCMParameterSpec gcmSpec =
+                new GCMParameterSpec(128, "123456789012".getBytes());
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
+
+            byte[] input = "Test GCM".getBytes();
+
+            /* AES-GCM update() should return empty array (no-op) */
+            byte[] updateResult = cipher.update(input);
+            assertNotNull("AES-GCM update should return non-null array",
+                updateResult);
+            assertEquals("AES-GCM update should return empty array", 0,
+                updateResult.length);
+
+            /* All processing should happen in doFinal() */
+            byte[] finalResult = cipher.doFinal();
+            assertTrue("AES-GCM doFinal should return encrypted data",
+                finalResult.length > 0);
+        }
+    }
+
+    @Test
+    public void testStreamCipherUpdateBehavior()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        /* Test AES-CTR stream cipher behavior */
+        if (enabledJCEAlgos.contains("AES/CTR/NoPadding")) {
+            Cipher cipher =
+                Cipher.getInstance("AES/CTR/NoPadding", jceProvider);
+
+            SecretKeySpec keySpec =
+                new SecretKeySpec("1234567890123456".getBytes(), "AES");
+            IvParameterSpec ivSpec =
+                new IvParameterSpec("1234567890123456".getBytes());
+
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+
+            /* CTR mode should process data immediately */
+            byte[] smallInput = "Hi".getBytes();
+            byte[] updateResult = cipher.update(smallInput);
+
+            assertNotNull("CTR update should return non-null array",
+                updateResult);
+            assertEquals("CTR should process small input immediately",
+                smallInput.length, updateResult.length);
+        }
+
+        /* Test AES-OFB stream cipher behavior */
+        if (enabledJCEAlgos.contains("AES/OFB/NoPadding")) {
+            Cipher cipher =
+                Cipher.getInstance("AES/OFB/NoPadding", jceProvider);
+            SecretKeySpec keySpec =
+                new SecretKeySpec("1234567890123456".getBytes(), "AES");
+            IvParameterSpec ivSpec =
+                new IvParameterSpec("1234567890123456".getBytes());
+
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+
+            /* OFB mode should process data immediately, even small amounts */
+            byte[] smallInput = "Hi".getBytes();
+            byte[] updateResult = cipher.update(smallInput);
+
+            assertNotNull("OFB update should return non-null array",
+                updateResult);
+            assertEquals("OFB should process small input immediately",
+                smallInput.length, updateResult.length);
+        }
+    }
+
+    @Test
+    public void testPKCS5PaddingDecryptBehavior()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        /* Test PKCS5 padding behavior during decrypt */
+        if (!enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            return;
+        }
+
+        SecretKeySpec keySpec =
+            new SecretKeySpec("1234567890123456".getBytes(), "AES");
+        IvParameterSpec ivSpec =
+            new IvParameterSpec("1234567890123456".getBytes());
+
+        /* First encrypt some data */
+        Cipher encCipher =
+            Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        encCipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+
+        byte[] plaintext = "This is exactly 32 bytes long!!!".getBytes();
+        byte[] ciphertext = encCipher.doFinal(plaintext);
+
+        /* Now test decrypt update behavior */
+        Cipher decCipher =
+            Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        decCipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+
+        /* Feed ciphertext in blocks */
+        int blockSize = 16;
+        byte[] updateResult1 = decCipher.update(ciphertext, 0, blockSize);
+
+        /* First block update should return empty (holds back for padding) */
+        assertNotNull("Decrypt update should return non-null array",
+            updateResult1);
+        assertEquals("First decrypt update with PKCS5 should return empty " +
+            "array", 0, updateResult1.length);
+
+        byte[] updateResult2 = decCipher.update(ciphertext, blockSize,
+            blockSize);
+
+        /* Second block should return first block's data */
+        assertEquals("Second decrypt update should return first block data",
+                   blockSize, updateResult2.length);
+
+        /* Final should process remaining and strip padding */
+        byte[] finalResult = decCipher.doFinal(ciphertext, blockSize * 2,
+            ciphertext.length - (blockSize * 2));
+
+        /* Combine all results */
+        byte[] fullResult = new byte[updateResult1.length +
+            updateResult2.length + finalResult.length];
+        System.arraycopy(updateResult1, 0, fullResult, 0, updateResult1.length);
+        System.arraycopy(updateResult2, 0, fullResult, updateResult1.length,
+            updateResult2.length);
+        System.arraycopy(finalResult, 0, fullResult,
+            updateResult1.length + updateResult2.length, finalResult.length);
+
+        assertArrayEquals("Decrypted result should match original plaintext",
+                         plaintext, fullResult);
+    }
 }
 
