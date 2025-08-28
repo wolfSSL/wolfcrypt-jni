@@ -166,6 +166,10 @@ The JCE provider currently supports the following algorithms:
         HmacSHA256
         HmacSHA384
         HmacSHA512
+        HmacSHA3-224
+        HmacSHA3-256
+        HmacSHA3-384
+        HmacSHA3-512
 
     KeyPairGenerator Class
         RSA

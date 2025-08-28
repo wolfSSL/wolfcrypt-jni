@@ -47,6 +47,7 @@ import com.wolfssl.wolfcrypt.Sha224;
 import com.wolfssl.wolfcrypt.Sha256;
 import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.Sha512;
+import com.wolfssl.wolfcrypt.Sha3;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 
 public class WolfCryptKeyGeneratorTest {
@@ -57,7 +58,11 @@ public class WolfCryptKeyGeneratorTest {
         "HmacSHA224",
         "HmacSHA256",
         "HmacSHA384",
-        "HmacSHA512"
+        "HmacSHA512",
+        "HmacSHA3-224",
+        "HmacSHA3-256",
+        "HmacSHA3-384",
+        "HmacSHA3-512"
     };
 
     private static int[] aesKeySizes = { 128, 192, 256 };
@@ -96,6 +101,23 @@ public class WolfCryptKeyGeneratorTest {
             /* Skip HmacSHA224 if not supported by native wolfSSL */
             if (alg.equals("HmacSHA224") &&
                 !FeatureDetect.HmacSha224Enabled()) {
+                continue;
+            }
+            /* Skip HmacSHA3 algorithms if not supported by native wolfSSL */
+            if (alg.equals("HmacSHA3-224") &&
+                !FeatureDetect.HmacSha3_224Enabled()) {
+                continue;
+            }
+            if (alg.equals("HmacSHA3-256") &&
+                !FeatureDetect.HmacSha3_256Enabled()) {
+                continue;
+            }
+            if (alg.equals("HmacSHA3-384") &&
+                !FeatureDetect.HmacSha3_384Enabled()) {
+                continue;
+            }
+            if (alg.equals("HmacSHA3-512") &&
+                !FeatureDetect.HmacSha3_512Enabled()) {
                 continue;
             }
             kg = KeyGenerator.getInstance(alg, "wolfJCE");
@@ -164,6 +186,62 @@ public class WolfCryptKeyGeneratorTest {
 
         testKeyGeneration("HmacSHA512", new int[] { 512 });
         testKeyGenerationDefaultKeySize("HmacSHA512", Sha512.DIGEST_SIZE * 8);
+    }
+
+    @Test
+    public void testHmacSHA3_224KeyGeneration()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Skip test if HmacSHA3-224 is not supported by native wolfSSL */
+        if (!FeatureDetect.HmacSha3_224Enabled()) {
+            return;
+        }
+
+        testKeyGeneration("HmacSHA3-224", new int[] { 224 });
+        testKeyGenerationDefaultKeySize("HmacSHA3-224",
+            Sha3.DIGEST_SIZE_224 * 8);
+    }
+
+    @Test
+    public void testHmacSHA3_256KeyGeneration()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Skip test if HmacSHA3-256 is not supported by native wolfSSL */
+        if (!FeatureDetect.HmacSha3_256Enabled()) {
+            return;
+        }
+
+        testKeyGeneration("HmacSHA3-256", new int[] { 256 });
+        testKeyGenerationDefaultKeySize("HmacSHA3-256",
+            Sha3.DIGEST_SIZE_256 * 8);
+    }
+
+    @Test
+    public void testHmacSHA3_384KeyGeneration()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Skip test if HmacSHA3-384 is not supported by native wolfSSL */
+        if (!FeatureDetect.HmacSha3_384Enabled()) {
+            return;
+        }
+
+        testKeyGeneration("HmacSHA3-384", new int[] { 384 });
+        testKeyGenerationDefaultKeySize("HmacSHA3-384",
+            Sha3.DIGEST_SIZE_384 * 8);
+    }
+
+    @Test
+    public void testHmacSHA3_512KeyGeneration()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Skip test if HmacSHA3-512 is not supported by native wolfSSL */
+        if (!FeatureDetect.HmacSha3_512Enabled()) {
+            return;
+        }
+
+        testKeyGeneration("HmacSHA3-512", new int[] { 512 });
+        testKeyGenerationDefaultKeySize("HmacSHA3-512",
+            Sha3.DIGEST_SIZE_512 * 8);
     }
 
     /**

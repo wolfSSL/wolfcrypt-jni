@@ -27,6 +27,7 @@ import com.wolfssl.wolfcrypt.Sha224;
 import com.wolfssl.wolfcrypt.Sha256;
 import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.Sha512;
+import com.wolfssl.wolfcrypt.Sha3;
 import javax.crypto.KeyGeneratorSpi;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -49,7 +50,11 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
         WC_HMAC_SHA224,
         WC_HMAC_SHA256,
         WC_HMAC_SHA384,
-        WC_HMAC_SHA512
+        WC_HMAC_SHA512,
+        WC_HMAC_SHA3_224,
+        WC_HMAC_SHA3_256,
+        WC_HMAC_SHA3_384,
+        WC_HMAC_SHA3_512
     }
 
     private AlgoType algoType = AlgoType.WC_INVALID;
@@ -91,6 +96,22 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
             case WC_HMAC_SHA512:
                 this.algString = "HmacSHA512";
                 this.keySizeBits = (Sha512.DIGEST_SIZE * 8);
+                break;
+            case WC_HMAC_SHA3_224:
+                this.algString = "HmacSHA3-224";
+                this.keySizeBits = (Sha3.DIGEST_SIZE_224 * 8);
+                break;
+            case WC_HMAC_SHA3_256:
+                this.algString = "HmacSHA3-256";
+                this.keySizeBits = (Sha3.DIGEST_SIZE_256 * 8);
+                break;
+            case WC_HMAC_SHA3_384:
+                this.algString = "HmacSHA3-384";
+                this.keySizeBits = (Sha3.DIGEST_SIZE_384 * 8);
+                break;
+            case WC_HMAC_SHA3_512:
+                this.algString = "HmacSHA3-512";
+                this.keySizeBits = (Sha3.DIGEST_SIZE_512 * 8);
                 break;
         }
 
@@ -232,6 +253,10 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
             case WC_HMAC_SHA256:
             case WC_HMAC_SHA384:
             case WC_HMAC_SHA512:
+            case WC_HMAC_SHA3_224:
+            case WC_HMAC_SHA3_256:
+            case WC_HMAC_SHA3_384:
+            case WC_HMAC_SHA3_512:
                 return new SecretKeySpec(keyArr, this.algString);
             default:
                 return null;
@@ -319,6 +344,62 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
          */
         public wcHMACSha512KeyGenerator() {
             super(AlgoType.WC_HMAC_SHA512);
+        }
+    }
+
+    /**
+     * KeyGenerator(HmacSHA3-224) class, called by WolfCryptProvider.
+     */
+    public static final class wcHMACSha3_224KeyGenerator
+        extends WolfCryptKeyGenerator {
+
+        /**
+         * Constructor for wcHMACSha3_224KeyGenerator.
+         */
+        public wcHMACSha3_224KeyGenerator() {
+            super(AlgoType.WC_HMAC_SHA3_224);
+        }
+    }
+
+    /**
+     * KeyGenerator(HmacSHA3-256) class, called by WolfCryptProvider.
+     */
+    public static final class wcHMACSha3_256KeyGenerator
+        extends WolfCryptKeyGenerator {
+
+        /**
+         * Constructor for wcHMACSha3_256KeyGenerator.
+         */
+        public wcHMACSha3_256KeyGenerator() {
+            super(AlgoType.WC_HMAC_SHA3_256);
+        }
+    }
+
+    /**
+     * KeyGenerator(HmacSHA3-384) class, called by WolfCryptProvider.
+     */
+    public static final class wcHMACSha3_384KeyGenerator
+        extends WolfCryptKeyGenerator {
+
+        /**
+         * Constructor for wcHMACSha3_384KeyGenerator.
+         */
+        public wcHMACSha3_384KeyGenerator() {
+            super(AlgoType.WC_HMAC_SHA3_384);
+        }
+    }
+
+    /**
+     * KeyGenerator(HmacSHA3-512) class, called by WolfCryptProvider.
+     */
+    public static final class wcHMACSha3_512KeyGenerator
+        extends WolfCryptKeyGenerator {
+
+        /**
+         * Constructor for wcHMACSha3_512KeyGenerator.
+         */
+        public wcHMACSha3_512KeyGenerator() {
+            super(AlgoType.WC_HMAC_SHA3_512);
         }
     }
 }
