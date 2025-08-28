@@ -256,5 +256,41 @@ public class Sha256Test {
             }
         }
     }
+
+    @Test(expected = RuntimeException.class)
+    public void testUpdateWithInvalidOffsetThrows() {
+        Sha256 sha = new Sha256();
+        byte[] data = new byte[10];
+
+        /* Test with negative offset */
+        sha.update(data, -1, 5);
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testUpdateWithInvalidLengthThrows() {
+        Sha256 sha = new Sha256();
+        byte[] data = new byte[10];
+
+        /* Test with negative length */
+        sha.update(data, 0, -1);
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testUpdateWithOffsetPlusLengthExceedingArraySizeThrows() {
+        Sha256 sha = new Sha256();
+        byte[] data = new byte[10];
+
+        /* Test with offset + length > data.length */
+        sha.update(data, 5, 6);
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testUpdateWithOffsetEqualToArraySizeThrows() {
+        Sha256 sha = new Sha256();
+        byte[] data = new byte[10];
+
+        /* Test with offset equal to array size */
+        sha.update(data, 10, 1);
+    }
 }
 
