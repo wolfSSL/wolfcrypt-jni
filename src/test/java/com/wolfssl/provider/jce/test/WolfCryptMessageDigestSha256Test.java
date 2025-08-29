@@ -346,5 +346,53 @@ public class WolfCryptMessageDigestSha256Test {
             }
         }
     }
+
+    @Test(expected = RuntimeException.class)
+    public void testUpdateWithInvalidOffsetThrows()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        MessageDigest sha256 =
+            MessageDigest.getInstance("SHA-256", "wolfJCE");
+        byte[] data = new byte[10];
+
+        /* Test with negative offset */
+        sha256.update(data, -1, 5);
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testUpdateWithInvalidLengthThrows()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        MessageDigest sha256 =
+            MessageDigest.getInstance("SHA-256", "wolfJCE");
+        byte[] data = new byte[10];
+
+        /* Test with negative length */
+        sha256.update(data, 0, -1);
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testUpdateWithOffsetPlusLengthExceedingArraySizeThrows()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        MessageDigest sha256 =
+            MessageDigest.getInstance("SHA-256", "wolfJCE");
+        byte[] data = new byte[10];
+
+        /* Test with offset + length > data.length */
+        sha256.update(data, 5, 6);
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testUpdateWithOffsetEqualToArraySizeThrows()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        MessageDigest sha256 =
+            MessageDigest.getInstance("SHA-256", "wolfJCE");
+        byte[] data = new byte[10];
+
+        /* Test with offset equal to array size */
+        sha256.update(data, 10, 1);
+    }
 }
 
