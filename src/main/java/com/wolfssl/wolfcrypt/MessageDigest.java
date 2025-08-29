@@ -162,17 +162,17 @@ public abstract class MessageDigest extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      * @throws IllegalStateException object fails to initialize properly
+     * @throws RuntimeException if offset or length are invalid
      */
     public synchronized void update(byte[] data, int offset, int len)
         throws WolfCryptException, IllegalStateException {
 
         checkStateAndInitialize();
 
-        if (offset >= data.length || offset < 0 || len < 0)
-            return;
-
-        if (data.length - offset < len)
-            len = data.length - offset;
+        if (((offset + len) > data.length) || offset < 0 || len < 0) {
+            throw new RuntimeException(
+                "Invalid offset or length");
+        }
 
         native_update(data, offset, len);
     }
