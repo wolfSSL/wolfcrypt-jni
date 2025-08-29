@@ -364,6 +364,22 @@ public final class WolfCryptProvider extends Provider {
             put("KeyGenerator.HmacSHA512",
                 "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha512KeyGenerator");
         }
+        if (FeatureDetect.HmacSha3_224Enabled()) {
+            put("KeyGenerator.HmacSHA3-224",
+                "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha3_224KeyGenerator");
+        }
+        if (FeatureDetect.HmacSha3_256Enabled()) {
+            put("KeyGenerator.HmacSHA3-256",
+                "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha3_256KeyGenerator");
+        }
+        if (FeatureDetect.HmacSha3_384Enabled()) {
+            put("KeyGenerator.HmacSHA3-384",
+                "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha3_384KeyGenerator");
+        }
+        if (FeatureDetect.HmacSha3_512Enabled()) {
+            put("KeyGenerator.HmacSHA3-512",
+                "com.wolfssl.provider.jce.WolfCryptKeyGenerator$wcHMACSha3_512KeyGenerator");
+        }
 
         /* KeyPairGenerator */
         if (FeatureDetect.RsaKeyGenEnabled()) {
