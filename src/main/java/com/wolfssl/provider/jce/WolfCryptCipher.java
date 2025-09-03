@@ -379,10 +379,19 @@ public class WolfCryptCipher extends CipherSpi {
         if (isBlockCipher()) {
             if (buffered != null && buffered.length > 0) {
                 totalSz = inputLen + buffered.length;
+            } else {
+                totalSz = inputLen;
+            }
+
+            /* For block ciphers that require block boundaries, round
+             * to next block size. GCM, CCM, CTR, and OFB do not require block
+             * boundaries. */
+            if (cipherMode != CipherMode.WC_GCM &&
+                cipherMode != CipherMode.WC_CCM &&
+                cipherMode != CipherMode.WC_CTR &&
+                cipherMode != CipherMode.WC_OFB) {
                 totalBlocks = totalSz / blockSize;
                 totalSz = totalBlocks * blockSize;
-            } else {
-                totalBlocks = inputLen / blockSize;
             }
         }
 
@@ -1061,6 +1070,15 @@ public class WolfCryptCipher extends CipherSpi {
                         tmpOut = totalOut;
                     }
                     else {
+                        /* Case where input is only the authentication tag,
+                         * zero-length plaintext */
+                        if (tmpIn.length < this.gcmTagLen) {
+                            throw new AEADBadTagException(
+                                "Input too short for GCM tag, got " +
+                                tmpIn.length + " bytes, need at least " +
+                                this.gcmTagLen);
+                        }
+
                         /* Get auth tag from end of ciphertext */
                         byte[] tag = Arrays.copyOfRange(tmpIn,
                                         tmpIn.length - this.gcmTagLen,
@@ -1099,6 +1117,15 @@ public class WolfCryptCipher extends CipherSpi {
                         tmpOut = totalOut;
                     }
                     else {
+                        /* Case where input is only the authentication tag,
+                         * zero-length plaintext */
+                        if (tmpIn.length < this.gcmTagLen) {
+                            throw new AEADBadTagException(
+                                "Input too short for CCM tag, got " +
+                                tmpIn.length + " bytes, need at least " +
+                                this.gcmTagLen);
+                        }
+
                         /* Get auth tag from end of ciphertext */
                         byte[] tag = Arrays.copyOfRange(tmpIn,
                                         tmpIn.length - this.gcmTagLen,

@@ -257,12 +257,14 @@ public class AesCcmTest {
         plain = dec.decrypt(cipher, iv3, tag, a3);
         assertArrayEquals(p3, plain);
 
-        /* bad encrypt arguments: null input */
-        try {
-            enc.encrypt(null, iv3, tag, a3);
-            fail("encrypt() with null input should fail");
-        } catch (WolfCryptException e) {
-            /* expected */
+        /* success case: null input with aad. FIPSv2 incorrectly returned
+         * BAD_FUNC_ARG when in buffer was null. Skip this test for v2 */
+        if (Fips.fipsVersion != 2) {
+            try {
+                enc.encrypt(null, iv3, tag, a3);
+            } catch (WolfCryptException e) {
+                fail("encrypt() with null input should pass");
+            }
         }
 
         /* bad encrypt arguments: null iv */
@@ -281,12 +283,14 @@ public class AesCcmTest {
             /* expected */
         }
 
-        /* bad decrypt arguments: null input */
-        try {
-            enc.decrypt(null, iv3, tag, a3);
-            fail("decrypt() with null input should fail");
-        } catch (WolfCryptException e) {
-            /* expected */
+        /* success case: null input with aad. FIPSv2 incorrectly returned
+         * BAD_FUNC_ARG when in buffer was null. Skip this test for v2 */
+        if (Fips.fipsVersion != 2) {
+            try {
+                enc.decrypt(null, iv3, tag, a3);
+            } catch (WolfCryptException e) {
+                fail("decrypt() with null input should pass");
+            }
         }
 
         /* bad decrypt arguments: null iv */
@@ -336,12 +340,14 @@ public class AesCcmTest {
         assertNotNull(plain);
         assertArrayEquals(p2, plain);
 
-        /* bad encrypt arguments: null input */
-        try {
-            enc.encrypt(null, iv2, tag, a2);
-            fail("encrypt() with null input should fail");
-        } catch (WolfCryptException e) {
-            /* expected */
+        /* success case: null input with aad. FIPSv2 incorrectly returned
+         * BAD_FUNC_ARG when in buffer was null. Skip this test for v2 */
+        if (Fips.fipsVersion != 2) {
+            try {
+                enc.encrypt(null, iv2, tag, a2);
+            } catch (WolfCryptException e) {
+                fail("encrypt() with null input should pass");
+            }
         }
 
         /* bad encrypt arguments: null iv */
@@ -360,12 +366,14 @@ public class AesCcmTest {
             /* expected */
         }
 
-        /* bad decrypt arguments: null input */
-        try {
-            enc.decrypt(null, iv2, tag, a2);
-            fail("decrypt() with null input should fail");
-        } catch (WolfCryptException e) {
-            /* expected */
+        /* success case: null input with aad. FIPSv2 incorrectly returned
+         * BAD_FUNC_ARG when in buffer was null. Skip this test for v2 */
+        if (Fips.fipsVersion != 2) {
+            try {
+                enc.decrypt(null, iv2, tag, a2);
+            } catch (WolfCryptException e) {
+                fail("decrypt() with null input should pass");
+            }
         }
 
         /* bad decrypt arguments: null iv */
@@ -415,12 +423,14 @@ public class AesCcmTest {
         assertNotNull(plain);
         assertArrayEquals(p1, plain);
 
-        /* bad encrypt arguments: null input */
-        try {
-            enc.encrypt(null, iv1, tag, a1);
-            fail("encrypt() with null input should fail");
-        } catch (WolfCryptException e) {
-            /* expected */
+        /* success case: null input with aad. FIPSv2 incorrectly returned
+         * BAD_FUNC_ARG when in buffer was null. Skip this test for v2 */
+        if (Fips.fipsVersion != 2) {
+            try {
+                enc.encrypt(null, iv1, tag, a1);
+            } catch (WolfCryptException e) {
+                fail("encrypt() with null input should pass");
+            }
         }
 
         /* bad encrypt arguments: null iv */
@@ -439,12 +449,14 @@ public class AesCcmTest {
             /* expected */
         }
 
-        /* bad decrypt arguments: null input */
-        try {
-            enc.decrypt(null, iv1, tag, a1);
-            fail("decrypt() with null input should fail");
-        } catch (WolfCryptException e) {
-            /* expected */
+        /* success case: null input with aad. FIPSv2 incorrectly returned
+         * BAD_FUNC_ARG when in buffer was null. Skip this test for v2 */
+        if (Fips.fipsVersion != 2) {
+            try {
+                enc.decrypt(null, iv1, tag, a1);
+            } catch (WolfCryptException e) {
+                fail("decrypt() with null input should pass");
+            }
         }
 
         /* bad decrypt arguments: null iv */
