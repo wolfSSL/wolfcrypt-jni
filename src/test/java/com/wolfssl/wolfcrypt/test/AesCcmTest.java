@@ -257,12 +257,11 @@ public class AesCcmTest {
         plain = dec.decrypt(cipher, iv3, tag, a3);
         assertArrayEquals(p3, plain);
 
-        /* bad encrypt arguments: null input */
+        /* success case: null input with aad */
         try {
             enc.encrypt(null, iv3, tag, a3);
-            fail("encrypt() with null input should fail");
         } catch (WolfCryptException e) {
-            /* expected */
+            fail("encrypt() with null input should pass");
         }
 
         /* bad encrypt arguments: null iv */
@@ -281,12 +280,11 @@ public class AesCcmTest {
             /* expected */
         }
 
-        /* bad decrypt arguments: null input */
+        /* success case: null input, valid AAD and tag */
         try {
             enc.decrypt(null, iv3, tag, a3);
-            fail("decrypt() with null input should fail");
         } catch (WolfCryptException e) {
-            /* expected */
+            fail("decrypt() with null input should pass");
         }
 
         /* bad decrypt arguments: null iv */
@@ -336,12 +334,11 @@ public class AesCcmTest {
         assertNotNull(plain);
         assertArrayEquals(p2, plain);
 
-        /* bad encrypt arguments: null input */
+        /* success case: null input, but with AAD */
         try {
             enc.encrypt(null, iv2, tag, a2);
-            fail("encrypt() with null input should fail");
         } catch (WolfCryptException e) {
-            /* expected */
+            fail("encrypt() with null input should pass");
         }
 
         /* bad encrypt arguments: null iv */
@@ -360,12 +357,11 @@ public class AesCcmTest {
             /* expected */
         }
 
-        /* bad decrypt arguments: null input */
+        /* success case: null input, valid AAD and tag */
         try {
             enc.decrypt(null, iv2, tag, a2);
-            fail("decrypt() with null input should fail");
         } catch (WolfCryptException e) {
-            /* expected */
+            fail("decrypt() with null input should pass");
         }
 
         /* bad decrypt arguments: null iv */
@@ -415,12 +411,11 @@ public class AesCcmTest {
         assertNotNull(plain);
         assertArrayEquals(p1, plain);
 
-        /* bad encrypt arguments: null input */
+        /* success case: null input, but with AAD */
         try {
             enc.encrypt(null, iv1, tag, a1);
-            fail("encrypt() with null input should fail");
         } catch (WolfCryptException e) {
-            /* expected */
+            fail("encrypt() with null input should pass");
         }
 
         /* bad encrypt arguments: null iv */
@@ -439,12 +434,11 @@ public class AesCcmTest {
             /* expected */
         }
 
-        /* bad decrypt arguments: null input */
+        /* success case: null input, valid AAD and tag */
         try {
             enc.decrypt(null, iv1, tag, a1);
-            fail("decrypt() with null input should fail");
         } catch (WolfCryptException e) {
-            /* expected */
+            fail("decrypt() with null input should pass");
         }
 
         /* bad decrypt arguments: null iv */

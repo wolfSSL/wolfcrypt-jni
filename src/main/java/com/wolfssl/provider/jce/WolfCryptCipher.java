@@ -1061,6 +1061,15 @@ public class WolfCryptCipher extends CipherSpi {
                         tmpOut = totalOut;
                     }
                     else {
+                        /* Case where input is only the authentication tag,
+                         * zero-length plaintext */
+                        if (tmpIn.length < this.gcmTagLen) {
+                            throw new AEADBadTagException(
+                                "Input too short for GCM tag, got " +
+                                tmpIn.length + " bytes, need at least " +
+                                this.gcmTagLen);
+                        }
+
                         /* Get auth tag from end of ciphertext */
                         byte[] tag = Arrays.copyOfRange(tmpIn,
                                         tmpIn.length - this.gcmTagLen,
@@ -1099,6 +1108,15 @@ public class WolfCryptCipher extends CipherSpi {
                         tmpOut = totalOut;
                     }
                     else {
+                        /* Case where input is only the authentication tag,
+                         * zero-length plaintext */
+                        if (tmpIn.length < this.gcmTagLen) {
+                            throw new AEADBadTagException(
+                                "Input too short for CCM tag, got " +
+                                tmpIn.length + " bytes, need at least " +
+                                this.gcmTagLen);
+                        }
+
                         /* Get auth tag from end of ciphertext */
                         byte[] tag = Arrays.copyOfRange(tmpIn,
                                         tmpIn.length - this.gcmTagLen,
