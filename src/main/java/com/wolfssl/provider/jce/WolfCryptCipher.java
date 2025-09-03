@@ -379,10 +379,19 @@ public class WolfCryptCipher extends CipherSpi {
         if (isBlockCipher()) {
             if (buffered != null && buffered.length > 0) {
                 totalSz = inputLen + buffered.length;
+            } else {
+                totalSz = inputLen;
+            }
+
+            /* For block ciphers that require block boundaries, round
+             * to next block size. GCM, CCM, CTR, and OFB do not require block
+             * boundaries. */
+            if (cipherMode != CipherMode.WC_GCM &&
+                cipherMode != CipherMode.WC_CCM &&
+                cipherMode != CipherMode.WC_CTR &&
+                cipherMode != CipherMode.WC_OFB) {
                 totalBlocks = totalSz / blockSize;
                 totalSz = totalBlocks * blockSize;
-            } else {
-                totalBlocks = inputLen / blockSize;
             }
         }
 
