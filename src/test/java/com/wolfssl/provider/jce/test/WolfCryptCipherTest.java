@@ -6918,5 +6918,102 @@ public class WolfCryptCipherTest {
         assertArrayEquals("Decrypted result should match original plaintext",
                          plaintext, fullResult);
     }
+
+    /*
+     * Test AES-GCM and AES-CCM with zero-length plaintext.
+     */
+    @Test
+    public void testAesGcmCcmZeroLengthPlaintext()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        /* Test AES-GCM with zero-length plaintext */
+        if (enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            byte[] key = new byte[16];
+            byte[] iv = new byte[12];
+            byte[] aad = new byte[100];
+
+            secureRandom.nextBytes(key);
+            secureRandom.nextBytes(iv);
+            for (int i = 0; i < aad.length; i++) {
+                aad[i] = (byte) (i % 256);
+            }
+
+            /* Test zero-length plaintext */
+            byte[] plaintext = new byte[0];
+
+            /* Encrypt */
+            Cipher encCipher =
+                Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
+            encCipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"),
+                gcmSpec);
+            encCipher.updateAAD(aad);
+            byte[] ciphertext = encCipher.doFinal(plaintext);
+
+            /* Should have only the authentication tag (16 bytes) */
+            assertEquals("GCM ciphertext should be tag length only",
+                16, ciphertext.length);
+
+            /* Decrypt */
+            Cipher decCipher =
+                Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+            decCipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"),
+                gcmSpec);
+            decCipher.updateAAD(aad);
+            byte[] decrypted = decCipher.doFinal(ciphertext);
+
+            /* Should decrypt to zero-length plaintext */
+            assertEquals("Decrypted plaintext should be zero length",
+                0, decrypted.length);
+            assertArrayEquals("Decrypted should match original plaintext",
+                plaintext, decrypted);
+        }
+
+        /* Test AES-CCM with zero-length plaintext */
+        if (enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            byte[] key = new byte[16];
+            byte[] nonce = new byte[11]; /* 88-bit nonce for CCM */
+            byte[] aad = new byte[50];
+
+            secureRandom.nextBytes(key);
+            secureRandom.nextBytes(nonce);
+            for (int i = 0; i < aad.length; i++) {
+                aad[i] = (byte) (i % 256);
+            }
+
+            /* Test zero-length plaintext */
+            byte[] plaintext = new byte[0];
+
+            /* Encrypt */
+            Cipher encCipher =
+                Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+            GCMParameterSpec ccmSpec = new GCMParameterSpec(128, nonce);
+            encCipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"),
+                ccmSpec);
+            encCipher.updateAAD(aad);
+            byte[] ciphertext = encCipher.doFinal(plaintext);
+
+            /* Should have only the authentication tag (16 bytes) */
+            assertEquals("CCM ciphertext should be tag length only",
+                16, ciphertext.length);
+
+            /* Decrypt */
+            Cipher decCipher =
+                Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+            decCipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"),
+                ccmSpec);
+            decCipher.updateAAD(aad);
+            byte[] decrypted = decCipher.doFinal(ciphertext);
+
+            /* Should decrypt to zero-length plaintext */
+            assertEquals("Decrypted plaintext should be zero length",
+                0, decrypted.length);
+            assertArrayEquals("Decrypted should match original plaintext",
+                plaintext, decrypted);
+        }
+    }
 }
 
