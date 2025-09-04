@@ -99,7 +99,7 @@ The JCE provider currently supports the following algorithms:
 
     SecureRandom Class
         DEFAULT (maps to HashDRBG)
-        HashDRBG
+        HashDRBG (aliased also as: Hash_DRBG, DRBG)
 
     Cipher Class
         AES/CBC/NoPadding

@@ -52,7 +52,22 @@ public final class WolfCryptRandom extends SecureRandomSpi {
     }
 
     @Override
-    protected synchronized byte[] engineGenerateSeed(int numBytes) {
+    protected synchronized byte[] engineGenerateSeed(int numBytes)
+        throws IllegalArgumentException {
+
+        if (numBytes == 0) {
+            return new byte[0];
+        }
+
+        if (numBytes < 0) {
+            throw new IllegalArgumentException("numBytes must be non-negative");
+        }
+
+        if (numBytes > Rng.RNG_MAX_BLOCK_LEN) {
+            throw new IllegalArgumentException(
+                "numBytes too large. wolfCrypt max is " +
+                Rng.RNG_MAX_BLOCK_LEN);
+        }
 
         return rng.generateBlock(numBytes);
     }
