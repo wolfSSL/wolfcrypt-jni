@@ -45,6 +45,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidParameterException;
 import java.security.InvalidKeyException;
 import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
 
 import com.wolfssl.wolfcrypt.Aes;
@@ -666,6 +667,17 @@ public class WolfCryptCipher extends CipherSpi {
 
             if (key instanceof RSAPrivateKey) {
                 this.rsaKeyType = RsaKeyType.WC_RSA_PRIVATE;
+
+                /* wolfSSL requires CRT parameters for RSA private key
+                 * operations. Non-CRT keys (created with only n and d) will
+                 * fail with "mp_exptmod error state" or similar in the
+                 * native layer. */
+                if (!(key instanceof RSAPrivateCrtKey)) {
+                    throw new InvalidKeyException(
+                        "RSA private key must include CRT parameters " +
+                        "(p, q, dP, dQ, qInv). Keys created from only " +
+                        "modulus and exponent are not supported by wolfSSL.");
+                }
 
             } else if (key instanceof RSAPublicKey) {
                 this.rsaKeyType = RsaKeyType.WC_RSA_PUBLIC;
