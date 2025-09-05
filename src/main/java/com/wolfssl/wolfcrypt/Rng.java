@@ -28,6 +28,10 @@ import java.nio.ByteBuffer;
  */
 public class Rng extends NativeStruct {
 
+    /* Maximum generate block length for wolfCrypt */
+    public static int RNG_MAX_BLOCK_LEN =
+        Rng.getRNG_MAX_BLOCK_LEN();
+
     /**
      * Malloc native JNI Rng structure
      *
@@ -45,6 +49,7 @@ public class Rng extends NativeStruct {
     private native void rngGenerateBlock(ByteBuffer buffer, int offset,
             int length);
     private native void rngGenerateBlock(byte[] buffer, int offset, int length);
+    private static native int getRNG_MAX_BLOCK_LEN();
 
     /* Lock to prevent concurrent access to native WC_RNG */
     private final Object rngLock = new Object();
@@ -98,6 +103,7 @@ public class Rng extends NativeStruct {
      *         ByteBuffer is not direct.
      */
     public synchronized void generateBlock(ByteBuffer buffer) {
+
         init();
 
         if (buffer.isDirect() == false) {
@@ -120,7 +126,9 @@ public class Rng extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      */
-    public synchronized void generateBlock(byte[] buffer, int offset, int length) {
+    public synchronized void generateBlock(byte[] buffer, int offset,
+        int length) {
+
         init();
 
         synchronized (rngLock) {

@@ -132,12 +132,17 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_ni
 
     buffer = getDirectBufferAddress(env, buffer_buffer);
 
-    ret = (!rng || !buffer)
-        ? BAD_FUNC_ARG
-        : wc_RNG_GenerateBlock(rng, buffer + position, size);
+    if (rng == NULL || buffer == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
 
-    if (ret != 0)
+    if (ret == 0) {
+        ret = wc_RNG_GenerateBlock(rng, buffer + position, size);
+    }
+
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_RNG_GenerateBlock(rng=%p, buffer, size) = %d\n", rng, ret);
     LogStr("output[%u]: [%p]\n", (word32)size, buffer);
@@ -155,6 +160,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
     int ret = 0;
     RNG*  rng    = NULL;
     byte* buffer = NULL;
+    word32 bufferSz = 0;
 
     rng = (RNG*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -163,12 +169,20 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
     }
 
     buffer = getByteArray(env, buffer_buffer);
+    bufferSz = getByteArrayLength(env, buffer_buffer);
 
-    ret = (!rng || !buffer)
-        ? BAD_FUNC_ARG
-        : wc_RNG_GenerateBlock(rng, buffer + offset, length);
-    if (ret != 0)
+    if (rng == NULL || buffer == NULL || (offset + length) > bufferSz ||
+        offset < 0 || length < 0) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        ret = wc_RNG_GenerateBlock(rng, buffer + offset, length);
+    }
+
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("wc_RNG_GenerateBlock(rng=%p, buffer, length) = %d\n", rng, ret);
     LogStr("output[%u]: [%p]\n", (word32)length, buffer);
@@ -178,5 +192,11 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
 #else
     throwNotCompiledInException(env);
 #endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rng_getRNG_1MAX_1BLOCK_1LEN
+  (JNIEnv* env, jclass jcl)
+{
+    return RNG_MAX_BLOCK_LEN;
 }
 

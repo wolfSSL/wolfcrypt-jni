@@ -49,6 +49,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_ni
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII
   (JNIEnv *, jobject, jbyteArray, jint, jint);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rng
+ * Method:    getRNG_MAX_BLOCK_LEN
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rng_getRNG_1MAX_1BLOCK_1LEN
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif
