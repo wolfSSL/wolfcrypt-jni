@@ -54,6 +54,14 @@ import java.security.Provider;
 import java.security.SecureRandom;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.KeyFactory;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.RSAPrivateKeySpec;
+import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.InvalidKeySpecException;
+import java.math.BigInteger;
 import java.security.PublicKey;
 import java.security.PrivateKey;
 import java.security.NoSuchProviderException;
@@ -7014,6 +7022,144 @@ public class WolfCryptCipherTest {
             assertArrayEquals("Decrypted should match original plaintext",
                 plaintext, decrypted);
         }
+    }
+
+    /**
+     * Test that CRT-based RSA private keys work correctly (positive test)
+     */
+    @Test
+    public void testRSACrtKeySupported()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        /* Skip test if RSA is not enabled */
+        if (!enabledJCEAlgos.contains("RSA")) {
+            return;
+        }
+
+        /* Generate RSA key pair - these are CRT keys by default */
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048, secureRandom);
+        KeyPair pair = keyGen.generateKeyPair();
+        RSAPrivateKey privKey = (RSAPrivateKey) pair.getPrivate();
+        RSAPublicKey pubKey = (RSAPublicKey) pair.getPublic();
+
+        /* Verify we have a CRT key */
+        assertTrue("Generated RSA private key should be CRT key",
+            privKey instanceof RSAPrivateCrtKey);
+
+        /* Test data */
+        byte[] plaintext = "Everyone gets Friday off.".getBytes();
+
+        /* Test private encryption (signing) with CRT key */
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, privKey);
+        byte[] ciphertext = cipher.doFinal(plaintext);
+
+        /* Test public decryption (verification) */
+        cipher.init(Cipher.DECRYPT_MODE, pubKey);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+
+        assertArrayEquals("CRT-based RSA operation should work correctly",
+            plaintext, decrypted);
+    }
+
+    /**
+     * Test that non-CRT RSA private keys are rejected with error message
+     */
+    @Test
+    public void testRSANonCrtKeyRejected()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeySpecException {
+
+        /* Skip test if RSA is not enabled */
+        if (!enabledJCEAlgos.contains("RSA")) {
+            return;
+        }
+
+        /* Generate RSA key pair first */
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048, secureRandom);
+        KeyPair pair = keyGen.generateKeyPair();
+
+        /* Extract RSA components */
+        RSAPublicKey rsaPub = (RSAPublicKey) pair.getPublic();
+        RSAPrivateKey rsaPriv = (RSAPrivateKey) pair.getPrivate();
+
+        BigInteger n = rsaPub.getModulus();
+        BigInteger e = rsaPub.getPublicExponent();
+        BigInteger d = rsaPriv.getPrivateExponent();
+
+        /* Create non-CRT private key using only n and d */
+        KeyFactory kf = KeyFactory.getInstance("RSA");
+        RSAPrivateKeySpec nonCrtSpec = new RSAPrivateKeySpec(n, d);
+        RSAPrivateKey nonCrtKey = (RSAPrivateKey)kf.generatePrivate(nonCrtSpec);
+
+        /* Verify it's NOT a CRT key */
+        assertFalse("Created key should NOT be a CRT key",
+            nonCrtKey instanceof RSAPrivateCrtKey);
+
+        /* Test that cipher initialization rejects non-CRT key */
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+
+        try {
+            cipher.init(Cipher.ENCRYPT_MODE, nonCrtKey);
+            fail("Non-CRT RSA private key should be rejected");
+        } catch (InvalidKeyException ex) {
+            /* expected */
+
+            /* Verify error message is helpful and specific */
+            String errorMsg = ex.getMessage().toLowerCase();
+            assertTrue("Error message should mention CRT parameters: " +
+                ex.getMessage(), errorMsg.contains("crt parameters"));
+            assertTrue("Error message should mention wolfSSL: " +
+                ex.getMessage(), errorMsg.contains("wolfssl"));
+            assertTrue("Error message should mention modulus and exponent: " +
+                ex.getMessage(),
+                errorMsg.contains("modulus") &&
+                errorMsg.contains("exponent"));
+        }
+    }
+
+    /**
+     * Test that RSA public keys continue to work normally after CRT validation
+     */
+    @Test
+    public void testRSAPublicKeyStillWorks()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        /* Skip test if RSA is not enabled */
+        if (!enabledJCEAlgos.contains("RSA")) {
+            return;
+        }
+
+        /* Generate RSA key pair */
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048, secureRandom);
+
+        KeyPair pair = keyGen.generateKeyPair();
+        RSAPrivateKey privKey = (RSAPrivateKey) pair.getPrivate();
+        RSAPublicKey pubKey = (RSAPublicKey) pair.getPublic();
+
+        /* Test data */
+        byte[] plaintext = "Everyone gets Friday off.".getBytes();
+
+        /* Test public encryption */
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, pubKey);
+        byte[] ciphertext = cipher.doFinal(plaintext);
+
+        /* Test private decryption */
+        cipher.init(Cipher.DECRYPT_MODE, privKey);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+
+        assertArrayEquals("RSA public key operations should work normally",
+            plaintext, decrypted);
     }
 }
 
