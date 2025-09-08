@@ -75,13 +75,23 @@ public final class WolfCryptRandom extends SecureRandomSpi {
     @Override
     protected synchronized void engineNextBytes(byte[] bytes) {
 
+        if (bytes == null) {
+            throw new NullPointerException("Input byte[] should not be null");
+        }
+
         rng.generateBlock(bytes);
     }
 
     @Override
     protected synchronized void engineSetSeed(byte[] seed) {
+
+        if (seed == null) {
+            throw new NullPointerException("Input seed[] should not be null");
+        }
+
         /* wolfCrypt reseeds internally automatically */
         log("setSeed() not supported by wolfJCE");
+
     }
 
     private void log(String msg) {
@@ -144,6 +154,22 @@ public final class WolfCryptRandom extends SecureRandomSpi {
         }
 
         in.defaultReadObject();
+    }
+
+    @Override
+    public String toString() {
+        /* Native wolfCrypt DRBG details:
+         *     Hash_DRBG = DRBG implementation
+         *     SHA-256 = hash function used in Hash_DRBG implementation
+         *     128 = security strength in bits
+         *     reseed_only = NIST implementation default, prediction resistance
+         *     not enabled for every generate call, onlky when explicitly
+         *     reseeded.
+         *
+         * This output format matches other JCE providers, some callers
+         * may expect this format.
+         */
+        return "Hash_DRBG,SHA-256,128,reseed_only";
     }
 }
 
