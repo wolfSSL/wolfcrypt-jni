@@ -44,10 +44,7 @@ public final class WolfCryptRandom extends SecureRandomSpi {
      * Create new WolfCryptRandom object
      */
     public WolfCryptRandom() {
-
-        this.rng = new Rng();
-        this.rng.init();
-
+        checkRngInitialized();
         log("initialized new object");
     }
 
@@ -69,6 +66,8 @@ public final class WolfCryptRandom extends SecureRandomSpi {
                 Rng.RNG_MAX_BLOCK_LEN);
         }
 
+        checkRngInitialized();
+
         return rng.generateBlock(numBytes);
     }
 
@@ -78,6 +77,8 @@ public final class WolfCryptRandom extends SecureRandomSpi {
         if (bytes == null) {
             throw new NullPointerException("Input byte[] should not be null");
         }
+
+        checkRngInitialized();
 
         rng.generateBlock(bytes);
     }
@@ -92,6 +93,18 @@ public final class WolfCryptRandom extends SecureRandomSpi {
         /* wolfCrypt reseeds internally automatically */
         log("setSeed() not supported by wolfJCE");
 
+    }
+
+    /**
+     * Initialize the RNG if needed (null). This handles cases where the object
+     * was created through deserialization, reflection, etc. and the
+     * constructor was not called.
+     */
+    private void checkRngInitialized() {
+        if (this.rng == null) {
+            this.rng = new Rng();
+            this.rng.init();
+        }
     }
 
     private void log(String msg) {
@@ -148,12 +161,9 @@ public final class WolfCryptRandom extends SecureRandomSpi {
     private synchronized void readObject(ObjectInputStream in)
         throws IOException, ClassNotFoundException {
 
-        if (rng == null) {
-            this.rng = new Rng();
-            this.rng.init();
-        }
-
         in.defaultReadObject();
+
+        checkRngInitialized();
     }
 
     @Override
@@ -163,7 +173,7 @@ public final class WolfCryptRandom extends SecureRandomSpi {
          *     SHA-256 = hash function used in Hash_DRBG implementation
          *     128 = security strength in bits
          *     reseed_only = NIST implementation default, prediction resistance
-         *     not enabled for every generate call, onlky when explicitly
+         *     not enabled for every generate call, only when explicitly
          *     reseeded.
          *
          * This output format matches other JCE providers, some callers
