@@ -79,6 +79,14 @@ public class WolfCryptRandomTest {
         /* DEFAULT */
         rand = SecureRandom.getInstance("DEFAULT", "wolfJCE");
         assertNotNull(rand);
+
+        /* Hash_DRBG alias */
+        rand = SecureRandom.getInstance("Hash_DRBG", "wolfJCE");
+        assertNotNull(rand);
+
+        /* DRBG alias */
+        rand = SecureRandom.getInstance("DRBG", "wolfJCE");
+        assertNotNull(rand);
     }
 
     @Test
@@ -279,5 +287,63 @@ public class WolfCryptRandomTest {
         rand.setSeed(seed);
     }
 
+    @Test
+    public void testGenerateSeedWithNegativeArgument()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        SecureRandom rand = SecureRandom.getInstance("HashDRBG", "wolfJCE");
+
+        try {
+            rand.generateSeed(-1);
+            fail("Expected IllegalArgumentException for negative seed length");
+
+        } catch (IllegalArgumentException e) {
+            /* Expected exception */
+        }
+    }
+
+    @Test
+    public void testGenerateSeedWithTooLargeArgument()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        SecureRandom rand = SecureRandom.getInstance("HashDRBG", "wolfJCE");
+
+        /* Get the maximum block length from Rng class */
+        int maxLen = com.wolfssl.wolfcrypt.Rng.RNG_MAX_BLOCK_LEN;
+
+        try {
+            rand.generateSeed(maxLen + 1);
+            fail("Expected IllegalArgumentException for too large length");
+        } catch (IllegalArgumentException e) {
+            /* Expected exception */
+        }
+    }
+
+    @Test
+    public void testGenerateSeedWithValidMaxArgument()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        SecureRandom rand = SecureRandom.getInstance("HashDRBG", "wolfJCE");
+
+        /* Get the maximum block length from Rng class */
+        int maxLen = com.wolfssl.wolfcrypt.Rng.RNG_MAX_BLOCK_LEN;
+
+        /* This should succeed */
+        byte[] seed = rand.generateSeed(maxLen);
+        assertNotNull(seed);
+        assertEquals(maxLen, seed.length);
+    }
+
+    @Test
+    public void testGenerateSeedWithZeroArgument()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        SecureRandom rand = SecureRandom.getInstance("HashDRBG", "wolfJCE");
+
+        /* Zero length should be valid */
+        byte[] seed = rand.generateSeed(0);
+        assertNotNull(seed);
+        assertEquals(0, seed.length);
+    }
 }
 
