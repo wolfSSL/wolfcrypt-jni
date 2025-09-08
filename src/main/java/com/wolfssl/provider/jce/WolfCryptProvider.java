@@ -117,6 +117,10 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptRandom");
         put("SecureRandom.HashDRBG",
                 "com.wolfssl.provider.jce.WolfCryptRandom");
+        put("SecureRandom.Hash_DRBG",
+                "com.wolfssl.provider.jce.WolfCryptRandom");
+        put("SecureRandom.DRBG",
+                "com.wolfssl.provider.jce.WolfCryptRandom");
 
         /* Signature */
         if (FeatureDetect.Md5Enabled()) {
