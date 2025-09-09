@@ -49,6 +49,8 @@ import java.security.spec.RSAKeyGenParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
@@ -554,6 +556,40 @@ public class WolfCryptKeyPairGeneratorTest {
 
         assertNotNull(kp1);
         assertNotNull(kp2);
+    }
+
+    @Test
+    public void testKeyPairGeneratorRsaDefaultKeySize()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Test that RSA KeyPairGenerator works with default parameters
+         * without explicit initialization */
+        KeyPairGenerator kpg =
+            KeyPairGenerator.getInstance("RSA", "wolfJCE");
+
+        /* Generate key pair without calling initialize() first */
+        KeyPair kp = kpg.generateKeyPair();
+        assertNotNull(kp);
+        assertNotNull(kp.getPublic());
+        assertNotNull(kp.getPrivate());
+
+        /* Verify the generated key is RSA and has expected default size */
+        assertTrue(kp.getPublic() instanceof RSAPublicKey);
+        assertTrue(kp.getPrivate() instanceof RSAPrivateKey);
+
+        RSAPublicKey pubKey = (RSAPublicKey) kp.getPublic();
+        RSAPrivateKey privKey = (RSAPrivateKey) kp.getPrivate();
+
+        /* Default key size should be 2048 bits */
+        assertEquals("Default RSA key size should be 2048 bits",
+                     2048, pubKey.getModulus().bitLength());
+        assertEquals("Private key modulus should match public key",
+                     pubKey.getModulus(), privKey.getModulus());
+
+        /* Verify the default public exponent */
+        assertEquals("Default RSA public exponent should match wolfSSL default",
+                     BigInteger.valueOf(Rsa.getDefaultRsaExponent()),
+                     pubKey.getPublicExponent());
     }
 
     @Test
