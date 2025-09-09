@@ -156,8 +156,13 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 RSAKeyGenParameterSpec rsaSpec = (RSAKeyGenParameterSpec)params;
                 this.keysize = rsaSpec.getKeysize();
 
-                this.publicExponent =
-                    rsaSpec.getPublicExponent().longValue();
+                /* Exponent should be larger than 1 and odd */
+                long exp = rsaSpec.getPublicExponent().longValue();
+                if ((exp <= 1) || (exp % 2 == 0)) {
+                    throw new InvalidAlgorithmParameterException(
+                        "RSA public exponent must be positive and odd" );
+                }
+                this.publicExponent = exp;
 
                 /* Double check longValue() converted correctly. Some platforms
                  * do not have longValueExact() */

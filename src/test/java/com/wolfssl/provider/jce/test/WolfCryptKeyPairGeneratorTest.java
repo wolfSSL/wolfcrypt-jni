@@ -632,5 +632,59 @@ public class WolfCryptKeyPairGeneratorTest {
             }
         }
     }
+
+    @Test
+    public void testKeyPairGenerationInvalidExponent()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        if (testedRSAKeySizes.size() > 0) {
+
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "wolfJCE");
+
+            /* Negative exponent */
+            try {
+                RSAKeyGenParameterSpec rsaSpec =
+                    new RSAKeyGenParameterSpec(testedRSAKeySizes.get(0),
+                            BigInteger.valueOf(-1));
+                kpg.initialize(rsaSpec);
+                fail("KeyPairGenerator.initialize() should throw " +
+                     "InvalidAlgorithmParameterException when given " +
+                     "invalid negative RSA public exponent");
+
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+
+            /* Zero exponent */
+            try {
+                RSAKeyGenParameterSpec rsaSpec =
+                    new RSAKeyGenParameterSpec(testedRSAKeySizes.get(0),
+                            BigInteger.valueOf(0));
+                kpg.initialize(rsaSpec);
+                fail("KeyPairGenerator.initialize() should throw " +
+                     "InvalidAlgorithmParameterException when given " +
+                     "invalid RSA public exponent of zero");
+
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+
+            /* Even exponent */
+            try {
+                RSAKeyGenParameterSpec rsaSpec =
+                    new RSAKeyGenParameterSpec(testedRSAKeySizes.get(0),
+                            BigInteger.valueOf(4));
+                kpg.initialize(rsaSpec);
+                fail("KeyPairGenerator.initialize() should throw " +
+                     "InvalidAlgorithmParameterException when given " +
+                     "invalid even RSA public exponent");
+
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+        }
+    }
 }
 
