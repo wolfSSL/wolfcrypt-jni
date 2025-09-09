@@ -534,41 +534,50 @@ public class WolfCryptSignature extends SignatureSpi {
         AlgorithmParameterSpec params)
         throws InvalidAlgorithmParameterException {
 
-        if (this.paddingType != PaddingType.WC_RSA_PSS) {
-            throw new InvalidAlgorithmParameterException(
-                "Parameters only supported for RSA-PSS");
-        }
-
-        if (!(params instanceof PSSParameterSpec)) {
-            throw new InvalidAlgorithmParameterException(
-                "Only PSSParameterSpec supported");
-        }
-
-        PSSParameterSpec pss = (PSSParameterSpec)params;
-        validatePSSParameters(pss);
-        this.pssParams = pss;
-
-        /* For RSASSA-PSS, (re)initialize digest based on parameters */
-        String hashAlg = pss.getDigestAlgorithm();
-        DigestType newDigestType = javaNameToDigestType(hashAlg);
-
-        /* Check if digest type has changed or needs initialization */
-        if (this.digestType == null || this.digestType != newDigestType) {
-            this.digestType = newDigestType;
-
-            try {
-                /* (re)initialize with the new digest type */
-                init(this.keyType, this.digestType, this.paddingType);
-
-                /* Initialize hash object for existing key if already set */
-                if ((this.rsa != null || this.ecc != null)) {
-                    initHashObject();
-                }
-            } catch (NoSuchAlgorithmException e) {
+        /* For RSA-PSS signatures, parameters are required */
+        if (this.paddingType == PaddingType.WC_RSA_PSS) {
+            if (!(params instanceof PSSParameterSpec)) {
                 throw new InvalidAlgorithmParameterException(
-                    "Failed to initialize with digest: " + hashAlg, e);
+                    "Only PSSParameterSpec supported for RSA-PSS");
             }
+
+            PSSParameterSpec pss = (PSSParameterSpec)params;
+            validatePSSParameters(pss);
+            this.pssParams = pss;
+
+            /* For RSASSA-PSS, (re)initialize digest based on parameters */
+            String hashAlg = pss.getDigestAlgorithm();
+            DigestType newDigestType = javaNameToDigestType(hashAlg);
+
+            /* Check if digest type has changed or needs initialization */
+            if (this.digestType == null || this.digestType != newDigestType) {
+                this.digestType = newDigestType;
+
+                try {
+                    /* (re)initialize with the new digest type */
+                    init(this.keyType, this.digestType, this.paddingType);
+
+                    /* Initialize hash object for existing key if already set */
+                    if ((this.rsa != null || this.ecc != null)) {
+                        initHashObject();
+                    }
+                } catch (NoSuchAlgorithmException e) {
+                    throw new InvalidAlgorithmParameterException(
+                        "Failed to initialize with digest: " + hashAlg, e);
+                }
+            }
+            return;
         }
+
+        /* For non-PSS signatures, allow null parameters (ignore) */
+        if (params == null) {
+            return;
+        }
+
+        /* For non-PSS signatures, reject any non-null parameters */
+        throw new InvalidAlgorithmParameterException(
+            "Parameters not supported for " +
+            keyTypeToString(this.keyType) + " with PKCS#1 v1.5 padding");
     }
 
     @Override

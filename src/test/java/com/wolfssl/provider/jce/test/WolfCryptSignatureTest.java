@@ -1929,5 +1929,119 @@ public class WolfCryptSignatureTest {
 
         assertTrue("RSA-PSS verification failed with zero salt", verified);
     }
+
+    @Test
+    public void testNonPssSignatureNullParameters()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               SignatureException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        /* Test that non-PSS signatures accept null parameters */
+        String message = "Testing null parameters for non-PSS signatures";
+        byte[] messageBytes = message.getBytes();
+
+        for (String algo : enabledAlgos) {
+            if (algo.contains("PSS")) {
+                continue; /* Skip PSS algorithms */
+            }
+
+            /* Generate appropriate key pair */
+            KeyPair pair = generateKeyPair(algo, secureRandom);
+            assertNotNull("Key pair should not be null for " + algo, pair);
+
+            PrivateKey priv = pair.getPrivate();
+            PublicKey  pub  = pair.getPublic();
+
+            /* Create signature instances */
+            Signature signer = Signature.getInstance(algo, "wolfJCE");
+            Signature verifier = Signature.getInstance(algo, "wolfJCE");
+
+            assertNotNull("Signer should not be null for " + algo, signer);
+            assertNotNull("Verifier should not be null for " + algo, verifier);
+
+            /* Test setting null parameters - should not throw exception */
+            try {
+                signer.setParameter(null);
+                verifier.setParameter(null);
+            } catch (InvalidAlgorithmParameterException e) {
+                fail("Should not throw exception when setting null " +
+                    "parameters for non-PSS algorithm: " + algo +
+                    ". Error: " + e.getMessage());
+            }
+
+            /* Test that signature still works after setting null parameters */
+            signer.initSign(priv);
+            signer.update(messageBytes);
+            byte[] signature = signer.sign();
+
+            assertNotNull("Signature should not be null for " + algo +
+                " with null parameters", signature);
+            assertTrue("Signature should have non-zero length for " + algo +
+                " with null parameters", signature.length > 0);
+
+            /* Verify signature */
+            verifier.initVerify(pub);
+            verifier.update(messageBytes);
+            boolean verified = verifier.verify(signature);
+
+            assertTrue("Signature verification should succeed for " + algo +
+                " with null parameters", verified);
+        }
+    }
+
+    @Test
+    public void testNonPssSignatureRejectsNonNullParameters()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               SignatureException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        /* Test that non-PSS signatures reject non-null parameters */
+        for (String algo : enabledAlgos) {
+            if (algo.contains("PSS")) {
+                continue; /* Skip PSS algorithms */
+            }
+
+            /* Only test a algo subset to get coverage */
+            if (!algo.equals("SHA256withRSA") &&
+                !algo.equals("SHA256withECDSA")) {
+                continue;
+            }
+
+            /* Generate appropriate key pair */
+            KeyPair pair = generateKeyPair(algo, secureRandom);
+            assertNotNull("Key pair should not be null for " + algo, pair);
+
+            /* Create signature instance */
+            Signature signer = Signature.getInstance(algo, "wolfJCE");
+            assertNotNull("Signer should not be null for " + algo, signer);
+
+            /* Test setting PSS parameters on non-PSS algorithm should fail */
+            java.security.spec.PSSParameterSpec pssSpec =
+                new java.security.spec.PSSParameterSpec("SHA-256", "MGF1",
+                    java.security.spec.MGF1ParameterSpec.SHA256, 32, 1);
+
+            try {
+                signer.setParameter(pssSpec);
+                fail("Should have thrown InvalidAlgorithmParameterException " +
+                    "when setting PSS parameters on non-PSS algorithm: " +
+                    algo);
+            } catch (InvalidAlgorithmParameterException e) {
+                /* Expected */
+            }
+
+            /* Test setting some other non-null parameter object should fail */
+            java.security.spec.ECGenParameterSpec ecSpec =
+                new java.security.spec.ECGenParameterSpec("secp256r1");
+
+            try {
+                signer.setParameter(ecSpec);
+                fail("Should have thrown InvalidAlgorithmParameterException " +
+                    "when setting non-null parameters on non-PSS algorithm: " +
+                    algo);
+            } catch (InvalidAlgorithmParameterException e) {
+                /* Expected */
+            }
+        }
+    }
 }
 
