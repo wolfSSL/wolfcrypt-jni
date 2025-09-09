@@ -83,6 +83,20 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
         this.type = type;
 
+        /* Set default parameters for RSA key generation */
+        if (type == KeyType.WC_RSA) {
+            this.keysize = 2048;  /* Default RSA key size */
+            this.publicExponent = Rsa.getDefaultRsaExponent();
+
+            /* Initialize RNG for default key generation */
+            synchronized (rngLock) {
+                if (this.rng == null) {
+                    this.rng = new Rng();
+                    this.rng.init();
+                }
+            }
+        }
+
         if (WolfCryptDebug.DEBUG) {
             algString = typeToString(type);
         }
