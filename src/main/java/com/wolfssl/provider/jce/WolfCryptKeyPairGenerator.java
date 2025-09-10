@@ -35,6 +35,8 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.RSAKeyGenParameterSpec;
+import java.security.spec.RSAPrivateCrtKeySpec;
+import java.security.spec.RSAPublicKeySpec;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.interfaces.ECPrivateKey;
@@ -58,6 +60,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
     enum KeyType {
         WC_RSA,
+        WC_RSA_PSS,
         WC_ECC,
         WC_DH
     }
@@ -84,7 +87,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         this.type = type;
 
         /* Set default parameters for RSA key generation */
-        if (type == KeyType.WC_RSA) {
+        if (type == KeyType.WC_RSA || type == KeyType.WC_RSA_PSS) {
             this.keysize = 2048;  /* Default RSA key size */
             this.publicExponent = Rsa.getDefaultRsaExponent();
 
@@ -113,7 +116,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
         this.keysize = keysize;
 
-        if (type == KeyType.WC_RSA) {
+        if (type == KeyType.WC_RSA || type == KeyType.WC_RSA_PSS) {
             /* Set default RSA exponent for wolfSSL */
             this.publicExponent = Rsa.getDefaultRsaExponent();
         }
@@ -147,6 +150,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         switch (type) {
 
             case WC_RSA:
+            case WC_RSA_PSS:
 
                 if (!(params instanceof RSAKeyGenParameterSpec)) {
                     throw new InvalidAlgorithmParameterException(
@@ -246,6 +250,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         switch (this.type) {
 
             case WC_RSA:
+            case WC_RSA_PSS:
 
                 if (keysize == 0) {
                     throw new RuntimeException(
@@ -284,9 +289,24 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     rsa.releaseNativeStruct();
 
                     KeyFactory kf = KeyFactory.getInstance("RSA");
-
                     rsaPriv = (RSAPrivateKey)kf.generatePrivate(privSpec);
                     rsaPub  = (RSAPublicKey)kf.generatePublic(pubSpec);
+
+                    if (this.type == KeyType.WC_RSA_PSS) {
+                        /* Get key specs to generate PSS keys */
+                        RSAPrivateCrtKeySpec privCrtSpec =
+                            kf.getKeySpec(rsaPriv, RSAPrivateCrtKeySpec.class);
+                        RSAPublicKeySpec pubKeySpec =
+                            kf.getKeySpec(rsaPub, RSAPublicKeySpec.class);
+
+                        /* Use RSASSA-PSS KeyFactory */
+                        KeyFactory pssKf =
+                            KeyFactory.getInstance("RSASSA-PSS");
+                        rsaPriv = (RSAPrivateKey)pssKf
+                            .generatePrivate(privCrtSpec);
+                        rsaPub  = (RSAPublicKey)pssKf
+                            .generatePublic(pubKeySpec);
+                    }
 
                     pair = new KeyPair(rsaPub, rsaPriv);
 
@@ -294,7 +314,9 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     throw new RuntimeException(e);
                 }
 
-                log("generated RSA KeyPair");
+                log("generated " +
+                    (this.type == KeyType.WC_RSA_PSS ? "RSASSA-PSS" : "RSA") +
+                    " KeyPair");
 
                 break;
 
@@ -418,6 +440,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         switch (type) {
             case WC_RSA:
                 return "RSA";
+            case WC_RSA_PSS:
+                return "RSASSA-PSS";
             case WC_ECC:
                 return "ECC";
             case WC_DH:
@@ -467,6 +491,19 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
          */
         public wcKeyPairGenRSA() {
             super(KeyType.WC_RSA);
+        }
+    }
+
+    /**
+     * wolfCrypt RSASSA-PSS key pair generator class
+     */
+    public static final class wcKeyPairGenRSAPSS
+            extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenRSAPSS object
+         */
+        public wcKeyPairGenRSAPSS() {
+            super(KeyType.WC_RSA_PSS);
         }
     }
 
