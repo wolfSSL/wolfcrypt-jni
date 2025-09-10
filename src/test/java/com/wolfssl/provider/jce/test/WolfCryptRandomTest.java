@@ -36,6 +36,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+
 import java.security.Security;
 import java.security.Provider;
 import java.security.SecureRandom;
@@ -344,6 +350,93 @@ public class WolfCryptRandomTest {
         byte[] seed = rand.generateSeed(0);
         assertNotNull(seed);
         assertEquals(0, seed.length);
+    }
+
+    @Test
+    public void testSerializationDeserialization()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               IOException, ClassNotFoundException {
+
+        /* Create original SecureRandom instance */
+        SecureRandom orig = SecureRandom.getInstance("HashDRBG", "wolfJCE");
+        assertNotNull(orig);
+
+        /* Serialize the SecureRandom instance */
+        byte[] serialized = serialize(orig);
+        assertNotNull(serialized);
+        assertTrue(serialized.length > 0);
+
+        /* Deserialize the SecureRandom instance */
+        SecureRandom copy = deserialize(serialized);
+        assertNotNull(copy);
+
+        /* Test that both original and deserialized instances can generate
+         * random numbers without throwing NullPointerException.
+         * This test would fail without the lazy loading fix in
+         * WolfCryptRandom.engineNextBytes() and engineGenerateSeed() */
+        byte[] origBytes = new byte[32];
+        byte[] copyBytes = new byte[32];
+
+        /* This should not throw NullPointerException */
+        orig.nextBytes(origBytes);
+        copy.nextBytes(copyBytes);
+
+        /* Also test generateSeed() to ensure it works after deserialization */
+        byte[] origSeed = orig.generateSeed(16);
+        byte[] copySeed = copy.generateSeed(16);
+
+        assertNotNull(origSeed);
+        assertNotNull(copySeed);
+        assertEquals(16, origSeed.length);
+        assertEquals(16, copySeed.length);
+
+        /* Verify we got actual random data */
+        assertNotNull(origBytes);
+        assertNotNull(copyBytes);
+        assertEquals(32, origBytes.length);
+        assertEquals(32, copyBytes.length);
+
+        /* Random bytes should not be all zeros */
+        boolean origHasNonZero = false;
+        boolean copyHasNonZero = false;
+        for (int i = 0; i < 32; i++) {
+            if (origBytes[i] != 0) {
+                origHasNonZero = true;
+            }
+            if (copyBytes[i] != 0) {
+                copyHasNonZero = true;
+            }
+        }
+        assertTrue("Original random bytes should not be all zeros",
+            origHasNonZero);
+        assertTrue("Deserialized random bytes should not be all zeros",
+            copyHasNonZero);
+
+        /* The two instances should generate different random sequences */
+        assertFalse("Original and deserialized instances should generate " +
+            "different random sequences", Arrays.equals(origBytes, copyBytes));
+    }
+
+    /*
+     * Serialize a SecureRandom object to byte array
+     */
+    private byte[] serialize(SecureRandom sr) throws IOException {
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+             ObjectOutputStream oos = new ObjectOutputStream(bos)) {
+            oos.writeObject(sr);
+            return bos.toByteArray();
+        }
+    }
+
+    /*
+     * Deserialize a SecureRandom object from byte array
+     */
+    private SecureRandom deserialize(byte[] serialized)
+        throws IOException, ClassNotFoundException {
+        try (ByteArrayInputStream bis = new ByteArrayInputStream(serialized);
+             ObjectInputStream ois = new ObjectInputStream(bis)) {
+            return (SecureRandom) ois.readObject();
+        }
     }
 }
 
