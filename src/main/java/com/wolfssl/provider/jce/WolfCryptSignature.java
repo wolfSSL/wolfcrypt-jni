@@ -856,9 +856,13 @@ public class WolfCryptSignature extends SignatureSpi {
                     }
 
                     try {
-                        verified = this.rsa.rsaPssVerify(sigBytes, digest,
-                            digestTypeToHashType(this.digestType),
-                            mgfType, saltLen);
+                        /* Use rsaPssVerifyWithDigest for pre-computed digest
+                         * verification. Pass digest as both data and digest
+                         * since we only have the final digest here */
+                        verified = this.rsa.rsaPssVerifyWithDigest(
+                            sigBytes, digest, digest,
+                            digestTypeToHashType(this.digestType), mgfType,
+                            saltLen);
 
                     } catch (WolfCryptException e) {
                         verified = false;

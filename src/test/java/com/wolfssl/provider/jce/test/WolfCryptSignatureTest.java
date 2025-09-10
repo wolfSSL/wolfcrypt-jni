@@ -45,6 +45,8 @@ import java.security.KeyPairGenerator;
 import java.security.PublicKey;
 import java.security.PrivateKey;
 import java.security.spec.ECGenParameterSpec;
+import java.security.spec.PSSParameterSpec;
+import java.security.interfaces.RSAKey;
 
 import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
@@ -2041,6 +2043,119 @@ public class WolfCryptSignatureTest {
             } catch (InvalidAlgorithmParameterException e) {
                 /* Expected */
             }
+        }
+    }
+
+    @Test
+    public void testRsaPssMultipleUpdates()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               SignatureException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        if (!enabledAlgos.contains("RSASSA-PSS") ||
+            !com.wolfssl.wolfcrypt.FeatureDetect.RsaPssEnabled()) {
+            /* Skip if RSA-PSS not enabled at JCE or native level */
+            return;
+        }
+
+        /* Create test data */
+        byte[] data = new byte[100];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = (byte) i;
+        }
+
+        /* Generate RSA key pair for RSASSA-PSS */
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("RSASSA-PSS", "wolfJCE");
+        keyGen.initialize(2048);
+        KeyPair pair = keyGen.generateKeyPair();
+        assertNotNull("Key pair should not be null", pair);
+
+        PrivateKey priv = pair.getPrivate();
+        PublicKey  pub  = pair.getPublic();
+
+        /* Test multiple digest algos */
+        String[] digestAlgorithms = {"SHA-1", "SHA-224", "SHA-256",
+                                     "SHA-384", "SHA-512"};
+
+        for (String digestAlg : digestAlgorithms) {
+            /* Create PSS parameters */
+            int digestLen;
+            java.security.spec.MGF1ParameterSpec mgfSpec;
+            switch (digestAlg) {
+                case "SHA-1":
+                    digestLen = 20;
+                    mgfSpec = java.security.spec.MGF1ParameterSpec.SHA1;
+                    break;
+                case "SHA-224":
+                    digestLen = 28;
+                    mgfSpec = java.security.spec.MGF1ParameterSpec.SHA224;
+                    break;
+                case "SHA-256":
+                    digestLen = 32;
+                    mgfSpec = java.security.spec.MGF1ParameterSpec.SHA256;
+                    break;
+                case "SHA-384":
+                    digestLen = 48;
+                    mgfSpec = java.security.spec.MGF1ParameterSpec.SHA384;
+                    break;
+                case "SHA-512":
+                    digestLen = 64;
+                    mgfSpec = java.security.spec.MGF1ParameterSpec.SHA512;
+                    break;
+                default:
+                    continue; /* Skip unsupported digest */
+            }
+
+            /* Calculate salt length */
+            int keySize = ((RSAKey)pub).getModulus().bitLength();
+            int saltLength = keySize/8 - digestLen - 2;
+            if (saltLength < 0) {
+                continue; /* Skip if salt length would be negative */
+            }
+
+            PSSParameterSpec pssSpec = new PSSParameterSpec(digestAlg, "MGF1",
+                mgfSpec, saltLength, 1);
+
+            /* Create signature instances */
+            Signature signer = Signature.getInstance("RSASSA-PSS", "wolfJCE");
+            Signature verifier =
+                Signature.getInstance("RSASSA-PSS", "wolfJCE");
+
+            signer.setParameter(pssSpec);
+            verifier.setParameter(pssSpec);
+
+            /* Sign with multiple updates */
+            signer.initSign(priv);
+            for (int i = 0; i < 10; i++) {
+                signer.update(data);
+            }
+            byte[] signature = signer.sign();
+
+            assertNotNull("Signature should not be null for " + digestAlg,
+                signature);
+            assertTrue("Signature should not be empty for " + digestAlg,
+                signature.length > 0);
+
+            /* Verify with multiple updates */
+            verifier.initVerify(pub);
+            for (int i = 0; i < 10; i++) {
+                verifier.update(data);
+            }
+            boolean verified = verifier.verify(signature);
+
+            assertTrue("RSA-PSS signature verification with multiple updates " +
+                "failed for " + digestAlg, verified);
+
+            /* Test that signature does NOT verify with different data */
+            verifier.initVerify(pub);
+            for (int i = 0; i < 2; i++) {  /* Different number of updates */
+                verifier.update(data);
+            }
+            boolean shouldNotVerify = verifier.verify(signature);
+
+            assertFalse("Bad signature should not verify for " + digestAlg,
+                shouldNotVerify);
         }
     }
 }
