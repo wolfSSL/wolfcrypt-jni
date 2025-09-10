@@ -49,6 +49,8 @@ import java.security.spec.RSAKeyGenParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
@@ -557,6 +559,40 @@ public class WolfCryptKeyPairGeneratorTest {
     }
 
     @Test
+    public void testKeyPairGeneratorRsaDefaultKeySize()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Test that RSA KeyPairGenerator works with default parameters
+         * without explicit initialization */
+        KeyPairGenerator kpg =
+            KeyPairGenerator.getInstance("RSA", "wolfJCE");
+
+        /* Generate key pair without calling initialize() first */
+        KeyPair kp = kpg.generateKeyPair();
+        assertNotNull(kp);
+        assertNotNull(kp.getPublic());
+        assertNotNull(kp.getPrivate());
+
+        /* Verify the generated key is RSA and has expected default size */
+        assertTrue(kp.getPublic() instanceof RSAPublicKey);
+        assertTrue(kp.getPrivate() instanceof RSAPrivateKey);
+
+        RSAPublicKey pubKey = (RSAPublicKey) kp.getPublic();
+        RSAPrivateKey privKey = (RSAPrivateKey) kp.getPrivate();
+
+        /* Default key size should be 2048 bits */
+        assertEquals("Default RSA key size should be 2048 bits",
+                     2048, pubKey.getModulus().bitLength());
+        assertEquals("Private key modulus should match public key",
+                     pubKey.getModulus(), privKey.getModulus());
+
+        /* Verify the default public exponent */
+        assertEquals("Default RSA public exponent should match wolfSSL default",
+                     BigInteger.valueOf(Rsa.getDefaultRsaExponent()),
+                     pubKey.getPublicExponent());
+    }
+
+    @Test
     public void testKeyPairGeneratorRsassaPssKeyGeneration()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                InvalidAlgorithmParameterException {
@@ -593,6 +629,60 @@ public class WolfCryptKeyPairGeneratorTest {
                 assertTrue(sig.verify(signature));
             } catch (Exception e) {
                 /* If signature test fails, it's not a key generation issue */
+            }
+        }
+    }
+
+    @Test
+    public void testKeyPairGenerationInvalidExponent()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        if (testedRSAKeySizes.size() > 0) {
+
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "wolfJCE");
+
+            /* Negative exponent */
+            try {
+                RSAKeyGenParameterSpec rsaSpec =
+                    new RSAKeyGenParameterSpec(testedRSAKeySizes.get(0),
+                            BigInteger.valueOf(-1));
+                kpg.initialize(rsaSpec);
+                fail("KeyPairGenerator.initialize() should throw " +
+                     "InvalidAlgorithmParameterException when given " +
+                     "invalid negative RSA public exponent");
+
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+
+            /* Zero exponent */
+            try {
+                RSAKeyGenParameterSpec rsaSpec =
+                    new RSAKeyGenParameterSpec(testedRSAKeySizes.get(0),
+                            BigInteger.valueOf(0));
+                kpg.initialize(rsaSpec);
+                fail("KeyPairGenerator.initialize() should throw " +
+                     "InvalidAlgorithmParameterException when given " +
+                     "invalid RSA public exponent of zero");
+
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+
+            /* Even exponent */
+            try {
+                RSAKeyGenParameterSpec rsaSpec =
+                    new RSAKeyGenParameterSpec(testedRSAKeySizes.get(0),
+                            BigInteger.valueOf(4));
+                kpg.initialize(rsaSpec);
+                fail("KeyPairGenerator.initialize() should throw " +
+                     "InvalidAlgorithmParameterException when given " +
+                     "invalid even RSA public exponent");
+
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
             }
         }
     }
