@@ -29,6 +29,7 @@ import java.security.spec.PSSParameterSpec;
 import java.security.spec.MGF1ParameterSpec;
 
 import com.wolfssl.wolfcrypt.Rsa;
+import com.wolfssl.wolfcrypt.Sha256;
 
 /**
  * wolfCrypt JCE AlgorithmParametersSpi implementation for RSA-PSS parameters
@@ -46,7 +47,7 @@ public class WolfCryptPssParameters extends AlgorithmParametersSpi {
             "SHA-256",                       /* message digest */
             "MGF1",                          /* mask generation function */
             MGF1ParameterSpec.SHA256,        /* MGF parameters */
-            Rsa.RSA_PSS_SALT_LEN_DEFAULT,    /* salt length (hash length) */
+            Sha256.DIGEST_SIZE,              /* salt length */
             1                                /* trailer field (always 1) */
         );
     }
