@@ -51,6 +51,8 @@ import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECParameterSpec;
 
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
@@ -386,6 +388,50 @@ public class WolfCryptKeyPairGeneratorTest {
             } catch (WolfCryptException e) {
                 /* expected */
             }
+        }
+    }
+
+    @Test
+    public void testKeyPairGeneratorEccKeySizeBitsToBytes()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        /* Test that ECC key sizes passed in bits are correctly converted
+         * to bytes for native wolfSSL. Standard Java
+         * KeyPairGenerator.initialize(int keysize) expects bits, but wolfSSL
+         * wc_ecc_make_key() expects bytes. */
+
+        KeyPairGenerator kpg =
+            KeyPairGenerator.getInstance("EC", "wolfJCE");
+
+        /* Just test 256 bit to spot check this behavior */
+        int bitSize = 256;
+
+        if (enabledEccKeySizes.contains(Integer.valueOf(bitSize)) == false) {
+            /* skip if 256-bit ECC not supported */
+            return;
+        }
+
+        /* Initialize with bit size (standard Java way) */
+        kpg.initialize(bitSize);
+
+        /* Generate key pair */
+        KeyPair kp = kpg.generateKeyPair();
+        assertNotNull(kp);
+        assertNotNull(kp.getPublic());
+        assertNotNull(kp.getPrivate());
+
+        /* Verify the generated key provides adequate security */
+        if (kp.getPublic() instanceof ECPublicKey) {
+            ECPublicKey ecPubKey = (ECPublicKey) kp.getPublic();
+            ECParameterSpec ecSpec = ecPubKey.getParams();
+            int fieldSize = ecSpec.getCurve().getField().getFieldSize();
+
+            /* The field size should be at least the requested bit size.
+             * wolfSSL may select a larger curve for better security. */
+            assertTrue("Key field size should be at least requested " +
+                "bit size. Requested: " + bitSize + ", Got: " + fieldSize,
+                fieldSize >= bitSize);
         }
     }
 
