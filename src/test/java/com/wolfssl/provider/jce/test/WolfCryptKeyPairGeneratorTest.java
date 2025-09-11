@@ -49,6 +49,10 @@ import java.security.spec.RSAKeyGenParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.RSAPrivateCrtKeySpec;
+import java.security.spec.PSSParameterSpec;
+import java.security.spec.MGF1ParameterSpec;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 
@@ -685,6 +689,102 @@ public class WolfCryptKeyPairGeneratorTest {
                 /* expected */
             }
         }
+    }
+
+    @Test
+    public void testRsassaPssKeyIdentificationAndSunCompatibility()
+        throws Exception {
+
+        if (testedRSAKeySizes.isEmpty()) {
+            return;
+        }
+
+        /* Test RSASSA-PSS key generation with proper algorithm ID */
+        KeyPairGenerator pssKpg =
+            KeyPairGenerator.getInstance("RSASSA-PSS", "wolfJCE");
+        pssKpg.initialize(testedRSAKeySizes.get(0));
+
+        KeyPair pssKeys = pssKpg.generateKeyPair();
+        assertNotNull(pssKeys);
+        assertNotNull(pssKeys.getPublic());
+        assertNotNull(pssKeys.getPrivate());
+
+        /* Verify keys identify as RSASSA-PSS */
+        assertEquals("RSASSA-PSS", pssKeys.getPrivate().getAlgorithm());
+        assertEquals("RSASSA-PSS", pssKeys.getPublic().getAlgorithm());
+
+        /* Test OID alias */
+        KeyPairGenerator oidKpg =
+            KeyPairGenerator.getInstance("1.2.840.113549.1.1.10", "wolfJCE");
+        oidKpg.initialize(testedRSAKeySizes.get(0));
+
+        KeyPair oidKeys = oidKpg.generateKeyPair();
+        assertNotNull(oidKeys);
+        assertEquals("RSASSA-PSS", oidKeys.getPrivate().getAlgorithm());
+        assertEquals("RSASSA-PSS", oidKeys.getPublic().getAlgorithm());
+
+        /* Test Sun KeyFactory compatibility */
+        KeyFactory sunPssKf = KeyFactory.getInstance("RSASSA-PSS");
+
+        /* Test key specs conversion with system/Sun KeyFactory */
+        RSAPublicKeySpec pubSpec = sunPssKf.getKeySpec(
+            pssKeys.getPublic(), RSAPublicKeySpec.class);
+        RSAPrivateCrtKeySpec privSpec = sunPssKf.getKeySpec(
+            pssKeys.getPrivate(), RSAPrivateCrtKeySpec.class);
+
+        /* Generate keys from specs using system/Sun KeyFactory */
+        PublicKey sunPubKey = sunPssKf.generatePublic(pubSpec);
+        PrivateKey sunPrivKey = sunPssKf.generatePrivate(privSpec);
+
+        assertEquals("RSASSA-PSS", sunPubKey.getAlgorithm());
+        assertEquals("RSASSA-PSS", sunPrivKey.getAlgorithm());
+
+        /* Test encoded key specs with Sun KeyFactory */
+        PublicKey pubFromEncoded = sunPssKf.generatePublic(
+            new X509EncodedKeySpec(pssKeys.getPublic().getEncoded()));
+        PrivateKey privFromEncoded = sunPssKf.generatePrivate(
+            new PKCS8EncodedKeySpec(pssKeys.getPrivate().getEncoded()));
+
+        assertEquals("RSASSA-PSS", pubFromEncoded.getAlgorithm());
+        assertEquals("RSASSA-PSS", privFromEncoded.getAlgorithm());
+
+        /* Test key equality */
+        RSAPublicKey origPub = (RSAPublicKey) pssKeys.getPublic();
+        RSAPublicKey sunPub = (RSAPublicKey) sunPubKey;
+        RSAPrivateKey origPriv = (RSAPrivateKey) pssKeys.getPrivate();
+        RSAPrivateKey sunPriv = (RSAPrivateKey) sunPrivKey;
+
+        assertEquals(origPub.getModulus(), sunPub.getModulus());
+        assertEquals(origPub.getPublicExponent(),
+            sunPub.getPublicExponent());
+        assertEquals(origPriv.getModulus(), sunPriv.getModulus());
+        assertEquals(origPriv.getPrivateExponent(),
+            sunPriv.getPrivateExponent());
+
+        /* Test signature compatibility with generated keys */
+        java.security.Signature sig =
+            java.security.Signature.getInstance("RSASSA-PSS", "wolfJCE");
+
+        /* Set PSS parameters (required by wolfJCE) */
+        PSSParameterSpec pssParams = new PSSParameterSpec("SHA-256", "MGF1",
+            MGF1ParameterSpec.SHA256, 32, 1);
+        sig.setParameter(pssParams);
+
+        sig.initSign(pssKeys.getPrivate());
+        sig.update("test data for RSASSA-PSS".getBytes());
+        byte[] signature = sig.sign();
+        assertNotNull(signature);
+        assertTrue(signature.length > 0);
+
+        sig.initVerify(pssKeys.getPublic());
+        sig.update("test data for RSASSA-PSS".getBytes());
+        assertTrue(sig.verify(signature));
+
+        /* Test cross-compatibility: sign with our key, verify with Sun key */
+        sig.initVerify(sunPubKey);
+        sig.update("test data for RSASSA-PSS".getBytes());
+        assertTrue("Sun-generated key should verify wolfJCE signature",
+            sig.verify(signature));
     }
 }
 

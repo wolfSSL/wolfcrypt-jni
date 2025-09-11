@@ -25,6 +25,7 @@ import java.security.SignatureSpi;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
@@ -355,6 +356,14 @@ public class WolfCryptSignature extends SignatureSpi {
         if (this.keyType == KeyType.WC_RSA &&
                 !(privateKey instanceof RSAPrivateKey)) {
             throw new InvalidKeyException("Key is not of type RSAPrivateKey");
+
+        } else if (this.keyType == KeyType.WC_RSA &&
+                   privateKey instanceof RSAPrivateKey &&
+                   !(privateKey instanceof RSAPrivateCrtKey)) {
+            throw new InvalidKeyException(
+                "RSA private key must include CRT parameters " +
+                "(p, q, dP, dQ, qInv). Keys created from only " +
+                "modulus and exponent are not supported by wolfSSL.");
 
         } else if (this.keyType == KeyType.WC_ECDSA &&
                 !(privateKey instanceof ECPrivateKey)) {
@@ -847,9 +856,13 @@ public class WolfCryptSignature extends SignatureSpi {
                     }
 
                     try {
-                        verified = this.rsa.rsaPssVerify(sigBytes, digest,
-                            digestTypeToHashType(this.digestType),
-                            mgfType, saltLen);
+                        /* Use rsaPssVerifyWithDigest for pre-computed digest
+                         * verification. Pass digest as both data and digest
+                         * since we only have the final digest here */
+                        verified = this.rsa.rsaPssVerifyWithDigest(
+                            sigBytes, digest, digest,
+                            digestTypeToHashType(this.digestType), mgfType,
+                            saltLen);
 
                     } catch (WolfCryptException e) {
                         verified = false;

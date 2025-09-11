@@ -389,8 +389,9 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.RsaKeyGenEnabled()) {
             put("KeyPairGenerator.RSA",
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenRSA");
-            /* RSASSA-PSS uses same key generation as RSA */
-            put("Alg.Alias.KeyPairGenerator.RSASSA-PSS", "RSA");
+            put("KeyPairGenerator.RSASSA-PSS",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenRSAPSS");
+            put("Alg.Alias.KeyPairGenerator.1.2.840.113549.1.1.10", "RSASSA-PSS");
         }
         if (FeatureDetect.EccKeyGenEnabled()) {
             put("KeyPairGenerator.EC",
@@ -401,6 +402,7 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenDH");
             put("Alg.Alias.KeyPairGenerator.DiffieHellman", "DH");
         }
+
 
         /* CertPathValidator */
         put("CertPathValidator.PKIX",
