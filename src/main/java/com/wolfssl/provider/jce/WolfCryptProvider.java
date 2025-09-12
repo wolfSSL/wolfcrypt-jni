@@ -132,30 +132,35 @@ public final class WolfCryptProvider extends Provider {
                     "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA1wRSA");
             put("Signature.SHA1withECDSA",
                     "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA1wECDSA");
+            put("Alg.Alias.Signature.1.2.840.10045.4.1", "SHA1withECDSA");
         }
         if (FeatureDetect.Sha224Enabled()) {
             put("Signature.SHA224withRSA",
                     "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA224wRSA");
             put("Signature.SHA224withECDSA",
                   "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA224wECDSA");
+            put("Alg.Alias.Signature.1.2.840.10045.4.3.1", "SHA224withECDSA");
         }
         if (FeatureDetect.Sha256Enabled()) {
             put("Signature.SHA256withRSA",
                     "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA256wRSA");
             put("Signature.SHA256withECDSA",
                   "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA256wECDSA");
+            put("Alg.Alias.Signature.1.2.840.10045.4.3.2", "SHA256withECDSA");
         }
         if (FeatureDetect.Sha384Enabled()) {
             put("Signature.SHA384withRSA",
                     "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA384wRSA");
             put("Signature.SHA384withECDSA",
                   "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA384wECDSA");
+            put("Alg.Alias.Signature.1.2.840.10045.4.3.3", "SHA384withECDSA");
         }
         if (FeatureDetect.Sha512Enabled()) {
             put("Signature.SHA512withRSA",
                     "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA512wRSA");
             put("Signature.SHA512withECDSA",
                   "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA512wECDSA");
+            put("Alg.Alias.Signature.1.2.840.10045.4.3.4", "SHA512withECDSA");
         }
         if (FeatureDetect.Sha3Enabled()) {
             put("Signature.SHA3-224withRSA",
@@ -396,6 +401,7 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.EccKeyGenEnabled()) {
             put("KeyPairGenerator.EC",
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenECC");
+            put("Alg.Alias.KeyPairGenerator.1.2.840.10045.2.1", "EC");
         }
         if (FeatureDetect.DhEnabled()) {
             put("KeyPairGenerator.DH",
