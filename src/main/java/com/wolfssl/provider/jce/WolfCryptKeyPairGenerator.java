@@ -114,7 +114,12 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 "please call initialize() with DHParameterSpec");
         }
 
-        this.keysize = keysize;
+        if (type == KeyType.WC_ECC) {
+            /* ECC keysize from Java is bits, but wolfSSL expects bytes */
+            this.keysize = (keysize + 7) / 8;
+        } else {
+            this.keysize = keysize;
+        }
 
         if (type == KeyType.WC_RSA || type == KeyType.WC_RSA_PSS) {
             /* Set default RSA exponent for wolfSSL */
@@ -335,6 +340,10 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                  * multiple threads from mixing up keys during generation */
                 synchronized (rngLock) {
                     ecc = new Ecc(this.rng);
+
+                    log("generating ECC key on curve: " +
+                        (this.curve == null ? "default" : this.curve) +
+                        ", keysize: " + this.keysize);
 
                     if (this.curve == null) {
                         ecc.makeKey(this.rng, this.keysize);
