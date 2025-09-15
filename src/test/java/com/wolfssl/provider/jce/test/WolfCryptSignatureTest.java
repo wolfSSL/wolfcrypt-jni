@@ -2158,5 +2158,86 @@ public class WolfCryptSignatureTest {
                 shouldNotVerify);
         }
     }
+
+    @Test
+    public void testECDSASignatureOIDMappings()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               SignatureException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+        /* Test OID to algorithm name mappings for ECDSA signatures.
+         * These OIDs should map to the same implementations as the
+         * algorithm names. */
+        String[][] oidMappings = {
+            {"1.2.840.10045.4.1", "SHA1withECDSA"},
+            {"1.2.840.10045.4.3.1", "SHA224withECDSA"},
+            {"1.2.840.10045.4.3.2", "SHA256withECDSA"},
+            {"1.2.840.10045.4.3.3", "SHA384withECDSA"},
+            {"1.2.840.10045.4.3.4", "SHA512withECDSA"}
+        };
+
+        String testMessage = "Hello World OID Test";
+        byte[] testData = testMessage.getBytes();
+
+        for (String[] mapping : oidMappings) {
+            String oid = mapping[0];
+            String algoName = mapping[1];
+
+            /* Skip if the algorithm is not enabled */
+            if (!enabledAlgos.contains(algoName)) {
+                continue;
+            }
+
+            /* Create signatures using both OID and algorithm name */
+            Signature sigByOid = null;
+            Signature sigByName = null;
+
+            try {
+                sigByOid = Signature.getInstance(oid, "wolfJCE");
+                sigByName = Signature.getInstance(algoName, "wolfJCE");
+            } catch (NoSuchAlgorithmException e) {
+                fail("Failed to create signature instance for OID " + oid +
+                     " or algorithm " + algoName + ": " + e.getMessage());
+            }
+
+            assertNotNull("Signature by OID should not be null for " + oid,
+                sigByOid);
+            assertNotNull("Signature by name should not be null for " +
+                algoName, sigByName);
+
+            /* Verify both instances have the same class */
+            assertEquals("OID and name should map to same implementation for " +
+                algoName, sigByName.getClass(), sigByOid.getClass());
+
+            /* Generate an EC key pair for testing */
+            KeyPair keyPair = generateKeyPair(algoName, secureRandom);
+            assertNotNull("Key pair should not be null for " + algoName,
+                keyPair);
+
+            /* Test signing with OID and verifying with algorithm name */
+            sigByOid.initSign(keyPair.getPrivate());
+            sigByOid.update(testData);
+            byte[] signature = sigByOid.sign();
+
+            sigByName.initVerify(keyPair.getPublic());
+            sigByName.update(testData);
+            boolean verified = sigByName.verify(signature);
+
+            assertTrue("Signature created with OID " + oid +
+                " should be verified with algorithm name " + algoName,
+                verified);
+
+            /* Test signing with algorithm name and verifying with OID */
+            sigByName.initSign(keyPair.getPrivate());
+            sigByName.update(testData);
+            signature = sigByName.sign();
+
+            sigByOid.initVerify(keyPair.getPublic());
+            sigByOid.update(testData);
+            verified = sigByOid.verify(signature);
+
+            assertTrue("Signature created with algorithm name " + algoName +
+                      " should be verified with OID " + oid, verified);
+        }
+    }
 }
 
