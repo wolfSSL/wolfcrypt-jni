@@ -832,5 +832,66 @@ public class WolfCryptKeyPairGeneratorTest {
         assertTrue("Sun-generated key should verify wolfJCE signature",
             sig.verify(signature));
     }
+
+    @Test
+    public void testECKeyPairGeneratorOIDMapping()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        /* Test that ECC KeyPairGenerator OID 1.2.840.10045.2.1 maps to "EC" */
+        String oid = "1.2.840.10045.2.1";
+        String algoName = "EC";
+
+        /* Skip test if ECC is not compiled in */
+        if (enabledEccKeySizes.isEmpty()) {
+            return;
+        }
+
+        /* Create KeyPairGenerator instances using both OID and name */
+        KeyPairGenerator kpgByOid = null;
+        KeyPairGenerator kpgByName = null;
+
+        try {
+            kpgByOid = KeyPairGenerator.getInstance(oid, "wolfJCE");
+            kpgByName = KeyPairGenerator.getInstance(algoName, "wolfJCE");
+        } catch (NoSuchAlgorithmException e) {
+            fail("Failed to create KeyPairGenerator instance for OID " + oid +
+                 " or algorithm " + algoName + ": " + e.getMessage());
+        }
+
+        assertNotNull("KeyPairGenerator by OID should not be null", kpgByOid);
+        assertNotNull("KeyPairGenerator by name should not be null", kpgByName);
+
+        /* Verify both instances have the same class */
+        assertEquals("OID and name should map to same implementation",
+            kpgByName.getClass(), kpgByOid.getClass());
+
+        /* Test functional equivalence - both should generate valid key pairs */
+        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
+
+        kpgByOid.initialize(ecSpec);
+        KeyPair keyPairFromOid = kpgByOid.generateKeyPair();
+        assertNotNull("Key pair from OID should not be null", keyPairFromOid);
+        assertNotNull("Private key from OID should not be null",
+            keyPairFromOid.getPrivate());
+        assertNotNull("Public key from OID should not be null",
+            keyPairFromOid.getPublic());
+
+        kpgByName.initialize(ecSpec);
+        KeyPair keyPairFromName = kpgByName.generateKeyPair();
+        assertNotNull("Key pair from name should not be null", keyPairFromName);
+        assertNotNull("Private key from name should not be null",
+            keyPairFromName.getPrivate());
+        assertNotNull("Public key from name should not be null",
+            keyPairFromName.getPublic());
+
+        /* Both key pairs should have the same algorithm */
+        assertEquals("Key algorithms should match",
+            keyPairFromName.getPrivate().getAlgorithm(),
+            keyPairFromOid.getPrivate().getAlgorithm());
+        assertEquals("Public key algorithms should match",
+            keyPairFromName.getPublic().getAlgorithm(),
+            keyPairFromOid.getPublic().getAlgorithm());
+    }
 }
 
