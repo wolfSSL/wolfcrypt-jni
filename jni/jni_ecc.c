@@ -20,6 +20,7 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
@@ -40,6 +41,12 @@
 
 #if !defined(WC_NO_RNG) && defined(NO_OLD_RNGNAME)
     #define RNG WC_RNG
+#endif
+
+/* FIPSv2 does not have ECC_CURVE_MAX. 28 is what this value would be
+ * if it existed in the FIPSv2 wolfssl/wolfcrypt/ecc.h header. */
+#if defined(HAVE_FIPS) && defined(HAVE_FIPS_VERSION) && (HAVE_FIPS_VERSION == 2)
+    #define ECC_CURVE_MAX 27
 #endif
 
 JNIEXPORT jlong JNICALL
@@ -1154,18 +1161,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1id_1f
     byte*  Gy = getByteArray(env, gy_object);
     word32 GySz = getByteArrayLength(env, gy_object);
 
-    if (prime == NULL || Af == NULL || Bf == NULL ||
-           order == NULL || Gx == NULL || Gy == NULL) {
+    if (prime == NULL || Af == NULL || Bf == NULL || order == NULL ||
+        Gx == NULL || Gy == NULL) {
         ret = BAD_FUNC_ARG;
     }
     else {
         ret = wc_ecc_get_curve_id_from_params(fieldSz, prime, primeSz,
-                Af, AfSz, Bf, BfSz, order, orderSz, Gx, GxSz,
-                Gy, GySz, cofactor);
-    }
-
-    if (ret < 0) {
-        throwWolfCryptExceptionFromError(env, ret);
+            Af, AfSz, Bf, BfSz, order, orderSz, Gx, GxSz, Gy, GySz, cofactor);
     }
 
     LogStr("wc_ecc_get_curve_id_from_params() = %d\n", ret);
@@ -1174,5 +1176,596 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1id_1f
 #endif
 
     return ret;
+}
+
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private_1raw
+  (JNIEnv* env, jobject this)
+{
+    jbyteArray result = NULL;
+
+#if defined(HAVE_ECC) && defined(HAVE_ECC_KEY_EXPORT)
+    int ret = 0;
+    ecc_key* ecc = NULL;
+    byte* output = NULL;
+    word32 outputSz = 0;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    if (ecc == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        outputSz = wc_ecc_size(ecc);
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(output, 0, outputSz);
+        }
+    }
+
+    if (ret == 0) {
+        PRIVATE_KEY_UNLOCK();
+        ret = wc_ecc_export_private_only(ecc, output, &outputSz);
+        PRIVATE_KEY_LOCK();
+    }
+
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, outputSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env, "Failed to allocate raw private key");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_ecc_export_private_raw(ecc=%p, output=%p, outputSz) = %d\n",
+        ecc, output, ret);
+
+    if (output != NULL) {
+        XMEMSET(output, 0, outputSz);
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1public_1raw
+  (JNIEnv* env, jobject this)
+{
+    jobjectArray result = NULL;
+
+#if defined(HAVE_ECC) && defined(HAVE_ECC_KEY_EXPORT)
+    int ret = 0;
+    ecc_key* ecc = NULL;
+    byte* x = NULL;
+    byte* y = NULL;
+    word32 xSz = 0;
+    word32 ySz = 0;
+    jbyteArray xArray = NULL;
+    jbyteArray yArray = NULL;
+    jclass byteArrayClass = NULL;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    if (ecc == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        xSz = wc_ecc_size(ecc);
+        ySz = xSz;
+        x = (byte*)XMALLOC(xSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        y = (byte*)XMALLOC(ySz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (x == NULL || y == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(x, 0, xSz);
+            XMEMSET(y, 0, ySz);
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_ecc_export_public_raw(ecc, x, &xSz, y, &ySz);
+    }
+
+    if (ret == 0) {
+        byteArrayClass = (*env)->FindClass(env, "[B");
+        if (byteArrayClass == NULL) {
+            ret = MEMORY_E;
+        } else {
+            result = (*env)->NewObjectArray(env, 2, byteArrayClass, NULL);
+        }
+    }
+
+    if (ret == 0 && result != NULL) {
+        xArray = (*env)->NewByteArray(env, xSz);
+        yArray = (*env)->NewByteArray(env, ySz);
+
+        if (xArray != NULL && yArray != NULL) {
+            (*env)->SetByteArrayRegion(env, xArray, 0, xSz, (const jbyte*)x);
+            (*env)->SetByteArrayRegion(env, yArray, 0, ySz, (const jbyte*)y);
+            (*env)->SetObjectArrayElement(env, result, 0, xArray);
+            (*env)->SetObjectArrayElement(env, result, 1, yArray);
+        } else {
+            throwWolfCryptException(env,
+                "Failed to allocate coordinate arrays");
+            ret = -1;
+        }
+    }
+
+    if (ret != 0) {
+        /* If error, free any array we may have created */
+        if (xArray != NULL) {
+            (*env)->DeleteLocalRef(env, xArray);
+        }
+        if (yArray != NULL) {
+            (*env)->DeleteLocalRef(env, yArray);
+        }
+        if (result != NULL) {
+            (*env)->DeleteLocalRef(env, result);
+            result = NULL;
+        }
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_ecc_export_public_raw(ecc=%p, x=%p, y=%p) = %d\n",
+        ecc, x, y, ret);
+
+    if (x != NULL) {
+        XMEMSET(x, 0, xSz);
+        XFREE(x, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (y != NULL) {
+        XMEMSET(y, 0, ySz);
+        XFREE(y, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private_1raw
+  (JNIEnv* env, jobject this, jbyteArray priv_object, jstring curveName)
+{
+#if defined(HAVE_ECC) && defined(HAVE_ECC_KEY_IMPORT)
+    int ret = 0;
+    ecc_key* ecc = NULL;
+    byte* privKey = NULL;
+    word32 privKeySz = 0;
+    const char* name = NULL;
+    int curveId = 0;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    privKey = getByteArray(env, priv_object);
+    privKeySz = getByteArrayLength(env, priv_object);
+
+    if (ecc == NULL || privKey == NULL || curveName == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        name = (*env)->GetStringUTFChars(env, curveName, 0);
+        if (name == NULL) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
+        curveId = wc_ecc_get_curve_id_from_name(name);
+        (*env)->ReleaseStringUTFChars(env, curveName, name);
+
+        if (curveId < 0) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
+        /* Initialize ECC key structure */
+        ret = wc_ecc_init(ecc);
+    }
+
+    if (ret == 0) {
+        ret = wc_ecc_import_private_key(privKey, privKeySz, NULL, 0, ecc);
+    }
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_ecc_import_unsigned(ecc=%p, privKey=%p) = %d\n",
+           ecc, privKey, ret);
+
+    releaseByteArray(env, priv_object, privKey, JNI_ABORT);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1public_1raw
+  (JNIEnv* env, jobject this, jbyteArray x_object, jbyteArray y_object,
+   jstring curveName)
+{
+#if defined(HAVE_ECC) && defined(HAVE_ECC_KEY_IMPORT)
+    int ret = 0;
+    ecc_key* ecc = NULL;
+    byte* x = NULL;
+    byte* y = NULL;
+    word32 xSz = 0;
+    word32 ySz = 0;
+    const char* name = NULL;
+    int curveId = 0;
+    word32 expectedSz = 0;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    x = getByteArray(env, x_object);
+    xSz = getByteArrayLength(env, x_object);
+    y = getByteArray(env, y_object);
+    ySz = getByteArrayLength(env, y_object);
+
+    if (ecc == NULL || x == NULL || y == NULL || curveName == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        name = (*env)->GetStringUTFChars(env, curveName, 0);
+        if (name == NULL) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
+        curveId = wc_ecc_get_curve_id_from_name(name);
+        /* Get expected size for curve */
+        expectedSz = wc_ecc_get_curve_size_from_id(curveId);
+        (*env)->ReleaseStringUTFChars(env, curveName, name);
+
+        if (curveId < 0 || expectedSz <= 0) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (xSz != expectedSz || ySz != expectedSz) {
+        LogStr("ECC x or y size does not match expected size for curve\n");
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        ret = wc_ecc_init(ecc);
+    }
+
+    if (ret == 0) {
+        ret = wc_ecc_import_unsigned(ecc, x, y, NULL, curveId);
+    }
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_ecc_import_unsigned(ecc=%p, x=%p, y=%p, expectedSz=%d) = %d\n",
+           ecc, x, y, expectedSz, ret);
+
+    releaseByteArray(env, x_object, x, JNI_ABORT);
+    releaseByteArray(env, y_object, y, JNI_ABORT);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1id
+  (JNIEnv* env, jobject this)
+{
+    jint result = 0;
+#ifdef HAVE_ECC
+    ecc_key* ecc = NULL;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return -1;
+    }
+
+    if (ecc == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return -1;
+    }
+
+    if (ecc->dp != NULL) {
+        result = ecc->dp->id;
+
+    } else {
+        throwWolfCryptException(env, "No curve parameters available");
+        return -1;
+    }
+
+    LogStr("ecc->dp->id = %d\n", result);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+/*
+ * Returns String[] with curve parameters in the following order, based on
+ * provided input curve name:
+ *
+ * [0] prime - field prime as hex string
+ * [1] a - curve coefficient a as hex string
+ * [2] b - curve coefficient b as hex string
+ * [3] order - curve order as hex string
+ * [4] gx - generator point x coordinate as hex string
+ * [5] gy - generator point y coordinate as hex string
+ * [6] cofactor - cofactor as decimal string
+ *
+ * Returns NULL on error, otherwise valid String[].
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1params_1from_1name
+  (JNIEnv* env, jclass this, jstring curveName)
+{
+    jobjectArray result = NULL;
+#ifdef HAVE_ECC
+    int i;
+    int ret;
+    const char* name = NULL;
+    int curveIdx = 0;
+    const ecc_set_type* dp = NULL;
+    jstring paramStrings[7] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+    char cofactorStr[32];
+#if defined(HAVE_FIPS) && \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION == 2))
+    int curveId = 0;
+    ecc_key tempKey;
+#endif
+
+    if (curveName == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return NULL;
+    }
+
+    name = (*env)->GetStringUTFChars(env, curveName, 0);
+    if (name == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return NULL;
+    }
+
+    /* Get curve index from name */
+    curveIdx = wc_ecc_get_curve_idx_from_name(name);
+    if (curveIdx < 0) {
+        LogStr("wc_ecc_get_curve_idx_from_name failed, idx: %d\n", curveIdx);
+        throwWolfCryptExceptionFromError(env, curveIdx);
+        return NULL;
+    }
+
+    LogStr("wc_ecc_get_curve_idx_from_name(name=%s) = %d\n", name, curveIdx);
+
+#if defined(HAVE_FIPS) && \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION == 2))
+    /* Get curve parameters by creating a temporary ECC key with the curve.
+     * wc_ecc_get_curve_params() exists in current wolfSSL but not older
+     * FIPSv2 bundles. */
+    curveId = wc_ecc_get_curve_id_from_name(name);
+    (*env)->ReleaseStringUTFChars(env, curveName, name);
+
+    if (curveId < 0) {
+        throwWolfCryptExceptionFromError(env, curveId);
+        return NULL;
+    }
+
+    ret = wc_ecc_init(&tempKey);
+    if (ret == 0) {
+        ret = wc_ecc_set_curve(&tempKey, 0, curveId);
+        if ((ret == 0) && (tempKey.dp != NULL)) {
+            dp = tempKey.dp;
+            LogStr("tempKey.dp = %p (id=%d)\n", dp, dp->id);
+        }
+        wc_ecc_free(&tempKey);
+    }
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+        return NULL;
+    }
+#else
+    /* Get curve parameters directly */
+    dp = wc_ecc_get_curve_params(curveIdx);
+    (*env)->ReleaseStringUTFChars(env, curveName, name);
+#endif /* HAVE_FIPS & HAVE_FIPS_VERSION */
+
+    if (dp == NULL) {
+        throwWolfCryptExceptionFromError(env, ECC_CURVE_OID_E);
+        return NULL;
+    }
+
+    /* Create Java String[7], freed by Java when method returns if we
+     * return in an error state since this is a local reference. */
+    result = (*env)->NewObjectArray(env, 7,
+        (*env)->FindClass(env, "java/lang/String"), NULL);
+    if (result == NULL) {
+        throwWolfCryptExceptionFromError(env, MEMORY_E);
+        return NULL;
+    }
+
+    /* Convert curve parameters to Java strings:
+     *     dp->prime = field prime
+     *     dp->Af = curve coefficient a
+     *     dp->Bf = curve coefficient b
+     *     dp->order = curve order
+     *     dp->Gx = generator x
+     *     dp->Gy = generator y
+     */
+    paramStrings[0] = (*env)->NewStringUTF(env, dp->prime);
+    paramStrings[1] = (*env)->NewStringUTF(env, dp->Af);
+    paramStrings[2] = (*env)->NewStringUTF(env, dp->Bf);
+    paramStrings[3] = (*env)->NewStringUTF(env, dp->order);
+    paramStrings[4] = (*env)->NewStringUTF(env, dp->Gx);
+    paramStrings[5] = (*env)->NewStringUTF(env, dp->Gy);
+
+    /* Convert cofactor to string */
+    ret = XSNPRINTF(cofactorStr, sizeof(cofactorStr), "%d", dp->cofactor);
+    if (ret < 0 || ret >= (int)sizeof(cofactorStr)) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return NULL;
+    }
+    paramStrings[6] = (*env)->NewStringUTF(env, cofactorStr);
+
+    /* Set array elements */
+    for (i = 0; i < 7; i++) {
+        if (paramStrings[i] == NULL) {
+            return NULL;
+        }
+        (*env)->SetObjectArrayElement(env, result, i, paramStrings[i]);
+        (*env)->DeleteLocalRef(env, paramStrings[i]);
+    }
+
+    LogStr("wc_ecc_get_curve_params_from_name(curveName=%s) = success\n",
+        dp->name);
+
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+/*
+ * Get all curve names supported by the compiled wolfCrypt library.
+ *
+ * Return String[] containing all available curve names, or NULL on error.
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1all_1curve_1names
+  (JNIEnv* env, jclass this)
+{
+    jobjectArray result = NULL;
+#ifdef HAVE_ECC
+    jstring* curveNames = NULL;
+    int curveCount = 0;
+    int i;
+    int j;
+    int maxIdx = 0;
+
+    /* First pass: find maximum valid curve index by testing consecutive
+     * indices until we find an invalid one */
+    for (i = 0; i < ECC_CURVE_MAX; i++) {
+        if (wc_ecc_is_valid_idx(i)) {
+            maxIdx = i;
+        }
+    }
+
+    if (maxIdx == 0) {
+        throwWolfCryptExceptionFromError(env, ECC_CURVE_OID_E);
+        return NULL;
+    }
+
+    /* Second pass: count valid curves with names */
+    for (i = 0; i <= maxIdx; i++) {
+        if (wc_ecc_is_valid_idx(i)) {
+            const char* name = wc_ecc_get_name(wc_ecc_get_curve_id(i));
+            if (name != NULL) {
+                curveCount++;
+            }
+        }
+    }
+
+    if (curveCount == 0) {
+        throwWolfCryptExceptionFromError(env, ECC_CURVE_OID_E);
+        return NULL;
+    }
+
+    /* Dynamically allocate array based on counted curves */
+    curveNames = (jstring*)XMALLOC(curveCount * sizeof(jstring), NULL,
+        DYNAMIC_TYPE_TMP_BUFFER);
+    if (curveNames == NULL) {
+        throwWolfCryptExceptionFromError(env, MEMORY_E);
+        return NULL;
+    }
+
+    /* Third pass: collect curve names */
+    curveCount = 0;
+    for (i = 0; i <= maxIdx; i++) {
+        if (wc_ecc_is_valid_idx(i)) {
+            const char* name = wc_ecc_get_name(wc_ecc_get_curve_id(i));
+            if (name != NULL) {
+                curveNames[curveCount] = (*env)->NewStringUTF(env, name);
+                if (curveNames[curveCount] == NULL) {
+                    /* Clean up any previously created strings */
+                    for (j = 0; j < curveCount; j++) {
+                        (*env)->DeleteLocalRef(env, curveNames[j]);
+                    }
+                    XFREE(curveNames, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+                    throwWolfCryptExceptionFromError(env, MEMORY_E);
+                    return NULL;
+                }
+                curveCount++;
+            }
+        }
+    }
+
+    if (curveCount == 0) {
+        XFREE(curveNames, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        throwWolfCryptExceptionFromError(env, ECC_CURVE_OID_E);
+        return NULL;
+    }
+
+    /* Create Java String array with actual count */
+    result = (*env)->NewObjectArray(env, curveCount,
+        (*env)->FindClass(env, "java/lang/String"), NULL);
+    if (result == NULL) {
+        /* Clean up curve name strings */
+        for (i = 0; i < curveCount; i++) {
+            (*env)->DeleteLocalRef(env, curveNames[i]);
+        }
+        XFREE(curveNames, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        throwWolfCryptExceptionFromError(env, MEMORY_E);
+        return NULL;
+    }
+
+    /* Fill array with collected curve names */
+    for (i = 0; i < curveCount; i++) {
+        (*env)->SetObjectArrayElement(env, result, i, curveNames[i]);
+        (*env)->DeleteLocalRef(env, curveNames[i]);
+    }
+
+    /* Clean up dynamic array */
+    XFREE(curveNames, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+
+    LogStr("wc_ecc_get_all_curve_names() found %d curves (maxIdx: %d)\n",
+        curveCount, maxIdx);
+
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
 }
 
