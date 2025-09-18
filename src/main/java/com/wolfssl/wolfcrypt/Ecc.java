@@ -21,6 +21,7 @@
 
 package com.wolfssl.wolfcrypt;
 
+import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.spec.EllipticCurve;
 import java.security.spec.ECParameterSpec;
@@ -136,6 +137,16 @@ public class Ecc extends NativeStruct {
     private static native int wc_ecc_get_curve_id_from_params(int fieldSize,
             byte[] prime, byte[] Af, byte[] Bf, byte[] order,
             byte[] Gx, byte[] Gy, int cofactor);
+    private static native String[] wc_ecc_get_curve_params_from_name(
+            String curveName);
+    private static native String[] wc_ecc_get_all_curve_names();
+    private native byte[] wc_ecc_export_private_raw();
+    private native byte[][] wc_ecc_export_public_raw();
+    private native void wc_ecc_import_private_raw(byte[] privateKey,
+            String curveName);
+    private native void wc_ecc_import_public_raw(byte[] xCoord, byte[] yCoord,
+            String curveName);
+    private native int wc_ecc_get_curve_id();
 
     /**
      * Internal helper method to initialize object if/when needed.
@@ -599,6 +610,34 @@ public class Ecc extends NativeStruct {
     }
 
     /**
+     * Converts a BigInteger to a byte array, removing leading zero bytes
+     * that BigInteger.toByteArray() may add for sign bit representation.
+     *
+     * BigInteger.toByteArray() can prepend a zero byte when the most
+     * significant bit of the number is set, to indicate that the number
+     * is positive. This utility method removes such leading zeros.
+     *
+     * @param value the BigInteger to convert
+     * @return byte array representation without leading zero bytes
+     */
+    public static byte[] bigIntToByteArrayNoLeadingZeros(BigInteger value) {
+        if (value == null) {
+            return null;
+        }
+
+        byte[] bytes = value.toByteArray();
+
+        /* Remove leading zero if present (BigInteger may add for sign bit) */
+        if ((bytes.length > 1) && (bytes[0] == 0)) {
+            byte[] result = new byte[bytes.length - 1];
+            System.arraycopy(bytes, 1, result, 0, result.length);
+            return result;
+        }
+
+        return bytes;
+    }
+
+    /**
      * Get ECC curve name from ECParameterSpec
      *
      * @param spec ECParameterSpec to get curve name from
@@ -607,7 +646,8 @@ public class Ecc extends NativeStruct {
      *
      * @throws WolfCryptException if native operation fails
      * @throws InvalidAlgorithmParameterException if spec.getCurve().getField()
-     *         is not an instance of ECFieldFp
+     *         is not an instance of ECFieldFp, or curve parameters do not
+     *         match a supported ECC curve in native wolfCrypt.
      */
     public static String getCurveName(ECParameterSpec spec)
         throws WolfCryptException, InvalidAlgorithmParameterException {
@@ -622,17 +662,196 @@ public class Ecc extends NativeStruct {
         ECFieldFp field = (ECFieldFp)spec.getCurve().getField();
         EllipticCurve curve = spec.getCurve();
 
+        /* Convert BigIntegers to byte arrays for native wolfCrypt.
+         * Remove extra leading zero bytes that BigInteger.toByteArray()
+         * might add. */
         curve_id = wc_ecc_get_curve_id_from_params(
                     field.getFieldSize(),
-                    field.getP().toByteArray(),
-                    curve.getA().toByteArray(),
-                    curve.getB().toByteArray(),
-                    spec.getOrder().toByteArray(),
-                    spec.getGenerator().getAffineX().toByteArray(),
-                    spec.getGenerator().getAffineY().toByteArray(),
+                    bigIntToByteArrayNoLeadingZeros(field.getP()),
+                    bigIntToByteArrayNoLeadingZeros(curve.getA()),
+                    bigIntToByteArrayNoLeadingZeros(curve.getB()),
+                    bigIntToByteArrayNoLeadingZeros(spec.getOrder()),
+                    bigIntToByteArrayNoLeadingZeros(
+                        spec.getGenerator().getAffineX()),
+                    bigIntToByteArrayNoLeadingZeros(
+                        spec.getGenerator().getAffineY()),
                     spec.getCofactor());
 
+        if (curve_id == -1) {
+            /* ECC_CURVE_INVALID */
+            throw new InvalidAlgorithmParameterException(
+                "Curve parameters do not match a supported ECC curve: " + spec);
+        }
+
         return wc_ecc_get_curve_name_from_id(curve_id);
+    }
+
+    /**
+     * Get ECC curve name from curve ID.
+     *
+     * Ecc object does not need to be initialized to call this method.
+     *
+     * @param curveId curve ID
+     *
+     * @return curve name
+     *
+     * @throws WolfCryptException if native operation fails
+     */
+    public static String getCurveNameFromId(int curveId)
+        throws WolfCryptException {
+
+        return wc_ecc_get_curve_name_from_id(curveId);
+    }
+
+    /**
+     * Export ECC raw private key scalar.
+     *
+     * @return ECC private key scalar as byte array
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
+     */
+    public synchronized byte[] exportPrivateRaw()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
+            return wc_ecc_export_private_raw();
+        }
+    }
+
+    /**
+     * Export ECC raw public key coordinates.
+     *
+     * @return {x, y} coordinate arrays
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
+     */
+    public synchronized byte[][] exportPublicRaw()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
+            return wc_ecc_export_public_raw();
+        }
+    }
+
+    /**
+     * Import ECC raw private key scalar on specified curve.
+     *
+     * @param privateKey private key scalar as byte array
+     * @param curveName name of ECC curve
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
+     */
+    public synchronized void importPrivateRaw(byte[] privateKey,
+        String curveName) throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (pointerLock) {
+            wc_ecc_import_private_raw(privateKey, curveName);
+        }
+        state = WolfCryptState.READY;
+    }
+
+    /**
+     * Import ECC raw public key coordinates on specified curve.
+     *
+     * @param x x coordinate as byte array
+     * @param y y coordinate as byte array
+     * @param curveName name of ECC curve
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
+     */
+    public synchronized void importPublicRaw(byte[] x, byte[] y,
+        String curveName) throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (pointerLock) {
+            wc_ecc_import_public_raw(x, y, curveName);
+        }
+        state = WolfCryptState.READY;
+    }
+
+    /**
+     * Get ECC curve ID for the current key.
+     *
+     * @return curve ID
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
+     */
+    public synchronized int getCurveId()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
+            return wc_ecc_get_curve_id();
+        }
+    }
+
+    /**
+     * Get ECC curve parameters for specified curve name.
+     *
+     * Returns String array ECC curve parameters in the following order:
+     *
+     * [0] prime - field prime as hex string
+     * [1] a - curve coefficient a as hex string
+     * [2] b - curve coefficient b as hex string
+     * [3] order - curve order as hex string
+     * [4] gx - generator point x coordinate as hex string
+     * [5] gy - generator point y coordinate as hex string
+     * [6] cofactor - cofactor as decimal string
+     *
+     * @param curveName name of ECC curve
+     *
+     * @return String array containing curve parameters
+     *
+     * @throws WolfCryptException if curve is not supported or native
+     *         operation fails
+     */
+    public static String[] getCurveParameters(String curveName)
+        throws WolfCryptException {
+
+        if (curveName == null) {
+            throw new IllegalArgumentException("Curve name cannot be null");
+        }
+
+        return wc_ecc_get_curve_params_from_name(curveName);
+    }
+
+    /**
+     * Get all curve names supported by the native wolfCrypt library.
+     *
+     * @return String array containing all available curve names
+     *
+     * @throws WolfCryptException if native operation fails
+     */
+    public static String[] getAllSupportedCurves() throws WolfCryptException {
+        return wc_ecc_get_all_curve_names();
     }
 }
 

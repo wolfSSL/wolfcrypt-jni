@@ -177,6 +177,9 @@ The JCE provider currently supports the following algorithms:
         EC
         DH
 
+    KeyFactory
+        EC
+
     CertPathValidator Class
         PKIX
 

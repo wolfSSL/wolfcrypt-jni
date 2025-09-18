@@ -454,6 +454,12 @@ public final class WolfCryptProvider extends Provider {
             }
         }
 
+        /* KeyFactory */
+        if (FeatureDetect.EccEnabled()) {
+            put("KeyFactory.EC",
+                "com.wolfssl.provider.jce.WolfCryptECKeyFactory");
+        }
+
         /* KeyStore */
         put("KeyStore.WKS",
                 "com.wolfssl.provider.jce.WolfSSLKeyStore");

@@ -42,6 +42,7 @@ import org.junit.runners.Suite.SuiteClasses;
     WolfCryptKeyAgreementTest.class,
     WolfCryptKeyGeneratorTest.class,
     WolfCryptKeyPairGeneratorTest.class,
+    WolfCryptECKeyFactoryTest.class,
     WolfCryptPKIXCertPathValidatorTest.class,
     WolfSSLKeyStoreTest.class,
     WolfCryptUtilTest.class

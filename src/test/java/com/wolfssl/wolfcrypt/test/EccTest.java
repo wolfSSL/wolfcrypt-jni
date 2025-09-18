@@ -535,5 +535,255 @@ public class EccTest {
             }
         }
     }
+
+    @Test
+    public void getAllSupportedCurves() {
+
+        /* Test that getAllSupportedCurves returns a non-null array */
+        String[] curves = Ecc.getAllSupportedCurves();
+        assertNotNull("getAllSupportedCurves should not return null", curves);
+
+        /* Test that array is not empty */
+        assertTrue("getAllSupportedCurves should return at least one curve",
+            curves.length > 0);
+
+        /* Test that all curve names are non-null and non-empty */
+        for (String curveName : curves) {
+            assertNotNull("Curve name should not be null", curveName);
+            assertTrue("Curve name should not be empty",
+                curveName.length() > 0);
+        }
+
+        /* Test that we get expected common curves */
+        boolean foundSecp256r1 = false;
+        for (String curveName : curves) {
+            if ("SECP256R1".equals(curveName)) {
+                foundSecp256r1 = true;
+                break;
+            }
+        }
+        assertTrue("Should find SECP256R1 in supported curves",
+            foundSecp256r1);
+    }
+
+    @Test
+    public void getCurveParametersValidCurves() {
+
+        /* Get all supported curves first */
+        String[] curves = Ecc.getAllSupportedCurves();
+        assertNotNull("getAllSupportedCurves should not return null", curves);
+        assertTrue("Should have at least one curve", curves.length > 0);
+
+        /* Test getCurveParameters for each supported curve */
+        for (String curveName : curves) {
+            String[] params = Ecc.getCurveParameters(curveName);
+
+            assertNotNull("getCurveParameters should not return null for " +
+                curveName, params);
+            assertEquals("getCurveParameters should return 7 parameters for " +
+                curveName, 7, params.length);
+
+            /* Verify all parameters are non-null hex strings */
+            for (int i = 0; i < 6; i++) { /* first 6 are hex strings */
+                assertNotNull("Parameter " + i + " should not be null for " +
+                    curveName, params[i]);
+                assertTrue("Parameter " + i + " should not be empty for " +
+                    curveName, params[i].length() > 0);
+
+                /* Verify it's valid hex using regex */
+                assertTrue("Parameter " + i +
+                    " is not a valid hex string for " +
+                    curveName, params[i].matches("^[0-9a-fA-F]+$"));
+            }
+
+            /* Verify cofactor (last parameter) is a valid integer */
+            assertNotNull("Cofactor should not be null for " + curveName,
+                params[6]);
+            assertTrue("Cofactor should not be empty for " + curveName,
+                params[6].length() > 0);
+
+            Integer.parseInt(params[6]); /* should not throw */
+        }
+    }
+
+    @Test
+    public void getCurveParametersSecp256r1() {
+
+        /* Test specific known curve parameters for SECP256R1 */
+        String[] params = Ecc.getCurveParameters("SECP256R1");
+
+        assertNotNull("getCurveParameters should not return null", params);
+        assertEquals("Should return 7 parameters", 7, params.length);
+
+        /* Verify we can parse all parameters as BigIntegers:
+         * params[0] - a (prime)
+         * params[1] - b
+         * params[2] - p (order)
+         * params[3] - n (order)
+         * params[4] - Gx (generator x)
+         * params[5] - Gy (generator y)
+         * params[6] - cofactor (int) */
+        java.math.BigInteger p = new java.math.BigInteger(params[0], 16);
+        java.math.BigInteger a = new java.math.BigInteger(params[1], 16);
+        java.math.BigInteger b = new java.math.BigInteger(params[2], 16);
+        java.math.BigInteger n = new java.math.BigInteger(params[3], 16);
+        java.math.BigInteger gx = new java.math.BigInteger(params[4], 16);
+        java.math.BigInteger gy = new java.math.BigInteger(params[5], 16);
+        int cofactor = Integer.parseInt(params[6]);
+
+        /* Verify reasonable field size for secp256r1 (should be 256 bits) */
+        assertEquals("SECP256R1 prime should be 256 bits", 256, p.bitLength());
+
+        /* Verify cofactor is 1 for secp256r1 */
+        assertEquals("SECP256R1 cofactor should be 1", 1, cofactor);
+
+        /* Verify generator point coordinates are reasonable size */
+        assertTrue("Generator X should be positive",
+            gx.compareTo(java.math.BigInteger.ZERO) > 0);
+        assertTrue("Generator Y should be positive",
+            gy.compareTo(java.math.BigInteger.ZERO) > 0);
+        assertTrue("Generator X should be less than prime",
+            gx.compareTo(p) < 0);
+        assertTrue("Generator Y should be less than prime",
+            gy.compareTo(p) < 0);
+    }
+
+    @Test
+    public void getCurveParametersInvalidCurve() {
+
+        /* Test with invalid curve name */
+        try {
+            Ecc.getCurveParameters("INVALID_CURVE_NAME");
+            fail("getCurveParameters should throw exception for invalid curve");
+        } catch (WolfCryptException e) {
+            /* Expected exception */
+        }
+
+        /* Test with null curve name */
+        try {
+            Ecc.getCurveParameters(null);
+            fail("getCurveParameters should throw exception for null curve");
+        } catch (IllegalArgumentException e) {
+            /* Expected exception for null input */
+        }
+
+        /* Test with clearly invalid curve names */
+        try {
+            Ecc.getCurveParameters("NOT_A_REAL_CURVE_NAME_12345");
+            fail("getCurveParameters should throw exception for " +
+                 "clearly invalid curve");
+        } catch (WolfCryptException e) {
+            /* Expected exception */
+        }
+
+        try {
+            Ecc.getCurveParameters("XYZ_FAKE_CURVE");
+            fail("getCurveParameters should throw exception for fake curve");
+        } catch (WolfCryptException e) {
+            /* Expected exception */
+        }
+    }
+
+    @Test
+    public void getCurveParametersCaseInsensitive() {
+
+        /* Test that curve name lookup is case insensitive */
+        String[] paramsUpper = Ecc.getCurveParameters("SECP256R1");
+        String[] paramsLower = Ecc.getCurveParameters("secp256r1");
+        String[] paramsMixed = Ecc.getCurveParameters("SeCp256R1");
+
+        assertNotNull("Upper case should work", paramsUpper);
+        assertNotNull("Lower case should work", paramsLower);
+        assertNotNull("Mixed case should work", paramsMixed);
+
+        /* All should return the same parameters */
+        assertArrayEquals("Upper and lower case should return same parameters",
+            paramsUpper, paramsLower);
+        assertArrayEquals("Upper and mixed case should return same parameters",
+            paramsUpper, paramsMixed);
+    }
+
+    @Test
+    public void threadedGetAllSupportedCurves() throws InterruptedException {
+
+        /* Test that getAllSupportedCurves is thread-safe */
+        int numThreads = 10;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<String[]> results =
+            new LinkedBlockingQueue<>();
+
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+                    try {
+                        String[] curves = Ecc.getAllSupportedCurves();
+                        results.add(curves);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        results.add(null);
+                    } finally {
+                        latch.countDown();
+                    }
+                }
+            });
+        }
+
+        /* Wait for all threads to complete */
+        latch.await();
+
+        /* Verify all results are consistent */
+        String[] firstResult = results.poll();
+        assertNotNull("First result should not be null", firstResult);
+
+        while (!results.isEmpty()) {
+            String[] result = results.poll();
+            assertNotNull("Result should not be null", result);
+            assertArrayEquals("All threads should return same curve list",
+                firstResult, result);
+        }
+    }
+
+    @Test
+    public void threadedGetCurveParameters() throws InterruptedException {
+
+        /* Test that getCurveParameters is thread-safe */
+        int numThreads = 10;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<String[]> results =
+            new LinkedBlockingQueue<>();
+        final String testCurveName = "SECP256R1";
+
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override public void run() {
+                    try {
+                        String[] params = Ecc.getCurveParameters(testCurveName);
+                        results.add(params);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        results.add(null);
+                    } finally {
+                        latch.countDown();
+                    }
+                }
+            });
+        }
+
+        /* Wait for all threads to complete */
+        latch.await();
+
+        /* Verify all results are consistent */
+        String[] firstResult = results.poll();
+        assertNotNull("First result should not be null", firstResult);
+
+        while (!results.isEmpty()) {
+            String[] result = results.poll();
+            assertNotNull("Result should not be null", result);
+            assertArrayEquals("All threads should return same parameters",
+                             firstResult, result);
+        }
+    }
 }
 
