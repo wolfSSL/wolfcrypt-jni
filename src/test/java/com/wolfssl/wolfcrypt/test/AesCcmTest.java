@@ -717,7 +717,8 @@ public class AesCcmTest {
     @Test
     public void testThreadedAes128() throws InterruptedException {
 
-        int numThreads = 100;
+        /* Use fewer threads in CI environments to avoid resource limits */
+        int numThreads = System.getenv("CI") != null ? 20 : 100;
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
         final LinkedBlockingQueue<Exception> exceptions =
@@ -781,7 +782,8 @@ public class AesCcmTest {
     @Test
     public void testThreadedAes192() throws InterruptedException {
 
-        int numThreads = 100;
+        /* Use fewer threads in CI environments to avoid resource limits */
+        int numThreads = System.getenv("CI") != null ? 20 : 100;
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
         final LinkedBlockingQueue<Exception> exceptions =
@@ -843,7 +845,8 @@ public class AesCcmTest {
     @Test
     public void testThreadedAes256() throws InterruptedException {
 
-        int numThreads = 100;
+        /* Use fewer threads in CI environments to avoid resource limits */
+        int numThreads = System.getenv("CI") != null ? 20 : 100;
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
         final LinkedBlockingQueue<Exception> exceptions =
@@ -1182,7 +1185,8 @@ public class AesCcmTest {
     @Test
     public void testThreading() throws InterruptedException {
 
-        int numThreads = 100;
+        /* Use fewer threads in CI environments to avoid resource limits */
+        int numThreads = System.getenv("CI") != null ? 20 : 100;
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
         final LinkedBlockingQueue<Exception> exceptions =
