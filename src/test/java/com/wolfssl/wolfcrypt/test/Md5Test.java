@@ -226,7 +226,8 @@ public class Md5Test {
     @Test
     public void threadedHashTest() throws InterruptedException {
 
-        int numThreads = 100;
+        /* Use fewer threads in CI environments to avoid resource limits */
+        int numThreads = System.getenv("CI") != null ? 20 : 100;
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
         final LinkedBlockingQueue<byte[]> results = new LinkedBlockingQueue<>();

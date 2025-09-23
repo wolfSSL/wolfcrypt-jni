@@ -442,7 +442,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
             ECParameterSpec espec = (ECParameterSpec)spec;
 
-            this.curveName = Ecc.getCurveName(espec);
+            this.curveName = WolfCryptECParameterSpec.getCurveName(espec);
             this.curveSize = Ecc.getCurveSizeFromName(this.curveName);
             log("curveName: " + curveName + ", curveSize: " + curveSize);
 
