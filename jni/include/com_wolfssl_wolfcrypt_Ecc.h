@@ -177,6 +177,62 @@ JNIEXPORT jstring JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1na
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1id_1from_1params
   (JNIEnv *, jclass, jint, jbyteArray, jbyteArray, jbyteArray, jbyteArray, jbyteArray, jbyteArray, jint);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_get_curve_params_from_name
+ * Signature: (Ljava/lang/String;)[Ljava/lang/String;
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1params_1from_1name
+  (JNIEnv *, jclass, jstring);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_get_all_curve_names
+ * Signature: ()[Ljava/lang/String;
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1all_1curve_1names
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_export_private_raw
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private_1raw
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_export_public_raw
+ * Signature: ()[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1public_1raw
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_import_private_raw
+ * Signature: ([BLjava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private_1raw
+  (JNIEnv *, jobject, jbyteArray, jstring);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_import_public_raw
+ * Signature: ([B[BLjava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1public_1raw
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jstring);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_get_curve_id
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1id
+  (JNIEnv *, jobject);
+
 #ifdef __cplusplus
 }
 #endif
