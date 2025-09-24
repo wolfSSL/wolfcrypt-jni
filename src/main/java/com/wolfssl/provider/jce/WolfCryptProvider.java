@@ -147,6 +147,9 @@ public final class WolfCryptProvider extends Provider {
             put("Signature.SHA256withECDSA",
                   "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA256wECDSA");
             put("Alg.Alias.Signature.1.2.840.10045.4.3.2", "SHA256withECDSA");
+            /* IEEE P1363 format ECDSA */
+            put("Signature.SHA256withECDSAinP1363Format",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA256wECDSAP1363");
         }
         if (FeatureDetect.Sha384Enabled()) {
             put("Signature.SHA384withRSA",
@@ -154,6 +157,9 @@ public final class WolfCryptProvider extends Provider {
             put("Signature.SHA384withECDSA",
                   "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA384wECDSA");
             put("Alg.Alias.Signature.1.2.840.10045.4.3.3", "SHA384withECDSA");
+            /* IEEE P1363 format ECDSA */
+            put("Signature.SHA384withECDSAinP1363Format",
+                  "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA384wECDSAP1363");
         }
         if (FeatureDetect.Sha512Enabled()) {
             put("Signature.SHA512withRSA",
