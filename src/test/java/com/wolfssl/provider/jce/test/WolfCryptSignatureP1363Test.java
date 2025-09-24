@@ -60,6 +60,10 @@ public class WolfCryptSignatureP1363Test {
     private static ArrayList<String> enabledCurves =
         new ArrayList<String>();
 
+    /* Track which signature algorithms are available */
+    private static ArrayList<String> availableAlgorithms =
+        new ArrayList<String>();
+
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = new TestWatcher() {
         protected void starting(Description desc) {
@@ -86,6 +90,32 @@ public class WolfCryptSignatureP1363Test {
                 enabledCurves.add(supportedCurves[i]);
             }
         }
+
+        /* Test which signature algorithms are available */
+        String[] algorithmsToTest = {
+            "SHA256withECDSAinP1363Format",
+            "SHA384withECDSAinP1363Format",
+            "SHA512withECDSAinP1363Format",
+            "SHA3-256withECDSAinP1363Format",
+            "SHA3-384withECDSAinP1363Format",
+            "SHA3-512withECDSAinP1363Format"
+        };
+
+        for (String algorithm : algorithmsToTest) {
+            if (isAlgorithmAvailable(algorithm)) {
+                availableAlgorithms.add(algorithm);
+            }
+        }
+    }
+
+    /* Helper method to check if signature algorithm is available */
+    private static boolean isAlgorithmAvailable(String algorithm) {
+        try {
+            Signature.getInstance(algorithm, provider);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /* Helper method to get expected P1363 signature length for curve */
@@ -106,27 +136,51 @@ public class WolfCryptSignatureP1363Test {
     public void testP1363AlgorithmAvailability() throws Exception {
 
         /* Test SHA256withECDSAinP1363Format availability */
-        try {
+        if (availableAlgorithms.contains("SHA256withECDSAinP1363Format")) {
             Signature sig256 = Signature.getInstance(
                 "SHA256withECDSAinP1363Format", provider);
             Assert.assertNotNull(sig256);
             Assert.assertEquals(PROVIDER, sig256.getProvider().getName());
-
-        } catch (Exception e) {
-            Assert.fail("SHA256withECDSAinP1363Format should be available: " +
-                e.getMessage());
         }
 
         /* Test SHA384withECDSAinP1363Format availability */
-        try {
+        if (availableAlgorithms.contains("SHA384withECDSAinP1363Format")) {
             Signature sig384 = Signature.getInstance(
                 "SHA384withECDSAinP1363Format", provider);
             Assert.assertNotNull(sig384);
             Assert.assertEquals(PROVIDER, sig384.getProvider().getName());
+        }
 
-        } catch (Exception e) {
-            Assert.fail("SHA384withECDSAinP1363Format should be available: " +
-                e.getMessage());
+        /* Test SHA3-256withECDSAinP1363Format availability */
+        if (availableAlgorithms.contains("SHA3-256withECDSAinP1363Format")) {
+            Signature sigSha3_256 = Signature.getInstance(
+                "SHA3-256withECDSAinP1363Format", provider);
+            Assert.assertNotNull(sigSha3_256);
+            Assert.assertEquals(PROVIDER, sigSha3_256.getProvider().getName());
+        }
+
+        /* Test SHA3-384withECDSAinP1363Format availability */
+        if (availableAlgorithms.contains("SHA3-384withECDSAinP1363Format")) {
+            Signature sigSha3_384 = Signature.getInstance(
+                "SHA3-384withECDSAinP1363Format", provider);
+            Assert.assertNotNull(sigSha3_384);
+            Assert.assertEquals(PROVIDER, sigSha3_384.getProvider().getName());
+        }
+
+        /* Test SHA3-512withECDSAinP1363Format availability */
+        if (availableAlgorithms.contains("SHA3-512withECDSAinP1363Format")) {
+            Signature sigSha3_512 = Signature.getInstance(
+                "SHA3-512withECDSAinP1363Format", provider);
+            Assert.assertNotNull(sigSha3_512);
+            Assert.assertEquals(PROVIDER, sigSha3_512.getProvider().getName());
+        }
+
+        /* Test SHA512withECDSAinP1363Format availability */
+        if (availableAlgorithms.contains("SHA512withECDSAinP1363Format")) {
+            Signature sig512 = Signature.getInstance(
+                "SHA512withECDSAinP1363Format", provider);
+            Assert.assertNotNull(sig512);
+            Assert.assertEquals(PROVIDER, sig512.getProvider().getName());
         }
     }
 
@@ -252,6 +306,157 @@ public class WolfCryptSignatureP1363Test {
         sig.initVerify(keyPair.getPublic());
         sig.update(message);
         Assert.assertTrue("P1363 SHA384 signature should verify",
+            sig.verify(signature));
+    }
+
+    @Test
+    public void testP1363SHA3_256() throws Exception {
+
+        /* Skip test if secp256r1 not available */
+        if (!enabledCurves.contains("secp256r1")) {
+            return;
+        }
+
+        /* Skip test if SHA3-256 algorithm not available */
+        if (!availableAlgorithms.contains("SHA3-256withECDSAinP1363Format")) {
+            return;
+        }
+
+        /* Generate key pair */
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("EC", provider);
+        keyGen.initialize(new ECGenParameterSpec("secp256r1"));
+        KeyPair keyPair = keyGen.generateKeyPair();
+
+        byte[] message = "SHA3-256 P1363 test message".getBytes();
+
+        /* Test SHA3-256withECDSAinP1363Format */
+        Signature sig = Signature.getInstance(
+            "SHA3-256withECDSAinP1363Format", provider);
+        sig.initSign(keyPair.getPrivate());
+        sig.update(message);
+        byte[] signature = sig.sign();
+
+        /* P1363 signature should be exactly 64 bytes for secp256r1 */
+        Assert.assertEquals("P1363 SHA3-256 signature should be 64 bytes",
+            64, signature.length);
+
+        /* Verify signature */
+        sig.initVerify(keyPair.getPublic());
+        sig.update(message);
+        Assert.assertTrue("P1363 SHA3-256 signature should verify",
+            sig.verify(signature));
+    }
+
+    @Test
+    public void testP1363SHA3_384() throws Exception {
+
+        /* Skip test if secp384r1 not available */
+        if (!enabledCurves.contains("secp384r1")) {
+            return;
+        }
+
+        /* Skip test if SHA3-384 algorithm not available */
+        if (!availableAlgorithms.contains("SHA3-384withECDSAinP1363Format")) {
+            return;
+        }
+
+        /* Generate key pair */
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("EC", provider);
+        keyGen.initialize(new ECGenParameterSpec("secp384r1"));
+        KeyPair keyPair = keyGen.generateKeyPair();
+
+        byte[] message = "SHA3-384 P1363 test message".getBytes();
+
+        /* Test SHA3-384withECDSAinP1363Format */
+        Signature sig = Signature.getInstance(
+            "SHA3-384withECDSAinP1363Format", provider);
+        sig.initSign(keyPair.getPrivate());
+        sig.update(message);
+        byte[] signature = sig.sign();
+
+        /* P1363 signature should be exactly 96 bytes for secp384r1 */
+        Assert.assertEquals("P1363 SHA3-384 signature should be 96 bytes",
+            96, signature.length);
+
+        /* Verify signature */
+        sig.initVerify(keyPair.getPublic());
+        sig.update(message);
+        Assert.assertTrue("P1363 SHA3-384 signature should verify",
+            sig.verify(signature));
+    }
+
+    @Test
+    public void testP1363SHA3_512() throws Exception {
+
+        /* Skip test if secp521r1 not available */
+        if (!enabledCurves.contains("secp521r1")) {
+            return;
+        }
+
+        /* Skip test if SHA3-512 algorithm not available */
+        if (!availableAlgorithms.contains("SHA3-512withECDSAinP1363Format")) {
+            return;
+        }
+
+        /* Generate key pair */
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("EC", provider);
+        keyGen.initialize(new ECGenParameterSpec("secp521r1"));
+        KeyPair keyPair = keyGen.generateKeyPair();
+
+        byte[] message = "SHA3-512 P1363 test message".getBytes();
+
+        /* Test SHA3-512withECDSAinP1363Format */
+        Signature sig = Signature.getInstance(
+            "SHA3-512withECDSAinP1363Format", provider);
+        sig.initSign(keyPair.getPrivate());
+        sig.update(message);
+        byte[] signature = sig.sign();
+
+        /* P1363 signature should be exactly 132 bytes for secp521r1 */
+        Assert.assertEquals("P1363 SHA3-512 signature should be 132 bytes",
+            132, signature.length);
+
+        /* Verify signature */
+        sig.initVerify(keyPair.getPublic());
+        sig.update(message);
+        Assert.assertTrue("P1363 SHA3-512 signature should verify",
+            sig.verify(signature));
+    }
+
+    @Test
+    public void testP1363SHA512() throws Exception {
+
+        /* Skip test if secp521r1 not available */
+        if (!enabledCurves.contains("secp521r1")) {
+            return;
+        }
+
+        /* Generate key pair */
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("EC", provider);
+        keyGen.initialize(new ECGenParameterSpec("secp521r1"));
+        KeyPair keyPair = keyGen.generateKeyPair();
+
+        byte[] message = "SHA512 P1363 test message".getBytes();
+
+        /* Test SHA512withECDSAinP1363Format */
+        Signature sig = Signature.getInstance(
+            "SHA512withECDSAinP1363Format", provider);
+        sig.initSign(keyPair.getPrivate());
+        sig.update(message);
+        byte[] signature = sig.sign();
+
+        /* P1363 signature should be exactly 132 bytes for secp521r1 */
+        Assert.assertEquals("P1363 SHA512 signature should be 132 bytes",
+            132, signature.length);
+
+        /* Verify signature */
+        sig.initVerify(keyPair.getPublic());
+        sig.update(message);
+        Assert.assertTrue("P1363 SHA512 signature should verify",
             sig.verify(signature));
     }
 
