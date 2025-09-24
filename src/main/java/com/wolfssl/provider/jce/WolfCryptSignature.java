@@ -29,6 +29,9 @@ import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECParameterSpec;
+
+import java.math.BigInteger;
 
 import java.security.InvalidKeyException;
 import java.security.SignatureException;
@@ -368,6 +371,27 @@ public class WolfCryptSignature extends SignatureSpi {
         } else if (this.keyType == KeyType.WC_ECDSA &&
                 !(privateKey instanceof ECPrivateKey)) {
             throw new InvalidKeyException("Key is not of type ECPrivateKey");
+        }
+
+        /* If ECDSA key, validate EC private key range. Validating here to
+         * match Sun behavior. */
+        if ((this.keyType == KeyType.WC_ECDSA) &&
+            (privateKey instanceof ECPrivateKey)) {
+
+            ECPrivateKey ecPrivKey = (ECPrivateKey) privateKey;
+            BigInteger privateValue = ecPrivKey.getS();
+            ECParameterSpec ecParams = ecPrivKey.getParams();
+
+            if (privateValue.signum() <= 0) {
+                throw new InvalidKeyException(
+                    "EC private key value must be positive");
+            }
+
+            BigInteger order = ecParams.getOrder();
+            if (privateValue.compareTo(order) >= 0) {
+                throw new InvalidKeyException(
+                    "EC private key value must be less than curve order");
+            }
         }
 
         /* get encoded key, returns PKCS#8 formatted private key */

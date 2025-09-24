@@ -331,6 +331,40 @@ public class EccTest {
     }
 
     @Test
+    public void getEccCurveNameFromSpec_Secp521r1()
+        throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
+
+        /* Check if secp521r1 is supported in native wolfSSL */
+        boolean secp521r1Supported = false;
+        String[] supportedCurves = Ecc.getAllSupportedCurves();
+        for (String curve : supportedCurves) {
+            if ("SECP521R1".equalsIgnoreCase(curve)) {
+                secp521r1Supported = true;
+                break;
+            }
+        }
+
+        if (!secp521r1Supported) {
+            /* Curve not compiled in, skip */
+            return;
+        }
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
+        ECGenParameterSpec genSpec = new ECGenParameterSpec("secp521r1");
+        kpg.initialize(genSpec);
+
+        KeyPair pair = kpg.genKeyPair();
+        ECPrivateKey priv = (ECPrivateKey)pair.getPrivate();
+
+        ECParameterSpec spec = priv.getParams();
+
+        String curveName = Ecc.getCurveName(spec);
+
+        assertEquals("Should recognize secp521r1 from JDK ECParameterSpec",
+            "SECP521R1", curveName);
+    }
+
+    @Test
     public void threadedEccSharedSecretTest() throws InterruptedException {
 
         int numThreads = 20;
