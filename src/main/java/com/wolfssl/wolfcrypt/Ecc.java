@@ -638,6 +638,56 @@ public class Ecc extends NativeStruct {
     }
 
     /**
+     * Convert BigInteger to byte array with fixed size, padding with leading
+     * zeros if necessary. This ensures consistent byte array lengths for
+     * ECC curve parameter matching in native wolfCrypt.
+     *
+     * @param value the BigInteger to convert
+     * @param fieldSizeBytes expected byte array size
+     *
+     * @return byte array representation padded to fieldSizeBytes
+     *
+     * @throws IllegalArgumentException if BigInteger value is too large
+     *         to fit into expected fieldSizeBytes size
+     */
+    public static byte[] bigIntToFixedSizeByteArray(BigInteger value,
+        int fieldSizeBytes) throws IllegalArgumentException {
+
+        byte[] bytes = null;
+
+        if (value == null) {
+            return null;
+        }
+
+        bytes = value.toByteArray();
+
+        /* If we have the exact size, use as is */
+        if (bytes.length == fieldSizeBytes) {
+            return bytes;
+        }
+
+        /* If too long (should have leading zero for sign), remove it */
+        if ((bytes.length == fieldSizeBytes + 1) && (bytes[0] == 0)) {
+            byte[] result = new byte[fieldSizeBytes];
+            System.arraycopy(bytes, 1, result, 0, fieldSizeBytes);
+            return result;
+        }
+
+        /* If too short, pad with leading zeros */
+        if (bytes.length < fieldSizeBytes) {
+            byte[] result = new byte[fieldSizeBytes];
+            System.arraycopy(bytes, 0, result, fieldSizeBytes - bytes.length,
+                bytes.length);
+            return result;
+        }
+
+        /* Should not happen for valid ECC parameters */
+        throw new IllegalArgumentException(
+            "Parameter byte array too large: " + bytes.length +
+            " > " + fieldSizeBytes);
+    }
+
+    /**
      * Get ECC curve name from ECParameterSpec
      *
      * @param spec ECParameterSpec to get curve name from
@@ -653,29 +703,66 @@ public class Ecc extends NativeStruct {
         throws WolfCryptException, InvalidAlgorithmParameterException {
 
         int curve_id;
+        int fieldSize;
+        int expectedByteSize;
+        int wolfCryptByteSize;
+        ECFieldFp field = null;
+        EllipticCurve curve = null;
+        byte[] pBytes = null;
+        byte[] aBytes = null;
+        byte[] bBytes = null;
+        byte[] orderBytes = null;
+        byte[] gxBytes = null;
+        byte[] gyBytes = null;
 
         /* Ecc object doesn't need to be initialied before call */
         if (!(spec.getCurve().getField() instanceof ECFieldFp)) {
             throw new InvalidAlgorithmParameterException(
                 "Currently only ECFieldFp fields supported");
         }
-        ECFieldFp field = (ECFieldFp)spec.getCurve().getField();
-        EllipticCurve curve = spec.getCurve();
+
+        field = (ECFieldFp)spec.getCurve().getField();
+        curve = spec.getCurve();
 
         /* Convert BigIntegers to byte arrays for native wolfCrypt.
          * Remove extra leading zero bytes that BigInteger.toByteArray()
          * might add. */
-        curve_id = wc_ecc_get_curve_id_from_params(
-                    field.getFieldSize(),
-                    bigIntToByteArrayNoLeadingZeros(field.getP()),
-                    bigIntToByteArrayNoLeadingZeros(curve.getA()),
-                    bigIntToByteArrayNoLeadingZeros(curve.getB()),
-                    bigIntToByteArrayNoLeadingZeros(spec.getOrder()),
-                    bigIntToByteArrayNoLeadingZeros(
-                        spec.getGenerator().getAffineX()),
-                    bigIntToByteArrayNoLeadingZeros(
-                        spec.getGenerator().getAffineY()),
-                    spec.getCofactor());
+        pBytes = bigIntToByteArrayNoLeadingZeros(field.getP());
+        aBytes = bigIntToByteArrayNoLeadingZeros(curve.getA());
+        bBytes = bigIntToByteArrayNoLeadingZeros(curve.getB());
+        orderBytes = bigIntToByteArrayNoLeadingZeros(spec.getOrder());
+        gxBytes = bigIntToByteArrayNoLeadingZeros(
+            spec.getGenerator().getAffineX());
+        gyBytes = bigIntToByteArrayNoLeadingZeros(
+            spec.getGenerator().getAffineY());
+
+        /* Calculate correct field size for wolfCrypt curve lookup.
+         * wolfCrypt uses curveSz = (fieldSize + 1) / 8 to determine expected
+         * parameter byte length, but this can cause mismatches for curves like
+         * secp521r1 where field size is 521 bits but parameters need 66 bytes.
+         * We need to adjust the field size to ensure wolfCrypt calculates the
+         * correct byte size for parameter matching. */
+        fieldSize = field.getFieldSize();
+
+        /* Calculate how many bytes are actually needed for this field size,
+         * rounding up to the next byte boundary. */
+        expectedByteSize = (field.getFieldSize() + 7) / 8;
+
+        /* Calculate what wolfCrypt will compute with current field size.
+         * wolfCrypt uses "+ 1" instead of "+ 7" for rounding. */
+        wolfCryptByteSize = (fieldSize + 1) / 8;
+
+        if (wolfCryptByteSize < expectedByteSize) {
+            /* Adjust field size so wolfCrypt calculates the correct byte size.
+             * We need wolfCrypt to compute expectedByteSize, so:
+             * (adjustedFieldSize + 1) / 8 = expectedByteSize
+             * Therefore: adjustedFieldSize = expectedByteSize * 8 - 1
+             * Ex: 66 * 8 - 1 = 527, then (527 + 1) / 8 = 66 bytes */
+            fieldSize = expectedByteSize * 8 - 1;
+        }
+
+        curve_id = wc_ecc_get_curve_id_from_params(fieldSize, pBytes, aBytes,
+            bBytes, orderBytes, gxBytes, gyBytes, spec.getCofactor());
 
         if (curve_id == -1) {
             /* ECC_CURVE_INVALID */

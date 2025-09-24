@@ -22,6 +22,7 @@
 package com.wolfssl.provider.jce;
 
 import java.util.Arrays;
+import java.math.BigInteger;
 import javax.crypto.KeyAgreementSpi;
 import javax.crypto.SecretKey;
 import javax.crypto.ShortBufferException;
@@ -457,6 +458,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
         ECPrivateKey ecKey;
+        BigInteger privateValue = null;
+        BigInteger order = null;
+        ECParameterSpec ecParams = null;
 
         if (!(key instanceof ECPrivateKey)) {
             throw new InvalidKeyException(
@@ -464,12 +468,27 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         }
         ecKey = (ECPrivateKey)key;
 
+        /* Validate EC private key range */
+        privateValue = ecKey.getS();
+        ecParams = ecKey.getParams();
+
+        if (privateValue.signum() <= 0) {
+            throw new InvalidKeyException(
+                "EC private key value must be positive");
+        }
+
+        order = ecParams.getOrder();
+        if (privateValue.compareTo(order) >= 0) {
+            throw new InvalidKeyException(
+                "EC private key value must be less than curve order");
+        }
+
         if (params != null) {
             /* try to extract curve info from AlgorithmParameterSpec */
             getCurveFromSpec(params);
 
         } else {
-            /* otherwise, try to import params from key */
+            /* try to import params from key */
             ECParameterSpec spec = ecKey.getParams();
             getCurveFromSpec(spec);
         }
