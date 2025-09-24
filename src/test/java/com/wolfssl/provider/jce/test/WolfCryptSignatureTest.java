@@ -44,9 +44,12 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PublicKey;
 import java.security.PrivateKey;
+import java.security.AlgorithmParameters;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.PSSParameterSpec;
 import java.security.interfaces.RSAKey;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
 
 import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
@@ -2031,17 +2034,32 @@ public class WolfCryptSignatureTest {
                 /* Expected */
             }
 
-            /* Test setting some other non-null parameter object should fail */
-            java.security.spec.ECGenParameterSpec ecSpec =
-                new java.security.spec.ECGenParameterSpec("secp256r1");
+            /* Test setting inappropriate parameter types */
+            if (algo.equals("SHA256withRSA")) {
+                /* RSA should reject ECGenParameterSpec */
+                ECGenParameterSpec ecSpec =
+                    new java.security.spec.ECGenParameterSpec("secp256r1");
+                try {
+                    signer.setParameter(ecSpec);
+                    fail("Should throw InvalidAlgorithmParameterException " +
+                        "when setting ECGenParameterSpec on RSA algorithm: " +
+                        algo);
+                } catch (InvalidAlgorithmParameterException e) {
+                    /* Expected */
+                }
 
-            try {
-                signer.setParameter(ecSpec);
-                fail("Should have thrown InvalidAlgorithmParameterException " +
-                    "when setting non-null parameters on non-PSS algorithm: " +
-                    algo);
-            } catch (InvalidAlgorithmParameterException e) {
-                /* Expected */
+            } else if (algo.equals("SHA256withECDSA")) {
+                /* ECDSA should accept ECParameterSpec (JDK bug 8286908)
+                 * but should reject other parameter types like PSS */
+                ECPrivateKey ecPriv = (ECPrivateKey)pair.getPrivate();
+
+                try {
+                    signer.setParameter(ecPriv.getParams());
+                    /* Success - should not throw */
+                } catch (Exception e) {
+                    fail("ECDSA should accept ECParameterSpec, " +
+                        "but got exception: " + e.getMessage());
+                }
             }
         }
     }
@@ -2237,6 +2255,80 @@ public class WolfCryptSignatureTest {
 
             assertTrue("Signature created with algorithm name " + algoName +
                       " should be verified with OID " + oid, verified);
+        }
+    }
+
+    /**
+     * ECDSA signature should not return parameters.
+     * This test verifies that ECDSA signatures:
+     * 1. Accept ECParameterSpec parameters via setParameter() without throwing
+     * 2. Return null from getParameters() (do not store/return parameters)
+     */
+    @Test
+    public void testECDSASignatureParametersRegression()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               SignatureException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        /* Test ECDSA algorithms that should support parameter handling */
+        String[] ecdsaAlgos = {
+            "SHA256withECDSA",
+            "SHA384withECDSA",
+            "SHA512withECDSA"
+        };
+
+        for (String algo : ecdsaAlgos) {
+            if (!enabledAlgos.contains(algo)) {
+                continue; /* Skip if algorithm not enabled */
+            }
+
+            /* Generate ECDSA key pair */
+            KeyPair pair = generateKeyPair(algo, secureRandom);
+            assertNotNull("Key pair should not be null for " + algo, pair);
+
+            ECPrivateKey ecPriv = (ECPrivateKey)pair.getPrivate();
+            ECPublicKey ecPub = (ECPublicKey)pair.getPublic();
+
+            /* Create signature instance */
+            Signature sig = Signature.getInstance(algo, "wolfJCE");
+            assertNotNull("Signature should not be null for " + algo, sig);
+
+            sig.initSign(ecPriv);
+
+            /* Test 1: setParameter(ECParameterSpec) should not throw */
+            try {
+                sig.setParameter(ecPriv.getParams());
+                /* Success - should not throw */
+            } catch (Exception e) {
+                fail("ECDSA signature should accept ECParameterSpec without " +
+                     "throwing exception for " + algo + ", but got: " +
+                     e.getMessage());
+            }
+
+            /* Test 2: getParameters() should return null (not store/return
+             * parameters) */
+            AlgorithmParameters params = sig.getParameters();
+            assertNull("ECDSA signature should return null from " +
+                "getParameters() for " + algo, params);
+
+            /* Test 3: Verify signature still works after setParameter() */
+            String testMessage = "Test message for " + algo;
+            byte[] testData = testMessage.getBytes();
+
+            sig.update(testData);
+            byte[] signature = sig.sign();
+            assertNotNull("Signature should not be null for " + algo,
+                signature);
+            assertTrue("Signature should not be empty for " + algo,
+                signature.length > 0);
+
+            /* Verify the signature */
+            Signature verifier = Signature.getInstance(algo, "wolfJCE");
+            verifier.initVerify(ecPub);
+            verifier.update(testData);
+            boolean verified = verifier.verify(signature);
+            assertTrue("Signature verification should succeed for " + algo +
+                " after setParameter(ECParameterSpec)", verified);
         }
     }
 }
