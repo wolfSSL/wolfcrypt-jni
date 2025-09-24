@@ -56,6 +56,7 @@ import java.security.spec.MGF1ParameterSpec;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.interfaces.ECPublicKey;
+import java.security.interfaces.ECPrivateKey;
 import java.security.spec.ECParameterSpec;
 
 import com.wolfssl.wolfcrypt.Rsa;
@@ -640,6 +641,40 @@ public class WolfCryptKeyPairGeneratorTest {
         assertEquals("Default RSA public exponent should match wolfSSL default",
                      BigInteger.valueOf(Rsa.getDefaultRsaExponent()),
                      pubKey.getPublicExponent());
+    }
+
+    @Test
+    public void testKeyPairGeneratorEccDefaultKeySize()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Skip test if 256-bit ECC not supported */
+        if (!enabledEccKeySizes.contains(Integer.valueOf(32))) {
+            return;
+        }
+
+        /* Test that ECC KeyPairGenerator works with default parameters
+         * without explicit initialization */
+        KeyPairGenerator kpg =
+            KeyPairGenerator.getInstance("EC", "wolfJCE");
+
+        /* Generate key pair without calling initialize() first */
+        KeyPair kp = kpg.generateKeyPair();
+        assertNotNull(kp);
+        assertNotNull(kp.getPublic());
+        assertNotNull(kp.getPrivate());
+
+        /* Verify the generated key is ECC */
+        assertTrue(kp.getPublic() instanceof ECPublicKey);
+        assertTrue(kp.getPrivate() instanceof ECPrivateKey);
+
+        ECPublicKey pubKey = (ECPublicKey) kp.getPublic();
+        ECParameterSpec ecParams = pubKey.getParams();
+        assertNotNull(ecParams);
+
+        /* Default key size should be 256 bits (32 bytes), verify field size */
+        int fieldSize = ecParams.getCurve().getField().getFieldSize();
+        assertEquals("Default ECC key field size should be 256 bits",
+                     256, fieldSize);
     }
 
     @Test
