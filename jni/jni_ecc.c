@@ -1769,3 +1769,261 @@ JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1all_
     return result;
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1size(
+    JNIEnv* env, jobject this)
+{
+    jint ret = 0;
+
+#ifdef HAVE_ECC
+    ecc_key* ecc = NULL;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return 0;
+    }
+
+    if (ecc == NULL) {
+        throwWolfCryptException(env, "ECC key is NULL");
+        return 0;
+    }
+
+    ret = wc_ecc_size(ecc);
+
+    LogStr("wc_ecc_size(ecc) = %d\n", ret);
+
+#else
+    (void)this;
+    throwNotCompiledInException(env);
+#endif
+
+    return ret;
+}
+
+/*
+ * Convert DER-encoded ECDSA signature to raw {r,s} values.
+ * Used for IEEE P1363 signature format conversion.
+ *
+ * Returns byte[][] where [0] is r value and [1] is s value, or NULL on error.
+ */
+JNIEXPORT jobjectArray JNICALL
+Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sig_1to_1rs_1raw(
+    JNIEnv* env, jobject this, jbyteArray signature_object)
+{
+    jobjectArray result = NULL;
+
+#if defined(HAVE_ECC) && defined(HAVE_ECC_SIGN)
+    int ret = 0;
+    ecc_key* ecc = NULL;
+    byte* signature = NULL;
+    byte* r = NULL;
+    byte* s = NULL;
+    word32 signatureSz = 0;
+    word32 rSz = 0;
+    word32 sSz = 0;
+    word32 keySz = 0;
+    jbyteArray rArray = NULL;
+    jbyteArray sArray = NULL;
+    jclass byteArrayClass = NULL;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    if (ecc == NULL) {
+        throwWolfCryptException(env, "ECC key is NULL");
+        return NULL;
+    }
+
+    signature = getByteArray(env, signature_object);
+    signatureSz = getByteArrayLength(env, signature_object);
+
+    if (signature == NULL) {
+        throwWolfCryptException(env, "Input signature is NULL");
+        return NULL;
+    }
+
+    /* Get key size to determine buffer sizes for r and s */
+    keySz = wc_ecc_size(ecc);
+    if (keySz == 0) {
+        releaseByteArray(env, signature_object, signature, JNI_ABORT);
+        throwWolfCryptException(env, "Invalid ECC key size");
+        return NULL;
+    }
+
+    /* Allocate buffers for r and s (should be at most key size) */
+    rSz = sSz = keySz;
+    r = (byte*)XMALLOC(rSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    s = (byte*)XMALLOC(sSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+
+    if (r == NULL || s == NULL) {
+        ret = MEMORY_E;
+
+    } else {
+        XMEMSET(r, 0, rSz);
+        XMEMSET(s, 0, sSz);
+    }
+
+    if (ret == 0) {
+        ret = wc_ecc_sig_to_rs(signature, signatureSz, r, &rSz, s, &sSz);
+    }
+
+    if (ret == 0) {
+        byteArrayClass = (*env)->FindClass(env, "[B");
+        if (byteArrayClass == NULL) {
+            ret = MEMORY_E;
+        } else {
+            result = (*env)->NewObjectArray(env, 2, byteArrayClass, NULL);
+        }
+    }
+
+    if ((ret == 0) && (result != NULL)) {
+        rArray = (*env)->NewByteArray(env, rSz);
+        sArray = (*env)->NewByteArray(env, sSz);
+
+        if ((rArray != NULL) && (sArray != NULL)) {
+            (*env)->SetByteArrayRegion(env, rArray, 0, rSz, (const jbyte*)r);
+            (*env)->SetByteArrayRegion(env, sArray, 0, sSz, (const jbyte*)s);
+            (*env)->SetObjectArrayElement(env, result, 0, rArray);
+            (*env)->SetObjectArrayElement(env, result, 1, sArray);
+        } else {
+            ret = MEMORY_E;
+        }
+    }
+
+    /* Clean up */
+    if (r != NULL) {
+        XMEMSET(r, 0, keySz);
+        XFREE(r, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (s != NULL) {
+        XMEMSET(s, 0, keySz);
+        XFREE(s, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
+    releaseByteArray(env, signature_object, signature, JNI_ABORT);
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+        return NULL;
+    }
+
+    LogStr("wc_ecc_sig_to_rs(sig, sigLen, r, &rLen, s, &sLen) = %d\n", ret);
+
+#else
+    (void)this;
+    (void)signature_object;
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+/*
+ * Convert raw {r,s} values to DER-encoded ECDSA signature.
+ * Used for IEEE P1363 signature format conversion.
+ *
+ * Returns DER-encoded signature byte array, or NULL on error.
+ */
+JNIEXPORT jbyteArray JNICALL
+Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1rs_1raw_1to_1sig(
+    JNIEnv* env, jobject this, jbyteArray r_object, jbyteArray s_object)
+{
+    jbyteArray result = NULL;
+
+#if defined(HAVE_ECC) && defined(HAVE_ECC_SIGN)
+    int ret = 0;
+    ecc_key* ecc = NULL;
+    byte* r = NULL;
+    byte* s = NULL;
+    byte* signature = NULL;
+    word32 rSz = 0;
+    word32 sSz = 0;
+    word32 signatureSz = 0;
+    word32 signatureBufSz = 0;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    if (ecc == NULL) {
+        throwWolfCryptException(env, "ECC key is NULL");
+        return NULL;
+    }
+
+    r = getByteArray(env, r_object);
+    rSz = getByteArrayLength(env, r_object);
+    s = getByteArray(env, s_object);
+    sSz = getByteArrayLength(env, s_object);
+
+    if (r == NULL || s == NULL) {
+        LogStr("Input r or s is NULL\n");
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        /* Estimate signature size based on ECC key size */
+        signatureBufSz = wc_ecc_sig_size(ecc);
+        if (signatureBufSz == 0) {
+            LogStr("Invalid signature size estimate\n");
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
+        signatureSz = signatureBufSz;
+        signature = (byte*)XMALLOC(signatureSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (signature == NULL) {
+            ret = MEMORY_E;
+        } else {
+            XMEMSET(signature, 0, signatureSz);
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_ecc_rs_raw_to_sig(r, rSz, s, sSz, signature, &signatureSz);
+    }
+
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, signatureSz);
+        if (result != NULL) {
+            (*env)->SetByteArrayRegion(env, result, 0, signatureSz,
+                (const jbyte*)signature);
+        } else {
+            ret = MEMORY_E;
+        }
+    }
+
+    LogStr("wc_ecc_rs_raw_to_sig(r, rSz, s, sSz, sig, &sigLen) = %d\n", ret);
+
+    if (signature != NULL) {
+        XMEMSET(signature, 0, signatureBufSz);
+        XFREE(signature, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
+    if (r != NULL) {
+        releaseByteArray(env, r_object, r, JNI_ABORT);
+    }
+    if (s != NULL) {
+        releaseByteArray(env, s_object, s, JNI_ABORT);
+    }
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+        return NULL;
+    }
+
+#else
+    (void)this;
+    (void)r_object;
+    (void)s_object;
+    throwNotCompiledInException(env);
+#endif /* HAVE_ECC && HAVE_ECC_SIGN */
+
+    return result;
+}
+

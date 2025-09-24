@@ -147,6 +147,9 @@ public class Ecc extends NativeStruct {
     private native void wc_ecc_import_public_raw(byte[] xCoord, byte[] yCoord,
             String curveName);
     private native int wc_ecc_get_curve_id();
+    private native int wc_ecc_size();
+    private native byte[][] wc_ecc_sig_to_rs_raw(byte[] signature);
+    private native byte[] wc_ecc_rs_raw_to_sig(byte[] r, byte[] s);
 
     /**
      * Internal helper method to initialize object if/when needed.
@@ -901,6 +904,28 @@ public class Ecc extends NativeStruct {
     }
 
     /**
+     * Get curve size in bytes for this ECC key.
+     * This is the size needed for each component (r or s) in P1363 format.
+     *
+     * @return curve size in bytes
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
+     */
+    public synchronized int getCurveSizeByKey()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded();
+
+        synchronized (pointerLock) {
+            return wc_ecc_size();
+        }
+    }
+
+    /**
      * Get ECC curve parameters for specified curve name.
      *
      * Returns String array ECC curve parameters in the following order:
@@ -939,6 +964,59 @@ public class Ecc extends NativeStruct {
      */
     public static String[] getAllSupportedCurves() throws WolfCryptException {
         return wc_ecc_get_all_curve_names();
+    }
+
+    /**
+     * Convert DER-encoded ECDSA signature to raw r,s values.
+     * Used for IEEE P1363 signature format conversion.
+     *
+     * @param signature DER-encoded ECDSA signature
+     *
+     * @return byte array where [0] is r value and [1] is s value
+     *
+     * @throws WolfCryptException if signature conversion fails
+     * @throws IllegalStateException if object has been freed
+     */
+    public synchronized byte[][] sigToRsRaw(byte[] signature)
+        throws WolfCryptException {
+
+        checkStateAndInitialize();
+
+        if (signature == null) {
+            throw new IllegalArgumentException(
+                "Signature cannot be null");
+        }
+
+        synchronized (pointerLock) {
+            return wc_ecc_sig_to_rs_raw(signature);
+        }
+    }
+
+    /**
+     * Convert raw r,s values to DER-encoded ECDSA signature.
+     * Used for IEEE P1363 signature format conversion.
+     *
+     * @param r raw r value
+     * @param s raw s value
+     *
+     * @return DER-encoded ECDSA signature
+     *
+     * @throws WolfCryptException if signature conversion fails
+     * @throws IllegalStateException if object has been freed
+     */
+    public synchronized byte[] rsRawToSig(byte[] r, byte[] s)
+        throws WolfCryptException {
+
+        checkStateAndInitialize();
+
+        if (r == null || s == null) {
+            throw new IllegalArgumentException(
+                "r and s values cannot be null");
+        }
+
+        synchronized (pointerLock) {
+            return wc_ecc_rs_raw_to_sig(r, s);
+        }
     }
 }
 
