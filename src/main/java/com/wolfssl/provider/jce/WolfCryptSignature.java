@@ -609,7 +609,14 @@ public class WolfCryptSignature extends SignatureSpi {
             return;
         }
 
-        /* For non-PSS signatures, reject any non-null parameters */
+        if (this.keyType == KeyType.WC_ECDSA &&
+            params instanceof ECParameterSpec) {
+            /* To match Sun behavior, ECDSA signatures should not store/return
+             * parameters, but should accept them without error */
+            return;
+        }
+
+        /* For other non-PSS signatures, reject any non-null parameters */
         throw new InvalidAlgorithmParameterException(
             "Parameters not supported for " +
             keyTypeToString(this.keyType) + " with PKCS#1 v1.5 padding");
