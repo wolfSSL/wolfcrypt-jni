@@ -100,6 +100,20 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
             }
         }
 
+        /* Set default parameters for ECC key generation */
+        if (type == KeyType.WC_ECC) {
+            /* Default to 256-bit ECC */
+            this.keysize = 32;
+
+            /* Initialize RNG for default key generation */
+            synchronized (rngLock) {
+                if (this.rng == null) {
+                    this.rng = new Rng();
+                    this.rng.init();
+                }
+            }
+        }
+
         if (WolfCryptDebug.DEBUG) {
             algString = typeToString(type);
         }

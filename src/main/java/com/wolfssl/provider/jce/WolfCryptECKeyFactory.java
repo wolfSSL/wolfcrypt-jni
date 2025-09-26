@@ -34,6 +34,7 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.ECPrivateKeySpec;
 import java.security.spec.ECPublicKeySpec;
+import java.security.spec.ECParameterSpec;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.InvalidAlgorithmParameterException;
@@ -442,7 +443,8 @@ public class WolfCryptECKeyFactory extends KeyFactorySpi {
      * Convert BigInteger private key to byte[].
      *
      * @param privateValue private key BigInteger
-     * @param curveName curve name for size validation
+     * @param curveName curve name for size validation, used to get
+     *        expected byte array size
      *
      * @return properly formatted byte array for wolfCrypt import
      *
@@ -451,7 +453,8 @@ public class WolfCryptECKeyFactory extends KeyFactorySpi {
     private byte[] convertPrivateValueToBytes(BigInteger privateValue,
         String curveName) throws InvalidKeySpecException {
 
-        /* Validate private key is within valid range (1 <= d < order) */
+        /* Validate private key is positive. Other validation done at time of
+         * use to match Sun behavior. */
         if (privateValue.signum() <= 0) {
             throw new InvalidKeySpecException(
                 "Private key value must be positive");

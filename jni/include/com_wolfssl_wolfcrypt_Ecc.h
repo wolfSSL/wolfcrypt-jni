@@ -233,6 +233,30 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1public_1r
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1id
   (JNIEnv *, jobject);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_size
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1size
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_sig_to_rs_raw
+ * Signature: ([B)[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sig_1to_1rs_1raw
+  (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_rs_raw_to_sig
+ * Signature: ([B[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1rs_1raw_1to_1sig
+  (JNIEnv *, jobject, jbyteArray, jbyteArray);
+
 #ifdef __cplusplus
 }
 #endif
