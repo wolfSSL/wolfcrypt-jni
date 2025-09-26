@@ -283,15 +283,14 @@ public class WolfCryptECParameterSpec extends ECParameterSpec {
             return null;
         }
 
-        /* Check if this is our ECParameterSpec with stored curve name */
+        /* Check if this is a wolfJCE ECParameterSpec with stored curve name */
         if (paramSpec instanceof WolfCryptECParameterSpec) {
-            WolfCryptECParameterSpec enhanced =
+            WolfCryptECParameterSpec wolfSpec =
                 (WolfCryptECParameterSpec) paramSpec;
-            return enhanced.getStoredCurveName();
+            return wolfSpec.getStoredCurveName();
         }
 
-        /* Fall back to parameter-based identification for external
-         * ECParameterSpec objects */
+        /* Use parameters to identify external ECParameterSpec objects */
         return Ecc.getCurveName(paramSpec);
     }
 
@@ -306,99 +305,6 @@ public class WolfCryptECParameterSpec extends ECParameterSpec {
         return paramSpec instanceof WolfCryptECParameterSpec;
     }
 
-    /**
-     * Identify ECC curve name by comparing ECParameterSpec parameters against
-     * all curves supported by wolfCrypt.
-     *
-     * @param paramSpec ECParameterSpec to identify
-     *
-     * @return curve name string, or null if no match found
-     */
-    private static String identifyCurveByParameters(ECParameterSpec spec) {
-
-        int targetCofactor;
-        int cofactor;
-
-        if (spec == null) {
-            return null;
-        }
-
-        try {
-            /* Get all supported curves from wolfCrypt */
-            String[] supportedCurves = Ecc.getAllSupportedCurves();
-
-            /* Extract parameters from the input ECParameterSpec */
-            EllipticCurve curve = spec.getCurve();
-            if (!(curve.getField() instanceof ECFieldFp)) {
-                return null; /* Only support prime fields */
-            }
-
-            ECFieldFp field = (ECFieldFp) curve.getField();
-            BigInteger targetP = field.getP();
-            BigInteger targetA = curve.getA();
-            BigInteger targetB = curve.getB();
-            BigInteger targetN = spec.getOrder();
-            ECPoint targetG = spec.getGenerator();
-            targetCofactor = spec.getCofactor();
-
-            /* Compare against each supported curve */
-            for (String curveName : supportedCurves) {
-                try {
-                    String[] curveParams = Ecc.getCurveParameters(curveName);
-
-                    /* Parse wolfCrypt curve parameters */
-                    BigInteger p = new BigInteger(curveParams[0], 16);
-
-                    /* Field size check for early exit on curve mismatch */
-                    if (targetP.bitLength() != p.bitLength()) {
-                        continue;
-                    }
-
-                    /* Prime field check for early exit on curve mismatch */
-                    if (!targetP.equals(p)) {
-                        continue;
-                    }
-
-                    BigInteger a = new BigInteger(curveParams[1], 16);
-                    BigInteger b = new BigInteger(curveParams[2], 16);
-                    BigInteger n = new BigInteger(curveParams[3], 16);
-
-                    cofactor = Integer.parseInt(curveParams[6]);
-                    if (targetCofactor != cofactor) {
-                        continue;
-                    }
-
-                    /* Compare a, b, n, and generator */
-                    if (targetA.equals(a) && targetB.equals(b) &&
-                        targetN.equals(n)) {
-
-                        BigInteger gx = new BigInteger(curveParams[4], 16);
-                        BigInteger gy = new BigInteger(curveParams[5], 16);
-
-                        if (targetG.getAffineX().equals(gx) &&
-                            targetG.getAffineY().equals(gy)) {
-
-                            log("identified curve by parameter matching: " +
-                                curveName);
-                            return curveName;
-                        }
-                    }
-
-                } catch (Exception e) {
-                    /* Continue to next curve */
-                    continue;
-                }
-            }
-
-            log("no curve match found for ECParameterSpec with field size " +
-                targetP.bitLength());
-            return null;
-
-        } catch (Exception e) {
-            log("error during curve parameter matching: " + e.getMessage());
-            return null;
-        }
-    }
 
     /**
      * Validate if given ECParameterSpec is supported by wolfCrypt.
@@ -424,9 +330,10 @@ public class WolfCryptECParameterSpec extends ECParameterSpec {
         } catch (InvalidAlgorithmParameterException e) {
             throw new IllegalArgumentException(
                 "ECParameterSpec curve not supported by wolfCrypt: " +
-                e.getMessage());
+                e.getMessage(), e);
         }
     }
+
 
     /**
      * Normalize wolfCrypt curve names to standard format expected by

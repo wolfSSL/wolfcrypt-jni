@@ -48,3 +48,11 @@
 - Example .jks files are located under "examples/certs"
 - Example .wk files are located under "examples/certs"
 - Example .jks files are updated using the update-jks-wks.sh script
+
+# Adding new JUnit test files
+- All new wolfCrypt JUnit test files must be added to src/test/java/com/wolfssl/wolfcrypt/test/WolfCryptTestSuite.java
+- All new wolfJCE JUnit test files must be added to src/test/java/com/wolfssl/provider/jce/test/WolfJCETestSuite.java
+- New JUnit test classes must define TestRule like existing ones do
+
+# Adding new Java files
+- MUST add all new JNI or JCE Java files to scripts/infer.sh for Infer static analysis

@@ -29,6 +29,9 @@ import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECParameterSpec;
+
+import java.math.BigInteger;
 
 import java.security.InvalidKeyException;
 import java.security.SignatureException;
@@ -99,7 +102,9 @@ public class WolfCryptSignature extends SignatureSpi {
 
     /* internal key objects */
     private Rsa rsa = null;
-    private Ecc ecc = null;
+
+    /** Internal Ecc object */
+    protected Ecc ecc = null;
 
     /* internal hash objects */
     private Md5 md5 = null;
@@ -370,6 +375,27 @@ public class WolfCryptSignature extends SignatureSpi {
             throw new InvalidKeyException("Key is not of type ECPrivateKey");
         }
 
+        /* If ECDSA key, validate EC private key range. Validating here to
+         * match Sun behavior. */
+        if ((this.keyType == KeyType.WC_ECDSA) &&
+            (privateKey instanceof ECPrivateKey)) {
+
+            ECPrivateKey ecPrivKey = (ECPrivateKey) privateKey;
+            BigInteger privateValue = ecPrivKey.getS();
+            ECParameterSpec ecParams = ecPrivKey.getParams();
+
+            if (privateValue.signum() <= 0) {
+                throw new InvalidKeyException(
+                    "EC private key value must be positive");
+            }
+
+            BigInteger order = ecParams.getOrder();
+            if (privateValue.compareTo(order) >= 0) {
+                throw new InvalidKeyException(
+                    "EC private key value must be less than curve order");
+            }
+        }
+
         /* get encoded key, returns PKCS#8 formatted private key */
         encodedKey = privateKey.getEncoded();
         if (encodedKey == null)
@@ -583,7 +609,14 @@ public class WolfCryptSignature extends SignatureSpi {
             return;
         }
 
-        /* For non-PSS signatures, reject any non-null parameters */
+        if (this.keyType == KeyType.WC_ECDSA &&
+            params instanceof ECParameterSpec) {
+            /* To match Sun behavior, ECDSA signatures should not store/return
+             * parameters, but should accept them without error */
+            return;
+        }
+
+        /* For other non-PSS signatures, reject any non-null parameters */
         throw new InvalidAlgorithmParameterException(
             "Parameters not supported for " +
             keyTypeToString(this.keyType) + " with PKCS#1 v1.5 padding");
@@ -1683,4 +1716,445 @@ public class WolfCryptSignature extends SignatureSpi {
                   PaddingType.WC_RSA_PSS);
         }
     }
+
+    /**
+     * Get the component size in bytes for P1363 format based on curve.
+     * This is calculated as ceil(curve_bits / 8).
+     *
+     * @param ecc ECC key to get curve size from
+     *
+     * @return component size in bytes for P1363 format
+     *
+     * @throws SignatureException if curve size cannot be determined
+     */
+    private static int getP1363ComponentSize(Ecc ecc)
+        throws SignatureException {
+
+        int componentSize;
+
+        try {
+            /* Get curve size in bytes, gives us the component size */
+            componentSize = ecc.getCurveSizeByKey();
+            if (componentSize <= 0) {
+                throw new SignatureException(
+                    "Invalid curve size for P1363 format");
+            }
+
+            return componentSize;
+
+        } catch (Exception e) {
+            throw new SignatureException("Failed to get curve size: " +
+                e.getMessage());
+        }
+    }
+
+    /**
+     * Convert DER-encoded signature to P1363 format (r|s).
+     *
+     * @param derSignature DER-encoded ECDSA signature
+     * @param ecc ECC key for determining component size
+     *
+     * @return P1363 format signature (r|s concatenated)
+     *
+     * @throws SignatureException if conversion fails
+     */
+    private static byte[] derToP1363(byte[] derSignature, Ecc ecc)
+        throws SignatureException {
+
+        int componentSize;
+        int rOffset, rCopyLen;
+        int sOffset, sCopyLen;
+        byte[] r;
+        byte[] s;
+        byte[] p1363Signature;
+
+        try {
+            /* Extract raw r,s from DER signature via JNI */
+            byte[][] rs = ecc.sigToRsRaw(derSignature);
+            if (rs == null || rs.length != 2 ||
+                rs[0] == null || rs[1] == null) {
+                throw new SignatureException(
+                    "Failed to extract r,s from DER signature");
+            }
+
+            r = rs[0];
+            s = rs[1];
+
+            /* Get component size for P1363 format */
+            componentSize = getP1363ComponentSize(ecc);
+
+            /* Create P1363 format: r | s with fixed sizes */
+            p1363Signature = new byte[componentSize * 2];
+
+            /* Pad r to component size (big-endian, so pad on left) */
+            rOffset = Math.max(0, componentSize - r.length);
+            rCopyLen = Math.min(r.length, componentSize);
+            System.arraycopy(r, Math.max(0, r.length - componentSize),
+                p1363Signature, rOffset, rCopyLen);
+
+            /* Pad s to component size (big-endian, so pad on left) */
+            sOffset = componentSize + Math.max(0, componentSize - s.length);
+            sCopyLen = Math.min(s.length, componentSize);
+            System.arraycopy(s, Math.max(0, s.length - componentSize),
+                p1363Signature, sOffset, sCopyLen);
+
+            return p1363Signature;
+
+        } catch (Exception e) {
+            throw new SignatureException("DER to P1363 conversion failed: " +
+                e.getMessage());
+        }
+    }
+
+    /**
+     * Convert P1363 format signature (r|s) to DER-encoded format.
+     *
+     * @param p1363Signature P1363 format signature
+     * @param ecc ECC key for determining component size
+     *
+     * @return DER-encoded ECDSA signature
+     *
+     * @throws SignatureException if conversion fails
+     */
+    private static byte[] p1363ToDer(byte[] p1363Signature, Ecc ecc)
+        throws SignatureException {
+
+        int componentSize;
+        byte[] r;
+        byte[] s;
+
+        try {
+            /* Get component size for P1363 format */
+            componentSize = getP1363ComponentSize(ecc);
+
+            /* Validate P1363 signature size */
+            if (p1363Signature.length != componentSize * 2) {
+                throw new SignatureException(
+                    "Invalid P1363 signature size: expected " +
+                    (componentSize * 2) + ", got " + p1363Signature.length);
+            }
+
+            /* Extract r and s components */
+            r = new byte[componentSize];
+            s = new byte[componentSize];
+
+            System.arraycopy(p1363Signature, 0, r, 0, componentSize);
+            System.arraycopy(p1363Signature, componentSize, s, 0,
+                componentSize);
+
+            /* Create DER signature from raw r,s */
+            return ecc.rsRawToSig(r, s);
+
+        } catch (Exception e) {
+            throw new SignatureException("P1363 to DER conversion failed: " +
+                e.getMessage());
+        }
+    }
+
+    /**
+     * wolfJCE SHA256withECDSAinP1363Format signature class
+     */
+    public static final class wcSHA256wECDSAP1363 extends WolfCryptSignature {
+        /**
+         * Create new wcSHA256wECDSAP1363 object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA256wECDSAP1363() throws NoSuchAlgorithmException {
+            super(KeyType.WC_ECDSA, DigestType.WC_SHA256);
+        }
+
+        /**
+         * Override engineSign to return P1363 format signature
+         */
+        @Override
+        protected synchronized byte[] engineSign()
+            throws SignatureException {
+
+            /* Get DER signature from parent class */
+            byte[] derSignature = super.engineSign();
+            if (derSignature == null) {
+                throw new SignatureException(
+                    "Failed to generate DER signature");
+            }
+
+            /* Convert DER to P1363 format */
+            return derToP1363(derSignature, this.ecc);
+        }
+
+        /**
+         * Override engineVerify to handle P1363 format signature
+         */
+        @Override
+        protected synchronized boolean engineVerify(byte[] signature)
+            throws SignatureException {
+
+            if (signature == null) {
+                return false;
+            }
+
+            /* Convert P1363 to DER format */
+            byte[] derSignature = p1363ToDer(signature, this.ecc);
+
+            /* Verify using parent class with DER signature */
+            return super.engineVerify(derSignature);
+        }
+    }
+
+    /**
+     * wolfJCE SHA384withECDSAinP1363Format signature class
+     */
+    public static final class wcSHA384wECDSAP1363 extends WolfCryptSignature {
+        /**
+         * Create new wcSHA384wECDSAP1363 object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA384wECDSAP1363() throws NoSuchAlgorithmException {
+            super(KeyType.WC_ECDSA, DigestType.WC_SHA384);
+        }
+
+        /**
+         * Override engineSign to return P1363 format signature
+         */
+        @Override
+        protected synchronized byte[] engineSign()
+            throws SignatureException {
+
+            /* Get DER signature from parent class */
+            byte[] derSignature = super.engineSign();
+            if (derSignature == null) {
+                throw new SignatureException(
+                    "Failed to generate DER signature");
+            }
+
+            /* Convert DER to P1363 format */
+            return derToP1363(derSignature, this.ecc);
+        }
+
+        /**
+         * Override engineVerify to handle P1363 format signature
+         */
+        @Override
+        protected synchronized boolean engineVerify(byte[] signature)
+            throws SignatureException {
+
+            if (signature == null) {
+                return false;
+            }
+
+            /* Convert P1363 to DER format */
+            byte[] derSignature = p1363ToDer(signature, this.ecc);
+
+            /* Verify using parent class with DER signature */
+            return super.engineVerify(derSignature);
+        }
+    }
+
+    /**
+     * wolfJCE SHA3-256withECDSAinP1363Format signature class
+     */
+    public static final class wcSHA3_256wECDSAP1363 extends WolfCryptSignature {
+        /**
+         * Create new wcSHA3_256wECDSAP1363 object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA3_256wECDSAP1363() throws NoSuchAlgorithmException {
+            super(KeyType.WC_ECDSA, DigestType.WC_SHA3_256);
+        }
+
+        /**
+         * Override engineSign to return P1363 format signature
+         */
+        @Override
+        protected synchronized byte[] engineSign()
+            throws SignatureException {
+
+            /* Get DER signature from parent class */
+            byte[] derSignature = super.engineSign();
+            if (derSignature == null) {
+                throw new SignatureException(
+                    "Failed to generate DER signature");
+            }
+
+            /* Convert DER to P1363 format */
+            return derToP1363(derSignature, this.ecc);
+        }
+
+        /**
+         * Override engineVerify to handle P1363 format signature
+         */
+        @Override
+        protected synchronized boolean engineVerify(byte[] signature)
+            throws SignatureException {
+
+            if (signature == null) {
+                return false;
+            }
+
+            /* Convert P1363 to DER format */
+            byte[] derSignature = p1363ToDer(signature, this.ecc);
+
+            /* Verify using parent class with DER signature */
+            return super.engineVerify(derSignature);
+        }
+    }
+
+    /**
+     * wolfJCE SHA3-384withECDSAinP1363Format signature class
+     */
+    public static final class wcSHA3_384wECDSAP1363 extends WolfCryptSignature {
+        /**
+         * Create new wcSHA3_384wECDSAP1363 object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA3_384wECDSAP1363() throws NoSuchAlgorithmException {
+            super(KeyType.WC_ECDSA, DigestType.WC_SHA3_384);
+        }
+
+        /**
+         * Override engineSign to return P1363 format signature
+         */
+        @Override
+        protected synchronized byte[] engineSign()
+            throws SignatureException {
+
+            /* Get DER signature from parent class */
+            byte[] derSignature = super.engineSign();
+            if (derSignature == null) {
+                throw new SignatureException(
+                    "Failed to generate DER signature");
+            }
+
+            /* Convert DER to P1363 format */
+            return derToP1363(derSignature, this.ecc);
+        }
+
+        /**
+         * Override engineVerify to handle P1363 format signature
+         */
+        @Override
+        protected synchronized boolean engineVerify(byte[] signature)
+            throws SignatureException {
+
+            if (signature == null) {
+                return false;
+            }
+
+            /* Convert P1363 to DER format */
+            byte[] derSignature = p1363ToDer(signature, this.ecc);
+
+            /* Verify using parent class with DER signature */
+            return super.engineVerify(derSignature);
+        }
+    }
+
+    /**
+     * wolfJCE SHA3-512withECDSAinP1363Format signature class
+     */
+    public static final class wcSHA3_512wECDSAP1363 extends WolfCryptSignature {
+        /**
+         * Create new wcSHA3_512wECDSAP1363 object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA3_512wECDSAP1363() throws NoSuchAlgorithmException {
+            super(KeyType.WC_ECDSA, DigestType.WC_SHA3_512);
+        }
+
+        /**
+         * Override engineSign to return P1363 format signature
+         */
+        @Override
+        protected synchronized byte[] engineSign()
+            throws SignatureException {
+
+            /* Get DER signature from parent class */
+            byte[] derSignature = super.engineSign();
+            if (derSignature == null) {
+                throw new SignatureException(
+                    "Failed to generate DER signature");
+            }
+
+            /* Convert DER to P1363 format */
+            return derToP1363(derSignature, this.ecc);
+        }
+
+        /**
+         * Override engineVerify to handle P1363 format signature
+         */
+        @Override
+        protected synchronized boolean engineVerify(byte[] signature)
+            throws SignatureException {
+
+            if (signature == null) {
+                return false;
+            }
+
+            /* Convert P1363 to DER format */
+            byte[] derSignature = p1363ToDer(signature, this.ecc);
+
+            /* Verify using parent class with DER signature */
+            return super.engineVerify(derSignature);
+        }
+    }
+
+    /**
+     * wolfJCE SHA512withECDSAinP1363Format signature class
+     */
+    public static final class wcSHA512wECDSAP1363 extends WolfCryptSignature {
+        /**
+         * Create new wcSHA512wECDSAP1363 object
+         *
+         * @throws NoSuchAlgorithmException if signature type is not
+         *         available in native wolfCrypt library
+         */
+        public wcSHA512wECDSAP1363() throws NoSuchAlgorithmException {
+            super(KeyType.WC_ECDSA, DigestType.WC_SHA512);
+        }
+
+        /**
+         * Override engineSign to return P1363 format signature
+         */
+        @Override
+        protected synchronized byte[] engineSign()
+            throws SignatureException {
+
+            /* Get DER signature from parent class */
+            byte[] derSignature = super.engineSign();
+            if (derSignature == null) {
+                throw new SignatureException(
+                    "Failed to generate DER signature");
+            }
+
+            /* Convert DER to P1363 format */
+            return derToP1363(derSignature, this.ecc);
+        }
+
+        /**
+         * Override engineVerify to handle P1363 format signature
+         */
+        @Override
+        protected synchronized boolean engineVerify(byte[] signature)
+            throws SignatureException {
+
+            if (signature == null) {
+                return false;
+            }
+
+            /* Convert P1363 to DER format */
+            byte[] derSignature = p1363ToDer(signature, this.ecc);
+
+            /* Verify using parent class with DER signature */
+            return super.engineVerify(derSignature);
+        }
+    }
 }
+

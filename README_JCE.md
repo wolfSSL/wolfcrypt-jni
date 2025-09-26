@@ -153,6 +153,12 @@ The JCE provider currently supports the following algorithms:
         SHA3-256withECDSA
         SHA3-384withECDSA
         SHA3-512withECDSA
+        SHA256withECDSAinP1363Format
+        SHA384withECDSAinP1363Format
+        SHA512withECDSAinP1363Format
+        SHA3-256withECDSAinP1363Format
+        SHA3-384withECDSAinP1363Format
+        SHA3-512withECDSAinP1363Format
 
     KeyAgreement Class
         DiffieHellman
