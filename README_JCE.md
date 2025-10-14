@@ -205,8 +205,12 @@ The JCE provider currently supports the following algorithms:
 
     AlgorithmParameters
         AES
+        DH
         GCM
         RSASSA-PSS
+
+    AlgorithmParameterGenerator
+        DH
 
 ### SecureRandom.getInstanceStrong()
 

@@ -56,6 +56,7 @@ import java.security.spec.InvalidParameterSpecException;
 import java.security.spec.ECGenParameterSpec;
 
 import com.wolfssl.wolfcrypt.Ecc;
+import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 
 public class WolfCryptKeyAgreementTest {
@@ -184,11 +185,33 @@ public class WolfCryptKeyAgreementTest {
                InvalidParameterSpecException, InvalidKeyException,
                InvalidAlgorithmParameterException {
 
+        /* Skip 512-bit DH params in FIPS mode. FIPS 186-4 only allows
+         * 1024, 2048, and 3072-bit DH parameter generation */
+        if (Fips.enabled) {
+            return;
+        }
+
         /* create DH params */
         AlgorithmParameterGenerator paramGen =
             AlgorithmParameterGenerator.getInstance("DH");
         paramGen.init(512);
-        AlgorithmParameters params = paramGen.generateParameters();
+
+        AlgorithmParameters params;
+        try {
+            params = paramGen.generateParameters();
+        }
+        catch (RuntimeException e) {
+            /* 512-bit DH parameter generation may not be supported due to
+             * wolfSSL enforcing minimum parameter sizes. Skip test if
+             * generation fails. */
+            if (e.getMessage() != null && e.getMessage().contains(
+                "Bad function argument")) {
+                System.out.println("\t512-bit DH parameter generation " +
+                    "not supported, skipping test");
+                return;
+            }
+            throw e;
+        }
 
         DHParameterSpec dhParams =
             (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
@@ -214,7 +237,7 @@ public class WolfCryptKeyAgreementTest {
 
         assertArrayEquals(secretA, secretB);
 
-        /* now, try reusing the A object without calling init() again */
+        /* Try reusing the A object without calling init() again */
         KeyAgreement cKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
         KeyPair cPair = keyGen.generateKeyPair();
         cKeyAgree.init(cPair.getPrivate());
@@ -235,11 +258,33 @@ public class WolfCryptKeyAgreementTest {
                InvalidAlgorithmParameterException,
                ShortBufferException {
 
+        /* Skip 512-bit DH params in FIPS mode. FIPS 186-4 only allows
+         * 1024, 2048, and 3072-bit DH parameter generation */
+        if (Fips.enabled) {
+            return;
+        }
+
         /* create DH params */
         AlgorithmParameterGenerator paramGen =
             AlgorithmParameterGenerator.getInstance("DH");
         paramGen.init(512);
-        AlgorithmParameters params = paramGen.generateParameters();
+
+        AlgorithmParameters params;
+        try {
+            params = paramGen.generateParameters();
+        }
+        catch (RuntimeException e) {
+            /* 512-bit DH parameter generation may not be supported due to
+             * wolfSSL enforcing minimum parameter sizes. Skip test if
+             * generation fails. */
+            if (e.getMessage() != null && e.getMessage().contains(
+                "Bad function argument")) {
+                System.out.println("\t512-bit DH parameter generation " +
+                    "not supported, skipping test");
+                return;
+            }
+            throw e;
+        }
 
         DHParameterSpec dhParams =
             (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
@@ -291,11 +336,33 @@ public class WolfCryptKeyAgreementTest {
                InvalidParameterSpecException, InvalidKeyException,
                InvalidAlgorithmParameterException {
 
+        /* Skip 512-bit DH params in FIPS mode. FIPS 186-4 only allows
+         * 1024, 2048, and 3072-bit DH parameter generation */
+        if (Fips.enabled) {
+            return;
+        }
+
         /* create DH params */
         AlgorithmParameterGenerator paramGen =
             AlgorithmParameterGenerator.getInstance("DH");
         paramGen.init(512);
-        AlgorithmParameters params = paramGen.generateParameters();
+
+        AlgorithmParameters params;
+        try {
+            params = paramGen.generateParameters();
+        }
+        catch (RuntimeException e) {
+            /* 512-bit DH parameter generation may not be supported due to
+             * wolfSSL enforcing minimum parameter sizes. Skip test if
+             * generation fails. */
+            if (e.getMessage() != null && e.getMessage().contains(
+                "Bad function argument")) {
+                System.out.println("\t512-bit DH parameter generation " +
+                    "not supported, skipping test");
+                return;
+            }
+            throw e;
+        }
 
         DHParameterSpec dhParams =
             (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
@@ -565,11 +632,36 @@ public class WolfCryptKeyAgreementTest {
         failures.set(0, 0);
         success.set(0, 0);
 
-        /* DH Tests */
-        AlgorithmParameterGenerator paramGen =
-            AlgorithmParameterGenerator.getInstance("DH");
-        paramGen.init(512);
-        final AlgorithmParameters params = paramGen.generateParameters();
+        /* DH Tests - generate 512-bit params. Skip in FIPS mode since
+         * FIPS 186-4 only allows 1024, 2048, and 3072-bit DH parameter
+         * generation */
+        final AlgorithmParameters params;
+        if (algo.equals("DH")) {
+            if (Fips.enabled) {
+                return;
+            }
+            AlgorithmParameterGenerator paramGen =
+                AlgorithmParameterGenerator.getInstance("DH");
+            paramGen.init(512);
+
+            try {
+                params = paramGen.generateParameters();
+            }
+            catch (RuntimeException e) {
+                /* 512-bit DH parameter generation may not be supported due to
+                 * wolfSSL enforcing minimum parameter sizes. Skip test if
+                 * generation fails. */
+                if (e.getMessage() != null && e.getMessage().contains(
+                    "Bad function argument")) {
+                    System.out.println("\t512-bit DH parameter generation " +
+                        "not supported, skipping test");
+                    return;
+                }
+                throw e;
+            }
+        } else {
+            params = null;
+        }
 
         /* Do encrypt/decrypt and sign/verify in parallel across numThreads
          * threads, all operations should pass */

@@ -32,6 +32,8 @@ import org.junit.BeforeClass;
 import java.util.ArrayList;
 import java.math.BigInteger;
 
+import javax.crypto.interfaces.DHPublicKey;
+import javax.crypto.interfaces.DHPrivateKey;
 import javax.crypto.spec.DHParameterSpec;
 
 import java.security.Security;
@@ -43,6 +45,7 @@ import java.security.KeyPairGenerator;
 import java.security.PublicKey;
 import java.security.PrivateKey;
 import java.security.KeyFactory;
+import java.security.InvalidParameterException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAKeyGenParameterSpec;
@@ -564,13 +567,47 @@ public class WolfCryptKeyPairGeneratorTest {
         throws NoSuchProviderException, NoSuchAlgorithmException,
                InvalidAlgorithmParameterException {
 
+        /* Test that DH KeyPairGenerator supports initialize(int) with
+         * FFDHE standard key sizes (2048, 3072, 4096, 6144, 8192) */
+        int[] ffdheKeySizes = { 2048, 3072, 4096, 6144, 8192 };
+
+        for (int keySize : ffdheKeySizes) {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("DH", "wolfJCE");
+
+            try {
+                /* Initialize with FFDHE key size */
+                kpg.initialize(keySize);
+
+                /* Generate key pair to verify initialization worked */
+                KeyPair kp = kpg.generateKeyPair();
+                assertNotNull(kp);
+                assertNotNull(kp.getPublic());
+                assertNotNull(kp.getPrivate());
+            }
+            catch (InvalidParameterException e) {
+                /* FFDHE group may not be available in native wolfSSL.
+                 * Skip if not available. */
+                if (e.getMessage() != null && e.getMessage().contains(
+                    "FFDHE " + keySize + "-bit group not available")) {
+                    System.out.println("\tSkipping FFDHE " + keySize +
+                        ": not compiled into native wolfSSL library");
+                    continue;
+                }
+                throw e;
+            }
+        }
+
+        /* Test that non-FFDHE sizes throw exception */
         KeyPairGenerator kpg =
             KeyPairGenerator.getInstance("DH", "wolfJCE");
 
         try {
             kpg.initialize(512);
-        } catch (RuntimeException e) {
-            /* expected, users need to explicitly set DH params */
+            fail("initialize(512) should throw InvalidParameterException " +
+                 "for non-FFDHE key size");
+        } catch (InvalidParameterException e) {
+            /* expected */
         }
     }
 
@@ -607,6 +644,65 @@ public class WolfCryptKeyPairGeneratorTest {
 
         assertNotNull(kp1);
         assertNotNull(kp2);
+    }
+
+    @Test
+    public void testKeyPairGeneratorDhDefaultKeySize()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Test that DH KeyPairGenerator works with default parameters
+         * without explicit initialization. This matches SunJCE behavior. */
+        KeyPairGenerator kpg =
+            KeyPairGenerator.getInstance("DH", "wolfJCE");
+
+        /* Generate key pair without calling initialize() first.
+         * Should use default FFDHE 3072-bit parameters. */
+        KeyPair kp = kpg.generateKeyPair();
+        assertNotNull(kp);
+        assertNotNull(kp.getPublic());
+        assertNotNull(kp.getPrivate());
+
+        /* Verify the generated key is DH */
+        assertTrue(kp.getPublic() instanceof DHPublicKey);
+        assertTrue(kp.getPrivate() instanceof DHPrivateKey);
+
+        DHPublicKey pubKey = (DHPublicKey) kp.getPublic();
+        DHPrivateKey privKey = (DHPrivateKey) kp.getPrivate();
+
+        /* Verify parameters are present */
+        assertNotNull(pubKey.getParams());
+        assertNotNull(privKey.getParams());
+        assertNotNull(pubKey.getParams().getP());
+        assertNotNull(pubKey.getParams().getG());
+
+        /* Default should be FFDHE 3072-bit (to match SunJCE), but will
+         * fall back to FFDHE 2048 if 3072 is not compiled into wolfSSL.
+         * Check P is approximately 2048 or 3072 bits.
+         * BigInteger.bitLength() returns minimal bits needed, which may be
+         * less than the nominal size if there are leading zero bits. */
+        int pBitLength = pubKey.getParams().getP().bitLength();
+        assertTrue("Default DH prime should be approximately 2048 or " +
+            "3072 bits, got " + pBitLength,
+            (pBitLength >= 2016 && pBitLength <= 2048) ||
+            (pBitLength >= 3008 && pBitLength <= 3072));
+
+        /* Verify keys use same parameters */
+        assertEquals("Public and private keys should use same P",
+            pubKey.getParams().getP(), privKey.getParams().getP());
+        assertEquals("Public and private keys should use same G",
+            pubKey.getParams().getG(), privKey.getParams().getG());
+
+        /* Generate another KeyPair to verify default params work repeatedly */
+        KeyPair kp2 = kpg.generateKeyPair();
+        assertNotNull(kp2);
+
+        DHPublicKey pubKey2 = (DHPublicKey) kp2.getPublic();
+
+        /* Both key pairs should use same default parameters */
+        assertEquals("Both key pairs should use same default P",
+            pubKey.getParams().getP(), pubKey2.getParams().getP());
+        assertEquals("Both key pairs should use same default G",
+            pubKey.getParams().getG(), pubKey2.getParams().getG());
     }
 
     @Test

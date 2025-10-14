@@ -73,6 +73,8 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptAesParameters.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptCipher.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptDebug.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptDhParameterGenerator.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptDhParameters.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptECKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptECParameterSpec.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptECPrivateKey.java \

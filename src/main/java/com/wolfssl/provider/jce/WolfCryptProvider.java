@@ -355,6 +355,16 @@ public final class WolfCryptProvider extends Provider {
             put("KeyAgreement.DiffieHellman",
                 "com.wolfssl.provider.jce.WolfCryptKeyAgreement$wcDH");
             put("Alg.Alias.KeyAgreement.DH", "DiffieHellman");
+
+            /* DH AlgorithmParameters */
+            put("AlgorithmParameters.DH",
+                "com.wolfssl.provider.jce.WolfCryptDhParameters");
+            put("Alg.Alias.AlgorithmParameters.DiffieHellman", "DH");
+
+            /* DH AlgorithmParameterGenerator */
+            put("AlgorithmParameterGenerator.DH",
+                "com.wolfssl.provider.jce.WolfCryptDhParameterGenerator");
+            put("Alg.Alias.AlgorithmParameterGenerator.DiffieHellman", "DH");
         }
         if (FeatureDetect.EccDheEnabled()) {
             put("KeyAgreement.ECDH",

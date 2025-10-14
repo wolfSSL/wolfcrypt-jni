@@ -193,7 +193,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
     }
 
     /* in may be null, users might only pass in AAD to generate tag */
-    if (authTagSz > WC_AES_BLOCK_SIZE || iv == NULL || ivSz == 0 ||
+    if (authTagSz > AES_BLOCK_SIZE || iv == NULL || ivSz == 0 ||
         ((authTagSz > 0) && (authTag == NULL)) ||
         ((authInSz > 0) && (authIn == NULL))) {
         ret = BAD_FUNC_ARG;
@@ -329,7 +329,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
     /* If inLen is non-zero, both in and out must be set. If inLen is 0,
      * in and out are don't cares, as this is the GMAC case */
     if (iv == NULL || ivSz == 0 || (inLen != 0 && in == NULL) ||
-        authTag == NULL || (authTagSz > WC_AES_BLOCK_SIZE) || authTagSz == 0) {
+        authTag == NULL || (authTagSz > AES_BLOCK_SIZE) || authTagSz == 0) {
         ret = BAD_FUNC_ARG;
     }
 

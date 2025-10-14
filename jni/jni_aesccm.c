@@ -194,7 +194,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesCcm_wc_1AesCcmEncrypt
 
     /* in can be NULL if inLen is 0 - case with only AAD to gen tag */
     if ((inLen != 0 && in == NULL) || nonce == NULL || authTag == NULL ||
-         nonceSz < 7 || nonceSz > 13 || authTagSz > WC_AES_BLOCK_SIZE) {
+         nonceSz < 7 || nonceSz > 13 || authTagSz > AES_BLOCK_SIZE) {
         ret = BAD_FUNC_ARG;
     }
 
@@ -327,7 +327,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesCcm_wc_1AesCcmDecrypt
 
     /* in can be NULL if inLen is 0 - case with only AAD to verify tag */
     if ((inLen != 0 && in == NULL) || nonce == NULL || authTag == NULL ||
-        nonceSz < 7 || nonceSz > 13 || authTagSz > WC_AES_BLOCK_SIZE) {
+        nonceSz < 7 || nonceSz > 13 || authTagSz > AES_BLOCK_SIZE) {
         ret = BAD_FUNC_ARG;
     }
 
