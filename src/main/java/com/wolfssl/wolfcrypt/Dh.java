@@ -38,6 +38,13 @@ public class Dh extends NativeStruct {
     /** Lock around object state */
     protected final Object stateLock = new Object();
 
+    /* Named DH group constants (FFDHE from RFC 7919) */
+    public static final int WC_FFDHE_2048 = 256;
+    public static final int WC_FFDHE_3072 = 257;
+    public static final int WC_FFDHE_4096 = 258;
+    public static final int WC_FFDHE_6144 = 259;
+    public static final int WC_FFDHE_8192 = 260;
+
     /**
      * Create new Dh object.
      *
@@ -97,6 +104,9 @@ public class Dh extends NativeStruct {
     private native void wc_DhSetKey(byte[] p, byte[] g);
     private native void wc_DhGenerateKeyPair(Rng rng, int pSize);
     private native byte[] wc_DhAgree(byte[] priv, byte[] pub);
+    private native void wc_DhCheckPubKey(byte[] pub);
+    private static native byte[][] wc_DhCopyNamedKey(int name);
+    private static native byte[][] wc_DhGenerateParams(Rng rng, int modSz);
 
     /**
      * Malloc native JNI DH structure
@@ -352,6 +362,68 @@ public class Dh extends NativeStruct {
         synchronized (pointerLock) {
             return wc_DhAgree(this.privateKey, pubKey);
         }
+    }
+
+    /**
+     * Get named DH parameters (FFDHE groups from RFC 7919).
+     *
+     * Returns an array containing [p, g] parameters for the named group.
+     *
+     * @param name Named DH group constant (WC_FFDHE_2048, WC_FFDHE_3072,
+     *             WC_FFDHE_4096, WC_FFDHE_6144, or WC_FFDHE_8192)
+     *
+     * @return byte array containing [p, g] parameters, or null on error
+     *
+     * @throws WolfCryptException if native operation fails or named group
+     *         is not supported
+     */
+    public static byte[][] getNamedDhParams(int name)
+        throws WolfCryptException {
+
+        if (!FeatureDetect.DhEnabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+
+        return wc_DhCopyNamedKey(name);
+    }
+
+    /**
+     * Generate DH parameters dynamically.
+     *
+     * Returns an array containing [p, g] parameters for the specified
+     * modulus size.
+     *
+     * This method generates DH parameters at runtime, which can be slow
+     * for larger modulus sizes. For standard sizes (2048, 3072, 4096,
+     * 6144, 8192), consider using getNamedDhParams() which uses
+     * pre-computed FFDHE parameters from RFC 7919.
+     *
+     * @param rng Initialized Rng object to use for parameter generation
+     * @param modSz Modulus size in bits (e.g., 512, 1024, 2048)
+     *
+     * @return byte array containing [p, g] parameters, or null on error
+     *
+     * @throws WolfCryptException if native operation fails or if
+     *         parameter generation is not supported
+     */
+    public static byte[][] generateDhParams(Rng rng, int modSz)
+        throws WolfCryptException {
+
+        if (!FeatureDetect.DhEnabled()) {
+            throw new WolfCryptException(
+                WolfCryptError.NOT_COMPILED_IN.getCode());
+        }
+
+        if (rng == null) {
+            throw new WolfCryptException("Rng cannot be null");
+        }
+
+        if (modSz <= 0) {
+            throw new WolfCryptException("Invalid modulus size: " + modSz);
+        }
+
+        return wc_DhGenerateParams(rng, modSz);
     }
 }
 
