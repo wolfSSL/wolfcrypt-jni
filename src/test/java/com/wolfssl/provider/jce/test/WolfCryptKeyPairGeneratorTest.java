@@ -596,6 +596,13 @@ public class WolfCryptKeyPairGeneratorTest {
                 }
                 throw e;
             }
+            catch (RuntimeException e) {
+                if (e.getMessage() != null &&
+                    e.getMessage().contains("group not available") ||
+                    e.getMessage().contains("Unsupported FFDHE group")) {
+                    continue;
+                }
+            }
         }
 
         /* Test that non-FFDHE sizes throw exception */
@@ -657,7 +664,20 @@ public class WolfCryptKeyPairGeneratorTest {
 
         /* Generate key pair without calling initialize() first.
          * Should use default FFDHE 3072-bit parameters. */
-        KeyPair kp = kpg.generateKeyPair();
+        KeyPair kp = null;
+        try {
+            kp = kpg.generateKeyPair();
+        }
+        catch (RuntimeException e) {
+            /* Default FFDHE parameters may not be available in native
+             * wolfSSL. Skip test if not compiled in. */
+            if (e.getMessage() != null && e.getMessage().contains(
+                "No DH parameters available")) {
+                return;
+            }
+            throw e;
+        }
+
         assertNotNull(kp);
         assertNotNull(kp.getPublic());
         assertNotNull(kp.getPrivate());

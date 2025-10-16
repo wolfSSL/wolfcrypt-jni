@@ -330,19 +330,66 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                InvalidKeyException {
 
         byte secret[] = engineGenerateSecret();
+        byte[] keyMaterial = null;
+        SecretKey ret = null;
 
         log("generating SecretKey for " + algorithm);
 
-        if (algorithm.equals("DES")) {
-            return (SecretKey)new DESKeySpec(secret);
+        try {
+            if (algorithm.equals("DES")) {
+                /* DES requires 8 bytes */
+                if (secret.length < DESKeySpec.DES_KEY_LEN) {
+                    throw new InvalidKeyException(
+                        "Shared secret is too short for DES key");
+                }
+                keyMaterial = new byte[DESKeySpec.DES_KEY_LEN];
+                System.arraycopy(secret, 0, keyMaterial, 0,
+                    DESKeySpec.DES_KEY_LEN);
+                ret = new SecretKeySpec(keyMaterial, algorithm);
 
-        } else if (algorithm.equals("DESede")) {
-            return (SecretKey)new DESedeKeySpec(secret);
+            } else if (algorithm.equals("DESede")) {
+                /* DESede requires 24 bytes (3-key) */
+                if (secret.length < DESedeKeySpec.DES_EDE_KEY_LEN) {
+                    throw new InvalidKeyException(
+                        "Shared secret is too short for DESede key");
+                }
+                keyMaterial = new byte[DESedeKeySpec.DES_EDE_KEY_LEN];
+                System.arraycopy(secret, 0, keyMaterial, 0,
+                    DESedeKeySpec.DES_EDE_KEY_LEN);
+                ret = new SecretKeySpec(keyMaterial, algorithm);
 
-        } else {
-            /* AES and default */
-            return new SecretKeySpec(secret, algorithm);
+            } else if (algorithm.equals("AES")) {
+                /* AES requires specific key sizes: 128, 192, or 256 bits.
+                 * Use first 16 bytes (128-bit) by default, or 32 bytes
+                 * (256-bit) if shared secret is >= 32 bytes. */
+                int aesKeyLen = 16; /* default to AES-128 */
+                if (secret.length >= 32) {
+                    aesKeyLen = 32; /* use AES-256 if possible */
+                } else if (secret.length >= 24) {
+                    aesKeyLen = 24; /* use AES-192 if >= 24 bytes */
+                }
+
+                if (secret.length < aesKeyLen) {
+                    throw new InvalidKeyException(
+                        "Shared secret is too short for AES key " +
+                        "(need at least " + aesKeyLen + " bytes)");
+                }
+
+                keyMaterial = new byte[aesKeyLen];
+                System.arraycopy(secret, 0, keyMaterial, 0, aesKeyLen);
+                ret = new SecretKeySpec(keyMaterial, algorithm);
+
+            } else {
+                /* Other algorithms: use full shared secret */
+                ret = new SecretKeySpec(secret, algorithm);
+            }
+
+        } finally {
+            zeroArray(secret);
+            zeroArray(keyMaterial);
         }
+
+        return ret;
     }
 
     /**

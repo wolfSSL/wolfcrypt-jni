@@ -39,6 +39,8 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.ShortBufferException;
+import javax.crypto.SecretKey;
+import javax.crypto.Cipher;
 import javax.crypto.spec.DHParameterSpec;
 
 import java.security.Security;
@@ -770,6 +772,242 @@ public class WolfCryptKeyAgreementTest {
             } else {
                 fail("KeyAgreement test threading error, threads timed out");
             }
+        }
+    }
+
+    @Test
+    public void testDHGenerateSecretKeyForDES()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidParameterSpecException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        /* Skip 512-bit DH params in FIPS mode. FIPS 186-4 only allows
+         * 1024, 2048, and 3072-bit DH parameter generation */
+        if (Fips.enabled) {
+            return;
+        }
+
+        /* create DH params */
+        AlgorithmParameterGenerator paramGen =
+            AlgorithmParameterGenerator.getInstance("DH");
+        paramGen.init(512);
+
+        AlgorithmParameters params;
+        try {
+            params = paramGen.generateParameters();
+        }
+        catch (RuntimeException e) {
+            /* 512-bit DH parameter generation may not be supported due to
+             * wolfSSL enforcing minimum parameter sizes. Skip test if
+             * generation fails. */
+            if (e.getMessage() != null && e.getMessage().contains(
+                "Bad function argument")) {
+                return;
+            }
+            throw e;
+        }
+
+        DHParameterSpec dhParams =
+            (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
+
+        /* initialize key pair generator */
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("DH", "wolfJCE");
+        keyGen.initialize(dhParams, secureRandom);
+
+        KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
+        KeyAgreement bKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
+
+        KeyPair aPair = keyGen.generateKeyPair();
+        KeyPair bPair = keyGen.generateKeyPair();
+
+        aKeyAgree.init(aPair.getPrivate());
+        bKeyAgree.init(bPair.getPrivate());
+
+        aKeyAgree.doPhase(bPair.getPublic(), true);
+        bKeyAgree.doPhase(aPair.getPublic(), true);
+
+        /* Test generateSecret("DES") returns SecretKey, not DESKeySpec */
+        SecretKey desKeyA = null;
+        SecretKey desKeyB = null;
+        try {
+            desKeyA = aKeyAgree.generateSecret("DES");
+            assertNotNull(desKeyA);
+            assertTrue(desKeyA instanceof SecretKey);
+            assertEquals("DES", desKeyA.getAlgorithm());
+
+            /* Verify key can be used with Cipher */
+            Cipher cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, desKeyA);
+
+        } catch (ClassCastException e) {
+            fail("generateSecret(\"DES\") should return SecretKey, " +
+                "not DESKeySpec: " + e.getMessage());
+
+        } catch (Exception e) {
+            fail("Unexpected exception during DES key generation: " +
+                e.getMessage());
+        }
+
+        /* Test generateSecret("DESede") returns SecretKey */
+        try {
+            /* bKeyAgree already has doPhase() completed, just generate
+             * secret with different algorithm */
+            SecretKey desedeKey = bKeyAgree.generateSecret("DESede");
+            assertNotNull(desedeKey);
+            assertTrue(desedeKey instanceof SecretKey);
+            assertEquals("DESede", desedeKey.getAlgorithm());
+
+            /* Verify key can be used with Cipher */
+            Cipher cipher =
+                Cipher.getInstance("DESede/ECB/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, desedeKey);
+
+        } catch (ClassCastException e) {
+            fail("generateSecret(\"DESede\") should return SecretKey, " +
+                "not DESedeKeySpec: " + e.getMessage());
+
+        } catch (Exception e) {
+            fail("Unexpected exception during DESede key generation: " +
+                e.getMessage());
+        }
+
+        /* Test generateSecret("AES") returns SecretKey with proper size */
+        KeyAgreement cKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
+        KeyPair cPair = keyGen.generateKeyPair();
+        cKeyAgree.init(cPair.getPrivate());
+        cKeyAgree.doPhase(aPair.getPublic(), true);
+
+        try {
+            SecretKey aesKey = cKeyAgree.generateSecret("AES");
+            assertNotNull(aesKey);
+            assertTrue(aesKey instanceof SecretKey);
+            assertEquals("AES", aesKey.getAlgorithm());
+
+            /* AES key should be 16, 24, or 32 bytes */
+            byte[] encoded = aesKey.getEncoded();
+            assertTrue("AES key length should be 16, 24, or 32 bytes",
+                encoded.length == 16 || encoded.length == 24 ||
+                encoded.length == 32);
+
+            /* Verify key can be used with Cipher */
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, aesKey);
+
+            /* Test encryption/decryption */
+            byte[] plaintext = "Test AES encryption".getBytes();
+            byte[] ciphertext = cipher.doFinal(plaintext);
+            cipher.init(Cipher.DECRYPT_MODE, aesKey,
+                cipher.getParameters());
+            byte[] decrypted = cipher.doFinal(ciphertext);
+            assertArrayEquals(plaintext, decrypted);
+
+        } catch (Exception e) {
+            fail("Unexpected exception during AES key generation: " +
+                e.getMessage());
+        }
+    }
+
+    @Test
+    public void testECDHGenerateSecretKeyForDES()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidParameterSpecException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        /* initialize key pair generator */
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("EC", "wolfJCE");
+        ECGenParameterSpec ecsp = new ECGenParameterSpec("secp256r1");
+        keyGen.initialize(ecsp);
+
+        KeyAgreement aKeyAgree = KeyAgreement.getInstance("ECDH", "wolfJCE");
+        KeyAgreement bKeyAgree = KeyAgreement.getInstance("ECDH", "wolfJCE");
+
+        KeyPair aPair = keyGen.generateKeyPair();
+        KeyPair bPair = keyGen.generateKeyPair();
+
+        aKeyAgree.init(aPair.getPrivate());
+        bKeyAgree.init(bPair.getPrivate());
+
+        aKeyAgree.doPhase(bPair.getPublic(), true);
+        bKeyAgree.doPhase(aPair.getPublic(), true);
+
+        /* Test generateSecret("DES") returns SecretKey, not DESKeySpec */
+        try {
+            SecretKey desKey = aKeyAgree.generateSecret("DES");
+            assertNotNull(desKey);
+            assertTrue(desKey instanceof SecretKey);
+            assertEquals("DES", desKey.getAlgorithm());
+
+            /* Verify key can be used with Cipher */
+            Cipher cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, desKey);
+
+        } catch (ClassCastException e) {
+            fail("generateSecret(\"DES\") should return SecretKey, " +
+                "not DESKeySpec: " + e.getMessage());
+
+        } catch (Exception e) {
+            fail("Unexpected exception during DES key generation: " +
+                e.getMessage());
+        }
+
+        /* Test generateSecret("DESede") returns SecretKey */
+        try {
+            /* bKeyAgree already has doPhase() completed, just generate
+             * secret with different algorithm */
+            SecretKey desedeKey = bKeyAgree.generateSecret("DESede");
+            assertNotNull(desedeKey);
+            assertTrue(desedeKey instanceof SecretKey);
+            assertEquals("DESede", desedeKey.getAlgorithm());
+
+            /* Verify key can be used with Cipher */
+            Cipher cipher =
+                Cipher.getInstance("DESede/ECB/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, desedeKey);
+
+        } catch (ClassCastException e) {
+            fail("generateSecret(\"DESede\") should return SecretKey, " +
+                "not DESedeKeySpec: " + e.getMessage());
+
+        } catch (Exception e) {
+            fail("Unexpected exception during DESede key generation: " +
+                e.getMessage());
+        }
+
+        /* Test generateSecret("AES") returns SecretKey with proper size */
+        KeyAgreement cKeyAgree = KeyAgreement.getInstance("ECDH", "wolfJCE");
+        KeyPair cPair = keyGen.generateKeyPair();
+        cKeyAgree.init(cPair.getPrivate());
+        cKeyAgree.doPhase(aPair.getPublic(), true);
+
+        try {
+            SecretKey aesKey = cKeyAgree.generateSecret("AES");
+            assertNotNull(aesKey);
+            assertTrue(aesKey instanceof SecretKey);
+            assertEquals("AES", aesKey.getAlgorithm());
+
+            /* AES key should be 16, 24, or 32 bytes */
+            byte[] encoded = aesKey.getEncoded();
+            assertTrue("AES key length should be 16, 24, or 32 bytes",
+                encoded.length == 16 || encoded.length == 24 ||
+                encoded.length == 32);
+
+            /* Verify key can be used with Cipher */
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, aesKey);
+
+            /* Test encryption/decryption */
+            byte[] plaintext = "Test AES encryption".getBytes();
+            byte[] ciphertext = cipher.doFinal(plaintext);
+            cipher.init(Cipher.DECRYPT_MODE, aesKey,
+                cipher.getParameters());
+            byte[] decrypted = cipher.doFinal(ciphertext);
+            assertArrayEquals(plaintext, decrypted);
+
+        } catch (Exception e) {
+            fail("Unexpected exception during AES key generation: " +
+                e.getMessage());
         }
     }
 
