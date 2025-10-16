@@ -486,6 +486,12 @@ public final class WolfCryptProvider extends Provider {
             put("KeyFactory.EC",
                 "com.wolfssl.provider.jce.WolfCryptECKeyFactory");
         }
+        if (FeatureDetect.DhEnabled()) {
+            put("KeyFactory.DH",
+                "com.wolfssl.provider.jce.WolfCryptDHKeyFactory");
+            put("Alg.Alias.KeyFactory.DiffieHellman", "DH");
+            put("Alg.Alias.KeyFactory.1.2.840.113549.1.3.1", "DH");
+        }
 
         /* KeyStore */
         put("KeyStore.WKS",
