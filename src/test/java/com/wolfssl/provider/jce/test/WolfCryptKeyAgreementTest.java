@@ -1012,6 +1012,83 @@ public class WolfCryptKeyAgreementTest {
     }
 
     @Test
+    public void testDHKeyAgreementPadding()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidParameterSpecException, InvalidKeyException,
+               InvalidAlgorithmParameterException,
+               ShortBufferException {
+
+        /* This test verifies that DH shared secrets are properly padded to
+         * the prime length when using generateSecret(byte[], int). This
+         * matches the behavior of SunJCE after Java 8 (JDK-7146728) and
+         * prevents regressions related to padding. Both generateSecret()
+         * methods pad to primeLen. */
+
+        /* Skip in FIPS mode. FIPS 186-4 only allows 1024, 2048, and
+         * 3072-bit DH parameter generation */
+        if (Fips.enabled) {
+            return;
+        }
+
+        /* Generate 2048-bit DH parameters */
+        AlgorithmParameterGenerator paramGen =
+            AlgorithmParameterGenerator.getInstance("DH");
+        paramGen.init(2048);
+
+        AlgorithmParameters params = paramGen.generateParameters();
+        DHParameterSpec dhParams =
+            (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
+
+        /* Prime length should be 256 bytes for 2048-bit DH */
+        int primeLen = dhParams.getP().toByteArray().length;
+        if (dhParams.getP().toByteArray()[0] == 0x00) {
+            primeLen--;
+        }
+
+        /* Initialize key pair generator */
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("DH", "wolfJCE");
+        keyGen.initialize(dhParams, secureRandom);
+
+        KeyAgreement alice = KeyAgreement.getInstance("DH", "wolfJCE");
+        KeyAgreement bob = KeyAgreement.getInstance("DH", "wolfJCE");
+
+        /* Run multiple iterations to ensure consistent padding behavior */
+        for (int i = 0; i < 100; i++) {
+            byte[] aliceSecret = new byte[primeLen];
+            byte[] bobSecret = new byte[primeLen];
+
+            /* Fill buffers with different stale data to ensure padding
+             * overwrites any existing data */
+            Arrays.fill(aliceSecret, (byte)'a');
+            Arrays.fill(bobSecret, (byte)'b');
+
+            /* Generate new key pairs for this iteration */
+            KeyPair aliceKeyPair = keyGen.generateKeyPair();
+            KeyPair bobKeyPair = keyGen.generateKeyPair();
+
+            /* Perform key agreement */
+            alice.init(aliceKeyPair.getPrivate());
+            alice.doPhase(bobKeyPair.getPublic(), true);
+            int aliceLen = alice.generateSecret(aliceSecret, 0);
+
+            bob.init(bobKeyPair.getPrivate());
+            bob.doPhase(aliceKeyPair.getPublic(), true);
+            int bobLen = bob.generateSecret(bobSecret, 0);
+
+            /* Both secrets should be exactly primeLen bytes (always padded) */
+            assertEquals("Alice's secret length should equal prime length",
+                primeLen, aliceLen);
+            assertEquals("Bob's secret length should equal prime length",
+                primeLen, bobLen);
+
+            /* Both secrets should be identical, including padding */
+            assertArrayEquals("Alice and Bob should generate identical " +
+                "secrets at iteration " + i, aliceSecret, bobSecret);
+        }
+    }
+
+    @Test
     public void testThreadedKeyAgreement()
         throws InterruptedException, NoSuchAlgorithmException {
 
