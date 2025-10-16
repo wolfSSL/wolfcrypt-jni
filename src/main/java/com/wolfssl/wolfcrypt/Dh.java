@@ -39,10 +39,15 @@ public class Dh extends NativeStruct {
     protected final Object stateLock = new Object();
 
     /* Named DH group constants (FFDHE from RFC 7919) */
+    /** FFDHE 2048-bit group */
     public static final int WC_FFDHE_2048 = 256;
+    /** FFDHE 3072-bit group */
     public static final int WC_FFDHE_3072 = 257;
+    /** FFDHE 4096-bit group */
     public static final int WC_FFDHE_4096 = 258;
+    /** FFDHE 6144-bit group */
     public static final int WC_FFDHE_6144 = 259;
+    /** FFDHE 8192-bit group */
     public static final int WC_FFDHE_8192 = 260;
 
     /**
@@ -107,6 +112,14 @@ public class Dh extends NativeStruct {
     private native void wc_DhCheckPubKey(byte[] pub);
     private static native byte[][] wc_DhCopyNamedKey(int name);
     private static native byte[][] wc_DhGenerateParams(Rng rng, int modSz);
+    private native void wc_DhImportKeyPair(byte[] priv, byte[] pub,
+        byte[] p, byte[] g);
+    private native byte[][] wc_DhExportKeyPair();
+    private native byte[][] wc_DhExportParams();
+    private native byte[] wc_DhPrivateKeyDecode(byte[] pkcs8);
+    private native byte[] wc_DhPrivateKeyEncode();
+    private native byte[] wc_DhPublicKeyDecode(byte[] x509);
+    private native byte[] wc_DhPublicKeyEncode();
 
     /**
      * Malloc native JNI DH structure
@@ -424,6 +437,181 @@ public class Dh extends NativeStruct {
         }
 
         return wc_DhGenerateParams(rng, modSz);
+    }
+
+    /**
+     * Import DH key pair with parameters into this Dh object.
+     *
+     * @param priv Private key value as byte array
+     * @param pub Public key value as byte array
+     * @param p Prime modulus parameter
+     * @param g Base generator parameter
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released
+     */
+    public synchronized void importKeyPair(byte[] priv, byte[] pub,
+        byte[] p, byte[] g)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+
+        synchronized (pointerLock) {
+            wc_DhImportKeyPair(priv, pub, p, g);
+        }
+
+        /* Reset stored keys if new ones are imported */
+        this.privateKey = null;
+        this.publicKey = null;
+        this.pSize = 0;
+
+        if (priv != null) {
+            this.privateKey = priv.clone();
+        }
+
+        if (pub != null) {
+            this.publicKey = pub.clone();
+        }
+
+        if (p != null) {
+            this.pSize = p.length;
+        }
+
+        state = WolfCryptState.READY;
+    }
+
+    /**
+     * Export DH key pair from this Dh object.
+     *
+     * @return byte[][] array containing [privateKey, publicKey]
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released
+     */
+    public synchronized byte[][] exportKeyPair()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+
+        synchronized (pointerLock) {
+            return wc_DhExportKeyPair();
+        }
+    }
+
+    /**
+     * Export DH parameters from this Dh object.
+     *
+     * @return byte[][] array containing [p, g, q] or [p, g] if q is null
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released
+     */
+    public synchronized byte[][] exportParams()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+
+        synchronized (pointerLock) {
+            return wc_DhExportParams();
+        }
+    }
+
+    /**
+     * Decode and import DH private key from PKCS#8 DER format.
+     *
+     * @param pkcs8 DER-encoded PKCS#8 private key
+     *
+     * @return DER-encoded private key (may be re-encoded by wolfCrypt)
+     *
+     * @throws WolfCryptException if native operation fails or DER is invalid
+     * @throws IllegalStateException if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released
+     */
+    public synchronized byte[] privateKeyDecodePKCS8(byte[] pkcs8)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+
+        if (pkcs8 == null || pkcs8.length == 0) {
+            throw new WolfCryptException("PKCS#8 data cannot be null or empty");
+        }
+
+        synchronized (pointerLock) {
+            return wc_DhPrivateKeyDecode(pkcs8);
+        }
+    }
+
+    /**
+     * Encode and export DH private key to PKCS#8 DER format.
+     *
+     * @return DER-encoded PKCS#8 private key
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released
+     */
+    public synchronized byte[] privateKeyEncodePKCS8()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+
+        synchronized (pointerLock) {
+            return wc_DhPrivateKeyEncode();
+        }
+    }
+
+    /**
+     * Decode and import DH public key from X.509 DER format.
+     *
+     * @param x509 DER-encoded X.509 public key
+     *
+     * @return DER-encoded public key (may be re-encoded by wolfCrypt)
+     *
+     * @throws WolfCryptException if native operation fails or DER is invalid
+     * @throws IllegalStateException if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released
+     */
+    public synchronized byte[] publicKeyDecodeX509(byte[] x509)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+
+        if (x509 == null || x509.length == 0) {
+            throw new WolfCryptException("X.509 data cannot be null or empty");
+        }
+
+        synchronized (pointerLock) {
+            return wc_DhPublicKeyDecode(x509);
+        }
+    }
+
+    /**
+     * Encode and export DH public key to X.509 DER format.
+     *
+     * @return DER-encoded X.509 public key
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released
+     */
+    public synchronized byte[] publicKeyEncodeX509()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+
+        synchronized (pointerLock) {
+            return wc_DhPublicKeyEncode();
+        }
     }
 }
 

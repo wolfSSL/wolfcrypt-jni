@@ -84,16 +84,16 @@ public class WolfCryptDhParameters extends AlgorithmParametersSpi {
             }
 
             /* Get sequence length */
-            seqLen = getDERLength(params, idx);
-            idx += getDERLengthSize(params, idx);
+            seqLen = WolfCryptASN1Util.getDERLength(params, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(params, idx);
 
             /* Decode prime (p) INTEGER */
             if (params[idx++] != 0x02) {
                 throw new IOException(
                     "Invalid DH parameters: expected INTEGER tag for p");
             }
-            pLen = getDERLength(params, idx);
-            idx += getDERLengthSize(params, idx);
+            pLen = WolfCryptASN1Util.getDERLength(params, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(params, idx);
             pBytes = new byte[pLen];
             System.arraycopy(params, idx, pBytes, 0, pLen);
             idx += pLen;
@@ -104,8 +104,8 @@ public class WolfCryptDhParameters extends AlgorithmParametersSpi {
                 throw new IOException(
                     "Invalid DH parameters: expected INTEGER tag for g");
             }
-            gLen = getDERLength(params, idx);
-            idx += getDERLengthSize(params, idx);
+            gLen = WolfCryptASN1Util.getDERLength(params, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(params, idx);
             gBytes = new byte[gLen];
             System.arraycopy(params, idx, gBytes, 0, gLen);
             this.g = new BigInteger(1, gBytes);
@@ -185,12 +185,12 @@ public class WolfCryptDhParameters extends AlgorithmParametersSpi {
 
             /* Encode p as INTEGER */
             seq.write(0x02); /* INTEGER tag */
-            encodeDERLength(seq, pBytes.length);
+            seq.write(WolfCryptASN1Util.encodeDERLength(pBytes.length));
             seq.write(pBytes);
 
             /* Encode g as INTEGER */
             seq.write(0x02); /* INTEGER tag */
-            encodeDERLength(seq, gBytes.length);
+            seq.write(WolfCryptASN1Util.encodeDERLength(gBytes.length));
             seq.write(gBytes);
 
             byte[] seqBytes = seq.toByteArray();
@@ -198,7 +198,7 @@ public class WolfCryptDhParameters extends AlgorithmParametersSpi {
             /* Wrap in SEQUENCE */
             ByteArrayOutputStream result = new ByteArrayOutputStream();
             result.write(0x30); /* SEQUENCE tag */
-            encodeDERLength(result, seqBytes.length);
+            result.write(WolfCryptASN1Util.encodeDERLength(seqBytes.length));
             result.write(seqBytes);
 
             return result.toByteArray();
@@ -220,62 +220,6 @@ public class WolfCryptDhParameters extends AlgorithmParametersSpi {
                "  g: " + this.g.toString(16) +
                (this.l > 0 ? "\n  l: " + this.l : "");
     }
-
-    /* Helper method to get DER length from encoded bytes */
-    private static int getDERLength(byte[] data, int idx) {
-
-        int len = data[idx] & 0xFF;
-
-        if ((len & 0x80) == 0) {
-            /* Short form */
-            return len;
-        }
-
-        /* Long form */
-        int numBytes = len & 0x7F;
-        int result = 0;
-        for (int i = 0; i < numBytes; i++) {
-            result = (result << 8) | (data[idx + 1 + i] & 0xFF);
-        }
-
-        return result;
-    }
-
-    /* Helper method to get size of DER length encoding */
-    private static int getDERLengthSize(byte[] data, int idx) {
-
-        int len = data[idx] & 0xFF;
-
-        if ((len & 0x80) == 0) {
-            /* Short form - 1 byte */
-            return 1;
-        }
-
-        /* Long form - 1 + number of length bytes */
-        return 1 + (len & 0x7F);
-    }
-
-    /* Helper method to encode DER length */
-    private static void encodeDERLength(ByteArrayOutputStream out,
-        int length) throws IOException {
-
-        if (length < 128) {
-            /* Short form */
-            out.write(length);
-        }
-        else {
-            /* Long form */
-            int numBytes = 0;
-            int temp = length;
-            while (temp > 0) {
-                numBytes++;
-                temp >>= 8;
-            }
-            out.write(0x80 | numBytes);
-            for (int i = numBytes - 1; i >= 0; i--) {
-                out.write((length >> (i * 8)) & 0xFF);
-            }
-        }
-    }
 }
+
 

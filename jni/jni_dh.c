@@ -27,6 +27,7 @@
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/dh.h>
+#include <wolfssl/wolfcrypt/asn_public.h>
 
 #include <com_wolfssl_wolfcrypt_Dh.h>
 #include <wolfcrypt_jni_NativeStruct.h>
