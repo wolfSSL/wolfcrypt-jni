@@ -235,6 +235,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         throws IllegalStateException, ShortBufferException {
 
         byte tmp[] = null;
+        int returnLen = 0;
 
         if (this.state != EngineState.WC_PUBKEY_DONE)
             throw new IllegalStateException(
@@ -248,12 +249,6 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         switch (this.type) {
             case WC_DH:
 
-                if ((sharedSecret.length - offset) < this.primeLen) {
-                    throw new ShortBufferException(
-                        "Input buffer too small when generating " +
-                        "shared secret");
-                }
-
                 /* public key has been stored inside this.dh already */
                 tmp = this.dh.makeSharedSecret();
                 if (tmp == null) {
@@ -261,18 +256,48 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                             "shared secret");
                 }
 
-                if ((sharedSecret.length - offset) < tmp.length) {
+                /* DH shared secrets can vary in length depending on if they
+                 * are padded or not at the beginning with zero bytes to make
+                 * a total output size matching the prime length.
+                 *
+                 * Native wolfCrypt does not prepend zero bytes to DH shared
+                 * secrets, following RFC 5246 (8.1.2) which instructs to
+                 * strip leading zero bytes.
+                 *
+                 * Sun KeyAgreement DH implementations as of after Java 8
+                 * prepend zero bytes if total length is not equal to prime
+                 * length. This was changed with OpenJDK bug fix JDK-7146728.
+                 *
+                 * BouncyCastle also behaves the same way, prepending zero
+                 * bytes if total secret size is not prime length. This
+                 * follows RFC 2631 (2.1.2).
+                 *
+                 * To match Sun and BC behavior, we pad the secret to primeLen
+                 * by prepending zeros for both generateSecret() methods.
+                 */
+                byte[] paddedSecret = new byte[this.primeLen];
+                Arrays.fill(paddedSecret, (byte)0);
+                System.arraycopy(tmp, 0, paddedSecret,
+                    paddedSecret.length - tmp.length, tmp.length);
+
+                if ((sharedSecret.length - offset) < paddedSecret.length) {
                     zeroArray(tmp);
+                    zeroArray(paddedSecret);
                     throw new ShortBufferException(
                         "Output buffer too small when generating " +
                         "DH shared secret");
                 }
 
-                /* copy array back to output offset */
-                System.arraycopy(tmp, 0, sharedSecret, offset, tmp.length);
+                /* copy padded array back to output offset */
+                System.arraycopy(paddedSecret, 0, sharedSecret, offset,
+                    paddedSecret.length);
+
+                returnLen = this.primeLen;
 
                 /* reset state, using same private info and alg params */
                 this.state = EngineState.WC_PRIVKEY_DONE;
+
+                zeroArray(paddedSecret);
 
                 break;
 
@@ -294,6 +319,8 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 /* copy array back to output ofset */
                 System.arraycopy(tmp, 0, sharedSecret, offset, tmp.length);
 
+                returnLen = tmp.length;
+
                 /* reset state, using same private info and alg params */
                 byte[] priv = this.ecPrivate.exportPrivate();
                 if (priv == null) {
@@ -313,15 +340,11 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 break;
         };
 
-        if (tmp != null) {
+        log("generated secret, len: " + returnLen);
 
-            log("generated secret, len: " + tmp.length);
+        zeroArray(tmp);
 
-            zeroArray(tmp);
-            return tmp.length;
-        }
-
-        return 0;
+        return returnLen;
     }
 
     @Override
