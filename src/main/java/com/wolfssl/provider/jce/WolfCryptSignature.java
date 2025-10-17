@@ -1719,7 +1719,6 @@ public class WolfCryptSignature extends SignatureSpi {
 
     /**
      * Get the component size in bytes for P1363 format based on curve.
-     * This is calculated as ceil(curve_bits / 8).
      *
      * @param ecc ECC key to get curve size from
      *
@@ -1730,11 +1729,27 @@ public class WolfCryptSignature extends SignatureSpi {
     private static int getP1363ComponentSize(Ecc ecc)
         throws SignatureException {
 
+        int curveId;
+        String curveName;
         int componentSize;
 
         try {
-            /* Get curve size in bytes, gives us the component size */
-            componentSize = ecc.getCurveSizeByKey();
+            /* Get curve ID from key */
+            curveId = ecc.getCurveId();
+            if (curveId < 0) {
+                throw new SignatureException(
+                    "Invalid curve ID for P1363 format");
+            }
+
+            /* Get curve name from ID */
+            curveName = Ecc.getCurveNameFromId(curveId);
+            if (curveName == null) {
+                throw new SignatureException(
+                    "Failed to get curve name for P1363 format");
+            }
+
+            /* Get fixed curve field size from name */
+            componentSize = Ecc.getCurveSizeFromName(curveName.toUpperCase());
             if (componentSize <= 0) {
                 throw new SignatureException(
                     "Invalid curve size for P1363 format");
