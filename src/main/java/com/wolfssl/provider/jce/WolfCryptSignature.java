@@ -42,6 +42,7 @@ import java.security.AlgorithmParameters;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.PSSParameterSpec;
 import java.security.spec.MGF1ParameterSpec;
+import java.security.interfaces.ECKey;
 
 import javax.crypto.ShortBufferException;
 
@@ -326,11 +327,56 @@ public class WolfCryptSignature extends SignatureSpi {
 
             case WC_ECDSA:
 
+                int curveSize;
+                byte[] privKeyBytes;
                 ECPrivateKey ecPriv = (ECPrivateKey)key;
-                this.ecc.importPrivate(ecPriv.getS().toByteArray(), null);
+
+                try {
+                    /* For ECC private keys, get curve size and ensure
+                     * private key bytes are properly sized */
+                    curveSize = getCurveSizeFromKey(ecPriv);
+
+                    /* Convert BigInteger to byte array with proper padding */
+                    privKeyBytes = Ecc.bigIntToFixedSizeByteArray(
+                        ecPriv.getS(), curveSize);
+
+                } catch (Exception e) {
+                    /* Fallback to original behavior on failure */
+                    privKeyBytes = ecPriv.getS().toByteArray();
+                }
+
+                this.ecc.importPrivate(privKeyBytes, null);
 
                 break;
         }
+    }
+
+    /**
+     * Get curve size in bytes from an EC key.
+     *
+     * @param ecKey EC private or public key
+     *
+     * @return curve size in bytes
+     *
+     * @throws WolfCryptException if curve size cannot be determined
+     * @throws InvalidAlgorithmParameterException if curve parameters
+     *         are invalid
+     */
+    private int getCurveSizeFromKey(ECKey ecKey)
+        throws WolfCryptException, InvalidAlgorithmParameterException {
+
+        int curveSize;
+        String curveName;
+
+        curveName = Ecc.getCurveName(ecKey.getParams());
+        curveSize = Ecc.getCurveSizeFromName(curveName.toUpperCase());
+
+        if (curveSize <= 0) {
+            throw new WolfCryptException(
+                "Invalid curve size for curve: " + curveName);
+        }
+
+        return curveSize;
     }
 
     private void wolfCryptInitPublicKey(PublicKey key, byte[] encodedKey)
