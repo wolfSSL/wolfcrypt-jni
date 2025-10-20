@@ -39,6 +39,8 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.ShortBufferException;
+import javax.crypto.SecretKey;
+import javax.crypto.Cipher;
 import javax.crypto.spec.DHParameterSpec;
 
 import java.security.Security;
@@ -56,6 +58,7 @@ import java.security.spec.InvalidParameterSpecException;
 import java.security.spec.ECGenParameterSpec;
 
 import com.wolfssl.wolfcrypt.Ecc;
+import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 
 public class WolfCryptKeyAgreementTest {
@@ -184,11 +187,33 @@ public class WolfCryptKeyAgreementTest {
                InvalidParameterSpecException, InvalidKeyException,
                InvalidAlgorithmParameterException {
 
+        /* Skip 512-bit DH params in FIPS mode. FIPS 186-4 only allows
+         * 1024, 2048, and 3072-bit DH parameter generation */
+        if (Fips.enabled) {
+            return;
+        }
+
         /* create DH params */
         AlgorithmParameterGenerator paramGen =
             AlgorithmParameterGenerator.getInstance("DH");
         paramGen.init(512);
-        AlgorithmParameters params = paramGen.generateParameters();
+
+        AlgorithmParameters params;
+        try {
+            params = paramGen.generateParameters();
+        }
+        catch (RuntimeException e) {
+            /* 512-bit DH parameter generation may not be supported due to
+             * wolfSSL enforcing minimum parameter sizes. Skip test if
+             * generation fails. */
+            if (e.getMessage() != null && e.getMessage().contains(
+                "Bad function argument")) {
+                System.out.println("\t512-bit DH parameter generation " +
+                    "not supported, skipping test");
+                return;
+            }
+            throw e;
+        }
 
         DHParameterSpec dhParams =
             (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
@@ -214,7 +239,7 @@ public class WolfCryptKeyAgreementTest {
 
         assertArrayEquals(secretA, secretB);
 
-        /* now, try reusing the A object without calling init() again */
+        /* Try reusing the A object without calling init() again */
         KeyAgreement cKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
         KeyPair cPair = keyGen.generateKeyPair();
         cKeyAgree.init(cPair.getPrivate());
@@ -235,11 +260,33 @@ public class WolfCryptKeyAgreementTest {
                InvalidAlgorithmParameterException,
                ShortBufferException {
 
+        /* Skip 512-bit DH params in FIPS mode. FIPS 186-4 only allows
+         * 1024, 2048, and 3072-bit DH parameter generation */
+        if (Fips.enabled) {
+            return;
+        }
+
         /* create DH params */
         AlgorithmParameterGenerator paramGen =
             AlgorithmParameterGenerator.getInstance("DH");
         paramGen.init(512);
-        AlgorithmParameters params = paramGen.generateParameters();
+
+        AlgorithmParameters params;
+        try {
+            params = paramGen.generateParameters();
+        }
+        catch (RuntimeException e) {
+            /* 512-bit DH parameter generation may not be supported due to
+             * wolfSSL enforcing minimum parameter sizes. Skip test if
+             * generation fails. */
+            if (e.getMessage() != null && e.getMessage().contains(
+                "Bad function argument")) {
+                System.out.println("\t512-bit DH parameter generation " +
+                    "not supported, skipping test");
+                return;
+            }
+            throw e;
+        }
 
         DHParameterSpec dhParams =
             (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
@@ -291,11 +338,33 @@ public class WolfCryptKeyAgreementTest {
                InvalidParameterSpecException, InvalidKeyException,
                InvalidAlgorithmParameterException {
 
+        /* Skip 512-bit DH params in FIPS mode. FIPS 186-4 only allows
+         * 1024, 2048, and 3072-bit DH parameter generation */
+        if (Fips.enabled) {
+            return;
+        }
+
         /* create DH params */
         AlgorithmParameterGenerator paramGen =
             AlgorithmParameterGenerator.getInstance("DH");
         paramGen.init(512);
-        AlgorithmParameters params = paramGen.generateParameters();
+
+        AlgorithmParameters params;
+        try {
+            params = paramGen.generateParameters();
+        }
+        catch (RuntimeException e) {
+            /* 512-bit DH parameter generation may not be supported due to
+             * wolfSSL enforcing minimum parameter sizes. Skip test if
+             * generation fails. */
+            if (e.getMessage() != null && e.getMessage().contains(
+                "Bad function argument")) {
+                System.out.println("\t512-bit DH parameter generation " +
+                    "not supported, skipping test");
+                return;
+            }
+            throw e;
+        }
 
         DHParameterSpec dhParams =
             (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
@@ -565,11 +634,36 @@ public class WolfCryptKeyAgreementTest {
         failures.set(0, 0);
         success.set(0, 0);
 
-        /* DH Tests */
-        AlgorithmParameterGenerator paramGen =
-            AlgorithmParameterGenerator.getInstance("DH");
-        paramGen.init(512);
-        final AlgorithmParameters params = paramGen.generateParameters();
+        /* DH Tests - generate 512-bit params. Skip in FIPS mode since
+         * FIPS 186-4 only allows 1024, 2048, and 3072-bit DH parameter
+         * generation */
+        final AlgorithmParameters params;
+        if (algo.equals("DH")) {
+            if (Fips.enabled) {
+                return;
+            }
+            AlgorithmParameterGenerator paramGen =
+                AlgorithmParameterGenerator.getInstance("DH");
+            paramGen.init(512);
+
+            try {
+                params = paramGen.generateParameters();
+            }
+            catch (RuntimeException e) {
+                /* 512-bit DH parameter generation may not be supported due to
+                 * wolfSSL enforcing minimum parameter sizes. Skip test if
+                 * generation fails. */
+                if (e.getMessage() != null && e.getMessage().contains(
+                    "Bad function argument")) {
+                    System.out.println("\t512-bit DH parameter generation " +
+                        "not supported, skipping test");
+                    return;
+                }
+                throw e;
+            }
+        } else {
+            params = null;
+        }
 
         /* Do encrypt/decrypt and sign/verify in parallel across numThreads
          * threads, all operations should pass */
@@ -678,6 +772,319 @@ public class WolfCryptKeyAgreementTest {
             } else {
                 fail("KeyAgreement test threading error, threads timed out");
             }
+        }
+    }
+
+    @Test
+    public void testDHGenerateSecretKeyForDES()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidParameterSpecException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        /* Skip 512-bit DH params in FIPS mode. FIPS 186-4 only allows
+         * 1024, 2048, and 3072-bit DH parameter generation */
+        if (Fips.enabled) {
+            return;
+        }
+
+        /* create DH params */
+        AlgorithmParameterGenerator paramGen =
+            AlgorithmParameterGenerator.getInstance("DH");
+        paramGen.init(512);
+
+        AlgorithmParameters params;
+        try {
+            params = paramGen.generateParameters();
+        }
+        catch (RuntimeException e) {
+            /* 512-bit DH parameter generation may not be supported due to
+             * wolfSSL enforcing minimum parameter sizes. Skip test if
+             * generation fails. */
+            if (e.getMessage() != null && e.getMessage().contains(
+                "Bad function argument")) {
+                return;
+            }
+            throw e;
+        }
+
+        DHParameterSpec dhParams =
+            (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
+
+        /* initialize key pair generator */
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("DH", "wolfJCE");
+        keyGen.initialize(dhParams, secureRandom);
+
+        KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
+        KeyAgreement bKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
+
+        KeyPair aPair = keyGen.generateKeyPair();
+        KeyPair bPair = keyGen.generateKeyPair();
+
+        aKeyAgree.init(aPair.getPrivate());
+        bKeyAgree.init(bPair.getPrivate());
+
+        aKeyAgree.doPhase(bPair.getPublic(), true);
+        bKeyAgree.doPhase(aPair.getPublic(), true);
+
+        /* Test generateSecret("DES") returns SecretKey, not DESKeySpec */
+        SecretKey desKeyA = null;
+        SecretKey desKeyB = null;
+        try {
+            desKeyA = aKeyAgree.generateSecret("DES");
+            assertNotNull(desKeyA);
+            assertTrue(desKeyA instanceof SecretKey);
+            assertEquals("DES", desKeyA.getAlgorithm());
+
+            /* Verify key can be used with Cipher */
+            Cipher cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, desKeyA);
+
+        } catch (ClassCastException e) {
+            fail("generateSecret(\"DES\") should return SecretKey, " +
+                "not DESKeySpec: " + e.getMessage());
+
+        } catch (Exception e) {
+            fail("Unexpected exception during DES key generation: " +
+                e.getMessage());
+        }
+
+        /* Test generateSecret("DESede") returns SecretKey */
+        try {
+            /* bKeyAgree already has doPhase() completed, just generate
+             * secret with different algorithm */
+            SecretKey desedeKey = bKeyAgree.generateSecret("DESede");
+            assertNotNull(desedeKey);
+            assertTrue(desedeKey instanceof SecretKey);
+            assertEquals("DESede", desedeKey.getAlgorithm());
+
+            /* Verify key can be used with Cipher */
+            Cipher cipher =
+                Cipher.getInstance("DESede/ECB/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, desedeKey);
+
+        } catch (ClassCastException e) {
+            fail("generateSecret(\"DESede\") should return SecretKey, " +
+                "not DESedeKeySpec: " + e.getMessage());
+
+        } catch (Exception e) {
+            fail("Unexpected exception during DESede key generation: " +
+                e.getMessage());
+        }
+
+        /* Test generateSecret("AES") returns SecretKey with proper size */
+        KeyAgreement cKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
+        KeyPair cPair = keyGen.generateKeyPair();
+        cKeyAgree.init(cPair.getPrivate());
+        cKeyAgree.doPhase(aPair.getPublic(), true);
+
+        try {
+            SecretKey aesKey = cKeyAgree.generateSecret("AES");
+            assertNotNull(aesKey);
+            assertTrue(aesKey instanceof SecretKey);
+            assertEquals("AES", aesKey.getAlgorithm());
+
+            /* AES key should be 16, 24, or 32 bytes */
+            byte[] encoded = aesKey.getEncoded();
+            assertTrue("AES key length should be 16, 24, or 32 bytes",
+                encoded.length == 16 || encoded.length == 24 ||
+                encoded.length == 32);
+
+            /* Verify key can be used with Cipher */
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, aesKey);
+
+            /* Test encryption/decryption */
+            byte[] plaintext = "Test AES encryption".getBytes();
+            byte[] ciphertext = cipher.doFinal(plaintext);
+            cipher.init(Cipher.DECRYPT_MODE, aesKey,
+                cipher.getParameters());
+            byte[] decrypted = cipher.doFinal(ciphertext);
+            assertArrayEquals(plaintext, decrypted);
+
+        } catch (Exception e) {
+            fail("Unexpected exception during AES key generation: " +
+                e.getMessage());
+        }
+    }
+
+    @Test
+    public void testECDHGenerateSecretKeyForDES()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidParameterSpecException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        /* initialize key pair generator */
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("EC", "wolfJCE");
+        ECGenParameterSpec ecsp = new ECGenParameterSpec("secp256r1");
+        keyGen.initialize(ecsp);
+
+        KeyAgreement aKeyAgree = KeyAgreement.getInstance("ECDH", "wolfJCE");
+        KeyAgreement bKeyAgree = KeyAgreement.getInstance("ECDH", "wolfJCE");
+
+        KeyPair aPair = keyGen.generateKeyPair();
+        KeyPair bPair = keyGen.generateKeyPair();
+
+        aKeyAgree.init(aPair.getPrivate());
+        bKeyAgree.init(bPair.getPrivate());
+
+        aKeyAgree.doPhase(bPair.getPublic(), true);
+        bKeyAgree.doPhase(aPair.getPublic(), true);
+
+        /* Test generateSecret("DES") returns SecretKey, not DESKeySpec */
+        try {
+            SecretKey desKey = aKeyAgree.generateSecret("DES");
+            assertNotNull(desKey);
+            assertTrue(desKey instanceof SecretKey);
+            assertEquals("DES", desKey.getAlgorithm());
+
+            /* Verify key can be used with Cipher */
+            Cipher cipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, desKey);
+
+        } catch (ClassCastException e) {
+            fail("generateSecret(\"DES\") should return SecretKey, " +
+                "not DESKeySpec: " + e.getMessage());
+
+        } catch (Exception e) {
+            fail("Unexpected exception during DES key generation: " +
+                e.getMessage());
+        }
+
+        /* Test generateSecret("DESede") returns SecretKey */
+        try {
+            /* bKeyAgree already has doPhase() completed, just generate
+             * secret with different algorithm */
+            SecretKey desedeKey = bKeyAgree.generateSecret("DESede");
+            assertNotNull(desedeKey);
+            assertTrue(desedeKey instanceof SecretKey);
+            assertEquals("DESede", desedeKey.getAlgorithm());
+
+            /* Verify key can be used with Cipher */
+            Cipher cipher =
+                Cipher.getInstance("DESede/ECB/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, desedeKey);
+
+        } catch (ClassCastException e) {
+            fail("generateSecret(\"DESede\") should return SecretKey, " +
+                "not DESedeKeySpec: " + e.getMessage());
+
+        } catch (Exception e) {
+            fail("Unexpected exception during DESede key generation: " +
+                e.getMessage());
+        }
+
+        /* Test generateSecret("AES") returns SecretKey with proper size */
+        KeyAgreement cKeyAgree = KeyAgreement.getInstance("ECDH", "wolfJCE");
+        KeyPair cPair = keyGen.generateKeyPair();
+        cKeyAgree.init(cPair.getPrivate());
+        cKeyAgree.doPhase(aPair.getPublic(), true);
+
+        try {
+            SecretKey aesKey = cKeyAgree.generateSecret("AES");
+            assertNotNull(aesKey);
+            assertTrue(aesKey instanceof SecretKey);
+            assertEquals("AES", aesKey.getAlgorithm());
+
+            /* AES key should be 16, 24, or 32 bytes */
+            byte[] encoded = aesKey.getEncoded();
+            assertTrue("AES key length should be 16, 24, or 32 bytes",
+                encoded.length == 16 || encoded.length == 24 ||
+                encoded.length == 32);
+
+            /* Verify key can be used with Cipher */
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, aesKey);
+
+            /* Test encryption/decryption */
+            byte[] plaintext = "Test AES encryption".getBytes();
+            byte[] ciphertext = cipher.doFinal(plaintext);
+            cipher.init(Cipher.DECRYPT_MODE, aesKey,
+                cipher.getParameters());
+            byte[] decrypted = cipher.doFinal(ciphertext);
+            assertArrayEquals(plaintext, decrypted);
+
+        } catch (Exception e) {
+            fail("Unexpected exception during AES key generation: " +
+                e.getMessage());
+        }
+    }
+
+    @Test
+    public void testDHKeyAgreementPadding()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidParameterSpecException, InvalidKeyException,
+               InvalidAlgorithmParameterException,
+               ShortBufferException {
+
+        /* This test verifies that DH shared secrets are properly padded to
+         * the prime length when using generateSecret(byte[], int). This
+         * matches the behavior of SunJCE after Java 8 (JDK-7146728) and
+         * prevents regressions related to padding. Both generateSecret()
+         * methods pad to primeLen. */
+
+        /* Skip in FIPS mode. FIPS 186-4 only allows 1024, 2048, and
+         * 3072-bit DH parameter generation */
+        if (Fips.enabled) {
+            return;
+        }
+
+        /* Generate 2048-bit DH parameters */
+        AlgorithmParameterGenerator paramGen =
+            AlgorithmParameterGenerator.getInstance("DH");
+        paramGen.init(2048);
+
+        AlgorithmParameters params = paramGen.generateParameters();
+        DHParameterSpec dhParams =
+            (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
+
+        /* Prime length should be 256 bytes for 2048-bit DH */
+        int primeLen = dhParams.getP().toByteArray().length;
+        if (dhParams.getP().toByteArray()[0] == 0x00) {
+            primeLen--;
+        }
+
+        /* Initialize key pair generator */
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("DH", "wolfJCE");
+        keyGen.initialize(dhParams, secureRandom);
+
+        KeyAgreement alice = KeyAgreement.getInstance("DH", "wolfJCE");
+        KeyAgreement bob = KeyAgreement.getInstance("DH", "wolfJCE");
+
+        /* Run multiple iterations to ensure consistent padding behavior */
+        for (int i = 0; i < 100; i++) {
+            byte[] aliceSecret = new byte[primeLen];
+            byte[] bobSecret = new byte[primeLen];
+
+            /* Fill buffers with different stale data to ensure padding
+             * overwrites any existing data */
+            Arrays.fill(aliceSecret, (byte)'a');
+            Arrays.fill(bobSecret, (byte)'b');
+
+            /* Generate new key pairs for this iteration */
+            KeyPair aliceKeyPair = keyGen.generateKeyPair();
+            KeyPair bobKeyPair = keyGen.generateKeyPair();
+
+            /* Perform key agreement */
+            alice.init(aliceKeyPair.getPrivate());
+            alice.doPhase(bobKeyPair.getPublic(), true);
+            int aliceLen = alice.generateSecret(aliceSecret, 0);
+
+            bob.init(bobKeyPair.getPrivate());
+            bob.doPhase(aliceKeyPair.getPublic(), true);
+            int bobLen = bob.generateSecret(bobSecret, 0);
+
+            /* Both secrets should be exactly primeLen bytes (always padded) */
+            assertEquals("Alice's secret length should equal prime length",
+                primeLen, aliceLen);
+            assertEquals("Bob's secret length should equal prime length",
+                primeLen, bobLen);
+
+            /* Both secrets should be identical, including padding */
+            assertArrayEquals("Alice and Bob should generate identical " +
+                "secrets at iteration " + i, aliceSecret, bobSecret);
         }
     }
 

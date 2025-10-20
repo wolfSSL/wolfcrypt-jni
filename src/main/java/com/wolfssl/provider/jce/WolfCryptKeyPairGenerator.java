@@ -28,6 +28,7 @@ import java.security.KeyPair;
 import java.security.InvalidAlgorithmParameterException;
 
 import java.security.SecureRandom;
+import java.security.InvalidParameterException;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.KeyFactory;
 import java.security.spec.KeySpec;
@@ -114,6 +115,42 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
             }
         }
 
+        /* Set default parameters for DH key generation.
+         * Try FFDHE 3072 first (matches SunJCE default), but fall back
+         * to FFDHE 2048 if 3072 is not available in the wolfSSL build. */
+        if (type == KeyType.WC_DH) {
+            try {
+                /* Try FFDHE 3072 first */
+                byte[][] params = Dh.getNamedDhParams(Dh.WC_FFDHE_3072);
+                if (params != null && params.length == 2 &&
+                    params[0] != null && params[0].length > 0) {
+                    this.dhP = params[0];
+                    this.dhG = params[1];
+                }
+                else {
+                    /* Fall back to FFDHE 2048 if 3072 not available */
+                    params = Dh.getNamedDhParams(Dh.WC_FFDHE_2048);
+                    if (params != null && params.length == 2 &&
+                        params[0] != null && params[0].length > 0) {
+                        this.dhP = params[0];
+                        this.dhG = params[1];
+                    }
+                }
+            }
+            catch (Exception e) {
+                /* Not fatal if default param initialization. User can still
+                 * initialize() before generateKeyPair() */
+            }
+
+            /* Initialize RNG for default key generation */
+            synchronized (rngLock) {
+                if (this.rng == null) {
+                    this.rng = new Rng();
+                    this.rng.init();
+                }
+            }
+        }
+
         if (WolfCryptDebug.DEBUG) {
             algString = typeToString(type);
         }
@@ -123,9 +160,68 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     public synchronized void initialize(int keysize, SecureRandom random) {
 
         if (type == KeyType.WC_DH) {
-            throw new RuntimeException(
-                "wolfJCE requires users to explicitly set DH parameters, " +
-                "please call initialize() with DHParameterSpec");
+            int namedGroup = -1;
+
+            /* Map key size (in bits) to FFDHE named group.
+             * Only standard FFDHE sizes are supported (2048, 3072, 4096,
+             * 6144, 8192). Throw InvalidParameterException for unsupported
+             * sizes, matching SunJCE behavior. */
+            if (keysize == 2048) {
+                namedGroup = Dh.WC_FFDHE_2048;
+            }
+            else if (keysize == 3072) {
+                namedGroup = Dh.WC_FFDHE_3072;
+            }
+            else if (keysize == 4096) {
+                namedGroup = Dh.WC_FFDHE_4096;
+            }
+            else if (keysize == 6144) {
+                namedGroup = Dh.WC_FFDHE_6144;
+            }
+            else if (keysize == 8192) {
+                namedGroup = Dh.WC_FFDHE_8192;
+            }
+            else {
+                throw new java.security.InvalidParameterException(
+                    "DH key size must be 2048, 3072, 4096, 6144, or 8192. " +
+                    "Unsupported size: " + keysize);
+            }
+
+            try {
+                /* Get DH parameters for named group. If this FFDHE group
+                 * is not compiled into wolfSSL, throw an exception. */
+                byte[][] params = Dh.getNamedDhParams(namedGroup);
+                if (params != null && params.length == 2 &&
+                    params[0] != null && params[0].length > 0) {
+                    this.dhP = params[0];
+                    this.dhG = params[1];
+                }
+                else {
+                    throw new java.security.InvalidParameterException(
+                        "FFDHE " + keysize + "-bit group not available in " +
+                        "native wolfSSL library. Only FFDHE groups compiled " +
+                        "into wolfSSL can be used.");
+                }
+            }
+            catch (InvalidParameterException e) {
+                throw e;
+            }
+            catch (Exception e) {
+                throw new RuntimeException(
+                    "Failed to initialize DH parameters: " + e.getMessage());
+            }
+
+            synchronized (rngLock) {
+                if (this.rng == null) {
+                    this.rng = new Rng();
+                    this.rng.init();
+                }
+            }
+
+            log("init with DH keysize: " + keysize +
+                " (using FFDHE group " + namedGroup + ")");
+
+            return;
         }
 
         if (type == KeyType.WC_ECC) {
@@ -408,9 +504,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 DHPublicKey  dhPub  = null;
 
                 if (dhP == null || dhG == null) {
-                    throw new RuntimeException(
-                        "No DH parameters set, wolfJCE requires users to " +
-                        "set through KeyPairGenerator.initialize()");
+                    throw new RuntimeException("No DH parameters available");
                 }
 
                 Dh dh = new Dh();
@@ -424,14 +518,14 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 }
 
                 privSpec = new DHPrivateKeySpec(
-                                new BigInteger(dh.getPrivateKey()),
-                                new BigInteger(dhP),
-                                new BigInteger(dhG));
+                    new BigInteger(1, dh.getPrivateKey()),
+                    new BigInteger(1, dhP),
+                    new BigInteger(1, dhG));
 
                 pubSpec = new DHPublicKeySpec(
-                                new BigInteger(dh.getPublicKey()),
-                                new BigInteger(dhP),
-                                new BigInteger(dhG));
+                    new BigInteger(1, dh.getPublicKey()),
+                    new BigInteger(1, dhP),
+                    new BigInteger(1, dhG));
 
                 dh.releaseNativeStruct();
 

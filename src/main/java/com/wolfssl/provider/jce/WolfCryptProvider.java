@@ -355,6 +355,16 @@ public final class WolfCryptProvider extends Provider {
             put("KeyAgreement.DiffieHellman",
                 "com.wolfssl.provider.jce.WolfCryptKeyAgreement$wcDH");
             put("Alg.Alias.KeyAgreement.DH", "DiffieHellman");
+
+            /* DH AlgorithmParameters */
+            put("AlgorithmParameters.DH",
+                "com.wolfssl.provider.jce.WolfCryptDhParameters");
+            put("Alg.Alias.AlgorithmParameters.DiffieHellman", "DH");
+
+            /* DH AlgorithmParameterGenerator */
+            put("AlgorithmParameterGenerator.DH",
+                "com.wolfssl.provider.jce.WolfCryptDhParameterGenerator");
+            put("Alg.Alias.AlgorithmParameterGenerator.DiffieHellman", "DH");
         }
         if (FeatureDetect.EccDheEnabled()) {
             put("KeyAgreement.ECDH",
@@ -475,6 +485,12 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.EccEnabled()) {
             put("KeyFactory.EC",
                 "com.wolfssl.provider.jce.WolfCryptECKeyFactory");
+        }
+        if (FeatureDetect.DhEnabled()) {
+            put("KeyFactory.DH",
+                "com.wolfssl.provider.jce.WolfCryptDHKeyFactory");
+            put("Alg.Alias.KeyFactory.DiffieHellman", "DH");
+            put("Alg.Alias.KeyFactory.1.2.840.113549.1.3.1", "DH");
         }
 
         /* KeyStore */

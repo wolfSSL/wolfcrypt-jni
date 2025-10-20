@@ -11,7 +11,9 @@
 - Keep lines under 80 characters maximum length
 - MUST only use multi-line comments, no "//" style ones
 - MUST remove all trailing white space
-- Use 4 spaces for one tab, no hard tabs
+- MUST use 4 spaces for one tab, no hard tabs
+- MUST use XMALLOC/XFREE for memory allocation instead of malloc/free
+- MUST cast XMALLOC back to type being allocated
 
 # Source Code Organization
 - The source code is organized into the following directories:
