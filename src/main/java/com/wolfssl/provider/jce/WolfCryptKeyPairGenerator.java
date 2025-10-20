@@ -232,6 +232,14 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         }
 
         if (type == KeyType.WC_RSA || type == KeyType.WC_RSA_PSS) {
+
+            /* Sanity check on key size */
+            if (keysize < Rsa.RSA_MIN_SIZE) {
+                throw new InvalidParameterException(
+                    "RSA key size too small, min is " +
+                    Rsa.RSA_MIN_SIZE);
+            }
+
             /* Set default RSA exponent for wolfSSL */
             this.publicExponent = Rsa.getDefaultRsaExponent();
         }
