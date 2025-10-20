@@ -9,6 +9,16 @@ extern "C" {
 #endif
 #undef com_wolfssl_wolfcrypt_Dh_NULL
 #define com_wolfssl_wolfcrypt_Dh_NULL 0LL
+#undef com_wolfssl_wolfcrypt_Dh_WC_FFDHE_2048
+#define com_wolfssl_wolfcrypt_Dh_WC_FFDHE_2048 256L
+#undef com_wolfssl_wolfcrypt_Dh_WC_FFDHE_3072
+#define com_wolfssl_wolfcrypt_Dh_WC_FFDHE_3072 257L
+#undef com_wolfssl_wolfcrypt_Dh_WC_FFDHE_4096
+#define com_wolfssl_wolfcrypt_Dh_WC_FFDHE_4096 258L
+#undef com_wolfssl_wolfcrypt_Dh_WC_FFDHE_6144
+#define com_wolfssl_wolfcrypt_Dh_WC_FFDHE_6144 259L
+#undef com_wolfssl_wolfcrypt_Dh_WC_FFDHE_8192
+#define com_wolfssl_wolfcrypt_Dh_WC_FFDHE_8192 260L
 /*
  * Class:     com_wolfssl_wolfcrypt_Dh
  * Method:    mallocNativeStruct_internal
@@ -56,6 +66,86 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair
  */
 JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree
   (JNIEnv *, jobject, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhCheckPubKey
+ * Signature: ([B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhCheckPubKey
+  (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhCopyNamedKey
+ * Signature: (I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhCopyNamedKey
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhGenerateParams
+ * Signature: (Lcom/wolfssl/wolfcrypt/Rng;I)[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateParams
+  (JNIEnv *, jclass, jobject, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhImportKeyPair
+ * Signature: ([B[B[B[B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhImportKeyPair
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhExportKeyPair
+ * Signature: ()[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhExportKeyPair
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhExportParams
+ * Signature: ()[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhExportParams
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhPrivateKeyDecode
+ * Signature: ([B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhPrivateKeyDecode
+  (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhPrivateKeyEncode
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhPrivateKeyEncode
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhPublicKeyDecode
+ * Signature: ([B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhPublicKeyDecode
+  (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_DhPublicKeyEncode
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1DhPublicKeyEncode
+  (JNIEnv *, jobject);
 
 #ifdef __cplusplus
 }

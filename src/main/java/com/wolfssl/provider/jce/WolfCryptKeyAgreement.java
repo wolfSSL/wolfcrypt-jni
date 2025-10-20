@@ -235,6 +235,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         throws IllegalStateException, ShortBufferException {
 
         byte tmp[] = null;
+        int returnLen = 0;
 
         if (this.state != EngineState.WC_PUBKEY_DONE)
             throw new IllegalStateException(
@@ -248,12 +249,6 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         switch (this.type) {
             case WC_DH:
 
-                if ((sharedSecret.length - offset) < this.primeLen) {
-                    throw new ShortBufferException(
-                        "Input buffer too small when generating " +
-                        "shared secret");
-                }
-
                 /* public key has been stored inside this.dh already */
                 tmp = this.dh.makeSharedSecret();
                 if (tmp == null) {
@@ -261,18 +256,48 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                             "shared secret");
                 }
 
-                if ((sharedSecret.length - offset) < tmp.length) {
+                /* DH shared secrets can vary in length depending on if they
+                 * are padded or not at the beginning with zero bytes to make
+                 * a total output size matching the prime length.
+                 *
+                 * Native wolfCrypt does not prepend zero bytes to DH shared
+                 * secrets, following RFC 5246 (8.1.2) which instructs to
+                 * strip leading zero bytes.
+                 *
+                 * Sun KeyAgreement DH implementations as of after Java 8
+                 * prepend zero bytes if total length is not equal to prime
+                 * length. This was changed with OpenJDK bug fix JDK-7146728.
+                 *
+                 * BouncyCastle also behaves the same way, prepending zero
+                 * bytes if total secret size is not prime length. This
+                 * follows RFC 2631 (2.1.2).
+                 *
+                 * To match Sun and BC behavior, we pad the secret to primeLen
+                 * by prepending zeros for both generateSecret() methods.
+                 */
+                byte[] paddedSecret = new byte[this.primeLen];
+                Arrays.fill(paddedSecret, (byte)0);
+                System.arraycopy(tmp, 0, paddedSecret,
+                    paddedSecret.length - tmp.length, tmp.length);
+
+                if ((sharedSecret.length - offset) < paddedSecret.length) {
                     zeroArray(tmp);
+                    zeroArray(paddedSecret);
                     throw new ShortBufferException(
                         "Output buffer too small when generating " +
                         "DH shared secret");
                 }
 
-                /* copy array back to output offset */
-                System.arraycopy(tmp, 0, sharedSecret, offset, tmp.length);
+                /* copy padded array back to output offset */
+                System.arraycopy(paddedSecret, 0, sharedSecret, offset,
+                    paddedSecret.length);
+
+                returnLen = this.primeLen;
 
                 /* reset state, using same private info and alg params */
                 this.state = EngineState.WC_PRIVKEY_DONE;
+
+                zeroArray(paddedSecret);
 
                 break;
 
@@ -294,6 +319,8 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 /* copy array back to output ofset */
                 System.arraycopy(tmp, 0, sharedSecret, offset, tmp.length);
 
+                returnLen = tmp.length;
+
                 /* reset state, using same private info and alg params */
                 byte[] priv = this.ecPrivate.exportPrivate();
                 if (priv == null) {
@@ -313,15 +340,11 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 break;
         };
 
-        if (tmp != null) {
+        log("generated secret, len: " + returnLen);
 
-            log("generated secret, len: " + tmp.length);
+        zeroArray(tmp);
 
-            zeroArray(tmp);
-            return tmp.length;
-        }
-
-        return 0;
+        return returnLen;
     }
 
     @Override
@@ -330,19 +353,66 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                InvalidKeyException {
 
         byte secret[] = engineGenerateSecret();
+        byte[] keyMaterial = null;
+        SecretKey ret = null;
 
         log("generating SecretKey for " + algorithm);
 
-        if (algorithm.equals("DES")) {
-            return (SecretKey)new DESKeySpec(secret);
+        try {
+            if (algorithm.equals("DES")) {
+                /* DES requires 8 bytes */
+                if (secret.length < DESKeySpec.DES_KEY_LEN) {
+                    throw new InvalidKeyException(
+                        "Shared secret is too short for DES key");
+                }
+                keyMaterial = new byte[DESKeySpec.DES_KEY_LEN];
+                System.arraycopy(secret, 0, keyMaterial, 0,
+                    DESKeySpec.DES_KEY_LEN);
+                ret = new SecretKeySpec(keyMaterial, algorithm);
 
-        } else if (algorithm.equals("DESede")) {
-            return (SecretKey)new DESedeKeySpec(secret);
+            } else if (algorithm.equals("DESede")) {
+                /* DESede requires 24 bytes (3-key) */
+                if (secret.length < DESedeKeySpec.DES_EDE_KEY_LEN) {
+                    throw new InvalidKeyException(
+                        "Shared secret is too short for DESede key");
+                }
+                keyMaterial = new byte[DESedeKeySpec.DES_EDE_KEY_LEN];
+                System.arraycopy(secret, 0, keyMaterial, 0,
+                    DESedeKeySpec.DES_EDE_KEY_LEN);
+                ret = new SecretKeySpec(keyMaterial, algorithm);
 
-        } else {
-            /* AES and default */
-            return new SecretKeySpec(secret, algorithm);
+            } else if (algorithm.equals("AES")) {
+                /* AES requires specific key sizes: 128, 192, or 256 bits.
+                 * Use first 16 bytes (128-bit) by default, or 32 bytes
+                 * (256-bit) if shared secret is >= 32 bytes. */
+                int aesKeyLen = 16; /* default to AES-128 */
+                if (secret.length >= 32) {
+                    aesKeyLen = 32; /* use AES-256 if possible */
+                } else if (secret.length >= 24) {
+                    aesKeyLen = 24; /* use AES-192 if >= 24 bytes */
+                }
+
+                if (secret.length < aesKeyLen) {
+                    throw new InvalidKeyException(
+                        "Shared secret is too short for AES key " +
+                        "(need at least " + aesKeyLen + " bytes)");
+                }
+
+                keyMaterial = new byte[aesKeyLen];
+                System.arraycopy(secret, 0, keyMaterial, 0, aesKeyLen);
+                ret = new SecretKeySpec(keyMaterial, algorithm);
+
+            } else {
+                /* Other algorithms: use full shared secret */
+                ret = new SecretKeySpec(secret, algorithm);
+            }
+
+        } finally {
+            zeroArray(secret);
+            zeroArray(keyMaterial);
         }
+
+        return ret;
     }
 
     /**
