@@ -259,7 +259,7 @@ public class WolfCryptKeyPairGeneratorTest {
             /* bad key size should fail */
             try {
                 kpg.initialize(10);
-            } catch (WolfCryptException e) {}
+            } catch (InvalidParameterException e) {}
         }
     }
 
