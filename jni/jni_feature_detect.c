@@ -256,6 +256,19 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCcmEnable
 #endif
 }
 
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCtsEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if defined(OPENSSL_EXTRA) && !defined(NO_AES) && defined(HAVE_CTS) && \
+    !defined(WOLFSSL_NO_OPENSSL_AES_LOW_LEVEL_API)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCmacEnabled
   (JNIEnv* env, jclass jcl)
 {

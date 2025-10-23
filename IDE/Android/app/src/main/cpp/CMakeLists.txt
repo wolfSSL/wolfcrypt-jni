@@ -336,7 +336,14 @@ add_library(wolfssl SHARED
 # wolfCrypt JNI Java files are tied into build in Module build.gradle file
 add_library(wolfcryptjni SHARED
         ${wolfcryptjni_DIR}/jni/jni_aes.c
+        ${wolfcryptjni_DIR}/jni/jni_aesccm.c
+        ${wolfcryptjni_DIR}/jni/jni_aescmac.c
+        ${wolfcryptjni_DIR}/jni/jni_aesctr.c
+        ${wolfcryptjni_DIR}/jni/jni_aescts.c
+        ${wolfcryptjni_DIR}/jni/jni_aesecb.c
         ${wolfcryptjni_DIR}/jni/jni_aesgcm.c
+        ${wolfcryptjni_DIR}/jni/jni_aesgmac.c
+        ${wolfcryptjni_DIR}/jni/jni_aesofb.c
         ${wolfcryptjni_DIR}/jni/jni_asn.c
         ${wolfcryptjni_DIR}/jni/jni_chacha.c
         ${wolfcryptjni_DIR}/jni/jni_curve25519.c

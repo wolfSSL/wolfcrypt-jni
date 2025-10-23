@@ -3368,6 +3368,344 @@ public class WolfCryptCipherTest {
     }
 
     @Test
+    public void testAesCtsNoPadding()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/CTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        /* RFC 3962 test vector (48-byte test case 4) */
+        byte[] key = {
+            (byte)0x63, (byte)0x68, (byte)0x69, (byte)0x63,
+            (byte)0x6b, (byte)0x65, (byte)0x6e, (byte)0x20,
+            (byte)0x74, (byte)0x65, (byte)0x72, (byte)0x69,
+            (byte)0x79, (byte)0x61, (byte)0x6b, (byte)0x69
+        };
+
+        byte[] iv = {
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00
+        };
+
+        byte[] plaintext48 = {
+            (byte)0x49, (byte)0x20, (byte)0x77, (byte)0x6f,
+            (byte)0x75, (byte)0x6c, (byte)0x64, (byte)0x20,
+            (byte)0x6c, (byte)0x69, (byte)0x6b, (byte)0x65,
+            (byte)0x20, (byte)0x74, (byte)0x68, (byte)0x65,
+            (byte)0x20, (byte)0x47, (byte)0x65, (byte)0x6e,
+            (byte)0x65, (byte)0x72, (byte)0x61, (byte)0x6c,
+            (byte)0x20, (byte)0x47, (byte)0x61, (byte)0x75,
+            (byte)0x27, (byte)0x73, (byte)0x20, (byte)0x43,
+            (byte)0x68, (byte)0x69, (byte)0x63, (byte)0x6b,
+            (byte)0x65, (byte)0x6e, (byte)0x2c, (byte)0x20,
+            (byte)0x70, (byte)0x6c, (byte)0x65, (byte)0x61,
+            (byte)0x73, (byte)0x65, (byte)0x2c, (byte)0x20
+        };
+
+        byte[] expected48 = {
+            (byte)0x97, (byte)0x68, (byte)0x72, (byte)0x68,
+            (byte)0xd6, (byte)0xec, (byte)0xcc, (byte)0xc0,
+            (byte)0xc0, (byte)0x7b, (byte)0x25, (byte)0xe2,
+            (byte)0x5e, (byte)0xcf, (byte)0xe5, (byte)0x84,
+            (byte)0x9d, (byte)0xad, (byte)0x8b, (byte)0xbb,
+            (byte)0x96, (byte)0xc4, (byte)0xcd, (byte)0xc0,
+            (byte)0x3b, (byte)0xc1, (byte)0x03, (byte)0xe1,
+            (byte)0xa1, (byte)0x94, (byte)0xbb, (byte)0xd8,
+            (byte)0x39, (byte)0x31, (byte)0x25, (byte)0x23,
+            (byte)0xa7, (byte)0x86, (byte)0x62, (byte)0xd5,
+            (byte)0xbe, (byte)0x7f, (byte)0xcb, (byte)0xcc,
+            (byte)0x98, (byte)0xeb, (byte)0xf5, (byte)0xa8
+        };
+
+        /* Test encrypt */
+        Cipher cipher = Cipher.getInstance("AES/CTS/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        byte[] ciphertext = cipher.doFinal(plaintext48);
+        assertArrayEquals(expected48, ciphertext);
+
+        /* Test decrypt */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+        assertArrayEquals(plaintext48, decrypted);
+    }
+
+    @Test
+    public void testAesCtsNoPaddingWithUpdate()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/CTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        /* RFC 3962 test vector (32-byte test case 3) */
+        byte[] key = {
+            (byte)0x63, (byte)0x68, (byte)0x69, (byte)0x63,
+            (byte)0x6b, (byte)0x65, (byte)0x6e, (byte)0x20,
+            (byte)0x74, (byte)0x65, (byte)0x72, (byte)0x69,
+            (byte)0x79, (byte)0x61, (byte)0x6b, (byte)0x69
+        };
+
+        byte[] iv = {
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00
+        };
+
+        byte[] plaintext = {
+            (byte)0x49, (byte)0x20, (byte)0x77, (byte)0x6f,
+            (byte)0x75, (byte)0x6c, (byte)0x64, (byte)0x20,
+            (byte)0x6c, (byte)0x69, (byte)0x6b, (byte)0x65,
+            (byte)0x20, (byte)0x74, (byte)0x68, (byte)0x65,
+            (byte)0x20, (byte)0x47, (byte)0x65, (byte)0x6e,
+            (byte)0x65, (byte)0x72, (byte)0x61, (byte)0x6c,
+            (byte)0x20, (byte)0x47, (byte)0x61, (byte)0x75,
+            (byte)0x27, (byte)0x73, (byte)0x20, (byte)0x43
+        };
+
+        byte[] expected = {
+            (byte)0x39, (byte)0x31, (byte)0x25, (byte)0x23,
+            (byte)0xa7, (byte)0x86, (byte)0x62, (byte)0xd5,
+            (byte)0xbe, (byte)0x7f, (byte)0xcb, (byte)0xcc,
+            (byte)0x98, (byte)0xeb, (byte)0xf5, (byte)0xa8,
+            (byte)0x97, (byte)0x68, (byte)0x72, (byte)0x68,
+            (byte)0xd6, (byte)0xec, (byte)0xcc, (byte)0xc0,
+            (byte)0xc0, (byte)0x7b, (byte)0x25, (byte)0xe2,
+            (byte)0x5e, (byte)0xcf, (byte)0xe5, (byte)0x84
+        };
+
+        /* Test encrypt with update() calls */
+        Cipher cipher = Cipher.getInstance("AES/CTS/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+
+        /* Process plaintext in chunks, CTS buffers all data until final */
+        byte[] part1 = cipher.update(plaintext, 0, 16);
+        byte[] part2 = cipher.doFinal(plaintext, 16, 16);
+
+        /* Combine results */
+        byte[] ciphertext = new byte[(part1 != null ? part1.length : 0) +
+                                     (part2 != null ? part2.length : 0)];
+        int offset = 0;
+        if (part1 != null && part1.length > 0) {
+            System.arraycopy(part1, 0, ciphertext, offset, part1.length);
+            offset += part1.length;
+        }
+        if (part2 != null && part2.length > 0) {
+            System.arraycopy(part2, 0, ciphertext, offset, part2.length);
+        }
+
+        assertArrayEquals(expected, ciphertext);
+
+        /* Test decrypt with update() calls */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+
+        byte[] decPart1 = cipher.update(ciphertext, 0, 16);
+        byte[] decPart2 = cipher.doFinal(ciphertext, 16, 16);
+
+        byte[] decrypted = new byte[(decPart1 != null ? decPart1.length : 0) +
+                                    (decPart2 != null ? decPart2.length : 0)];
+        offset = 0;
+        if (decPart1 != null && decPart1.length > 0) {
+            System.arraycopy(decPart1, 0, decrypted, offset, decPart1.length);
+            offset += decPart1.length;
+        }
+        if (decPart2 != null && decPart2.length > 0) {
+            System.arraycopy(decPart2, 0, decrypted, offset, decPart2.length);
+        }
+
+        assertArrayEquals(plaintext, decrypted);
+    }
+
+    @Test
+    public void testAesCtsVariousLengths()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/CTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        byte[] key = {
+            (byte)0x63, (byte)0x68, (byte)0x69, (byte)0x63,
+            (byte)0x6b, (byte)0x65, (byte)0x6e, (byte)0x20,
+            (byte)0x74, (byte)0x65, (byte)0x72, (byte)0x69,
+            (byte)0x79, (byte)0x61, (byte)0x6b, (byte)0x69
+        };
+
+        byte[] iv = new byte[16]; /* all zeros */
+
+        /* Test with various data sizes > 16 bytes
+         * CTS requires input > one block (16 bytes) */
+        int[] dataSizes = {17, 18, 31, 32, 33, 47, 48, 49, 63, 64, 65};
+
+        for (int size : dataSizes) {
+            byte[] plaintext = new byte[size];
+            secureRandom.nextBytes(plaintext);
+
+            Cipher cipher =
+                Cipher.getInstance("AES/CTS/NoPadding", jceProvider);
+            SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+            IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+            /* Encrypt */
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+            byte[] ciphertext = cipher.doFinal(plaintext);
+
+            /* CTS output should be same length as input */
+            assertEquals("CTS output length mismatch for size " + size,
+                plaintext.length, ciphertext.length);
+
+            /* Decrypt */
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+            byte[] decrypted = cipher.doFinal(ciphertext);
+
+            assertArrayEquals("Failed for size " + size, plaintext, decrypted);
+        }
+    }
+
+    @Test
+    public void testAesCtsMinimumLength()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("AES/CTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        byte[] key = new byte[16];
+        byte[] iv = new byte[16];
+
+        Cipher cipher = Cipher.getInstance("AES/CTS/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+
+        /* CTS requires > 16 bytes, 16 bytes should fail */
+        byte[] input16 = new byte[16];
+        try {
+            cipher.doFinal(input16);
+            fail("CTS should require input length > 16 bytes");
+        } catch (IllegalBlockSizeException e) {
+            /* Expected */
+        } catch (BadPaddingException e) {
+            /* May also throw BadPaddingException */
+        }
+
+        /* 17 bytes should succeed */
+        byte[] input17 = new byte[17];
+        try {
+            byte[] result = cipher.doFinal(input17);
+            assertNotNull("17 byte input should succeed", result);
+            assertEquals("Output length should match input length",
+                17, result.length);
+        } catch (Exception e) {
+            fail("17 byte input should succeed: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testAesCtsThreaded() throws InterruptedException {
+        if (!enabledJCEAlgos.contains("AES/CTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        int numThreads = 50;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<Integer> results =
+            new LinkedBlockingQueue<>();
+
+        final byte[] key = {
+            (byte)0x63, (byte)0x68, (byte)0x69, (byte)0x63,
+            (byte)0x6b, (byte)0x65, (byte)0x6e, (byte)0x20,
+            (byte)0x74, (byte)0x65, (byte)0x72, (byte)0x69,
+            (byte)0x79, (byte)0x61, (byte)0x6b, (byte)0x69
+        };
+
+        final byte[] iv = new byte[16];
+
+        final byte[] plaintext = {
+            (byte)0x49, (byte)0x20, (byte)0x77, (byte)0x6f,
+            (byte)0x75, (byte)0x6c, (byte)0x64, (byte)0x20,
+            (byte)0x6c, (byte)0x69, (byte)0x6b, (byte)0x65,
+            (byte)0x20, (byte)0x74, (byte)0x68, (byte)0x65,
+            (byte)0x20, (byte)0x47, (byte)0x65, (byte)0x6e,
+            (byte)0x65, (byte)0x72, (byte)0x61, (byte)0x6c,
+            (byte)0x20, (byte)0x47, (byte)0x61, (byte)0x75,
+            (byte)0x6d, (byte)0x27, (byte)0x73, (byte)0x20
+        };
+
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override
+                public void run() {
+                    int ret = 0;
+
+                    try {
+                        Cipher cipher = Cipher.getInstance(
+                            "AES/CTS/NoPadding", jceProvider);
+                        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+                        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+                        /* Test encrypt */
+                        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+                        byte[] ciphertext = cipher.doFinal(plaintext);
+
+                        /* Test decrypt */
+                        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+                        byte[] decrypted = cipher.doFinal(ciphertext);
+
+                        if (!Arrays.equals(plaintext, decrypted)) {
+                            ret = 1;
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        ret = 1;
+                    }
+
+                    results.add(ret);
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur == 1) {
+                fail("Threading error in AES-CTS Cipher thread test");
+            }
+        }
+    }
+
+    @Test
     public void testDESedeCbcNoPadding()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
