@@ -18,6 +18,27 @@
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Aes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesCcm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesCmac.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesCtr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesEcb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesGcm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesGmac.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesOfb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Asn.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -102,6 +123,30 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\jni\jni_aes.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jni\jni_aesccm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jni\jni_aescmac.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jni\jni_aesctr.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jni\jni_aescts.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jni\jni_aesecb.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jni\jni_aesgcm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jni\jni_aesgmac.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\jni\jni_aesofb.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\jni\jni_asn.c">

@@ -35,6 +35,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/Aes.java \
     src/main/java/com/wolfssl/wolfcrypt/AesCcm.java \
     src/main/java/com/wolfssl/wolfcrypt/AesCmac.java \
+    src/main/java/com/wolfssl/wolfcrypt/AesCts.java \
     src/main/java/com/wolfssl/wolfcrypt/AesCtr.java \
     src/main/java/com/wolfssl/wolfcrypt/AesEcb.java \
     src/main/java/com/wolfssl/wolfcrypt/AesGcm.java \

@@ -104,6 +104,7 @@ The JCE provider currently supports the following algorithms:
     Cipher Class
         AES/CBC/NoPadding
         AES/CBC/PKCS5Padding
+        AES/CTS/NoPadding
         AES/CCM/NoPadding
         AES/CTR/NoPadding
         AES/ECB/NoPadding

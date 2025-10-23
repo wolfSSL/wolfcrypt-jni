@@ -36,7 +36,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Aes.h" />
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesCcm.h" />
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesCmac.h" />
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesCtr.h" />
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesCts.h" />
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesEcb.h" />
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesGcm.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesGmac.h" />
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesOfb.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Asn.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Chacha.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Curve25519.h" />
@@ -67,8 +74,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\jni\jni_aes.c" />
+    <ClCompile Include="..\..\jni\jni_aesccm.c" />
+    <ClCompile Include="..\..\jni\jni_aescmac.c" />
+    <ClCompile Include="..\..\jni\jni_aesctr.c" />
+    <ClCompile Include="..\..\jni\jni_aescts.c" />
+    <ClCompile Include="..\..\jni\jni_aesecb.c" />
     <ClCompile Include="..\..\jni\jni_aesgcm.c" />
     <ClCompile Include="..\..\jni\jni_aesgmac.c" />
+    <ClCompile Include="..\..\jni\jni_aesofb.c" />
     <ClCompile Include="..\..\jni\jni_asn.c" />
     <ClCompile Include="..\..\jni\jni_chacha.c" />
     <ClCompile Include="..\..\jni\jni_curve25519.c" />
