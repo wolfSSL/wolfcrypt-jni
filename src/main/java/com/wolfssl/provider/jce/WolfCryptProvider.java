@@ -337,6 +337,10 @@ public final class WolfCryptProvider extends Provider {
             put("Cipher.AES/CCM/NoPadding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCCMNoPadding");
         }
+        if (FeatureDetect.AesCtsEnabled()) {
+            put("Cipher.AES/CTS/NoPadding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCTSNoPadding");
+        }
 
         if (FeatureDetect.Des3Enabled()) {
             put("Cipher.DESede/CBC/NoPadding",
