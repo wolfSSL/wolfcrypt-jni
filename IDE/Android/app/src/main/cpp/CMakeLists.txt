@@ -257,6 +257,7 @@ list(REMOVE_ITEM TLS_SOURCES ${wolfssl_DIR}/src/ssl_load.c)
 list(REMOVE_ITEM TLS_SOURCES ${wolfssl_DIR}/src/ssl_misc.c)
 list(REMOVE_ITEM TLS_SOURCES ${wolfssl_DIR}/src/ssl_p7p12.c)
 list(REMOVE_ITEM TLS_SOURCES ${wolfssl_DIR}/src/ssl_sess.c)
+list(REMOVE_ITEM TLS_SOURCES ${wolfssl_DIR}/src/ssl_sk.c)
 list(REMOVE_ITEM TLS_SOURCES ${wolfssl_DIR}/src/x509.c)
 list(REMOVE_ITEM TLS_SOURCES ${wolfssl_DIR}/src/x509_str.c)
 
@@ -336,7 +337,14 @@ add_library(wolfssl SHARED
 # wolfCrypt JNI Java files are tied into build in Module build.gradle file
 add_library(wolfcryptjni SHARED
         ${wolfcryptjni_DIR}/jni/jni_aes.c
+        ${wolfcryptjni_DIR}/jni/jni_aesccm.c
+        ${wolfcryptjni_DIR}/jni/jni_aescmac.c
+        ${wolfcryptjni_DIR}/jni/jni_aesctr.c
+        ${wolfcryptjni_DIR}/jni/jni_aescts.c
+        ${wolfcryptjni_DIR}/jni/jni_aesecb.c
         ${wolfcryptjni_DIR}/jni/jni_aesgcm.c
+        ${wolfcryptjni_DIR}/jni/jni_aesgmac.c
+        ${wolfcryptjni_DIR}/jni/jni_aesofb.c
         ${wolfcryptjni_DIR}/jni/jni_asn.c
         ${wolfcryptjni_DIR}/jni/jni_chacha.c
         ${wolfcryptjni_DIR}/jni/jni_curve25519.c
