@@ -46,9 +46,13 @@ import java.security.spec.KeySpec;
 import java.security.spec.InvalidKeySpecException;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
+import javax.crypto.Cipher;
 import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.spec.IvParameterSpec;
 
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 
@@ -67,7 +71,8 @@ public class WolfCryptSecretKeyFactoryTest {
         "PBKDF2WithHmacSHA3-224",
         "PBKDF2WithHmacSHA3-256",
         "PBKDF2WithHmacSHA3-384",
-        "PBKDF2WithHmacSHA3-512"
+        "PBKDF2WithHmacSHA3-512",
+        "AES"
     };
 
     private static ArrayList<String> enabledAlgos =
@@ -1092,6 +1097,335 @@ public class WolfCryptSecretKeyFactoryTest {
                 fail("Threading error in generateSecret() threaded test");
             }
         }
+    }
+
+    @Test
+    public void testGetAESSecretKeyFactoryFromProvider()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        SecretKeyFactory skf = SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf);
+
+        /* test invalid algorithm */
+        try {
+            skf = SecretKeyFactory.getInstance("NotValidAlgo", provider);
+            fail("SecretKeyFactory.getInstance should throw " +
+                 "NoSuchAlgorithmException");
+        } catch (NoSuchAlgorithmException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testAESGenerateSecret128bit()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidKeySpecException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[Aes.KEY_SIZE_128];
+        Arrays.fill(keyBytes, (byte)0x2A);
+
+        SecretKeySpec spec = new SecretKeySpec(keyBytes, "AES");
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf);
+
+        SecretKey key = skf.generateSecret(spec);
+        assertNotNull(key);
+        assertEquals("AES", key.getAlgorithm());
+        assertEquals("RAW", key.getFormat());
+        assertTrue(Arrays.equals(keyBytes, key.getEncoded()));
+    }
+
+    @Test
+    public void testAESGenerateSecret192bit()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidKeySpecException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[Aes.KEY_SIZE_192];
+        Arrays.fill(keyBytes, (byte)0x2A);
+
+        SecretKeySpec spec = new SecretKeySpec(keyBytes, "AES");
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf);
+
+        SecretKey key = skf.generateSecret(spec);
+        assertNotNull(key);
+        assertEquals("AES", key.getAlgorithm());
+        assertEquals("RAW", key.getFormat());
+        assertTrue(Arrays.equals(keyBytes, key.getEncoded()));
+    }
+
+    @Test
+    public void testAESGenerateSecret256bit()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidKeySpecException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[Aes.KEY_SIZE_256];
+        Arrays.fill(keyBytes, (byte)0x2A);
+
+        SecretKeySpec spec = new SecretKeySpec(keyBytes, "AES");
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf);
+
+        SecretKey key = skf.generateSecret(spec);
+        assertNotNull(key);
+        assertEquals("AES", key.getAlgorithm());
+        assertEquals("RAW", key.getFormat());
+        assertTrue(Arrays.equals(keyBytes, key.getEncoded()));
+    }
+
+    @Test
+    public void testAESGenerateSecretInvalidKeySize()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        byte[][] invalidSizes = {
+            new byte[8],   /* too small */
+            new byte[Aes.KEY_SIZE_128 - 1],  /* one less than 128-bit */
+            new byte[Aes.KEY_SIZE_128 + 1],  /* one more than 128-bit */
+            new byte[Aes.KEY_SIZE_256 - 1],  /* one less than 256-bit */
+            new byte[Aes.KEY_SIZE_256 + 1]   /* one more than 256-bit */
+        };
+
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf);
+
+        for (byte[] keyBytes : invalidSizes) {
+            try {
+                SecretKeySpec spec = new SecretKeySpec(keyBytes, "AES");
+                skf.generateSecret(spec);
+                fail("generateSecret should throw InvalidKeySpecException " +
+                     "for invalid key size: " + keyBytes.length);
+            } catch (InvalidKeySpecException e) {
+                /* expected */
+            }
+        }
+    }
+
+    @Test
+    public void testAESGenerateSecretNullSpec()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf);
+
+        try {
+            skf.generateSecret(null);
+            fail("generateSecret should throw InvalidKeySpecException " +
+                 "for null KeySpec");
+        } catch (InvalidKeySpecException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testAESGenerateSecretWrongSpecType()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf);
+
+        /* Try to use PBEKeySpec with AES factory */
+        try {
+            PBEKeySpec pbeSpec = new PBEKeySpec(
+                "password".toCharArray(),
+                new byte[]{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
+                1000, Aes.KEY_SIZE_128 * 8);
+            skf.generateSecret(pbeSpec);
+            fail("generateSecret should throw InvalidKeySpecException " +
+                 "for wrong KeySpec type");
+        } catch (InvalidKeySpecException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testAESGetKeySpec()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidKeySpecException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[16];
+        Arrays.fill(keyBytes, (byte)0x2A);
+
+        SecretKeySpec originalSpec = new SecretKeySpec(keyBytes, "AES");
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf);
+
+        SecretKey key = skf.generateSecret(originalSpec);
+        assertNotNull(key);
+
+        SecretKeySpec retrievedSpec =
+            (SecretKeySpec)skf.getKeySpec(key, SecretKeySpec.class);
+        assertNotNull(retrievedSpec);
+
+        assertEquals("AES", retrievedSpec.getAlgorithm());
+        assertTrue(Arrays.equals(keyBytes, retrievedSpec.getEncoded()));
+    }
+
+    @Test
+    public void testAESGetKeySpecInvalidType()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidKeySpecException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[Aes.KEY_SIZE_128];
+        Arrays.fill(keyBytes, (byte)0x2A);
+
+        SecretKeySpec spec = new SecretKeySpec(keyBytes, "AES");
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf);
+
+        SecretKey key = skf.generateSecret(spec);
+        assertNotNull(key);
+
+        /* Try to get PBEKeySpec from AES key */
+        try {
+            skf.getKeySpec(key, PBEKeySpec.class);
+            fail("getKeySpec should throw InvalidKeySpecException " +
+                 "for incompatible spec type");
+        } catch (InvalidKeySpecException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testAESTranslateKey()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidKeySpecException, InvalidKeyException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[Aes.KEY_SIZE_128];
+        Arrays.fill(keyBytes, (byte)0x2A);
+
+        /* Create key from one factory instance */
+        SecretKeySpec spec = new SecretKeySpec(keyBytes, "AES");
+        SecretKeyFactory skf1 =
+            SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf1);
+
+        SecretKey key1 = skf1.generateSecret(spec);
+        assertNotNull(key1);
+
+        /* Translate to another factory instance */
+        SecretKeyFactory skf2 =
+            SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf2);
+
+        SecretKey key2 = skf2.translateKey(key1);
+        assertNotNull(key2);
+
+        /* Verify keys are equal */
+        assertEquals("AES", key2.getAlgorithm());
+        assertTrue(Arrays.equals(key1.getEncoded(), key2.getEncoded()));
+    }
+
+    @Test
+    public void testAESTranslateKeyNullKey()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf);
+
+        try {
+            skf.translateKey(null);
+            fail("translateKey should throw InvalidKeyException " +
+                 "for null key");
+        } catch (InvalidKeyException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testAESSecretKeyWithCipher()
+        throws Exception {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[Aes.KEY_SIZE_128];
+        Arrays.fill(keyBytes, (byte)0x2A);
+        byte[] iv = new byte[Aes.BLOCK_SIZE];
+        Arrays.fill(iv, (byte)0x01);
+
+        /* Generate AES key using SecretKeyFactory */
+        SecretKeySpec spec = new SecretKeySpec(keyBytes, "AES");
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+        assertNotNull(skf);
+
+        SecretKey key = skf.generateSecret(spec);
+        assertNotNull(key);
+
+        /* Use key with Cipher */
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", provider);
+        assertNotNull(cipher);
+
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+        byte[] plaintext = "Hello World!".getBytes();
+
+        /* Encrypt */
+        cipher.init(Cipher.ENCRYPT_MODE, key, ivSpec);
+        byte[] ciphertext = cipher.doFinal(plaintext);
+        assertNotNull(ciphertext);
+
+        /* Decrypt */
+        cipher.init(Cipher.DECRYPT_MODE, key, ivSpec);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+        assertNotNull(decrypted);
+
+        /* Verify round-trip */
+        assertTrue(Arrays.equals(plaintext, decrypted));
     }
 }
 
