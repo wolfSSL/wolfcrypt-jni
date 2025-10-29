@@ -484,6 +484,14 @@ public final class WolfCryptProvider extends Provider {
                     "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcPBKDF2WithHmacSHA3_512");
             }
         }
+        if (FeatureDetect.AesEnabled()) {
+            put("SecretKeyFactory.AES",
+                "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcAES");
+        }
+        if (FeatureDetect.Des3Enabled() && !Fips.enabled) {
+            put("SecretKeyFactory.DESede",
+                "com.wolfssl.provider.jce.WolfCryptSecretKeyFactory$wcDESede");
+        }
 
         /* KeyFactory */
         if (FeatureDetect.EccEnabled()) {
