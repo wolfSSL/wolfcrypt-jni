@@ -7499,5 +7499,55 @@ public class WolfCryptCipherTest {
         assertArrayEquals("RSA public key operations should work normally",
             plaintext, decrypted);
     }
+
+    /**
+     * Test that buffered data is cleared when doFinal() throws
+     * AEADBadTagException. Subsequent operations should not fail with
+     * ShortBufferException.
+     */
+    @Test
+    public void testAesGcmByteBufferExceptionBufferReset()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException, javax.crypto.ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+
+        byte[] keyBytes = new byte[16];
+        secureRandom.nextBytes(keyBytes);
+        byte[] data = new byte[4096];
+        secureRandom.nextBytes(data);
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        GCMParameterSpec spec = new GCMParameterSpec(96, keyBytes);
+
+        /* update() then doFinal() that throws exception */
+        cipher.init(Cipher.DECRYPT_MODE, key, spec);
+        ByteBuffer heapIn = ByteBuffer.wrap(data);
+        ByteBuffer heapOut = ByteBuffer.allocate(4096);
+
+        cipher.update(heapIn, heapOut);
+        try {
+            cipher.doFinal(heapIn, heapOut);
+            fail("Expected AEADBadTagException");
+        } catch (AEADBadTagException e) {
+            /* Expected - invalid tag */
+        }
+
+        /* Second operation should not throw ShortBufferException due to
+         * leftover buffered data from first operation */
+        cipher.init(Cipher.DECRYPT_MODE, key, spec);
+        heapIn.clear();
+        heapIn.put(data);
+        heapIn.flip();
+        ByteBuffer directOut = ByteBuffer.allocateDirect(4096);
+
+        cipher.update(heapIn, directOut);
+    }
 }
 
