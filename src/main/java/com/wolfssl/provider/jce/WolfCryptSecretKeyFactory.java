@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactorySpi;
 import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.interfaces.PBEKey;
 import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
@@ -51,7 +52,9 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
         WC_SKF_PBKDF2_HMAC_SHA3_224,
         WC_SKF_PBKDF2_HMAC_SHA3_256,
         WC_SKF_PBKDF2_HMAC_SHA3_384,
-        WC_SKF_PBKDF2_HMAC_SHA3_512
+        WC_SKF_PBKDF2_HMAC_SHA3_512,
+        WC_SKF_AES,
+        WC_SKF_DESEDE
     }
 
     /* PBKDF2/HMAC type of this factory */
@@ -105,6 +108,14 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
                 this.hashType = WolfCrypt.WC_HASH_TYPE_SHA3_512;
                 break;
 
+            case WC_SKF_AES:
+                /* AES SecretKeyFactory does not use hash type */
+                break;
+
+            case WC_SKF_DESEDE:
+                /* DESede SecretKeyFactory does not use hash type */
+                break;
+
             default:
                 throw new NoSuchAlgorithmException(
                     "Unsupported SecretKeyFactory type");
@@ -152,6 +163,10 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
                 return "PBKDF2WithHmacSHA3-384";
             case WC_SKF_PBKDF2_HMAC_SHA3_512:
                 return "PBKDF2WithHmacSHA3-512";
+            case WC_SKF_AES:
+                return "AES";
+            case WC_SKF_DESEDE:
+                return "DESede";
             default:
                 return "None";
         }
@@ -204,6 +219,9 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
             case "PBKDF2WithHmacSHA3-256":
             case "PBKDF2WithHmacSHA3-384":
             case "PBKDF2WithHmacSHA3-512":
+            case "AES":
+            case "DESede":
+            case "TripleDES":
                 return true;
             default:
                 return false;
@@ -228,7 +246,15 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
                 throw new InvalidKeySpecException(
                     "KeySpec must be type PBEKeySpec");
             }
-        } else {
+        }
+        else if (this.factoryType == FactoryType.WC_SKF_AES ||
+                 this.factoryType == FactoryType.WC_SKF_DESEDE) {
+            if (!(spec instanceof SecretKeySpec)) {
+                throw new InvalidKeySpecException(
+                    "KeySpec must be type SecretKeySpec");
+            }
+        }
+        else {
             throw new InvalidKeySpecException(
                 "Unsupported SecretKeyFactory type");
         }
@@ -339,6 +365,62 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
     }
 
     /**
+     * Generate SecretKey (WolfCryptSecretKey) from provided SecretKeySpec.
+     *
+     * @param spec SecretKeySpec to use for generating SecretKey
+     *
+     * @throws InvalidKeySpecException if SecretKey generation fails
+     */
+    private SecretKey genSecretKeyFromSecretKeySpec(SecretKeySpec spec)
+        throws InvalidKeySpecException {
+
+        byte[] keyBytes = null;
+        String algo = null;
+        SecretKey key = null;
+
+        try {
+            keyBytes = spec.getEncoded();
+            algo = spec.getAlgorithm();
+
+            if (keyBytes == null || keyBytes.length == 0) {
+                throw new InvalidKeySpecException(
+                    "Null or zero length key not allowed");
+            }
+
+            if (algo == null || algo.isEmpty()) {
+                throw new InvalidKeySpecException(
+                    "Null or empty algorithm not allowed");
+            }
+
+            /* Verify algorithm matches this factory type */
+            if ((this.factoryType == FactoryType.WC_SKF_AES &&
+                 !algo.equalsIgnoreCase("AES")) ||
+                (this.factoryType == FactoryType.WC_SKF_DESEDE &&
+                 !algo.equalsIgnoreCase("DESede") &&
+                 !algo.equalsIgnoreCase("TripleDES"))) {
+                throw new InvalidKeySpecException(
+                    "Algorithm " + algo + " does not match factory type " +
+                    this.typeString);
+            }
+
+            log("generating SecretKey (algorithm: " + algo +
+                ", key len: " + keyBytes.length + " bytes)");
+
+            key = new WolfCryptSecretKey(algo, keyBytes);
+
+        } catch (InvalidKeyException e) {
+            throw new InvalidKeySpecException(e);
+
+        } finally {
+            if (keyBytes != null) {
+                Arrays.fill(keyBytes, (byte)0);
+            }
+        }
+
+        return key;
+    }
+
+    /**
      * Generate a SecretKey object from the provided KeySpec.
      *
      * @param spec specification of the secret key
@@ -356,7 +438,16 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
 
         checkKeySpecSupported(spec);
 
-        return genSecretKeyFromPBEKeySpec((PBEKeySpec)spec);
+        if (spec instanceof PBEKeySpec) {
+            return genSecretKeyFromPBEKeySpec((PBEKeySpec)spec);
+        }
+        else if (spec instanceof SecretKeySpec) {
+            return genSecretKeyFromSecretKeySpec((SecretKeySpec)spec);
+        }
+        else {
+            throw new InvalidKeySpecException(
+                "Unsupported KeySpec type: " + spec.getClass().getName());
+        }
     }
 
     /**
@@ -418,6 +509,63 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
     }
 
     /**
+     * Return a KeySpec from the provided SecretKey in the requested format.
+     *
+     * Called by engineGetKeySpec() for non-PBE keys (AES, DESede, etc.).
+     *
+     * @param key SecretKey for which to return KeySpec
+     * @param keySpec the requested format that the KeySpec should be
+     *                returned in
+     *
+     * @return KeySpec for the SecretKey, in the requested format
+     *
+     * @throws InvalidKeySpecException if the requested format is not
+     *         appropriate for the given key, or the provided SecretKey
+     *         cannot be used.
+     */
+    private KeySpec getKeySpecFromSecretKey(SecretKey key, Class<?> keySpec)
+        throws InvalidKeySpecException {
+
+        byte[] encoded = null;
+        String algo = null;
+        SecretKeySpec skSpec = null;
+
+        if (key != null && keySpec != null) {
+
+            if (keySpec.isAssignableFrom(SecretKeySpec.class)) {
+
+                try {
+                    encoded = key.getEncoded();
+                    algo = key.getAlgorithm();
+
+                    if (encoded == null) {
+                        throw new InvalidKeySpecException(
+                            "Error getting encoded key from SecretKey");
+                    }
+
+                    if (algo == null || algo.isEmpty()) {
+                        throw new InvalidKeySpecException(
+                            "Error getting algorithm from SecretKey");
+                    }
+
+                    skSpec = new SecretKeySpec(encoded, algo);
+
+                } finally {
+                    if (encoded != null) {
+                        Arrays.fill(encoded, (byte)0);
+                    }
+                }
+            }
+            else {
+                throw new InvalidKeySpecException(
+                    "Unsupported KeySpec type: " + keySpec.getName());
+            }
+        }
+
+        return skSpec;
+    }
+
+    /**
      * Return a KeySpec (key material) of the provided SecretKey in the
      * requested format.
      *
@@ -449,9 +597,13 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
         if (key instanceof PBEKey) {
             return getKeySpecFromPBEKeyByType((PBEKey)key, keySpec);
         }
+        else if (this.factoryType == FactoryType.WC_SKF_AES ||
+                 this.factoryType == FactoryType.WC_SKF_DESEDE) {
+            return getKeySpecFromSecretKey(key, keySpec);
+        }
         else {
             throw new InvalidKeySpecException(
-                "Only SecretKey of type PBEKey currently supported");
+                "Unsupported SecretKey type for this factory");
         }
     }
 
@@ -505,8 +657,9 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
                 throw new InvalidKeyException(e);
 
             } finally {
-                spec.clearPassword();
-
+                if (spec != null) {
+                    spec.clearPassword();
+                }
                 if (password != null) {
                     Arrays.fill(password, (char)0);
                 }
@@ -515,6 +668,59 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
                 }
                 if (enc != null) {
                     Arrays.fill(enc, (byte)0);
+                }
+            }
+        }
+
+        return sKey;
+    }
+
+    /**
+     * Translates SecretKey to one generated by this SecretKeyFactory.
+     *
+     * Called by engineTranslateKey() for non-PBE keys (AES, DESede, etc.).
+     *
+     * @param key SecretKey to translate
+     *
+     * @return New/translated SecretKey generated by this SecretKeyFactory.
+     *
+     * @throws InvalidKeyException if the provided SecretKey can not be
+     *         used or converted
+     */
+    private SecretKey translateSecretKey(SecretKey key)
+        throws InvalidKeyException {
+
+        byte[] encoded = null;
+        String algo = null;
+        SecretKeySpec spec = null;
+        SecretKey sKey = null;
+
+        if (key != null) {
+
+            algo = key.getAlgorithm();
+            if (!isAlgorithmSupported(algo)) {
+                throw new InvalidKeyException(
+                    "SecretKey algorithm not supported: " + algo);
+            }
+
+            try {
+                encoded = key.getEncoded();
+
+                if (encoded == null) {
+                    throw new InvalidKeyException(
+                        "Error getting encoded key from SecretKey");
+                }
+
+                /* Create SecretKeySpec from encoded bytes */
+                spec = new SecretKeySpec(encoded, algo);
+                sKey = genSecretKeyFromSecretKeySpec(spec);
+
+            } catch (InvalidKeySpecException e) {
+                throw new InvalidKeyException(e);
+
+            } finally {
+                if (encoded != null) {
+                    Arrays.fill(encoded, (byte)0);
                 }
             }
         }
@@ -549,9 +755,13 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
         if (key instanceof PBEKey) {
             return translatePBEKey((PBEKey)key);
         }
+        else if (this.factoryType == FactoryType.WC_SKF_AES ||
+                 this.factoryType == FactoryType.WC_SKF_DESEDE) {
+            return translateSecretKey(key);
+        }
         else {
             throw new InvalidKeyException(
-                "Only SecretKey of type PBEKey currently supported");
+                "Unsupported SecretKey type for this factory");
         }
     }
 
@@ -705,6 +915,38 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
          */
         public wcPBKDF2WithHmacSHA3_512() throws NoSuchAlgorithmException {
             super(FactoryType.WC_SKF_PBKDF2_HMAC_SHA3_512);
+        }
+    }
+
+    /**
+     * wolfJCE AES SecretKeyFactory class.
+     */
+    public static final class wcAES extends WolfCryptSecretKeyFactory {
+
+        /**
+         * Create new wcAES object.
+         *
+         * @throws NoSuchAlgorithmException if AES is not available in
+         *         native wolfCrypt.
+         */
+        public wcAES() throws NoSuchAlgorithmException {
+            super(FactoryType.WC_SKF_AES);
+        }
+    }
+
+    /**
+     * wolfJCE DESede SecretKeyFactory class.
+     */
+    public static final class wcDESede extends WolfCryptSecretKeyFactory {
+
+        /**
+         * Create new wcDESede object.
+         *
+         * @throws NoSuchAlgorithmException if DESede is not available in
+         *         native wolfCrypt.
+         */
+        public wcDESede() throws NoSuchAlgorithmException {
+            super(FactoryType.WC_SKF_DESEDE);
         }
     }
 }

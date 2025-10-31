@@ -35,6 +35,7 @@ import org.junit.runners.Suite.SuiteClasses;
     WolfCryptMessageDigestSha512Test.class,
     WolfCryptMessageDigestSha3Test.class,
     WolfCryptRandomTest.class,
+    WolfCryptSecretKeyTest.class,
     WolfCryptSecretKeyFactoryTest.class,
     WolfCryptSignatureTest.class,
     WolfCryptSignatureP1363Test.class,
