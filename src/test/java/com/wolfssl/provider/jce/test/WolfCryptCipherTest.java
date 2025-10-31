@@ -39,6 +39,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.nio.ByteBuffer;
+import java.io.IOException;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -75,6 +76,7 @@ import java.security.spec.InvalidParameterSpecException;
 import java.security.AlgorithmParameters;
 
 import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -6616,44 +6618,131 @@ public class WolfCryptCipherTest {
         AlgorithmParameters params =
             AlgorithmParameters.getInstance("AES", jceProvider);
 
-        /* Test encoded parameter operations (should be unsupported) */
-        try {
-            params.init(new byte[16]);
-            fail("Should throw IOException for encoded init");
-        } catch (Exception e) {
-            assertTrue("Should be IOException",
-                e instanceof java.io.IOException);
-        }
-
-        try {
-            params.init(new byte[16], "ASN.1");
-            fail("Should throw IOException for encoded init with format");
-        } catch (Exception e) {
-            assertTrue("Should be IOException",
-                e instanceof java.io.IOException);
-        }
-
-        /* Initialize properly first */
-        byte[] iv = new byte[16];
+        /* Initialize with IvParameterSpec */
+        byte[] iv = new byte[Aes.BLOCK_SIZE];
         new SecureRandom().nextBytes(iv);
         IvParameterSpec ivSpec = new IvParameterSpec(iv);
         params.init(ivSpec);
 
-        /* Test encoded getters */
-        try {
-            params.getEncoded();
-            fail("Should throw IOException for getEncoded");
-        } catch (Exception e) {
-            assertTrue("Should be IOException",
-                e instanceof java.io.IOException);
+        /* Test getEncoded - should return ASN.1 OCTET STRING encoding */
+        byte[] encoded = params.getEncoded();
+        assertNotNull("Encoded params should not be null", encoded);
+        assertEquals("Encoded length should be 18 (tag + len + 16 IV bytes)",
+            Aes.BLOCK_SIZE + 2, encoded.length);
+        assertEquals("First byte should be OCTET STRING tag (0x04)",
+            0x04, encoded[0]);
+        assertEquals("Second byte should be length (0x10)", 0x10, encoded[1]);
+
+        /* Verify IV bytes are in encoding */
+        for (int i = 0; i < Aes.BLOCK_SIZE; i++) {
+            assertEquals("IV byte mismatch at index " + i,
+                iv[i], encoded[i + 2]);
         }
 
+        /* Test getEncoded with ASN.1 format */
+        byte[] encoded2 = params.getEncoded("ASN.1");
+        assertArrayEquals("getEncoded(ASN.1) should match getEncoded()",
+            encoded, encoded2);
+
+        /* Test getEncoded with DER format */
+        byte[] encoded3 = params.getEncoded("DER");
+        assertArrayEquals("getEncoded(DER) should match getEncoded()",
+            encoded, encoded3);
+
+        /* Test getEncoded with case-insensitive format */
+        byte[] encoded4 = params.getEncoded("asn.1");
+        assertArrayEquals("Format should be case-insensitive",
+            encoded, encoded4);
+
+        /* Test getEncoded with invalid format */
         try {
-            params.getEncoded("ASN.1");
-            fail("Should throw IOException for getEncoded with format");
-        } catch (Exception e) {
-            assertTrue("Should be IOException",
-                e instanceof java.io.IOException);
+            params.getEncoded("INVALID");
+            fail("Should throw IOException for invalid format");
+        } catch (IOException e) {
+            assertTrue("Should mention unsupported format",
+                e.getMessage().contains("Unsupported format"));
+        }
+
+        /* Test init from encoded bytes */
+        AlgorithmParameters params2 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        params2.init(encoded);
+
+        /* Verify decoded IV matches original */
+        IvParameterSpec decoded =
+            params2.getParameterSpec(IvParameterSpec.class);
+        assertArrayEquals("Decoded IV should match original", iv,
+            decoded.getIV());
+
+        /* Test init with ASN.1 format */
+        AlgorithmParameters params3 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        params3.init(encoded, "ASN.1");
+        IvParameterSpec decoded2 =
+            params3.getParameterSpec(IvParameterSpec.class);
+        assertArrayEquals("Decoded IV should match original", iv,
+            decoded2.getIV());
+
+        /* Test init with DER format */
+        AlgorithmParameters params4 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        params4.init(encoded, "DER");
+        IvParameterSpec decoded3 =
+            params4.getParameterSpec(IvParameterSpec.class);
+        assertArrayEquals("DER format should work for init",
+            iv, decoded3.getIV());
+
+        /* Test init with case-insensitive format */
+        AlgorithmParameters params5 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        params5.init(encoded, "asn.1");
+        IvParameterSpec decoded4 =
+            params5.getParameterSpec(IvParameterSpec.class);
+        assertArrayEquals("Format should be case-insensitive",
+            iv, decoded4.getIV());
+
+        /* Test init with invalid format */
+        AlgorithmParameters params6 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        try {
+            params6.init(encoded, "INVALID");
+            fail("Should throw IOException for invalid format");
+        } catch (IOException e) {
+            assertTrue("Should mention unsupported format",
+                e.getMessage().contains("Unsupported format"));
+        }
+
+        /* Test init with null throws NullPointerException */
+        AlgorithmParameters params7 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        try {
+            params7.init((byte[])null);
+            fail("Should throw NullPointerException for null");
+        } catch (NullPointerException e) {
+            /* Expected */
+        }
+
+        /* Test double init throws exception */
+        AlgorithmParameters params8 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        params8.init(encoded);
+        try {
+            params8.init(encoded);
+            fail("Should throw exception for double init");
+        } catch (IOException e) {
+            assertTrue("Should mention already initialized",
+                e.getMessage().contains("already initialized"));
+        }
+
+        /* Test getEncoded before init throws exception */
+        AlgorithmParameters params9 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        try {
+            params9.getEncoded();
+            fail("Should throw IOException before init");
+        } catch (IOException e) {
+            assertTrue("Should mention not initialized",
+                e.getMessage().contains("not initialized"));
         }
     }
 
