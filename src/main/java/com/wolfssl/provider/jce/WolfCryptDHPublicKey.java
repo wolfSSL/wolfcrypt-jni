@@ -23,6 +23,7 @@ package com.wolfssl.provider.jce;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.math.BigInteger;
 import java.util.Arrays;
 
@@ -52,8 +53,10 @@ public class WolfCryptDHPublicKey implements DHPublicKey {
     /** Track if object has been destroyed */
     private boolean destroyed = false;
 
-    /* Lock around use of destroyed boolean and cached values */
-    private transient final Object stateLock = new Object();
+    /* Lock around use of destroyed boolean and cached values.
+     * Note: Cannot be final because it needs to be reinitialized after
+     * deserialization. */
+    private transient Object stateLock = new Object();
 
     /**
      * Create new WolfCryptDHPublicKey from DER-encoded X.509 data.
@@ -139,8 +142,7 @@ public class WolfCryptDHPublicKey implements DHPublicKey {
         throws IllegalArgumentException {
 
         int idx = 0;
-        int outerSeqLen, algSeqLen, paramsSeqLen;
-        int oidLen, pLen, gLen, bitStringLen, pubLen;
+        int oidLen, pLen, gLen, pubLen;
         byte[] pBytes, gBytes, pubBytes;
         BigInteger p, g, publicVal;
 
@@ -151,7 +153,7 @@ public class WolfCryptDHPublicKey implements DHPublicKey {
                 throw new IllegalArgumentException(
                     "Invalid X.509: expected SEQUENCE tag");
             }
-            outerSeqLen = WolfCryptASN1Util.getDERLength(derData, idx);
+            WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
 
             /* AlgorithmIdentifier SEQUENCE */
@@ -159,7 +161,7 @@ public class WolfCryptDHPublicKey implements DHPublicKey {
                 throw new IllegalArgumentException(
                     "Invalid X.509: expected AlgorithmIdentifier SEQUENCE");
             }
-            algSeqLen = WolfCryptASN1Util.getDERLength(derData, idx);
+            WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
 
             /* Algorithm OID - skip it */
@@ -176,7 +178,7 @@ public class WolfCryptDHPublicKey implements DHPublicKey {
                 throw new IllegalArgumentException(
                     "Invalid X.509: expected DH parameters SEQUENCE");
             }
-            paramsSeqLen = WolfCryptASN1Util.getDERLength(derData, idx);
+            WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
 
             /* p INTEGER */
@@ -208,7 +210,7 @@ public class WolfCryptDHPublicKey implements DHPublicKey {
                 throw new IllegalArgumentException(
                     "Invalid X.509: expected publicKey BIT STRING");
             }
-            bitStringLen = WolfCryptASN1Util.getDERLength(derData, idx);
+            WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
 
             /* Skip unused bits byte (should be 0) */
@@ -304,6 +306,178 @@ public class WolfCryptDHPublicKey implements DHPublicKey {
     }
 
     /**
+     * Extract DHParameterSpec from the DER-encoded key.
+     *
+     * @return DHParameterSpec for this key
+     *
+     * @throws IllegalStateException if parameter extraction fails
+     */
+    private DHParameterSpec extractDHParameterSpec()
+        throws IllegalStateException {
+
+        int idx = 0;
+        int oidLen, pLen, gLen;
+        byte[] pBytes, gBytes;
+        BigInteger p, g;
+
+        try {
+            log("extracting DHParameterSpec from DER-encoded public key");
+
+            /* Outer SEQUENCE */
+            if (this.encoded[idx++] != 0x30) {
+                throw new IllegalStateException(
+                    "Invalid X.509: expected SEQUENCE tag");
+            }
+            WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+
+            /* AlgorithmIdentifier SEQUENCE */
+            if (this.encoded[idx++] != 0x30) {
+                throw new IllegalStateException(
+                    "Invalid X.509: expected AlgorithmIdentifier SEQUENCE");
+            }
+            WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+
+            /* Algorithm OID - skip it */
+            if (this.encoded[idx++] != 0x06) {
+                throw new IllegalStateException(
+                    "Invalid X.509: expected algorithm OID");
+            }
+            oidLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            idx += oidLen;
+
+            /* DH Parameters SEQUENCE { p, g } */
+            if (this.encoded[idx++] != 0x30) {
+                throw new IllegalStateException(
+                    "Invalid X.509: expected DH parameters SEQUENCE");
+            }
+            WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+
+            /* p INTEGER */
+            if (this.encoded[idx++] != 0x02) {
+                throw new IllegalStateException(
+                    "Invalid X.509: expected p INTEGER");
+            }
+            pLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            pBytes = new byte[pLen];
+            System.arraycopy(this.encoded, idx, pBytes, 0, pLen);
+            p = new BigInteger(1, pBytes);
+            idx += pLen;
+
+            /* g INTEGER */
+            if (this.encoded[idx++] != 0x02) {
+                throw new IllegalStateException(
+                    "Invalid X.509: expected g INTEGER");
+            }
+            gLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            gBytes = new byte[gLen];
+            System.arraycopy(this.encoded, idx, gBytes, 0, gLen);
+            g = new BigInteger(1, gBytes);
+
+            return new DHParameterSpec(p, g);
+
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new IllegalStateException(
+                "Invalid X.509 encoding: " + e.getMessage(), e);
+
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                "Failed to extract DHParameterSpec: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Extract public key value from the DER-encoded key.
+     *
+     * @return BigInteger representing the public key value
+     *
+     * @throws IllegalStateException if public value extraction fails
+     */
+    private BigInteger extractPublicValue() throws IllegalStateException {
+
+        int idx = 0;
+        int paramsSeqLen;
+        int oidLen, pubLen;
+        byte[] pubBytes;
+        BigInteger publicVal;
+
+        try {
+            log("extracting public key value from DER-encoded public key");
+
+            /* Outer SEQUENCE */
+            if (this.encoded[idx++] != 0x30) {
+                throw new IllegalStateException(
+                    "Invalid X.509: expected SEQUENCE tag");
+            }
+            WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+
+            /* AlgorithmIdentifier SEQUENCE */
+            if (this.encoded[idx++] != 0x30) {
+                throw new IllegalStateException(
+                    "Invalid X.509: expected AlgorithmIdentifier SEQUENCE");
+            }
+            WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+
+            /* Algorithm OID - skip it */
+            if (this.encoded[idx++] != 0x06) {
+                throw new IllegalStateException(
+                    "Invalid X.509: expected algorithm OID");
+            }
+            oidLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            idx += oidLen;
+
+            /* DH Parameters SEQUENCE { p, g } - skip */
+            if (this.encoded[idx++] != 0x30) {
+                throw new IllegalStateException(
+                    "Invalid X.509: expected DH parameters SEQUENCE");
+            }
+            paramsSeqLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            idx += paramsSeqLen;
+
+            /* PublicKey BIT STRING */
+            if (this.encoded[idx++] != 0x03) {
+                throw new IllegalStateException(
+                    "Invalid X.509: expected publicKey BIT STRING");
+            }
+            WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+
+            /* Skip unused bits byte (should be 0) */
+            idx++;
+
+            /* Public key value is an INTEGER inside the BIT STRING */
+            if (this.encoded[idx++] != 0x02) {
+                throw new IllegalStateException(
+                    "Invalid X.509: expected public value INTEGER");
+            }
+            pubLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            pubBytes = new byte[pubLen];
+            System.arraycopy(this.encoded, idx, pubBytes, 0, pubLen);
+            publicVal = new BigInteger(1, pubBytes);
+
+            return publicVal;
+
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new IllegalStateException(
+                "Invalid X.509 encoding: " + e.getMessage(), e);
+
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                "Failed to extract public value: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Internal method for logging output.
      *
      * @param msg message to be logged
@@ -320,6 +494,11 @@ public class WolfCryptDHPublicKey implements DHPublicKey {
             if (destroyed) {
                 throw new IllegalStateException("Key has been destroyed");
             }
+
+            if (publicValue == null) {
+                log("extracting public key value from DER");
+                publicValue = extractPublicValue();
+            }
             return publicValue;
         }
     }
@@ -330,6 +509,11 @@ public class WolfCryptDHPublicKey implements DHPublicKey {
         synchronized (stateLock) {
             if (destroyed) {
                 throw new IllegalStateException("Key has been destroyed");
+            }
+
+            if (paramSpec == null) {
+                log("extracting DH parameters from DER");
+                paramSpec = extractDHParameterSpec();
             }
             return paramSpec;
         }
@@ -451,6 +635,25 @@ public class WolfCryptDHPublicKey implements DHPublicKey {
             return "WolfCryptDHPublicKey[algorithm=DH, format=X.509, " +
                    "encoded.length=" + encoded.length + "]";
         }
+    }
+
+    /**
+     * Deserialization routine to reinitialize transient fields.
+     * The stateLock field is transient and needs to be recreated after
+     * deserialization.
+     *
+     * @param in ObjectInputStream to read from
+     * @throws IOException if an I/O error occurs
+     * @throws ClassNotFoundException if class cannot be found
+     */
+    private void readObject(ObjectInputStream in)
+        throws IOException, ClassNotFoundException {
+
+        /* Default deserialization */
+        in.defaultReadObject();
+
+        /* Reinitialize transient lock object */
+        stateLock = new Object();
     }
 }
 
