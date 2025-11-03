@@ -74,7 +74,8 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
         switch (type) {
             case WC_AES:
                 this.algString = "AES";
-                this.keySizeBits = (Aes.BLOCK_SIZE * 8);
+                /* SunJCE default key size is 256 bits as of JDK bug 8267319 */
+                this.keySizeBits = 256;
                 break;
             case WC_HMAC_SHA1:
                 this.algString = "HmacSHA1";
