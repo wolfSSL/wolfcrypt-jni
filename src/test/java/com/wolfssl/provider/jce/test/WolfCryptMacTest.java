@@ -2254,5 +2254,94 @@ public class WolfCryptMacTest {
             return this.output;
         }
     }
+
+    /**
+     * Test HMAC-SHA1 OID (1.2.840.113549.2.7)
+     */
+    @Test
+    public void testHmacSHA1Oid() throws Exception {
+        testHmacOidAndAlias("1.2.840.113549.2.7", "HmacSHA1");
+    }
+
+    /**
+     * Test HMAC-SHA224 OID (1.2.840.113549.2.8)
+     */
+    @Test
+    public void testHmacSHA224Oid() throws Exception {
+        testHmacOidAndAlias("1.2.840.113549.2.8", "HmacSHA224");
+    }
+
+    /**
+     * Test HMAC-SHA256 OID (1.2.840.113549.2.9)
+     */
+    @Test
+    public void testHmacSHA256Oid() throws Exception {
+        testHmacOidAndAlias("1.2.840.113549.2.9", "HmacSHA256");
+    }
+
+    /**
+     * Test HMAC-SHA384 OID (1.2.840.113549.2.10)
+     */
+    @Test
+    public void testHmacSHA384Oid() throws Exception {
+        testHmacOidAndAlias("1.2.840.113549.2.10", "HmacSHA384");
+    }
+
+    /**
+     * Test HMAC-SHA512 OID (1.2.840.113549.2.11)
+     */
+    @Test
+    public void testHmacSHA512Oid() throws Exception {
+        testHmacOidAndAlias("1.2.840.113549.2.11", "HmacSHA512");
+    }
+
+    /**
+     * Helper method to test HMAC OID and algorithm string aliases.
+     * Tests that both the OID and algorithm string can be used to
+     * create Mac instances, and that they produce the same output.
+     *
+     * @param oid The HMAC algorithm OID
+     * @param algorithm The algorithm name string
+     */
+    private void testHmacOidAndAlias(String oid, String algorithm)
+        throws Exception {
+
+        byte[] input = "1234567890".getBytes();
+
+        /* Check if algorithm is enabled, skip if not */
+        if (!enabledAlgos.contains(algorithm)) {
+            return;
+        }
+
+        /* Get Mac instances using both OID and algorithm string */
+        Mac mcAlgorithm = Mac.getInstance(algorithm, "wolfJCE");
+        Mac mcOid = Mac.getInstance(oid, "wolfJCE");
+
+        assertNotNull("Algorithm Mac should not be null", mcAlgorithm);
+        assertNotNull("OID Mac should not be null", mcOid);
+
+        /* Verify algorithm string matches */
+        assertEquals("Algorithm string should match", algorithm,
+            mcAlgorithm.getAlgorithm());
+
+        /* Generate key for the algorithm */
+        javax.crypto.KeyGenerator kg =
+            javax.crypto.KeyGenerator.getInstance(algorithm, "wolfJCE");
+        javax.crypto.SecretKey key = kg.generateKey();
+
+        /* Compute MAC with algorithm name */
+        mcAlgorithm.init(key);
+        mcAlgorithm.update(input);
+        byte[] macAlgorithm = mcAlgorithm.doFinal();
+
+        /* Compute MAC with OID */
+        mcOid.init(key);
+        mcOid.update(input);
+        byte[] macOid = mcOid.doFinal();
+
+        /* Verify both MACs are the same */
+        assertTrue("MAC outputs should match",
+            Arrays.equals(macAlgorithm, macOid));
+    }
 }
 

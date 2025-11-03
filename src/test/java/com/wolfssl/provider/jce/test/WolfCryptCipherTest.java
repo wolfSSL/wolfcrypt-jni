@@ -7638,5 +7638,175 @@ public class WolfCryptCipherTest {
 
         cipher.update(heapIn, directOut);
     }
+
+    /**
+     * Test NIST AES-128 ECB OID (2.16.840.1.101.3.4.1.1)
+     */
+    @Test
+    public void testAes128EcbOid() throws Exception {
+        if (!FeatureDetect.AesEcbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.1",
+            "AES_128/ECB/NoPadding", 128, "ECB");
+    }
+
+    /**
+     * Test NIST AES-128 CBC OID (2.16.840.1.101.3.4.1.2)
+     */
+    @Test
+    public void testAes128CbcOid() throws Exception {
+        if (!FeatureDetect.AesCbcEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.2",
+            "AES_128/CBC/NoPadding", 128, "CBC");
+    }
+
+    /**
+     * Test NIST AES-128 OFB OID (2.16.840.1.101.3.4.1.3)
+     */
+    @Test
+    public void testAes128OfbOid() throws Exception {
+        if (!FeatureDetect.AesOfbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.3",
+            "AES_128/OFB/NoPadding", 128, "OFB");
+    }
+
+    /**
+     * Test NIST AES-192 ECB OID (2.16.840.1.101.3.4.1.21)
+     */
+    @Test
+    public void testAes192EcbOid() throws Exception {
+        if (!FeatureDetect.AesEcbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.21",
+            "AES_192/ECB/NoPadding", 192, "ECB");
+    }
+
+    /**
+     * Test NIST AES-192 CBC OID (2.16.840.1.101.3.4.1.22)
+     */
+    @Test
+    public void testAes192CbcOid() throws Exception {
+        if (!FeatureDetect.AesCbcEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.22",
+            "AES_192/CBC/NoPadding", 192, "CBC");
+    }
+
+    /**
+     * Test NIST AES-192 OFB OID (2.16.840.1.101.3.4.1.23)
+     */
+    @Test
+    public void testAes192OfbOid() throws Exception {
+        if (!FeatureDetect.AesOfbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.23",
+            "AES_192/OFB/NoPadding", 192, "OFB");
+    }
+
+    /**
+     * Test NIST AES-256 ECB OID (2.16.840.1.101.3.4.1.41)
+     */
+    @Test
+    public void testAes256EcbOid() throws Exception {
+        if (!FeatureDetect.AesEcbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.41",
+            "AES_256/ECB/NoPadding", 256, "ECB");
+    }
+
+    /**
+     * Test NIST AES-256 CBC OID (2.16.840.1.101.3.4.1.42)
+     */
+    @Test
+    public void testAes256CbcOid() throws Exception {
+        if (!FeatureDetect.AesCbcEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.42",
+            "AES_256/CBC/NoPadding", 256, "CBC");
+    }
+
+    /**
+     * Test NIST AES-256 OFB OID (2.16.840.1.101.3.4.1.43)
+     */
+    @Test
+    public void testAes256OfbOid() throws Exception {
+        if (!FeatureDetect.AesOfbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.43",
+            "AES_256/OFB/NoPadding", 256, "OFB");
+    }
+
+    /**
+     * Helper method to test AES OID and algorithm string aliases.
+     * Tests that both the OID and algorithm string can be used to
+     * create Cipher instances, and that they work correctly for
+     * encryption and decryption.
+     *
+     * @param oid The NIST AES algorithm OID
+     * @param algorithm The algorithm transformation string
+     * @param keyLength The AES key length in bits
+     * @param mode The cipher mode (ECB, CBC, OFB, etc.)
+     */
+    private void testAesOidAndAlias(String oid, String algorithm,
+        int keyLength, String mode) throws Exception {
+
+        byte[] input = "1234567890123456".getBytes();
+
+        /* Get Cipher instances using both OID and algorithm string */
+        Cipher algorithmCipher = Cipher.getInstance(algorithm,
+            jceProvider);
+        Cipher oidCipher = Cipher.getInstance(oid, jceProvider);
+
+        assertNotNull("Algorithm cipher should not be null",
+            algorithmCipher);
+        assertNotNull("OID cipher should not be null", oidCipher);
+
+        /* Verify algorithm string matches */
+        assertEquals("Algorithm string should match", algorithm,
+            algorithmCipher.getAlgorithm());
+
+        /* Generate key with specified length */
+        javax.crypto.KeyGenerator kg =
+            javax.crypto.KeyGenerator.getInstance("AES");
+        kg.init(keyLength);
+        javax.crypto.SecretKey key = kg.generateKey();
+
+        /* Encrypt with algorithm cipher */
+        algorithmCipher.init(Cipher.ENCRYPT_MODE, key);
+
+        byte[] cipherText =
+            new byte[algorithmCipher.getOutputSize(input.length)];
+        int offset = algorithmCipher.update(input, 0, input.length,
+            cipherText, 0);
+        algorithmCipher.doFinal(cipherText, offset);
+
+        /* Prepare IV if not ECB mode */
+        AlgorithmParameterSpec aps = null;
+        if (!mode.equalsIgnoreCase("ECB")) {
+            aps = new IvParameterSpec(algorithmCipher.getIV());
+        }
+
+        /* Decrypt with OID cipher */
+        oidCipher.init(Cipher.DECRYPT_MODE, key, aps);
+
+        byte[] recoveredText =
+            new byte[oidCipher.getOutputSize(cipherText.length)];
+        oidCipher.doFinal(cipherText, 0, cipherText.length, recoveredText);
+
+        /* Verify decrypted data matches original */
+        assertTrue("Decrypted data should match original input",
+            Arrays.equals(input, recoveredText));
+    }
 }
 
