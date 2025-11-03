@@ -488,8 +488,9 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
                             "Error getting encoded key from PBEKey");
                     }
 
+                    /* PBEKeySpec expects key length in bits */
                     pbSpec = new PBEKeySpec(password, salt, iterations,
-                        encoded.length);
+                        encoded.length * 8);
 
                 } finally {
                     if (password != null) {
