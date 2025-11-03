@@ -117,7 +117,7 @@ public class WolfCryptAesParameters extends AlgorithmParametersSpi {
 
         /* Extract IV bytes (skip tag and length) */
         byte[] iv = new byte[Aes.BLOCK_SIZE];
-        System.arraycopy(params, 2, iv, 0, 16);
+        System.arraycopy(params, 2, iv, 0, Aes.BLOCK_SIZE);
 
         this.ivSpec = new IvParameterSpec(iv);
     }

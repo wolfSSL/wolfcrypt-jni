@@ -23,6 +23,7 @@ package com.wolfssl.provider.jce;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.math.BigInteger;
 import java.util.Arrays;
 
@@ -52,8 +53,10 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey {
     /** Track if object has been destroyed */
     private boolean destroyed = false;
 
-    /* Lock around use of destroyed boolean and cached values */
-    private transient final Object stateLock = new Object();
+    /* Lock around use of destroyed boolean and cached values.
+     * Note: Cannot be final because it needs to be reinitialized after
+     * deserialization. */
+    private transient Object stateLock = new Object();
 
     /**
      * Create new WolfCryptDHPrivateKey from DER-encoded PKCS#8 data.
@@ -139,8 +142,7 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey {
         throws IllegalArgumentException {
 
         int idx = 0;
-        int outerSeqLen, algSeqLen, paramsSeqLen;
-        int versionLen, oidLen, pLen, gLen, octetLen, privLen;
+        int versionLen, oidLen, pLen, gLen, privLen;
         byte[] pBytes, gBytes, privBytes;
         BigInteger p, g, privateVal;
 
@@ -151,7 +153,7 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey {
                 throw new IllegalArgumentException(
                     "Invalid PKCS#8: expected SEQUENCE tag");
             }
-            outerSeqLen = WolfCryptASN1Util.getDERLength(derData, idx);
+            WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
 
             /* Version INTEGER (should be 0) */
@@ -168,7 +170,7 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey {
                 throw new IllegalArgumentException(
                     "Invalid PKCS#8: expected AlgorithmIdentifier SEQUENCE");
             }
-            algSeqLen = WolfCryptASN1Util.getDERLength(derData, idx);
+            WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
 
             /* Algorithm OID - skip it */
@@ -185,7 +187,7 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey {
                 throw new IllegalArgumentException(
                     "Invalid PKCS#8: expected DH parameters SEQUENCE");
             }
-            paramsSeqLen = WolfCryptASN1Util.getDERLength(derData, idx);
+            WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
 
             /* p INTEGER */
@@ -217,7 +219,7 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey {
                 throw new IllegalArgumentException(
                     "Invalid PKCS#8: expected privateKey OCTET STRING");
             }
-            octetLen = WolfCryptASN1Util.getDERLength(derData, idx);
+            WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
 
             /* Private key value is an INTEGER inside the OCTET STRING */
@@ -313,6 +315,193 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey {
     }
 
     /**
+     * Extract DHParameterSpec from the DER-encoded key.
+     *
+     * @return DHParameterSpec for this key
+     *
+     * @throws IllegalStateException if parameter extraction fails
+     */
+    private DHParameterSpec extractDHParameterSpec()
+        throws IllegalStateException {
+
+        int idx = 0;
+        int versionLen, oidLen, pLen, gLen;
+        byte[] pBytes, gBytes;
+        BigInteger p, g;
+
+        try {
+            log("extracting DHParameterSpec from DER-encoded private key");
+
+            /* Outer SEQUENCE */
+            if (this.encoded[idx++] != 0x30) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected SEQUENCE tag");
+            }
+            WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+
+            /* Version INTEGER (should be 0) */
+            if (this.encoded[idx++] != 0x02) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected version INTEGER");
+            }
+            versionLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            idx += versionLen;
+
+            /* AlgorithmIdentifier SEQUENCE */
+            if (this.encoded[idx++] != 0x30) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected AlgorithmIdentifier SEQUENCE");
+            }
+            WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+
+            /* Algorithm OID - skip it */
+            if (this.encoded[idx++] != 0x06) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected algorithm OID");
+            }
+            oidLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            idx += oidLen;
+
+            /* DH Parameters SEQUENCE { p, g } */
+            if (this.encoded[idx++] != 0x30) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected DH parameters SEQUENCE");
+            }
+            WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+
+            /* p INTEGER */
+            if (this.encoded[idx++] != 0x02) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected p INTEGER");
+            }
+            pLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            pBytes = new byte[pLen];
+            System.arraycopy(this.encoded, idx, pBytes, 0, pLen);
+            p = new BigInteger(1, pBytes);
+            idx += pLen;
+
+            /* g INTEGER */
+            if (this.encoded[idx++] != 0x02) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected g INTEGER");
+            }
+            gLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            gBytes = new byte[gLen];
+            System.arraycopy(this.encoded, idx, gBytes, 0, gLen);
+            g = new BigInteger(1, gBytes);
+
+            return new DHParameterSpec(p, g);
+
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new IllegalStateException(
+                "Invalid PKCS#8 encoding: " + e.getMessage(), e);
+
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                "Failed to extract DHParameterSpec: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Extract private key value from the DER-encoded key.
+     *
+     * @return BigInteger representing the private key value
+     *
+     * @throws IllegalStateException if private value extraction fails
+     */
+    private BigInteger extractPrivateValue() throws IllegalStateException {
+
+        int idx = 0;
+        int paramsSeqLen;
+        int versionLen, oidLen, privLen;
+        byte[] privBytes;
+        BigInteger privateVal;
+
+        try {
+            log("extracting private key value from DER-encoded private key");
+
+            /* Outer SEQUENCE */
+            if (this.encoded[idx++] != 0x30) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected SEQUENCE tag");
+            }
+            WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+
+            /* Version INTEGER (should be 0) */
+            if (this.encoded[idx++] != 0x02) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected version INTEGER");
+            }
+            versionLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            idx += versionLen;
+
+            /* AlgorithmIdentifier SEQUENCE */
+            if (this.encoded[idx++] != 0x30) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected AlgorithmIdentifier SEQUENCE");
+            }
+            WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+
+            /* Algorithm OID - skip it */
+            if (this.encoded[idx++] != 0x06) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected algorithm OID");
+            }
+            oidLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            idx += oidLen;
+
+            /* DH Parameters SEQUENCE { p, g } - skip */
+            if (this.encoded[idx++] != 0x30) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected DH parameters SEQUENCE");
+            }
+            paramsSeqLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            idx += paramsSeqLen;
+
+            /* PrivateKey OCTET STRING */
+            if (this.encoded[idx++] != 0x04) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected privateKey OCTET STRING");
+            }
+            WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+
+            /* Private key value is an INTEGER inside the OCTET STRING */
+            if (this.encoded[idx++] != 0x02) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: expected private value INTEGER");
+            }
+            privLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
+            idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            privBytes = new byte[privLen];
+            System.arraycopy(this.encoded, idx, privBytes, 0, privLen);
+            privateVal = new BigInteger(1, privBytes);
+
+            return privateVal;
+
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new IllegalStateException(
+                "Invalid PKCS#8 encoding: " + e.getMessage(), e);
+
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                "Failed to extract private value: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Internal method for logging output.
      *
      * @param msg message to be logged
@@ -329,6 +518,11 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey {
             if (destroyed) {
                 throw new IllegalStateException("Key has been destroyed");
             }
+
+            if (privateValue == null) {
+                log("extracting private key value from DER");
+                privateValue = extractPrivateValue();
+            }
             return privateValue;
         }
     }
@@ -339,6 +533,11 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey {
         synchronized (stateLock) {
             if (destroyed) {
                 throw new IllegalStateException("Key has been destroyed");
+            }
+
+            if (paramSpec == null) {
+                log("extracting DH parameters from DER");
+                paramSpec = extractDHParameterSpec();
             }
             return paramSpec;
         }
@@ -461,6 +660,25 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey {
             return "WolfCryptDHPrivateKey[algorithm=DH, format=PKCS#8, " +
                    "encoded.length=" + encoded.length + "]";
         }
+    }
+
+    /**
+     * Deserialization routine to reinitialize transient fields.
+     * The stateLock field is transient and needs to be recreated after
+     * deserialization.
+     *
+     * @param in ObjectInputStream to read from
+     * @throws IOException if an I/O error occurs
+     * @throws ClassNotFoundException if class cannot be found
+     */
+    private void readObject(ObjectInputStream in)
+        throws IOException, ClassNotFoundException {
+
+        /* Default deserialization */
+        in.defaultReadObject();
+
+        /* Reinitialize transient lock object */
+        stateLock = new Object();
     }
 }
 

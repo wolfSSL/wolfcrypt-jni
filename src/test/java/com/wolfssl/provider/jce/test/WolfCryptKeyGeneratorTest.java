@@ -139,7 +139,7 @@ public class WolfCryptKeyGeneratorTest {
         throws NoSuchProviderException, NoSuchAlgorithmException {
 
         testKeyGeneration("AES", aesKeySizes);
-        /* Default SunJCE key size for AES is 256 bits as of JDK bug 4628062 */
+        /* Default SunJCE key size for AES is 256 bits as of JDK bug 8267319 */
         testKeyGenerationDefaultKeySize("AES", 256);
     }
 
