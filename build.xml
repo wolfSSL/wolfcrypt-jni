@@ -136,6 +136,10 @@
             includeantruntime="false">
             <compilerarg value="-Xlint:-options" />
         </javac>
+        <!-- Copy resources to build directory for ServiceLoader -->
+        <copy todir="${build.dir}" failonerror="false">
+            <fileset dir="src/main/resources" includes="**/*" />
+        </copy>
     </target>
     <target name="compile-javah" unless="have-nativeheaderdir" depends="init">
         <javac
@@ -151,6 +155,10 @@
             includeantruntime="false">
             <compilerarg value="-Xlint:-options" />
         </javac>
+        <!-- Copy resources to build directory for ServiceLoader -->
+        <copy todir="${build.dir}" failonerror="false">
+            <fileset dir="src/main/resources" includes="**/*" />
+        </copy>
     </target>
 
     <!-- create JAR with ONLY JNI classes, not to be used with JCE -->
