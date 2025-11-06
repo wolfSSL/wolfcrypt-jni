@@ -1832,5 +1832,381 @@ public class WolfSSLKeyStoreTest {
             }
         }
     }
+
+    /*
+     * Test that SecretKey entries can be stored with one iteration count,
+     * then retrieved successfully after the iteration count changes.
+     * This verifies that SecretKey decryption uses the stored kdfIterations
+     * instead of the current global WKS_PBKDF2_ITERATION_COUNT.
+     */
+    @Test
+    public void testSecretKeyWithIterationCountChange()
+        throws KeyStoreException, IOException, FileNotFoundException,
+               NoSuchProviderException, NoSuchAlgorithmException,
+               CertificateException, InvalidKeySpecException,
+               UnrecoverableKeyException {
+
+        KeyStore store = null;
+        KeyGenerator kg = null;
+        SecretKey aesKey1 = null;
+        SecretKey aesKey2 = null;
+        SecretKey hmacKey = null;
+        Key keyOut = null;
+        ByteArrayOutputStream baos = null;
+        ByteArrayInputStream bais = null;
+        String origIterationCount =
+            Security.getProperty("wolfjce.wks.iterationCount");
+
+        try {
+            /* Create KeyStore and load empty */
+            store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+
+            /* Set iteration count to 20000 */
+            Security.setProperty("wolfjce.wks.iterationCount", "20000");
+
+            /* Generate and store AES key with 20000 iterations */
+            kg = KeyGenerator.getInstance("AES");
+            assertNotNull(kg);
+            kg.init(256, rand);
+            aesKey1 = kg.generateKey();
+            assertNotNull(aesKey1);
+            store.setKeyEntry("aesKey1", aesKey1,
+                storePass.toCharArray(), null);
+
+            /* Store KeyStore to byte array */
+            baos = new ByteArrayOutputStream();
+            store.store(baos, storePass.toCharArray());
+
+            /* Change iteration count to 15000 (LOWER) */
+            Security.setProperty("wolfjce.wks.iterationCount", "15000");
+
+            /* Load KeyStore from byte array */
+            bais = new ByteArrayInputStream(baos.toByteArray());
+            store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(bais, storePass.toCharArray());
+
+            /* Retrieve and verify key works with lower iteration count */
+            keyOut = store.getKey("aesKey1", storePass.toCharArray());
+            assertNotNull(keyOut);
+            assertTrue(keyOut instanceof SecretKey);
+            assertTrue(Arrays.equals(aesKey1.getEncoded(),
+                keyOut.getEncoded()));
+
+            /* Add new key with lower iteration count (15000) */
+            aesKey2 = kg.generateKey();
+            assertNotNull(aesKey2);
+            store.setKeyEntry("aesKey2", aesKey2,
+                storePass.toCharArray(), null);
+
+            /* Store KeyStore again */
+            baos = new ByteArrayOutputStream();
+            store.store(baos, storePass.toCharArray());
+
+            /* Change iteration count to 30000 (higher than both) */
+            Security.setProperty("wolfjce.wks.iterationCount", "30000");
+
+            /* Load KeyStore from byte array */
+            bais = new ByteArrayInputStream(baos.toByteArray());
+            store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(bais, storePass.toCharArray());
+
+            /* Verify both keys work with higher iteration count set */
+            keyOut = store.getKey("aesKey1", storePass.toCharArray());
+            assertNotNull(keyOut);
+            assertTrue(keyOut instanceof SecretKey);
+            assertTrue(Arrays.equals(aesKey1.getEncoded(),
+                keyOut.getEncoded()));
+
+            keyOut = store.getKey("aesKey2", storePass.toCharArray());
+            assertNotNull(keyOut);
+            assertTrue(keyOut instanceof SecretKey);
+            assertTrue(Arrays.equals(aesKey2.getEncoded(),
+                keyOut.getEncoded()));
+
+            /* Add HMAC key with new higher iteration count (30000) */
+            kg = KeyGenerator.getInstance("HmacSHA256");
+            assertNotNull(kg);
+            kg.init(256, rand);
+            hmacKey = kg.generateKey();
+            assertNotNull(hmacKey);
+            store.setKeyEntry("hmacKey", hmacKey,
+                storePass.toCharArray(), null);
+
+            /* Verify all three keys work together */
+            keyOut = store.getKey("aesKey1", storePass.toCharArray());
+            assertTrue(Arrays.equals(aesKey1.getEncoded(),
+                keyOut.getEncoded()));
+            keyOut = store.getKey("aesKey2", storePass.toCharArray());
+            assertTrue(Arrays.equals(aesKey2.getEncoded(),
+                keyOut.getEncoded()));
+            keyOut = store.getKey("hmacKey", storePass.toCharArray());
+            assertTrue(Arrays.equals(hmacKey.getEncoded(),
+                keyOut.getEncoded()));
+
+        } finally {
+            /* Reset iteration count back to original value */
+            if (origIterationCount != null) {
+                Security.setProperty("wolfjce.wks.iterationCount",
+                    origIterationCount);
+            }
+            else {
+                Security.setProperty("wolfjce.wks.iterationCount", "10000");
+            }
+        }
+    }
+
+    /*
+     * Test that PrivateKey entries can be stored with one iteration count,
+     * then retrieved successfully after the iteration count changes.
+     * This is a regression test to ensure PrivateKey continues to work
+     * correctly alongside the SecretKey fix.
+     */
+    @Test
+    public void testPrivateKeyWithIterationCountChange()
+        throws KeyStoreException, IOException, FileNotFoundException,
+               NoSuchProviderException, NoSuchAlgorithmException,
+               CertificateException, InvalidKeySpecException,
+               UnrecoverableKeyException {
+
+        KeyStore store = null;
+        PrivateKey keyOut = null;
+        Certificate[] chainOut = null;
+        ByteArrayOutputStream baos = null;
+        ByteArrayInputStream bais = null;
+        String origIterationCount =
+            Security.getProperty("wolfjce.wks.iterationCount");
+
+        try {
+            /* Create KeyStore and load empty */
+            store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+
+            /* Set iteration count to 20000 */
+            Security.setProperty("wolfjce.wks.iterationCount", "20000");
+
+            /* Store RSA PrivateKey with cert chain at 20000 iterations */
+            store.setKeyEntry("serverRsa", serverKeyRsa,
+                storePass.toCharArray(), rsaServerChain);
+            assertEquals(1, store.size());
+            assertTrue(store.isKeyEntry("serverRsa"));
+
+            /* Store KeyStore to byte array */
+            baos = new ByteArrayOutputStream();
+            store.store(baos, storePass.toCharArray());
+
+            /* Change iteration count to 15000 (LOWER) */
+            Security.setProperty("wolfjce.wks.iterationCount", "15000");
+
+            /* Load KeyStore from byte array */
+            bais = new ByteArrayInputStream(baos.toByteArray());
+            store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(bais, storePass.toCharArray());
+
+            /* Retrieve and verify key works with lower iteration count */
+            keyOut = (PrivateKey)store.getKey("serverRsa",
+                storePass.toCharArray());
+            assertNotNull(keyOut);
+            assertTrue(keyOut instanceof PrivateKey);
+            assertTrue(Arrays.equals(serverKeyRsa.getEncoded(),
+                keyOut.getEncoded()));
+            chainOut = store.getCertificateChain("serverRsa");
+            assertNotNull(chainOut);
+            assertTrue(Arrays.equals(rsaServerChain, chainOut));
+
+            /* Add ECC PrivateKey with lower iteration count (15000) */
+            store.setKeyEntry("serverEcc", serverKeyEcc,
+                storePass.toCharArray(), eccServerChain);
+
+            /* Store KeyStore again */
+            baos = new ByteArrayOutputStream();
+            store.store(baos, storePass.toCharArray());
+
+            /* Change iteration count to 30000 (HIGHER than both) */
+            Security.setProperty("wolfjce.wks.iterationCount", "30000");
+
+            /* Load KeyStore from byte array */
+            bais = new ByteArrayInputStream(baos.toByteArray());
+            store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(bais, storePass.toCharArray());
+
+            /* Verify both keys work with higher iteration count set */
+            keyOut = (PrivateKey)store.getKey("serverRsa",
+                storePass.toCharArray());
+            assertNotNull(keyOut);
+            assertTrue(Arrays.equals(serverKeyRsa.getEncoded(),
+                keyOut.getEncoded()));
+            chainOut = store.getCertificateChain("serverRsa");
+            assertTrue(Arrays.equals(rsaServerChain, chainOut));
+
+            keyOut = (PrivateKey)store.getKey("serverEcc",
+                storePass.toCharArray());
+            assertNotNull(keyOut);
+            assertTrue(Arrays.equals(serverKeyEcc.getEncoded(),
+                keyOut.getEncoded()));
+            chainOut = store.getCertificateChain("serverEcc");
+            assertTrue(Arrays.equals(eccServerChain, chainOut));
+
+        } finally {
+            /* Reset iteration count back to original value */
+            if (origIterationCount != null) {
+                Security.setProperty("wolfjce.wks.iterationCount",
+                    origIterationCount);
+            }
+            else {
+                Security.setProperty("wolfjce.wks.iterationCount", "10000");
+            }
+        }
+    }
+
+    /*
+     * Test that a KeyStore can contain PrivateKey, SecretKey, and
+     * Certificate entries encrypted with different iteration counts,
+     * and all can be retrieved correctly regardless of what the current
+     * iteration count property is set to.
+     */
+    @Test
+    public void testMixedIterationCountsInSameKeyStore()
+        throws KeyStoreException, IOException, FileNotFoundException,
+               NoSuchProviderException, NoSuchAlgorithmException,
+               CertificateException, InvalidKeySpecException,
+               UnrecoverableKeyException {
+
+        KeyStore store = null;
+        KeyGenerator kg = null;
+        SecretKey aesKey1 = null;
+        SecretKey aesKey2 = null;
+        SecretKey hmacKey = null;
+        Key keyOut = null;
+        PrivateKey privKeyOut = null;
+        Certificate[] chainOut = null;
+        Certificate certOut = null;
+        ByteArrayOutputStream baos = null;
+        ByteArrayInputStream bais = null;
+        String origIterationCount =
+            Security.getProperty("wolfjce.wks.iterationCount");
+
+        try {
+            /* Create KeyStore and load empty */
+            store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+
+            /* Set iteration count to 12000 and add first entries */
+            Security.setProperty("wolfjce.wks.iterationCount", "12000");
+
+            kg = KeyGenerator.getInstance("AES");
+            kg.init(256, rand);
+            aesKey1 = kg.generateKey();
+            store.setKeyEntry("aesKey12k", aesKey1,
+                storePass.toCharArray(), null);
+            store.setKeyEntry("rsaKey12k", serverKeyRsa,
+                storePass.toCharArray(), rsaServerChain);
+
+            /* Change to 18000 and add more entries */
+            Security.setProperty("wolfjce.wks.iterationCount", "18000");
+
+            kg = KeyGenerator.getInstance("HmacSHA256");
+            kg.init(256, rand);
+            hmacKey = kg.generateKey();
+            store.setKeyEntry("hmacKey18k", hmacKey,
+                storePass.toCharArray(), null);
+            store.setKeyEntry("eccKey18k", serverKeyEcc,
+                storePass.toCharArray(), eccServerChain);
+
+            /* Change to 25000 and add more entries */
+            Security.setProperty("wolfjce.wks.iterationCount", "25000");
+
+            kg = KeyGenerator.getInstance("AES");
+            kg.init(128, rand);
+            aesKey2 = kg.generateKey();
+            store.setKeyEntry("aesKey25k", aesKey2,
+                storePass.toCharArray(), null);
+            store.setCertificateEntry("clientCertRsa", clientCertRsa);
+
+            /* Store KeyStore to byte array with 25000 iteration count */
+            baos = new ByteArrayOutputStream();
+            store.store(baos, storePass.toCharArray());
+
+            /* Change iteration count to something completely different */
+            Security.setProperty("wolfjce.wks.iterationCount", "35000");
+
+            /* Load KeyStore */
+            bais = new ByteArrayInputStream(baos.toByteArray());
+            store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(bais, storePass.toCharArray());
+
+            /* Verify all entries can be retrieved correctly with 35000 set */
+            assertEquals(6, store.size());
+
+            /* Verify 12000-iteration entries */
+            keyOut = store.getKey("aesKey12k", storePass.toCharArray());
+            assertNotNull(keyOut);
+            assertTrue(Arrays.equals(aesKey1.getEncoded(),
+                keyOut.getEncoded()));
+
+            privKeyOut = (PrivateKey)store.getKey("rsaKey12k",
+                storePass.toCharArray());
+            assertNotNull(privKeyOut);
+            assertTrue(Arrays.equals(serverKeyRsa.getEncoded(),
+                privKeyOut.getEncoded()));
+            chainOut = store.getCertificateChain("rsaKey12k");
+            assertTrue(Arrays.equals(rsaServerChain, chainOut));
+
+            /* Verify 18000-iteration entries */
+            keyOut = store.getKey("hmacKey18k", storePass.toCharArray());
+            assertNotNull(keyOut);
+            assertTrue(Arrays.equals(hmacKey.getEncoded(),
+                keyOut.getEncoded()));
+
+            privKeyOut = (PrivateKey)store.getKey("eccKey18k",
+                storePass.toCharArray());
+            assertNotNull(privKeyOut);
+            assertTrue(Arrays.equals(serverKeyEcc.getEncoded(),
+                privKeyOut.getEncoded()));
+            chainOut = store.getCertificateChain("eccKey18k");
+            assertTrue(Arrays.equals(eccServerChain, chainOut));
+
+            /* Verify 25000-iteration entries */
+            keyOut = store.getKey("aesKey25k", storePass.toCharArray());
+            assertNotNull(keyOut);
+            assertTrue(Arrays.equals(aesKey2.getEncoded(),
+                keyOut.getEncoded()));
+
+            certOut = store.getCertificate("clientCertRsa");
+            assertNotNull(certOut);
+            assertEquals(clientCertRsa, certOut);
+
+            /* Change iteration count again and verify still works */
+            Security.setProperty("wolfjce.wks.iterationCount", "11000");
+
+            /* Re-store and reload with new iteration count */
+            baos = new ByteArrayOutputStream();
+            store.store(baos, storePass.toCharArray());
+            bais = new ByteArrayInputStream(baos.toByteArray());
+            store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(bais, storePass.toCharArray());
+
+            /* Verify all original entries still work */
+            keyOut = store.getKey("aesKey12k", storePass.toCharArray());
+            assertTrue(Arrays.equals(aesKey1.getEncoded(),
+                keyOut.getEncoded()));
+            keyOut = store.getKey("hmacKey18k", storePass.toCharArray());
+            assertTrue(Arrays.equals(hmacKey.getEncoded(),
+                keyOut.getEncoded()));
+            keyOut = store.getKey("aesKey25k", storePass.toCharArray());
+            assertTrue(Arrays.equals(aesKey2.getEncoded(),
+                keyOut.getEncoded()));
+
+        } finally {
+            /* Reset iteration count back to original value */
+            if (origIterationCount != null) {
+                Security.setProperty("wolfjce.wks.iterationCount",
+                    origIterationCount);
+            }
+            else {
+                Security.setProperty("wolfjce.wks.iterationCount", "10000");
+            }
+        }
+    }
 }
 
