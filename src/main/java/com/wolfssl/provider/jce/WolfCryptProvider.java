@@ -86,18 +86,30 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.Sha224Enabled()) {
             put("MessageDigest.SHA-224",
                     "com.wolfssl.provider.jce.WolfCryptMessageDigestSha224");
+            /* SHA-224 OID */
+            put("Alg.Alias.MessageDigest.2.16.840.1.101.3.4.2.4",
+                    "SHA-224");
         }
         if (FeatureDetect.Sha256Enabled()) {
             put("MessageDigest.SHA-256",
                     "com.wolfssl.provider.jce.WolfCryptMessageDigestSha256");
+            /* SHA-256 OID */
+            put("Alg.Alias.MessageDigest.2.16.840.1.101.3.4.2.1",
+                    "SHA-256");
         }
         if (FeatureDetect.Sha384Enabled()) {
             put("MessageDigest.SHA-384",
                     "com.wolfssl.provider.jce.WolfCryptMessageDigestSha384");
+            /* SHA-384 OID */
+            put("Alg.Alias.MessageDigest.2.16.840.1.101.3.4.2.2",
+                    "SHA-384");
         }
         if (FeatureDetect.Sha512Enabled()) {
             put("MessageDigest.SHA-512",
                     "com.wolfssl.provider.jce.WolfCryptMessageDigestSha512");
+            /* SHA-512 OID */
+            put("Alg.Alias.MessageDigest.2.16.840.1.101.3.4.2.3",
+                    "SHA-512");
         }
         if (FeatureDetect.Sha3Enabled()) {
             put("MessageDigest.SHA3-224",

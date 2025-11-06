@@ -89,9 +89,13 @@ The JCE provider currently supports the following algorithms:
         MD5
         SHA-1
         SHA-224
+            OID: 2.16.840.1.101.3.4.2.4
         SHA-256
+            OID: 2.16.840.1.101.3.4.2.1
         SHA-384
+            OID: 2.16.840.1.101.3.4.2.2
         SHA-512
+            OID: 2.16.840.1.101.3.4.2.3
         SHA3-224
         SHA3-256
         SHA3-384
