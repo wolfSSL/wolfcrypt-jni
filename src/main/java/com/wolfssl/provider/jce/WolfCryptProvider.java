@@ -250,22 +250,32 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.HmacShaEnabled()) {
             put("Mac.HmacSHA1",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA1");
+            /* HMAC-SHA1 OID */
+            put("Alg.Alias.Mac.1.2.840.113549.2.7", "HmacSHA1");
         }
         if (FeatureDetect.HmacSha224Enabled()) {
             put("Mac.HmacSHA224",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA224");
+            /* HMAC-SHA224 OID */
+            put("Alg.Alias.Mac.1.2.840.113549.2.8", "HmacSHA224");
         }
         if (FeatureDetect.HmacSha256Enabled()) {
             put("Mac.HmacSHA256",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA256");
+            /* HMAC-SHA256 OID */
+            put("Alg.Alias.Mac.1.2.840.113549.2.9", "HmacSHA256");
         }
         if (FeatureDetect.HmacSha384Enabled()) {
             put("Mac.HmacSHA384",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA384");
+            /* HMAC-SHA384 OID */
+            put("Alg.Alias.Mac.1.2.840.113549.2.10", "HmacSHA384");
         }
         if (FeatureDetect.HmacSha512Enabled()) {
             put("Mac.HmacSHA512",
                     "com.wolfssl.provider.jce.WolfCryptMac$wcHmacSHA512");
+            /* HMAC-SHA512 OID */
+            put("Alg.Alias.Mac.1.2.840.113549.2.11", "HmacSHA512");
         }
         if (FeatureDetect.HmacSha3_224Enabled()) {
             put("Mac.HmacSHA3-224",
@@ -301,6 +311,22 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCBCNoPadding");
             put("Cipher.AES/CBC/PKCS5Padding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCBCPKCS5Padding");
+
+            /* NIST AES-CBC algorithm aliases with key sizes */
+            put("Alg.Alias.Cipher.AES_128/CBC/NoPadding",
+                "AES/CBC/NoPadding");
+            put("Alg.Alias.Cipher.AES_192/CBC/NoPadding",
+                "AES/CBC/NoPadding");
+            put("Alg.Alias.Cipher.AES_256/CBC/NoPadding",
+                "AES/CBC/NoPadding");
+
+            /* NIST AES-CBC OID aliases */
+            put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.2",
+                "AES/CBC/NoPadding");
+            put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.22",
+                "AES/CBC/NoPadding");
+            put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.42",
+                "AES/CBC/NoPadding");
         }
         if (FeatureDetect.AesEcbEnabled()) {
             put("Cipher.AES/ECB/NoPadding",
@@ -314,6 +340,22 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESECBPKCS5Padding");
             put("Cipher.AES SupportedModes", "ECB");
             put("Cipher.AES SupportedPaddings", "NoPadding, PKCS5Padding");
+
+            /* NIST AES-ECB algorithm aliases with key sizes */
+            put("Alg.Alias.Cipher.AES_128/ECB/NoPadding",
+                "AES/ECB/NoPadding");
+            put("Alg.Alias.Cipher.AES_192/ECB/NoPadding",
+                "AES/ECB/NoPadding");
+            put("Alg.Alias.Cipher.AES_256/ECB/NoPadding",
+                "AES/ECB/NoPadding");
+
+            /* NIST AES-ECB OID aliases */
+            put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.1",
+                "AES/ECB/NoPadding");
+            put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.21",
+                "AES/ECB/NoPadding");
+            put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.41",
+                "AES/ECB/NoPadding");
         }
         if (FeatureDetect.AesCtrEnabled()) {
             put("Cipher.AES/CTR/NoPadding",
@@ -322,6 +364,22 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.AesOfbEnabled()) {
             put("Cipher.AES/OFB/NoPadding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESOFBNoPadding");
+
+            /* NIST AES-OFB algorithm aliases with key sizes */
+            put("Alg.Alias.Cipher.AES_128/OFB/NoPadding",
+                "AES/OFB/NoPadding");
+            put("Alg.Alias.Cipher.AES_192/OFB/NoPadding",
+                "AES/OFB/NoPadding");
+            put("Alg.Alias.Cipher.AES_256/OFB/NoPadding",
+                "AES/OFB/NoPadding");
+
+            /* NIST AES-OFB OID aliases */
+            put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.3",
+                "AES/OFB/NoPadding");
+            put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.23",
+                "AES/OFB/NoPadding");
+            put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.43",
+                "AES/OFB/NoPadding");
         }
         if (FeatureDetect.AesGcmEnabled()) {
             put("Cipher.AES/GCM/NoPadding",

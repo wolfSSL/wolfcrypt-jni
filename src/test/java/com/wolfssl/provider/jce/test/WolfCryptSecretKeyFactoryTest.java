@@ -821,6 +821,59 @@ public class WolfCryptSecretKeyFactoryTest {
     }
 
     /**
+     * Test that getKeySpec() returns PBEKeySpec with key length in bits.
+     */
+    @Test
+    public void testGetKeySpecReturnsKeyLengthInBits()
+        throws NoSuchAlgorithmException, InvalidKeySpecException,
+               NoSuchProviderException {
+
+        char[] pass = "passwordpassword".toCharArray();
+        byte[] salt = {
+            (byte)0x78, (byte)0x57, (byte)0x8E, (byte)0x5a,
+            (byte)0x5d, (byte)0x63, (byte)0xcb, (byte)0x06
+        };
+        int iterations = 2048;
+        int[] keySizes = { 128, 192, 256 }; /* key sizes in bits */
+        PBEKeySpec spec = null;
+        PBEKeySpec retrievedSpec = null;
+        SecretKeyFactory sf = null;
+        SecretKey key = null;
+
+        if (!FeatureDetect.Pbkdf2Enabled() ||
+            !FeatureDetect.HmacSha256Enabled() ||
+            !algoSupported("PBKDF2WithHmacSHA256")) {
+            /* skipped */
+            Assume.assumeTrue(false);
+        }
+
+        sf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256", provider);
+        assertNotNull(sf);
+
+        /* Test multiple key sizes */
+        for (int kLen : keySizes) {
+            /* Generate secret with key length in bits */
+            spec = new PBEKeySpec(pass, salt, iterations, kLen);
+            assertNotNull(spec);
+
+            key = sf.generateSecret(spec);
+            assertNotNull(key);
+
+            /* Get KeySpec back from SecretKey */
+            retrievedSpec = (PBEKeySpec)sf.getKeySpec(key, PBEKeySpec.class);
+            assertNotNull(retrievedSpec);
+
+            /* Verify all parameters match, including key length in bits */
+            assertTrue(Arrays.equals(retrievedSpec.getPassword(), pass));
+            assertTrue(Arrays.equals(retrievedSpec.getSalt(), salt));
+            assertEquals(retrievedSpec.getIterationCount(), iterations);
+
+            assertEquals("Key length should be in bits, not bytes",
+                kLen, retrievedSpec.getKeyLength());
+        }
+    }
+
+    /**
      * Test translating existing SecretKey object to one generated
      * by SecretKeyFactory using translateKey().
      */

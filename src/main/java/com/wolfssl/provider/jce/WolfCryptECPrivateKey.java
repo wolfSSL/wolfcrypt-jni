@@ -21,6 +21,8 @@
 
 package com.wolfssl.provider.jce;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.math.BigInteger;
 import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
@@ -54,8 +56,10 @@ public class WolfCryptECPrivateKey implements ECPrivateKey {
     /** Track if object has been destroyed */
     private boolean destroyed = false;
 
-    /** Lock around use of destroyed boolean and cached values */
-    private transient final Object stateLock = new Object();
+    /** Lock around use of destroyed boolean and cached values.
+     * Note: Cannot be final because it needs to be reinitialized after
+     * deserialization. */
+    private transient Object stateLock = new Object();
 
     /**
      * Create new WolfCryptECPrivateKey from DER-encoded PKCS#8 data.
@@ -405,6 +409,25 @@ public class WolfCryptECPrivateKey implements ECPrivateKey {
             return "WolfCryptECPrivateKey[algorithm=EC, format=PKCS#8, " +
                    "encoded.length=" + encoded.length + "]";
         }
+    }
+
+    /**
+     * Deserialization routine to reinitialize transient fields.
+     * The stateLock field is transient and needs to be recreated after
+     * deserialization.
+     *
+     * @param in ObjectInputStream to read from
+     * @throws IOException if an I/O error occurs
+     * @throws ClassNotFoundException if class cannot be found
+     */
+    private void readObject(ObjectInputStream in)
+        throws IOException, ClassNotFoundException {
+
+        /* Default deserialization */
+        in.defaultReadObject();
+
+        /* Reinitialize transient lock object */
+        stateLock = new Object();
     }
 }
 

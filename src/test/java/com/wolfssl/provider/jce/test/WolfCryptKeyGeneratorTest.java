@@ -139,7 +139,8 @@ public class WolfCryptKeyGeneratorTest {
         throws NoSuchProviderException, NoSuchAlgorithmException {
 
         testKeyGeneration("AES", aesKeySizes);
-        testKeyGenerationDefaultKeySize("AES", Aes.BLOCK_SIZE * 8);
+        /* Default SunJCE key size for AES is 256 bits as of JDK bug 8267319 */
+        testKeyGenerationDefaultKeySize("AES", 256);
     }
 
     @Test
@@ -379,6 +380,53 @@ public class WolfCryptKeyGeneratorTest {
                 assertFalse(java.util.Arrays.equals(keys[i].getEncoded(),
                                                     keys[j].getEncoded()));
             }
+        }
+    }
+
+    /**
+     * Verify that AES KeyGenerator supports default initialization when
+     * init() is not called, and that the default key size is 256 bits.
+     */
+    @Test
+    public void testAESDefaultKeySize256Bits()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        KeyGenerator kg = KeyGenerator.getInstance("AES", "wolfJCE");
+        assertNotNull(kg);
+
+        /* Generate key without calling init() - should use default size */
+        SecretKey keyWithDefaultSize = kg.generateKey();
+        assertNotNull(keyWithDefaultSize);
+
+        byte[] encoding = keyWithDefaultSize.getEncoded();
+        assertNotNull(encoding);
+
+        int defKeyLen = encoding.length;
+        assertTrue("default key length is 0!", defKeyLen > 0);
+
+        /* Default key size should be 256 bits (32 bytes) as of
+         * JDK bug 8267319 */
+        assertEquals("default key length mismatch! Expected 32 bytes " +
+            "(256 bits), got " + defKeyLen + " bytes",
+            32, defKeyLen);
+
+        /* Test that we can explicitly generate all valid sizes */
+        int[] validSizes = { 128, 192, 256 };
+        for (int size : validSizes) {
+            kg.init(size);
+            SecretKey key = kg.generateKey();
+            assertNotNull(key);
+            assertEquals("key generated with wrong length for size " + size,
+                size / 8, key.getEncoded().length);
+        }
+
+        /* Test that invalid key size throws exception */
+        try {
+            kg.init(257); /* invalid - not 128, 192, or 256 */
+            fail("init() should throw InvalidParameterException for " +
+                "invalid key size");
+        } catch (InvalidParameterException e) {
+            /* expected */
         }
     }
 }

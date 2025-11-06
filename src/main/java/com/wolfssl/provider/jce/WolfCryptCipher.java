@@ -807,6 +807,9 @@ public class WolfCryptCipher extends CipherSpi {
             AlgorithmParameterSpec spec, SecureRandom random)
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
+        /* Reset buffered data from any previous operation */
+        buffered = new byte[0];
+
         InitializeNativeStructs();
         wolfCryptSetDirection(opmode);
         wolfCryptSetIV(spec, random);

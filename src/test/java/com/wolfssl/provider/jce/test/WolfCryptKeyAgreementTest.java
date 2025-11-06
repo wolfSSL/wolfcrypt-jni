@@ -37,6 +37,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.IOException;
+
 import javax.crypto.KeyAgreement;
 import javax.crypto.ShortBufferException;
 import javax.crypto.SecretKey;
@@ -48,11 +54,14 @@ import java.security.Provider;
 import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.AlgorithmParameters;
 import java.security.AlgorithmParameterGenerator;
 import java.security.SecureRandom;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.spec.InvalidParameterSpecException;
 import java.security.spec.ECGenParameterSpec;
@@ -1094,6 +1103,100 @@ public class WolfCryptKeyAgreementTest {
 
         threadRunnerKeyAgreeTest("DH");
         threadRunnerKeyAgreeTest("ECDH");
+    }
+
+    /**
+     * Test DH key serialization and deserialization.
+     */
+    @Test
+    public void testDHKeySerialization() throws Exception {
+        /* Generate DH keypair */
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
+        kpg.initialize(2048);
+        KeyPair kp = kpg.generateKeyPair();
+
+        /* Serialize and deserialize private key */
+        PrivateKey deserializedPrivate =
+            deserializeKey(serializeKey(kp.getPrivate()));
+        assertNotNull("Deserialized private key should not be null",
+            deserializedPrivate);
+        assertTrue("Private key should be equal after serialization",
+            kp.getPrivate().equals(deserializedPrivate));
+
+        /* Serialize and deserialize public key */
+        PublicKey deserializedPublic =
+            deserializeKey(serializeKey(kp.getPublic()));
+        assertNotNull("Deserialized public key should not be null",
+            deserializedPublic);
+        assertTrue("Public key should be equal after serialization",
+            kp.getPublic().equals(deserializedPublic));
+
+        /* Test KeyAgreement with deserialized keys */
+        KeyAgreement ka = KeyAgreement.getInstance("DH", "wolfJCE");
+        ka.init(deserializedPrivate);
+        ka.doPhase(deserializedPublic, true);
+        byte[] secret = ka.generateSecret();
+        assertNotNull("KeyAgreement secret should not be null", secret);
+    }
+
+    /**
+     * Test EC key serialization and deserialization.
+     */
+    @Test
+    public void testECKeySerialization() throws Exception {
+        /* Generate EC keypair */
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", "wolfJCE");
+        kpg.initialize(256);
+        KeyPair kp = kpg.generateKeyPair();
+
+        /* Serialize and deserialize private key */
+        PrivateKey deserializedPrivate =
+            deserializeKey(serializeKey(kp.getPrivate()));
+        assertNotNull("Deserialized private key should not be null",
+            deserializedPrivate);
+        assertTrue("Private key should be equal after serialization",
+            kp.getPrivate().equals(deserializedPrivate));
+
+        /* Serialize and deserialize public key */
+        PublicKey deserializedPublic =
+            deserializeKey(serializeKey(kp.getPublic()));
+        assertNotNull("Deserialized public key should not be null",
+            deserializedPublic);
+        assertTrue("Public key should be equal after serialization",
+            kp.getPublic().equals(deserializedPublic));
+
+        /* Test KeyAgreement with deserialized keys */
+        KeyAgreement ka = KeyAgreement.getInstance("ECDH", "wolfJCE");
+        ka.init(deserializedPrivate);
+        ka.doPhase(deserializedPublic, true);
+        byte[] secret = ka.generateSecret();
+        assertNotNull("KeyAgreement secret should not be null", secret);
+    }
+
+    /**
+     * Serialize a key to byte array
+     */
+    private byte[] serializeKey(Key key) throws IOException {
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bos);
+        oos.writeObject(key);
+        oos.close();
+        return bos.toByteArray();
+    }
+
+    /**
+     * Deserialize a key from byte array
+     */
+    private <T> T deserializeKey(byte[] bytes)
+        throws IOException, ClassNotFoundException {
+
+        ByteArrayInputStream bis =
+            new ByteArrayInputStream(bytes);
+        ObjectInputStream ois = new ObjectInputStream(bis);
+        T key = (T) ois.readObject();
+        ois.close();
+        return key;
     }
 }
 
