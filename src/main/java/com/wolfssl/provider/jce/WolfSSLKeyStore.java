@@ -2773,7 +2773,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                  * PBKDF2-HMAC-SHA512. Generate a 96 byte key in total, split
                  * between 32-byte AES-CBC-256 and 64-byte HMAC-SHA512 key */
                 derivedKey = deriveKeyFromPassword(password, this.kdfSalt,
-                    WKS_PBKDF2_ITERATION_COUNT,
+                    this.kdfIterations,
                     WKS_ENC_KEY_LENGTH + WKS_HMAC_KEY_LENGTH);
 
                 if (derivedKey == null) {
