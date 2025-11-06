@@ -103,14 +103,20 @@ The JCE provider currently supports the following algorithms:
 
     Cipher Class
         AES/CBC/NoPadding
+            Aliases: AES_128/CBC/NoPadding, AES_192/CBC/NoPadding, AES_256/CBC/NoPadding
+            OIDs: 2.16.840.1.101.3.4.1.2, 2.16.840.1.101.3.4.1.22, 2.16.840.1.101.3.4.1.42
         AES/CBC/PKCS5Padding
         AES/CTS/NoPadding
         AES/CCM/NoPadding
         AES/CTR/NoPadding
         AES/ECB/NoPadding
+            Aliases: AES_128/ECB/NoPadding, AES_192/ECB/NoPadding, AES_256/ECB/NoPadding
+            OIDs: 2.16.840.1.101.3.4.1.1, 2.16.840.1.101.3.4.1.21, 2.16.840.1.101.3.4.1.41
         AES/ECB/PKCS5Padding (aliased also as: AES)
         AES/GCM/NoPadding
         AES/OFB/NoPadding
+            Aliases: AES_128/OFB/NoPadding, AES_192/OFB/NoPadding, AES_256/OFB/NoPadding
+            OIDs: 2.16.840.1.101.3.4.1.3, 2.16.840.1.101.3.4.1.23, 2.16.840.1.101.3.4.1.43
         DESede/CBC/NoPadding
         RSA
         RSA/ECB/PKCS1Padding
@@ -120,10 +126,15 @@ The JCE provider currently supports the following algorithms:
         AESGMAC (aliased also as: AES-GMAC)
         HmacMD5
         HmacSHA1
+            OID: 1.2.840.113549.2.7
         HmacSHA224
+            OID: 1.2.840.113549.2.8
         HmacSHA256
+            OID: 1.2.840.113549.2.9
         HmacSHA384
+            OID: 1.2.840.113549.2.10
         HmacSHA512
+            OID: 1.2.840.113549.2.11
         HmacSHA3-224
         HmacSHA3-256
         HmacSHA3-384

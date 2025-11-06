@@ -39,6 +39,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.nio.ByteBuffer;
+import java.io.IOException;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -75,6 +76,7 @@ import java.security.spec.InvalidParameterSpecException;
 import java.security.AlgorithmParameters;
 
 import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -6616,44 +6618,131 @@ public class WolfCryptCipherTest {
         AlgorithmParameters params =
             AlgorithmParameters.getInstance("AES", jceProvider);
 
-        /* Test encoded parameter operations (should be unsupported) */
-        try {
-            params.init(new byte[16]);
-            fail("Should throw IOException for encoded init");
-        } catch (Exception e) {
-            assertTrue("Should be IOException",
-                e instanceof java.io.IOException);
-        }
-
-        try {
-            params.init(new byte[16], "ASN.1");
-            fail("Should throw IOException for encoded init with format");
-        } catch (Exception e) {
-            assertTrue("Should be IOException",
-                e instanceof java.io.IOException);
-        }
-
-        /* Initialize properly first */
-        byte[] iv = new byte[16];
+        /* Initialize with IvParameterSpec */
+        byte[] iv = new byte[Aes.BLOCK_SIZE];
         new SecureRandom().nextBytes(iv);
         IvParameterSpec ivSpec = new IvParameterSpec(iv);
         params.init(ivSpec);
 
-        /* Test encoded getters */
-        try {
-            params.getEncoded();
-            fail("Should throw IOException for getEncoded");
-        } catch (Exception e) {
-            assertTrue("Should be IOException",
-                e instanceof java.io.IOException);
+        /* Test getEncoded - should return ASN.1 OCTET STRING encoding */
+        byte[] encoded = params.getEncoded();
+        assertNotNull("Encoded params should not be null", encoded);
+        assertEquals("Encoded length should be 18 (tag + len + 16 IV bytes)",
+            Aes.BLOCK_SIZE + 2, encoded.length);
+        assertEquals("First byte should be OCTET STRING tag (0x04)",
+            0x04, encoded[0]);
+        assertEquals("Second byte should be length (0x10)", 0x10, encoded[1]);
+
+        /* Verify IV bytes are in encoding */
+        for (int i = 0; i < Aes.BLOCK_SIZE; i++) {
+            assertEquals("IV byte mismatch at index " + i,
+                iv[i], encoded[i + 2]);
         }
 
+        /* Test getEncoded with ASN.1 format */
+        byte[] encoded2 = params.getEncoded("ASN.1");
+        assertArrayEquals("getEncoded(ASN.1) should match getEncoded()",
+            encoded, encoded2);
+
+        /* Test getEncoded with DER format */
+        byte[] encoded3 = params.getEncoded("DER");
+        assertArrayEquals("getEncoded(DER) should match getEncoded()",
+            encoded, encoded3);
+
+        /* Test getEncoded with case-insensitive format */
+        byte[] encoded4 = params.getEncoded("asn.1");
+        assertArrayEquals("Format should be case-insensitive",
+            encoded, encoded4);
+
+        /* Test getEncoded with invalid format */
         try {
-            params.getEncoded("ASN.1");
-            fail("Should throw IOException for getEncoded with format");
-        } catch (Exception e) {
-            assertTrue("Should be IOException",
-                e instanceof java.io.IOException);
+            params.getEncoded("INVALID");
+            fail("Should throw IOException for invalid format");
+        } catch (IOException e) {
+            assertTrue("Should mention unsupported format",
+                e.getMessage().contains("Unsupported format"));
+        }
+
+        /* Test init from encoded bytes */
+        AlgorithmParameters params2 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        params2.init(encoded);
+
+        /* Verify decoded IV matches original */
+        IvParameterSpec decoded =
+            params2.getParameterSpec(IvParameterSpec.class);
+        assertArrayEquals("Decoded IV should match original", iv,
+            decoded.getIV());
+
+        /* Test init with ASN.1 format */
+        AlgorithmParameters params3 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        params3.init(encoded, "ASN.1");
+        IvParameterSpec decoded2 =
+            params3.getParameterSpec(IvParameterSpec.class);
+        assertArrayEquals("Decoded IV should match original", iv,
+            decoded2.getIV());
+
+        /* Test init with DER format */
+        AlgorithmParameters params4 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        params4.init(encoded, "DER");
+        IvParameterSpec decoded3 =
+            params4.getParameterSpec(IvParameterSpec.class);
+        assertArrayEquals("DER format should work for init",
+            iv, decoded3.getIV());
+
+        /* Test init with case-insensitive format */
+        AlgorithmParameters params5 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        params5.init(encoded, "asn.1");
+        IvParameterSpec decoded4 =
+            params5.getParameterSpec(IvParameterSpec.class);
+        assertArrayEquals("Format should be case-insensitive",
+            iv, decoded4.getIV());
+
+        /* Test init with invalid format */
+        AlgorithmParameters params6 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        try {
+            params6.init(encoded, "INVALID");
+            fail("Should throw IOException for invalid format");
+        } catch (IOException e) {
+            assertTrue("Should mention unsupported format",
+                e.getMessage().contains("Unsupported format"));
+        }
+
+        /* Test init with null throws NullPointerException */
+        AlgorithmParameters params7 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        try {
+            params7.init((byte[])null);
+            fail("Should throw NullPointerException for null");
+        } catch (NullPointerException e) {
+            /* Expected */
+        }
+
+        /* Test double init throws exception */
+        AlgorithmParameters params8 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        params8.init(encoded);
+        try {
+            params8.init(encoded);
+            fail("Should throw exception for double init");
+        } catch (IOException e) {
+            assertTrue("Should mention already initialized",
+                e.getMessage().contains("already initialized"));
+        }
+
+        /* Test getEncoded before init throws exception */
+        AlgorithmParameters params9 =
+            AlgorithmParameters.getInstance("AES", jceProvider);
+        try {
+            params9.getEncoded();
+            fail("Should throw IOException before init");
+        } catch (IOException e) {
+            assertTrue("Should mention not initialized",
+                e.getMessage().contains("not initialized"));
         }
     }
 
@@ -7498,6 +7587,226 @@ public class WolfCryptCipherTest {
 
         assertArrayEquals("RSA public key operations should work normally",
             plaintext, decrypted);
+    }
+
+    /**
+     * Test that buffered data is cleared when doFinal() throws
+     * AEADBadTagException. Subsequent operations should not fail with
+     * ShortBufferException.
+     */
+    @Test
+    public void testAesGcmByteBufferExceptionBufferReset()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException, javax.crypto.ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+
+        byte[] keyBytes = new byte[16];
+        secureRandom.nextBytes(keyBytes);
+        byte[] data = new byte[4096];
+        secureRandom.nextBytes(data);
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        GCMParameterSpec spec = new GCMParameterSpec(96, keyBytes);
+
+        /* update() then doFinal() that throws exception */
+        cipher.init(Cipher.DECRYPT_MODE, key, spec);
+        ByteBuffer heapIn = ByteBuffer.wrap(data);
+        ByteBuffer heapOut = ByteBuffer.allocate(4096);
+
+        cipher.update(heapIn, heapOut);
+        try {
+            cipher.doFinal(heapIn, heapOut);
+            fail("Expected AEADBadTagException");
+        } catch (AEADBadTagException e) {
+            /* Expected - invalid tag */
+        }
+
+        /* Second operation should not throw ShortBufferException due to
+         * leftover buffered data from first operation */
+        cipher.init(Cipher.DECRYPT_MODE, key, spec);
+        heapIn.clear();
+        heapIn.put(data);
+        heapIn.flip();
+        ByteBuffer directOut = ByteBuffer.allocateDirect(4096);
+
+        cipher.update(heapIn, directOut);
+    }
+
+    /**
+     * Test NIST AES-128 ECB OID (2.16.840.1.101.3.4.1.1)
+     */
+    @Test
+    public void testAes128EcbOid() throws Exception {
+        if (!FeatureDetect.AesEcbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.1",
+            "AES_128/ECB/NoPadding", 128, "ECB");
+    }
+
+    /**
+     * Test NIST AES-128 CBC OID (2.16.840.1.101.3.4.1.2)
+     */
+    @Test
+    public void testAes128CbcOid() throws Exception {
+        if (!FeatureDetect.AesCbcEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.2",
+            "AES_128/CBC/NoPadding", 128, "CBC");
+    }
+
+    /**
+     * Test NIST AES-128 OFB OID (2.16.840.1.101.3.4.1.3)
+     */
+    @Test
+    public void testAes128OfbOid() throws Exception {
+        if (!FeatureDetect.AesOfbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.3",
+            "AES_128/OFB/NoPadding", 128, "OFB");
+    }
+
+    /**
+     * Test NIST AES-192 ECB OID (2.16.840.1.101.3.4.1.21)
+     */
+    @Test
+    public void testAes192EcbOid() throws Exception {
+        if (!FeatureDetect.AesEcbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.21",
+            "AES_192/ECB/NoPadding", 192, "ECB");
+    }
+
+    /**
+     * Test NIST AES-192 CBC OID (2.16.840.1.101.3.4.1.22)
+     */
+    @Test
+    public void testAes192CbcOid() throws Exception {
+        if (!FeatureDetect.AesCbcEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.22",
+            "AES_192/CBC/NoPadding", 192, "CBC");
+    }
+
+    /**
+     * Test NIST AES-192 OFB OID (2.16.840.1.101.3.4.1.23)
+     */
+    @Test
+    public void testAes192OfbOid() throws Exception {
+        if (!FeatureDetect.AesOfbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.23",
+            "AES_192/OFB/NoPadding", 192, "OFB");
+    }
+
+    /**
+     * Test NIST AES-256 ECB OID (2.16.840.1.101.3.4.1.41)
+     */
+    @Test
+    public void testAes256EcbOid() throws Exception {
+        if (!FeatureDetect.AesEcbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.41",
+            "AES_256/ECB/NoPadding", 256, "ECB");
+    }
+
+    /**
+     * Test NIST AES-256 CBC OID (2.16.840.1.101.3.4.1.42)
+     */
+    @Test
+    public void testAes256CbcOid() throws Exception {
+        if (!FeatureDetect.AesCbcEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.42",
+            "AES_256/CBC/NoPadding", 256, "CBC");
+    }
+
+    /**
+     * Test NIST AES-256 OFB OID (2.16.840.1.101.3.4.1.43)
+     */
+    @Test
+    public void testAes256OfbOid() throws Exception {
+        if (!FeatureDetect.AesOfbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.43",
+            "AES_256/OFB/NoPadding", 256, "OFB");
+    }
+
+    /**
+     * Helper method to test AES OID and algorithm string aliases.
+     * Tests that both the OID and algorithm string can be used to
+     * create Cipher instances, and that they work correctly for
+     * encryption and decryption.
+     *
+     * @param oid The NIST AES algorithm OID
+     * @param algorithm The algorithm transformation string
+     * @param keyLength The AES key length in bits
+     * @param mode The cipher mode (ECB, CBC, OFB, etc.)
+     */
+    private void testAesOidAndAlias(String oid, String algorithm,
+        int keyLength, String mode) throws Exception {
+
+        byte[] input = "1234567890123456".getBytes();
+
+        /* Get Cipher instances using both OID and algorithm string */
+        Cipher algorithmCipher = Cipher.getInstance(algorithm,
+            jceProvider);
+        Cipher oidCipher = Cipher.getInstance(oid, jceProvider);
+
+        assertNotNull("Algorithm cipher should not be null",
+            algorithmCipher);
+        assertNotNull("OID cipher should not be null", oidCipher);
+
+        /* Verify algorithm string matches */
+        assertEquals("Algorithm string should match", algorithm,
+            algorithmCipher.getAlgorithm());
+
+        /* Generate key with specified length */
+        javax.crypto.KeyGenerator kg =
+            javax.crypto.KeyGenerator.getInstance("AES");
+        kg.init(keyLength);
+        javax.crypto.SecretKey key = kg.generateKey();
+
+        /* Encrypt with algorithm cipher */
+        algorithmCipher.init(Cipher.ENCRYPT_MODE, key);
+
+        byte[] cipherText =
+            new byte[algorithmCipher.getOutputSize(input.length)];
+        int offset = algorithmCipher.update(input, 0, input.length,
+            cipherText, 0);
+        algorithmCipher.doFinal(cipherText, offset);
+
+        /* Prepare IV if not ECB mode */
+        AlgorithmParameterSpec aps = null;
+        if (!mode.equalsIgnoreCase("ECB")) {
+            aps = new IvParameterSpec(algorithmCipher.getIV());
+        }
+
+        /* Decrypt with OID cipher */
+        oidCipher.init(Cipher.DECRYPT_MODE, key, aps);
+
+        byte[] recoveredText =
+            new byte[oidCipher.getOutputSize(cipherText.length)];
+        oidCipher.doFinal(cipherText, 0, cipherText.length, recoveredText);
+
+        /* Verify decrypted data matches original */
+        assertTrue("Decrypted data should match original input",
+            Arrays.equals(input, recoveredText));
     }
 }
 

@@ -27,6 +27,8 @@ import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.InvalidParameterSpecException;
 import javax.crypto.spec.IvParameterSpec;
 
+import com.wolfssl.wolfcrypt.Aes;
+
 /**
  * wolfCrypt JCE AlgorithmParametersSpi implementation for AES parameters
  */
@@ -46,6 +48,12 @@ public class WolfCryptAesParameters extends AlgorithmParametersSpi {
     protected void engineInit(AlgorithmParameterSpec paramSpec)
             throws InvalidParameterSpecException {
 
+        /* Prevent double initialization */
+        if (this.ivSpec != null) {
+            throw new InvalidParameterSpecException(
+                "AlgorithmParameters already initialized");
+        }
+
         if (!(paramSpec instanceof IvParameterSpec)) {
             throw new InvalidParameterSpecException(
                 "Only IvParameterSpec supported");
@@ -60,7 +68,7 @@ public class WolfCryptAesParameters extends AlgorithmParametersSpi {
         }
 
         /* AES block size is 16 bytes, IV should match */
-        if (spec.getIV().length != 16) {
+        if (spec.getIV().length != Aes.BLOCK_SIZE) {
             throw new InvalidParameterSpecException(
                 "AES IV must be 16 bytes, got: " + spec.getIV().length);
         }
@@ -73,14 +81,58 @@ public class WolfCryptAesParameters extends AlgorithmParametersSpi {
     protected void engineInit(byte[] params)
         throws IOException {
 
-        throw new IOException("Encoded AES parameters not supported");
+        /* Prevent double initialization */
+        if (this.ivSpec != null) {
+            throw new IOException(
+                "AlgorithmParameters already initialized");
+        }
+
+        if (params == null) {
+            throw new NullPointerException("params must not be null");
+        }
+
+        if (params.length == 0) {
+            throw new IOException("AES parameters cannot be empty");
+        }
+
+        /* AES IV parameters are encoded as ASN.1 OCTET STRING:
+         * tag (0x04) + length + IV bytes
+         * Expected: 04 10 [16 IV bytes] = 18 bytes */
+        if (params.length != Aes.BLOCK_SIZE + 2) {
+            throw new IOException(
+                "Invalid AES parameter encoding length: " + params.length);
+        }
+
+        /* Verify OCTET STRING tag */
+        if (params[0] != 0x04) {
+            throw new IOException(
+                "DER input not an octet string");
+        }
+
+        /* Verify length is 16 (0x10) */
+        if (params[1] != 0x10) {
+            throw new IOException(
+                "Invalid AES IV length in encoding: " + params[1]);
+        }
+
+        /* Extract IV bytes (skip tag and length) */
+        byte[] iv = new byte[Aes.BLOCK_SIZE];
+        System.arraycopy(params, 2, iv, 0, Aes.BLOCK_SIZE);
+
+        this.ivSpec = new IvParameterSpec(iv);
     }
 
     @Override
     protected void engineInit(byte[] params, String format)
         throws IOException {
 
-        throw new IOException("Encoded AES parameters not supported");
+        if (format != null && !format.equalsIgnoreCase("ASN.1") &&
+            !format.equalsIgnoreCase("DER")) {
+            throw new IOException("Unsupported format: " + format +
+                ", only ASN.1 and DER supported");
+        }
+
+        engineInit(params);
     }
 
     @Override
@@ -110,12 +162,38 @@ public class WolfCryptAesParameters extends AlgorithmParametersSpi {
 
     @Override
     protected byte[] engineGetEncoded() throws IOException {
-        throw new IOException("Encoded AES parameters not supported");
+
+        byte[] iv;
+        byte[] encoded;
+
+        if (this.ivSpec == null) {
+            throw new IOException("AES parameters not initialized");
+        }
+
+        iv = this.ivSpec.getIV();
+        if (iv == null || iv.length != Aes.BLOCK_SIZE) {
+            throw new IOException("Invalid AES IV for encoding");
+        }
+
+        /* Encode as OCTET STRING: tag (0x04) + len (0x10) + IV */
+        encoded = new byte[18];
+        encoded[0] = 0x04; /* OCTET STRING */
+        encoded[1] = 0x10; /* length = 16 */
+        System.arraycopy(iv, 0, encoded, 2, Aes.BLOCK_SIZE);
+
+        return encoded;
     }
 
     @Override
     protected byte[] engineGetEncoded(String format) throws IOException {
-        throw new IOException("Encoded AES parameters not supported");
+
+        if (format != null && !format.equalsIgnoreCase("ASN.1") &&
+            !format.equalsIgnoreCase("DER")) {
+            throw new IOException("Unsupported format: " + format +
+                ", only ASN.1 and DER supported");
+        }
+
+        return engineGetEncoded();
     }
 
     @Override
