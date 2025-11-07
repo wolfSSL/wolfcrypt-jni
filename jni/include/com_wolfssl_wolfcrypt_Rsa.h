@@ -71,6 +71,22 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaExportCrtKey
+ * Signature: ([B[J[B[J[B[J[B[J[B[J[B[J[B[J[B[J)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaExportCrtKey
+  (JNIEnv *, jobject, jbyteArray, jlongArray, jbyteArray, jlongArray, jbyteArray, jlongArray, jbyteArray, jlongArray, jbyteArray, jlongArray, jbyteArray, jlongArray, jbyteArray, jlongArray, jbyteArray, jlongArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaImportCrtKey
+ * Signature: ([B[B[B[B[B[B[B[B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaImportCrtKey
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jbyteArray, jbyteArray, jbyteArray, jbyteArray, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
  * Method:    MakeRsaKey
  * Signature: (IJLcom/wolfssl/wolfcrypt/Rng;)V
  */

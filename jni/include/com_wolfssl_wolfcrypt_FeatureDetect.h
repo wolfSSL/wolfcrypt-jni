@@ -383,6 +383,14 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Curve25519En
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Ed25519Enabled
   (JNIEnv *, jclass);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    WolfSSLPublicMpEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_WolfSSLPublicMpEnabled
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif

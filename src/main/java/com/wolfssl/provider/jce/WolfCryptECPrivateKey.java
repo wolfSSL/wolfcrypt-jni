@@ -32,6 +32,7 @@ import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.InvalidParameterSpecException;
 import java.util.Arrays;
+import javax.security.auth.Destroyable;
 
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -40,7 +41,7 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
  * wolfJCE ECPrivateKey implementation.
  * This class implements the ECPrivateKey interface using wolfCrypt.
  */
-public class WolfCryptECPrivateKey implements ECPrivateKey {
+public class WolfCryptECPrivateKey implements ECPrivateKey, Destroyable {
 
     private static final long serialVersionUID = 1L;
 
@@ -322,6 +323,7 @@ public class WolfCryptECPrivateKey implements ECPrivateKey {
     /**
      * Destroy this key by zeroing out sensitive data.
      */
+    @Override
     public void destroy() {
         synchronized (stateLock) {
             if (!destroyed) {
@@ -341,6 +343,7 @@ public class WolfCryptECPrivateKey implements ECPrivateKey {
      *
      * @return true if key has been destroyed
      */
+    @Override
     public boolean isDestroyed() {
         synchronized (stateLock) {
             return destroyed;

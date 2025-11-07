@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.math.BigInteger;
 import java.util.Arrays;
+import javax.security.auth.Destroyable;
 
 import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHParameterSpec;
@@ -37,7 +38,7 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
  * wolfJCE DHPublicKey implementation.
  * This class implements the DHPublicKey interface using wolfCrypt.
  */
-public class WolfCryptDHPublicKey implements DHPublicKey {
+public class WolfCryptDHPublicKey implements DHPublicKey, Destroyable {
 
     private static final long serialVersionUID = 1L;
 
@@ -543,6 +544,7 @@ public class WolfCryptDHPublicKey implements DHPublicKey {
     /**
      * Destroy this key by zeroing out sensitive data.
      */
+    @Override
     public void destroy() {
 
         synchronized (stateLock) {
@@ -563,6 +565,7 @@ public class WolfCryptDHPublicKey implements DHPublicKey {
      *
      * @return true if key has been destroyed
      */
+    @Override
     public boolean isDestroyed() {
 
         synchronized (stateLock) {
