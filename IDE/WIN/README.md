@@ -138,6 +138,7 @@ section titled `/* Configuration */`:
 #define WOLFSSL_KEY_GEN
 #define HAVE_CRL
 #define OPENSSL_ALL
+#define WOLFSSL_PUBLIC_MP
 ```
 
 If also building wolfSSL JNI/JSSE, additional defines may be needed. Please
@@ -275,6 +276,7 @@ The following additional defines will also need to be added to
 #define WOLFSSL_KEY_GEN
 #define HAVE_CRL
 #define OPENSSL_ALL
+#define WOLFSSL_PUBLIC_MP
 ```
 
 If also building wolfSSL JNI/JSSE, additional defines may be needed. Please
