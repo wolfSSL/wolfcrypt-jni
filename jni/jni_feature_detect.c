@@ -593,3 +593,16 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Ed25519Enabl
 #endif
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_wolfssl_wolfcrypt_FeatureDetect_WolfSSLPublicMpEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#ifdef WOLFSSL_PUBLIC_MP
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+

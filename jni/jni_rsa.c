@@ -1607,3 +1607,366 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1CheckPadding(
     return result;
 }
 
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaExportCrtKey(
+    JNIEnv* env, jobject this, jbyteArray n_object, jlongArray nSize,
+    jbyteArray e_object, jlongArray eSize, jbyteArray d_object,
+    jlongArray dSize, jbyteArray p_object, jlongArray pSize,
+    jbyteArray q_object, jlongArray qSize, jbyteArray dP_object,
+    jlongArray dPSize, jbyteArray dQ_object, jlongArray dQSize,
+    jbyteArray u_object, jlongArray uSize)
+{
+#if !defined(NO_RSA) && !defined(WOLFSSL_RSA_PUBLIC_ONLY) && \
+    (defined(WOLFSSL_KEY_GEN) || defined(OPENSSL_EXTRA) || \
+     !defined(RSA_LOW_MEM))
+    int ret = 0;
+    RsaKey* key = NULL;
+    byte* n = NULL;
+    byte* e = NULL;
+    byte* d = NULL;
+    byte* p = NULL;
+    byte* q = NULL;
+    byte* dP = NULL;
+    byte* dQ = NULL;
+    byte* u = NULL;
+    jlong nSz = 0, eSz = 0, dSz = 0, pSz = 0;
+    jlong qSz = 0, dPSz = 0, dQSz = 0, uSz = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    /* Get size array values */
+    n = getByteArray(env, n_object);
+    (*env)->GetLongArrayRegion(env, nSize, 0, 1, &nSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, n_object, n, ret);
+        return;
+    }
+
+    e = getByteArray(env, e_object);
+    (*env)->GetLongArrayRegion(env, eSize, 0, 1, &eSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, n_object, n, ret);
+        releaseByteArray(env, e_object, e, ret);
+        return;
+    }
+
+    d = getByteArray(env, d_object);
+    (*env)->GetLongArrayRegion(env, dSize, 0, 1, &dSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, n_object, n, ret);
+        releaseByteArray(env, e_object, e, ret);
+        releaseByteArray(env, d_object, d, ret);
+        return;
+    }
+
+    p = getByteArray(env, p_object);
+    (*env)->GetLongArrayRegion(env, pSize, 0, 1, &pSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, n_object, n, ret);
+        releaseByteArray(env, e_object, e, ret);
+        releaseByteArray(env, d_object, d, ret);
+        releaseByteArray(env, p_object, p, ret);
+        return;
+    }
+
+    q = getByteArray(env, q_object);
+    (*env)->GetLongArrayRegion(env, qSize, 0, 1, &qSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, n_object, n, ret);
+        releaseByteArray(env, e_object, e, ret);
+        releaseByteArray(env, d_object, d, ret);
+        releaseByteArray(env, p_object, p, ret);
+        releaseByteArray(env, q_object, q, ret);
+        return;
+    }
+
+    dP = getByteArray(env, dP_object);
+    (*env)->GetLongArrayRegion(env, dPSize, 0, 1, &dPSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, n_object, n, ret);
+        releaseByteArray(env, e_object, e, ret);
+        releaseByteArray(env, d_object, d, ret);
+        releaseByteArray(env, p_object, p, ret);
+        releaseByteArray(env, q_object, q, ret);
+        releaseByteArray(env, dP_object, dP, ret);
+        return;
+    }
+
+    dQ = getByteArray(env, dQ_object);
+    (*env)->GetLongArrayRegion(env, dQSize, 0, 1, &dQSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, n_object, n, ret);
+        releaseByteArray(env, e_object, e, ret);
+        releaseByteArray(env, d_object, d, ret);
+        releaseByteArray(env, p_object, p, ret);
+        releaseByteArray(env, q_object, q, ret);
+        releaseByteArray(env, dP_object, dP, ret);
+        releaseByteArray(env, dQ_object, dQ, ret);
+        return;
+    }
+
+    u = getByteArray(env, u_object);
+    (*env)->GetLongArrayRegion(env, uSize, 0, 1, &uSz);
+    if ((*env)->ExceptionOccurred(env)) {
+        releaseByteArray(env, n_object, n, ret);
+        releaseByteArray(env, e_object, e, ret);
+        releaseByteArray(env, d_object, d, ret);
+        releaseByteArray(env, p_object, p, ret);
+        releaseByteArray(env, q_object, q, ret);
+        releaseByteArray(env, dP_object, dP, ret);
+        releaseByteArray(env, dQ_object, dQ, ret);
+        releaseByteArray(env, u_object, u, ret);
+        return;
+    }
+
+    /* Validate inputs */
+    if (key == NULL || n == NULL || e == NULL || d == NULL || p == NULL ||
+        q == NULL || dP == NULL || dQ == NULL || u == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        /* Export e, n, d, p, q using wc_RsaExportKey() */
+        PRIVATE_KEY_UNLOCK();
+        ret = wc_RsaExportKey(key, e, (word32*)&eSz, n, (word32*)&nSz,
+            d, (word32*)&dSz, p, (word32*)&pSz, q, (word32*)&qSz);
+
+        /* Export CRT parameters dP, dQ, u */
+#ifdef WOLFSSL_PUBLIC_MP
+        if (ret == 0) {
+            dPSz = (jlong)mp_unsigned_bin_size(&key->dP);
+            if ((dPSz > 0) &&
+                (dPSz <= (jlong)(*env)->GetArrayLength(env, dP_object))) {
+                ret = mp_to_unsigned_bin(&key->dP, dP);
+            }
+            else {
+                ret = RSA_BUFFER_E;
+            }
+        }
+        if (ret == 0) {
+            dQSz = (jlong)mp_unsigned_bin_size(&key->dQ);
+            if ((dQSz > 0) &&
+                (dQSz <= (jlong)(*env)->GetArrayLength(env, dQ_object))) {
+                ret = mp_to_unsigned_bin(&key->dQ, dQ);
+            }
+            else {
+                ret = RSA_BUFFER_E;
+            }
+        }
+        if (ret == 0) {
+            uSz = (jlong)mp_unsigned_bin_size(&key->u);
+            if ((uSz > 0) &&
+                (uSz <= (jlong)(*env)->GetArrayLength(env, u_object))) {
+                ret = mp_to_unsigned_bin(&key->u, u);
+            }
+            else {
+                ret = RSA_BUFFER_E;
+            }
+        }
+#else
+        (void)dP;
+        (void)dQ;
+        (void)u;
+        (void)dP_object;
+        (void)dQ_object;
+        (void)u_object;
+        if (ret == 0) {
+            ret = NOT_COMPILED_IN;
+        }
+#endif
+        PRIVATE_KEY_LOCK();
+    }
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+    else {
+        /* Set updated size values. If any SetLongArrayRegion call fails,
+         * continue to next call anyway since we need to release all arrays. */
+        (*env)->SetLongArrayRegion(env, nSize, 0, 1, &nSz);
+        (*env)->SetLongArrayRegion(env, eSize, 0, 1, &eSz);
+        (*env)->SetLongArrayRegion(env, dSize, 0, 1, &dSz);
+        (*env)->SetLongArrayRegion(env, pSize, 0, 1, &pSz);
+        (*env)->SetLongArrayRegion(env, qSize, 0, 1, &qSz);
+        (*env)->SetLongArrayRegion(env, dPSize, 0, 1, &dPSz);
+        (*env)->SetLongArrayRegion(env, dQSize, 0, 1, &dQSz);
+        (*env)->SetLongArrayRegion(env, uSize, 0, 1, &uSz);
+
+        /* Only log if no exception occurred */
+        if (!(*env)->ExceptionOccurred(env)) {
+            LogStr("wc_RsaExportCrtKey() = %d\n", ret);
+            LogStr("n[%u]: [%p]\n", (word32)nSz, n);
+            LogHex((byte*) n, 0, nSz);
+            LogStr("e[%u]: [%p]\n", (word32)eSz, e);
+            LogHex((byte*) e, 0, eSz);
+            LogStr("p[%u]: [%p]\n", (word32)pSz, p);
+            LogStr("q[%u]: [%p]\n", (word32)qSz, q);
+            LogStr("dP[%u]: [%p]\n", (word32)dPSz, dP);
+            LogStr("dQ[%u]: [%p]\n", (word32)dQSz, dQ);
+            LogStr("u[%u]: [%p]\n", (word32)uSz, u);
+        }
+    }
+
+    /* Release all byte arrays */
+    releaseByteArray(env, n_object, n, ret);
+    releaseByteArray(env, e_object, e, ret);
+    releaseByteArray(env, d_object, d, ret);
+    releaseByteArray(env, p_object, p, ret);
+    releaseByteArray(env, q_object, q, ret);
+    releaseByteArray(env, dP_object, dP, ret);
+    releaseByteArray(env, dQ_object, dQ, ret);
+    releaseByteArray(env, u_object, u, ret);
+#else
+    (void)env;
+    (void)this;
+    (void)n_object;
+    (void)nSize;
+    (void)e_object;
+    (void)eSize;
+    (void)d_object;
+    (void)dSize;
+    (void)p_object;
+    (void)pSize;
+    (void)q_object;
+    (void)qSize;
+    (void)dP_object;
+    (void)dPSize;
+    (void)dQ_object;
+    (void)dQSize;
+    (void)u_object;
+    (void)uSize;
+
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaImportCrtKey(
+    JNIEnv* env, jobject this, jbyteArray n_object, jbyteArray e_object,
+    jbyteArray d_object, jbyteArray p_object, jbyteArray q_object,
+    jbyteArray dP_object, jbyteArray dQ_object, jbyteArray u_object)
+{
+#if !defined(NO_RSA) && !defined(WOLFSSL_RSA_PUBLIC_ONLY)
+    int ret = 0;
+    RsaKey* key = NULL;
+    byte* n = NULL;
+    byte* e = NULL;
+    byte* d = NULL;
+    byte* p = NULL;
+    byte* q = NULL;
+    byte* dP = NULL;
+    byte* dQ = NULL;
+    byte* u = NULL;
+    word32 nSz = 0, eSz = 0, dSz = 0, pSz = 0;
+    word32 qSz = 0, dPSz = 0, dQSz = 0, uSz = 0;
+
+#ifndef WOLFSSL_PUBLIC_MP
+    ret = NOT_COMPILED_IN;
+#endif
+
+    if (ret == 0) {
+        key = (RsaKey*) getNativeStruct(env, this);
+        if ((*env)->ExceptionOccurred(env)) {
+            /* getNativeStruct may throw exception, prevent throwing another */
+            return;
+        }
+
+        /* Get array pointers and sizes */
+        n = getByteArray(env, n_object);
+        nSz = getByteArrayLength(env, n_object);
+
+        e = getByteArray(env, e_object);
+        eSz = getByteArrayLength(env, e_object);
+
+        d = getByteArray(env, d_object);
+        dSz = getByteArrayLength(env, d_object);
+
+        p = getByteArray(env, p_object);
+        pSz = getByteArrayLength(env, p_object);
+
+        q = getByteArray(env, q_object);
+        qSz = getByteArrayLength(env, q_object);
+
+        dP = getByteArray(env, dP_object);
+        dPSz = getByteArrayLength(env, dP_object);
+
+        dQ = getByteArray(env, dQ_object);
+        dQSz = getByteArrayLength(env, dQ_object);
+
+        u = getByteArray(env, u_object);
+        uSz = getByteArrayLength(env, u_object);
+
+        /* Validate inputs */
+        if (key == NULL || n == NULL || e == NULL || d == NULL || p == NULL ||
+            q == NULL || dP == NULL || dQ == NULL || u == NULL) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+#ifdef WOLFSSL_PUBLIC_MP
+    /* Use manual import via mp_read_unsigned_bin() for compatibility with
+     * older wolfSSL/FIPS versions that do not have
+     * wc_RsaPrivateKeyDecodeRaw. */
+    if (ret == 0) {
+        /* Import n, e, d, p, q using mp_read_unsigned_bin() */
+        ret = mp_read_unsigned_bin(&key->n, n, nSz);
+    }
+    if (ret == 0) {
+        ret = mp_read_unsigned_bin(&key->e, e, eSz);
+    }
+    if (ret == 0) {
+        ret = mp_read_unsigned_bin(&key->d, d, dSz);
+    }
+    if (ret == 0) {
+        ret = mp_read_unsigned_bin(&key->p, p, pSz);
+    }
+    if (ret == 0) {
+        ret = mp_read_unsigned_bin(&key->q, q, qSz);
+    }
+    /* Import CRT parameters dP, dQ, u */
+    if (ret == 0) {
+        ret = mp_read_unsigned_bin(&key->dP, dP, dPSz);
+    }
+    if (ret == 0) {
+        ret = mp_read_unsigned_bin(&key->dQ, dQ, dQSz);
+    }
+    if (ret == 0) {
+        ret = mp_read_unsigned_bin(&key->u, u, uSz);
+    }
+    if (ret == 0) {
+        key->type = RSA_PRIVATE;
+    }
+#endif /* WOLFSSL_PUBLIC_MP */
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    /* Release all byte arrays */
+    releaseByteArray(env, n_object, n, ret);
+    releaseByteArray(env, e_object, e, ret);
+    releaseByteArray(env, d_object, d, ret);
+    releaseByteArray(env, p_object, p, ret);
+    releaseByteArray(env, q_object, q, ret);
+    releaseByteArray(env, dP_object, dP, ret);
+    releaseByteArray(env, dQ_object, dQ, ret);
+    releaseByteArray(env, u_object, u, ret);
+#else
+    (void)env;
+    (void)this;
+    (void)n_object;
+    (void)e_object;
+    (void)d_object;
+    (void)p_object;
+    (void)q_object;
+    (void)dP_object;
+    (void)dQ_object;
+    (void)u_object;
+
+    throwNotCompiledInException(env);
+#endif /* !NO_RSA && !WOLFSSL_RSA_PUBLIC_ONLY */
+}
+

@@ -690,14 +690,14 @@ public class WolfCryptCipher extends CipherSpi {
                 this.rsaKeyType = RsaKeyType.WC_RSA_PRIVATE;
 
                 /* wolfSSL requires CRT parameters for RSA private key
-                 * operations. Non-CRT keys (created with only n and d) will
-                 * fail with "mp_exptmod error state" or similar in the
-                 * native layer. */
+                 * operations. Non-CRT keys (created with only modulus and
+                 * private exponent) will fail with "mp_exptmod error state"
+                 * or similar in the native layer. */
                 if (!(key instanceof RSAPrivateCrtKey)) {
                     throw new InvalidKeyException(
-                        "RSA private key must include CRT parameters " +
-                        "(p, q, dP, dQ, qInv). Keys created from only " +
-                        "modulus and exponent are not supported by wolfSSL.");
+                        "wolfSSL requires RSA private keys to include CRT " +
+                        "parameters (p, q, dP, dQ, qInv). Keys created from " +
+                        "only modulus and exponent are not supported.");
                 }
 
             } else if (key instanceof RSAPublicKey) {
