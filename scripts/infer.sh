@@ -84,6 +84,10 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptECParameterSpec.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptECPrivateKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptECPublicKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptRSAKeyFactory.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptRSAPrivateCrtKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptRSAPrivateKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptRSAPublicKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptGcmParameters.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyAgreement.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyGenerator.java \

@@ -369,6 +369,13 @@ public class FeatureDetect {
     public static native boolean Ed25519Enabled();
 
     /**
+     * Tests if WOLFSSL_PUBLIC_MP is defined in the native wolfSSL library.
+     *
+     * @return true if WOLFSSL_PUBLIC_MP is defined, otherwise false.
+     */
+    public static native boolean WolfSSLPublicMpEnabled();
+
+    /**
      * Loads JNI library.
      *
      * The native library is expected to be called "wolfcryptjni", and must be

@@ -562,6 +562,13 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.KeyFactory.DiffieHellman", "DH");
             put("Alg.Alias.KeyFactory.1.2.840.113549.1.3.1", "DH");
         }
+        /* RSA KeyFactory requires WOLFSSL_PUBLIC_MP for CRT key import */
+        if (FeatureDetect.RsaEnabled() &&
+            FeatureDetect.WolfSSLPublicMpEnabled()) {
+            put("KeyFactory.RSA",
+                "com.wolfssl.provider.jce.WolfCryptRSAKeyFactory");
+            put("Alg.Alias.KeyFactory.1.2.840.113549.1.1.1", "RSA");
+        }
 
         /* KeyStore */
         put("KeyStore.WKS",

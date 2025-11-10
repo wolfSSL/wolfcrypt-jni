@@ -196,6 +196,7 @@ The JCE provider currently supports the following algorithms:
         DH
 
     KeyFactory
+        RSA
         EC
         DH (aliases: DiffieHellman, 1.2.840.113549.1.3.1)
 
