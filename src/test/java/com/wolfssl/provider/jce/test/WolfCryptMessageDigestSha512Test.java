@@ -390,5 +390,32 @@ public class WolfCryptMessageDigestSha512Test {
             }
         }
     }
+
+    @Test
+    public void testSha512OidAlias()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        byte[] input = "1234567890".getBytes();
+
+        /* Get MessageDigest using algorithm name */
+        MessageDigest mdAlgorithm = MessageDigest.getInstance(
+            "SHA-512", "wolfJCE");
+        assertNotNull(mdAlgorithm);
+
+        /* Get MessageDigest using OID */
+        MessageDigest mdOid = MessageDigest.getInstance(
+            "2.16.840.1.101.3.4.2.3", "wolfJCE");
+        assertNotNull(mdOid);
+
+        /* Verify algorithm name matches */
+        assertEquals("SHA-512", mdAlgorithm.getAlgorithm());
+
+        /* Compute digests */
+        mdAlgorithm.update(input);
+        mdOid.update(input);
+
+        /* Verify digests match */
+        assertTrue(Arrays.equals(mdAlgorithm.digest(), mdOid.digest()));
+    }
 }
 

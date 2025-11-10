@@ -395,5 +395,32 @@ public class WolfCryptMessageDigestSha256Test {
         /* Test with offset equal to array size */
         sha256.update(data, 10, 1);
     }
+
+    @Test
+    public void testSha256OidAlias()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        byte[] input = "1234567890".getBytes();
+
+        /* Get MessageDigest using algorithm name */
+        MessageDigest mdAlgorithm = MessageDigest.getInstance(
+            "SHA-256", "wolfJCE");
+        assertNotNull(mdAlgorithm);
+
+        /* Get MessageDigest using OID */
+        MessageDigest mdOid = MessageDigest.getInstance(
+            "2.16.840.1.101.3.4.2.1", "wolfJCE");
+        assertNotNull(mdOid);
+
+        /* Verify algorithm name matches */
+        assertEquals("SHA-256", mdAlgorithm.getAlgorithm());
+
+        /* Compute digests */
+        mdAlgorithm.update(input);
+        mdOid.update(input);
+
+        /* Verify digests match */
+        assertTrue(Arrays.equals(mdAlgorithm.digest(), mdOid.digest()));
+    }
 }
 

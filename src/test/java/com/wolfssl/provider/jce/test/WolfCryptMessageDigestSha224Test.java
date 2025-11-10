@@ -254,4 +254,31 @@ public class WolfCryptMessageDigestSha224Test {
         MessageDigest sha224 = MessageDigest.getInstance("SHA-224", "wolfJCE");
         assertEquals(Sha224.DIGEST_SIZE, sha224.getDigestLength());
     }
+
+    @Test
+    public void testSha224OidAlias()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        byte[] input = "1234567890".getBytes();
+
+        /* Get MessageDigest using algorithm name */
+        MessageDigest mdAlgorithm = MessageDigest.getInstance(
+            "SHA-224", "wolfJCE");
+        assertNotNull(mdAlgorithm);
+
+        /* Get MessageDigest using OID */
+        MessageDigest mdOid = MessageDigest.getInstance(
+            "2.16.840.1.101.3.4.2.4", "wolfJCE");
+        assertNotNull(mdOid);
+
+        /* Verify algorithm name matches */
+        assertEquals("SHA-224", mdAlgorithm.getAlgorithm());
+
+        /* Compute digests */
+        mdAlgorithm.update(input);
+        mdOid.update(input);
+
+        /* Verify digests match */
+        assertTrue(Arrays.equals(mdAlgorithm.digest(), mdOid.digest()));
+    }
 } 
