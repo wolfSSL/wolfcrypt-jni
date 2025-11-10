@@ -31,6 +31,7 @@ import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.ECPoint;
 import java.security.InvalidAlgorithmParameterException;
+import javax.security.auth.Destroyable;
 
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -39,7 +40,7 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
  * wolfJCE ECPublicKey implementation.
  * This class implements the ECPublicKey interface using wolfCrypt.
  */
-public class WolfCryptECPublicKey implements ECPublicKey {
+public class WolfCryptECPublicKey implements ECPublicKey, Destroyable {
 
     private static final long serialVersionUID = 1L;
 
@@ -351,6 +352,7 @@ public class WolfCryptECPublicKey implements ECPublicKey {
     /**
      * Destroy this key by zeroing out sensitive data.
      */
+    @Override
     public void destroy() {
         synchronized (stateLock) {
             if (!destroyed) {
@@ -370,6 +372,7 @@ public class WolfCryptECPublicKey implements ECPublicKey {
      *
      * @return true if key has been destroyed
      */
+    @Override
     public boolean isDestroyed() {
         synchronized (stateLock) {
             return destroyed;

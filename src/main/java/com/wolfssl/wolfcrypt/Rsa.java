@@ -117,6 +117,13 @@ public class Rsa extends NativeStruct {
             throws WolfCryptException;
     private native void RsaFlattenPublicKey(byte[] n, long[] nSize, byte[] e,
             long[] eSize) throws WolfCryptException;
+    private native void wc_RsaExportCrtKey(byte[] n, long[] nSz, byte[] e,
+            long[] eSz, byte[] d, long[] dSz, byte[] p, long[] pSz,
+            byte[] q, long[] qSz, byte[] dP, long[] dPSz, byte[] dQ,
+            long[] dQSz, byte[] u, long[] uSz) throws WolfCryptException;
+    private native void wc_RsaImportCrtKey(byte[] n, byte[] e, byte[] d,
+            byte[] p, byte[] q, byte[] dP, byte[] dQ, byte[] u)
+            throws WolfCryptException;
     private native void MakeRsaKey(int size, long e, Rng rng)
         throws WolfCryptException;
     private native byte[] wc_RsaKeyToDer()
@@ -581,6 +588,88 @@ public class Rsa extends NativeStruct {
 
         synchronized (pointerLock) {
             RsaFlattenPublicKey(n, e);
+        }
+    }
+
+    /**
+     * Export RSA private key components including CRT parameters.
+     *
+     * Exports all RSA private key components: modulus (n), public exponent
+     * (e), private exponent (d), prime factors (p, q), and CRT parameters
+     * (dP, dQ, u). Each output buffer should be pre-allocated to appropriate
+     * size, and size arrays will be updated with actual exported sizes.
+     *
+     * @param n output buffer for modulus
+     * @param nSz array with buffer size, updated with actual size
+     * @param e output buffer for public exponent
+     * @param eSz array with buffer size, updated with actual size
+     * @param d output buffer for private exponent
+     * @param dSz array with buffer size, updated with actual size
+     * @param p output buffer for prime p
+     * @param pSz array with buffer size, updated with actual size
+     * @param q output buffer for prime q
+     * @param qSz array with buffer size, updated with actual size
+     * @param dP output buffer for CRT exponent dP (d mod (p-1))
+     * @param dPSz array with buffer size, updated with actual size
+     * @param dQ output buffer for CRT exponent dQ (d mod (q-1))
+     * @param dQSz array with buffer size, updated with actual size
+     * @param u output buffer for CRT coefficient u (q^-1 mod p)
+     * @param uSz array with buffer size, updated with actual size
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if private key has not been set, if
+     *         object fails to initialize, or if releaseNativeStruct() has
+     *         been called and object has been released.
+     */
+    public synchronized void exportRawPrivateKey(byte[] n, long[] nSz,
+        byte[] e, long[] eSz, byte[] d, long[] dSz, byte[] p, long[] pSz,
+        byte[] q, long[] qSz, byte[] dP, long[] dPSz, byte[] dQ,
+        long[] dQSz, byte[] u, long[] uSz) throws WolfCryptException {
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded(true);
+
+        synchronized (pointerLock) {
+            wc_RsaExportCrtKey(n, nSz, e, eSz, d, dSz, p, pSz, q, qSz,
+                dP, dPSz, dQ, dQSz, u, uSz);
+        }
+    }
+
+    /**
+     * Import RSA private key from raw CRT parameters.
+     *
+     * Imports RSA private key from all components: modulus (n), public
+     * exponent (e), private exponent (d), prime factors (p, q), and CRT
+     * parameters (dP, dQ, u).
+     *
+     * @param n modulus as byte array (big-endian, unsigned)
+     * @param e public exponent as byte array (big-endian, unsigned)
+     * @param d private exponent as byte array (big-endian, unsigned)
+     * @param p prime factor p as byte array (big-endian, unsigned)
+     * @param q prime factor q as byte array (big-endian, unsigned)
+     * @param dP CRT exponent dP (d mod (p-1)) as byte array
+     * @param dQ CRT exponent dQ (d mod (q-1)) as byte array
+     * @param u CRT coefficient u (q^-1 mod p) as byte array
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if key has already been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
+     */
+    public synchronized void importRawPrivateKey(byte[] n, byte[] e,
+        byte[] d, byte[] p, byte[] q, byte[] dP, byte[] dQ, byte[] u)
+        throws WolfCryptException {
+
+        checkStateAndInitialize();
+        throwIfKeyExists();
+
+        synchronized (stateLock) {
+            synchronized (pointerLock) {
+                wc_RsaImportCrtKey(n, e, d, p, q, dP, dQ, u);
+            }
+
+            state = WolfCryptState.READY;
+            hasPrivateKey = true;
         }
     }
 

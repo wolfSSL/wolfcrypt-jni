@@ -65,7 +65,7 @@ if ("${WOLFSSL_PKG_TYPE}" MATCHES "normal")
                 -DWOLFSSL_AKID_NAME -DHAVE_CTS -DNO_DES3 -DGCM_TABLE_4BIT
                 -DTFM_TIMING_RESISTANT -DECC_TIMING_RESISTANT
                 -DHAVE_AESGCM -DSIZEOF_LONG=4 -DSIZEOF_LONG_LONG=8
-                -DWOLFSSL_KEY_GEN
+                -DWOLFSSL_KEY_GEN -DWOLFSSL_PUBLIC_MP
                 -DWOLFSSL_CUSTOM_CONFIG
 
                 # For gethostbyname()
