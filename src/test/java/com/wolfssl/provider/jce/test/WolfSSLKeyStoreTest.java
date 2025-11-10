@@ -2208,5 +2208,171 @@ public class WolfSSLKeyStoreTest {
             }
         }
     }
+
+    /**
+     * Test concurrent access to engineGetCertificateAlias() while other
+     * threads are modifying the same KeyStore instance via setKeyEntry()
+     * and setCertificateEntry().
+     */
+    @Test
+    public void testGetCertificateAliasConcurrent()
+        throws KeyStoreException, IOException, FileNotFoundException,
+               NoSuchProviderException, NoSuchAlgorithmException,
+               CertificateException, InvalidKeySpecException,
+               UnrecoverableKeyException, InterruptedException {
+
+        int numThreads = 10;
+        int iterationsPerThread = 100;
+        final KeyStore store = KeyStore.getInstance(storeType,
+            storeProvider);
+        final LinkedBlockingQueue<Integer> results =
+            new LinkedBlockingQueue<>();
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch doneLatch = new CountDownLatch(numThreads);
+
+        /* Initialize KeyStore with some initial entries */
+        store.load(null, null);
+        store.setKeyEntry("initialKey", serverKeyRsa,
+            storePass.toCharArray(), rsaServerChain);
+        store.setCertificateEntry("initialCert", serverCertRsa);
+
+        /* Create thread pool */
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+
+        /* Start reader threads that call getCertificateAlias() */
+        for (int i = 0; i < numThreads / 2; i++) {
+            final int threadId = i;
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        /* Wait for all threads to be ready */
+                        startLatch.await();
+
+                        for (int j = 0; j < iterationsPerThread; j++) {
+                            /* Look up alias for existing certificate */
+                            String alias = store.getCertificateAlias(
+                                serverCertRsa);
+                            if (alias == null) {
+                                /* Certificate should exist, either as
+                                 * initialCert or in a key entry chain */
+                                results.add(1);
+                                return;
+                            }
+
+                            /* Verify alias is valid */
+                            if (!alias.equals("initialCert") &&
+                                !alias.startsWith("writerKey")) {
+                                results.add(1);
+                                return;
+                            }
+
+                            /* Look up alias for certificate that might
+                             * be added/removed by writers */
+                            alias = store.getCertificateAlias(
+                                clientCertRsa);
+                            /* Result can be null or valid alias, both OK */
+                            if (alias != null &&
+                                !alias.startsWith("writerCert")) {
+                                results.add(1);
+                                return;
+                            }
+                        }
+
+                        /* Success */
+                        results.add(0);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        results.add(1);
+
+                    } finally {
+                        doneLatch.countDown();
+                    }
+                }
+            });
+        }
+
+        /* Start writer threads that modify KeyStore */
+        for (int i = numThreads / 2; i < numThreads; i++) {
+            final int threadId = i;
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        /* Wait for all threads to be ready */
+                        startLatch.await();
+
+                        for (int j = 0; j < iterationsPerThread; j++) {
+                            String keyAlias = "writerKey" + threadId +
+                                "_" + j;
+                            String certAlias = "writerCert" + threadId +
+                                "_" + j;
+
+                            /* Add key entry */
+                            store.setKeyEntry(keyAlias, serverKeyRsa,
+                                storePass.toCharArray(), rsaServerChain);
+
+                            /* Add certificate entry */
+                            store.setCertificateEntry(certAlias,
+                                clientCertRsa);
+
+                            /* Delete some entries periodically */
+                            if (j % 10 == 0 && j > 0) {
+                                String oldKeyAlias = "writerKey" + threadId +
+                                    "_" + (j - 10);
+                                String oldCertAlias = "writerCert" +
+                                    threadId + "_" + (j - 10);
+                                try {
+                                    store.deleteEntry(oldKeyAlias);
+                                    store.deleteEntry(oldCertAlias);
+                                } catch (KeyStoreException e) {
+                                    /* Entry might not exist, ignore */
+                                }
+                            }
+                        }
+
+                        /* Success */
+                        results.add(0);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        results.add(1);
+
+                    } finally {
+                        doneLatch.countDown();
+                    }
+                }
+            });
+        }
+
+        /* Start all threads simultaneously */
+        startLatch.countDown();
+
+        /* Wait for all threads to complete */
+        doneLatch.await();
+
+        /* Shutdown executor */
+        executor.shutdown();
+
+        /* Check results - all threads should have succeeded */
+        assertEquals("Expected " + numThreads + " results",
+            numThreads, results.size());
+
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur != 0) {
+                fail("Threading error in concurrent " +
+                    "getCertificateAlias test");
+            }
+        }
+
+        /* Verify KeyStore is still in valid state */
+        assertNotNull(store.getCertificate("initialCert"));
+        Certificate[] chain = store.getCertificateChain("initialKey");
+        assertNotNull(chain);
+        assertTrue(chain.length > 0);
+    }
 }
 

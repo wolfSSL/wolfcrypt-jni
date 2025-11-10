@@ -621,7 +621,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      * @throws UnrecoverableKeyException if the key cannot be recovered
      */
     @Override
-    public synchronized Key engineGetKey(String alias, char[] password)
+    public Key engineGetKey(String alias, char[] password)
         throws NoSuchAlgorithmException, UnrecoverableKeyException {
 
         int algoId = 0;
@@ -721,7 +721,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      *         does not exist or does not contain a certificate chain.
      */
     @Override
-    public synchronized Certificate[] engineGetCertificateChain(String alias) {
+    public Certificate[] engineGetCertificateChain(String alias) {
 
         Object entry = null;
 
@@ -752,7 +752,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      *         does not match any entries.
      */
     @Override
-    public synchronized Certificate engineGetCertificate(String alias) {
+    public Certificate engineGetCertificate(String alias) {
 
         Object entry = null;
 
@@ -783,7 +783,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      *         alias does not exist.
      */
     @Override
-    public synchronized Date engineGetCreationDate(String alias) {
+    public Date engineGetCreationDate(String alias) {
 
         Object entry = null;
 
@@ -1146,7 +1146,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      * @return enumeration of all aliases
      */
     @Override
-    public synchronized Enumeration<String> engineAliases() {
+    public Enumeration<String> engineAliases() {
 
         log("returning all alias names in KeyStore");
 
@@ -1161,7 +1161,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      * @return true if alias is in KeyStore, otherwise false
      */
     @Override
-    public synchronized boolean engineContainsAlias(String alias) {
+    public boolean engineContainsAlias(String alias) {
 
         log("checking if KeyStore contains alias: " + alias);
 
@@ -1174,7 +1174,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      * @return number of entries
      */
     @Override
-    public synchronized int engineSize() {
+    public int engineSize() {
 
         log("returning size of KeyStore: " + entries.size());
 
@@ -1193,7 +1193,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      *         private key entry or alias does not exist
      */
     @Override
-    public synchronized boolean engineIsKeyEntry(String alias) {
+    public boolean engineIsKeyEntry(String alias) {
 
         Object entry;
         boolean isKey = false;
@@ -1224,7 +1224,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      *         certificate entry or alias does not exist
      */
     @Override
-    public synchronized boolean engineIsCertificateEntry(String alias) {
+    public boolean engineIsCertificateEntry(String alias) {
 
         Object entry = null;
         boolean isCert = false;
@@ -1259,7 +1259,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      *         certificate, or null if no entry is found.
      */
     @Override
-    public synchronized String engineGetCertificateAlias(Certificate cert) {
+    public String engineGetCertificateAlias(Certificate cert) {
 
         Certificate tmp = null;
 
