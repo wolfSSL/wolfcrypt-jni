@@ -63,6 +63,7 @@ public class WolfCryptUtilTest {
     /* Original security property values */
     private static String origMapJksToWks = null;
     private static String origMapPkcs12ToWks = null;
+    private static String origIterationCount = null;
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
@@ -81,10 +82,15 @@ public class WolfCryptUtilTest {
         /* Store original security property values */
         origMapJksToWks = Security.getProperty("wolfjce.mapJKStoWKS");
         origMapPkcs12ToWks = Security.getProperty("wolfjce.mapPKCS12toWKS");
+        origIterationCount = Security.getProperty("wolfjce.wks.iterationCount");
 
         /* Make sure we set them to known values at the start */
         Security.setProperty("wolfjce.mapJKStoWKS", "false");
         Security.setProperty("wolfjce.mapPKCS12toWKS", "false");
+
+        /* Set lower PBKDF2 iteration count for faster test execution.
+         * Default 210,000 iterations makes conversion tests very slow. */
+        Security.setProperty("wolfjce.wks.iterationCount", "10000");
     }
 
     @AfterClass
@@ -100,6 +106,13 @@ public class WolfCryptUtilTest {
             Security.setProperty("wolfjce.mapPKCS12toWKS", origMapPkcs12ToWks);
         } else {
             Security.setProperty("wolfjce.mapPKCS12toWKS", "false");
+        }
+
+        if (origIterationCount != null) {
+            Security.setProperty("wolfjce.wks.iterationCount",
+                origIterationCount);
+        } else {
+            Security.setProperty("wolfjce.wks.iterationCount", "");
         }
     }
 
