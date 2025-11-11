@@ -45,15 +45,12 @@ import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class WolfCryptAlgorithmParametersTest {
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void testProviderInstallationAtRuntime()
