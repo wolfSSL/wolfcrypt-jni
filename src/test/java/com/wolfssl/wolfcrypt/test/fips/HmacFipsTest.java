@@ -41,6 +41,7 @@ import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Fips;
 
 import com.wolfssl.wolfcrypt.test.Util;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class HmacFipsTest extends FipsTest {
     private ByteBuffer key = ByteBuffer.allocateDirect(14);
@@ -49,11 +50,7 @@ public class HmacFipsTest extends FipsTest {
     private ByteBuffer expected = ByteBuffer.allocateDirect(Sha512.DIGEST_SIZE);
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void setupClass() {

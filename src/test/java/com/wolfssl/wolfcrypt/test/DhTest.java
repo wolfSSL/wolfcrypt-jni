@@ -43,17 +43,14 @@ import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class DhTest {
     private static Rng rng = new Rng();
     private final Object rngLock = new Rng();
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void setUpRng() {

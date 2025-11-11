@@ -40,6 +40,7 @@ import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.test.Util;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class Des3FipsTest extends FipsTest {
     private ByteBuffer vector = ByteBuffer.allocateDirect(Des3.BLOCK_SIZE);
@@ -50,11 +51,7 @@ public class Des3FipsTest extends FipsTest {
     private ByteBuffer iv = ByteBuffer.allocateDirect(Des3.BLOCK_SIZE);
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void checkAvailability() {

@@ -44,15 +44,12 @@ import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptState;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class AesGmacTest {
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void checkAvailability() {

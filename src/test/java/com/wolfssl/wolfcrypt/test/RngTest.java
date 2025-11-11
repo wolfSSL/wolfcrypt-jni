@@ -40,15 +40,12 @@ import java.util.concurrent.LinkedBlockingQueue;
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptException;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class RngTest {
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void setupClass() {

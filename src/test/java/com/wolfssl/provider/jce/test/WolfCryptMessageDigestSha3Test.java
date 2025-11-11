@@ -47,15 +47,12 @@ import java.security.NoSuchAlgorithmException;
 import com.wolfssl.wolfcrypt.Sha3;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class WolfCryptMessageDigestSha3Test {
 
-    @Rule
-    public TestRule watcher = new TestWatcher() {
-        protected void starting(Description description) {
-            System.out.println("\t" + description.getMethodName());
-        }
-    };
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule watcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void testProviderInstallationAtRuntime()

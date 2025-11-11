@@ -37,15 +37,12 @@ import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.Fips.ErrorCallback;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class FipsStatusTest extends FipsTest {
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void setupClass() {

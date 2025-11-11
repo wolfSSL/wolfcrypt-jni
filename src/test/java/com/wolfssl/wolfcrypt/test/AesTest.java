@@ -45,6 +45,7 @@ import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class AesTest {
 
@@ -54,11 +55,7 @@ public class AesTest {
             .h2b("000102030405060708090A0B0C0D0E0F");
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void checkAvailability() {
