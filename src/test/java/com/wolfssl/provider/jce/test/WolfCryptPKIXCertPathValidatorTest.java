@@ -65,11 +65,11 @@ import java.lang.IllegalArgumentException;
 
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class WolfCryptPKIXCertPathValidatorTest {
 
     protected String provider = "wolfJCE";
-    //protected String provider = "SUN";
 
     /* Example KeyStore file paths */
     protected static String jksCaServerRSA2048 = null;
@@ -120,11 +120,7 @@ public class WolfCryptPKIXCertPathValidatorTest {
     }
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void testSetupAndProviderInstallation()
@@ -242,9 +238,9 @@ public class WolfCryptPKIXCertPathValidatorTest {
         assertEquals(anchor.getTrustedCert(), expectedAnchor);
 
         /* Check PolicyTree matches expected - TODO */
-        //PolicyNode policyTree = null;
-        //policyTree = pResult.getPolicyTree();
-        //assertNotNull(policyTree);
+        /* PolicyNode policyTree = null;
+         * policyTree = pResult.getPolicyTree();
+         * assertNotNull(policyTree); */
 
         /* Check PublicKey returned matches expected leaf cert */
         pubKey = pResult.getPublicKey();

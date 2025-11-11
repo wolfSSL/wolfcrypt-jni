@@ -44,18 +44,15 @@ import com.wolfssl.wolfcrypt.Sha3;
 import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.WolfCryptError;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class Sha3Test {
     private ByteBuffer data = ByteBuffer.allocateDirect(32);
     private ByteBuffer result = ByteBuffer.allocateDirect(Sha3.DIGEST_SIZE_512);
     private ByteBuffer expected = ByteBuffer.allocateDirect(Sha3.DIGEST_SIZE_512);
 
-    @Rule
-    public TestRule watcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule watcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void checkSha3IsAvailable() {

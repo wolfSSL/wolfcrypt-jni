@@ -40,6 +40,7 @@ import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Fips;
 
 import com.wolfssl.wolfcrypt.test.Util;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class RsaFipsTest extends FipsTest {
     private ByteBuffer privKey = ByteBuffer.allocateDirect(2048);
@@ -58,11 +59,7 @@ public class RsaFipsTest extends FipsTest {
             .allocateDirect(Asn.MAX_ENCODED_SIG_SIZE);
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void setupClass() {

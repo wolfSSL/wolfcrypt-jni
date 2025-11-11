@@ -45,6 +45,7 @@ import com.wolfssl.wolfcrypt.Sha512;
 import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.WolfCryptError;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class Sha512Test {
     private ByteBuffer data = ByteBuffer.allocateDirect(32);
@@ -52,11 +53,7 @@ public class Sha512Test {
     private ByteBuffer expected = ByteBuffer.allocateDirect(Sha512.DIGEST_SIZE);
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void checkSha512IsAvailable() {
