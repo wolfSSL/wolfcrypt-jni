@@ -56,6 +56,7 @@ import org.junit.Test;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Rsa;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 /**
  * JUnit4 test cases for WolfCryptRSAKeyFactory
@@ -73,13 +74,7 @@ public class WolfCryptRSAKeyFactoryTest {
     private static int minRsaKeySize = Rsa.RSA_MIN_SIZE;
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-
-        @Override
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void testProviderInstallation() {

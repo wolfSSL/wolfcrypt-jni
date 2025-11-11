@@ -42,6 +42,7 @@ import java.security.KeyStore;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.provider.jce.WolfCryptUtil;
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 /**
  * Test suite for WolfCryptUtils.convertKeyStoreToWKS method.
@@ -64,11 +65,7 @@ public class WolfCryptUtilTest {
     private static String origMapPkcs12ToWks = null;
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void setUpClass() {

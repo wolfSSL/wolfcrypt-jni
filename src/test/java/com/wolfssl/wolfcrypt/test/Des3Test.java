@@ -46,15 +46,12 @@ import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class Des3Test {
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void checkAvailability() {

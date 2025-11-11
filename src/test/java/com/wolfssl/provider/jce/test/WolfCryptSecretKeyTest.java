@@ -39,16 +39,12 @@ import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.provider.jce.WolfCryptSecretKey;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class WolfCryptSecretKeyTest {
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        @Override
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void testProviderInstallationAtRuntime()

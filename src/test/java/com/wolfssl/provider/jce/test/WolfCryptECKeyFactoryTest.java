@@ -54,6 +54,7 @@ import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.provider.jce.WolfCryptECParameterSpec;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Ecc;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 /**
  * JUnit4 test cases for WolfCryptECKeyFactory
@@ -96,12 +97,7 @@ public class WolfCryptECKeyFactoryTest {
         new ArrayList<String>();
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void testProviderInstallation() {

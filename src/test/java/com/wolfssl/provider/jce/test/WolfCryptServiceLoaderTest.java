@@ -35,6 +35,7 @@ import java.util.Iterator;
 import java.util.ServiceLoader;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 /**
  * Test suite for ServiceLoader functionality.
@@ -46,12 +47,7 @@ import com.wolfssl.provider.jce.WolfCryptProvider;
 public class WolfCryptServiceLoaderTest {
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        @Override
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void setUpClass() {

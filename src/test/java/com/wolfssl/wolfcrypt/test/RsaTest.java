@@ -48,6 +48,7 @@ import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.Sha512;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Rng;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.NativeStruct;
@@ -59,11 +60,7 @@ public class RsaTest {
     private static Rng rng = new Rng();
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void setUpRng() {

@@ -33,6 +33,7 @@ import org.junit.runner.Description;
 import java.math.BigInteger;
 
 import com.wolfssl.provider.jce.WolfCryptASN1Util;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 /**
  * JUnit test class for WolfCryptASN1Util DER encoding utilities.
@@ -40,11 +41,7 @@ import com.wolfssl.provider.jce.WolfCryptASN1Util;
 public class WolfCryptASN1UtilTest {
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     /* ASN.1 Universal Tags */
     private static final byte ASN1_INTEGER = 0x02;

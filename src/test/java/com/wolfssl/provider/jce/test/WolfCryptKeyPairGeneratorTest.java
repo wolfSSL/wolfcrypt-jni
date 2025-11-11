@@ -68,6 +68,7 @@ import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.test.Util;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class WolfCryptKeyPairGeneratorTest {
 
@@ -138,11 +139,7 @@ public class WolfCryptKeyPairGeneratorTest {
     private static byte[] base = new byte[] { 0x02 };
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void testProviderInstallationAtRuntime() {

@@ -39,6 +39,7 @@ import com.wolfssl.wolfcrypt.AesOfb;
 import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class AesOfbTest {
 
@@ -80,11 +81,7 @@ public class AesOfbTest {
         "5c9d844ed46f9885085e5d6a4f94c7d7");
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void checkAvailability() {

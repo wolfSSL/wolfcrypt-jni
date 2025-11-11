@@ -51,6 +51,7 @@ import org.junit.Test;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 /**
  * JUnit4 test cases for WolfCryptDHKeyFactory
@@ -64,12 +65,7 @@ public class WolfCryptDHKeyFactoryTest {
         new ArrayList<Integer>();
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void testProviderInstallation() {

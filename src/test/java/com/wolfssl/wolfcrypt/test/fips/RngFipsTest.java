@@ -37,6 +37,7 @@ import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.Fips;
 
 import com.wolfssl.wolfcrypt.test.Util;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class RngFipsTest extends FipsTest {
     private ByteBuffer entropyA = ByteBuffer.allocateDirect(48);
@@ -44,11 +45,7 @@ public class RngFipsTest extends FipsTest {
     private ByteBuffer expected = ByteBuffer.allocateDirect(128);
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void setupClass() {

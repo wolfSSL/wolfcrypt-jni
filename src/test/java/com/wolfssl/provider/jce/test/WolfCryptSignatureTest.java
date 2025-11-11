@@ -60,6 +60,7 @@ import java.security.InvalidAlgorithmParameterException;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class WolfCryptSignatureTest {
 
@@ -96,11 +97,7 @@ public class WolfCryptSignatureTest {
     private static SecureRandom secureRandom = new SecureRandom();
 
     @Rule(order = Integer.MIN_VALUE)
-    public TestRule testWatcher = new TestWatcher() {
-        protected void starting(Description desc) {
-            System.out.println("\t" + desc.getMethodName());
-        }
-    };
+    public TestRule testWatcher = TimedTestWatcher.create();
 
     @BeforeClass
     public static void testProviderInstallationAtRuntime()
