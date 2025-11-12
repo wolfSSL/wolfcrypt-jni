@@ -116,6 +116,12 @@ public class WolfCryptCipherTest {
     /* One static SecureRandom to share */
     private static SecureRandom secureRandom = new SecureRandom();
 
+    /* Pre-generated RSA key pair to share across all RSA cipher tests to
+     * reduce test execution time. Key generation is expensive, especially
+     * for RSA-2048. This is generated once in @BeforeClass and reused
+     * across all RSA encryption/decryption tests. */
+    private static KeyPair rsaPair = null;
+
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
@@ -161,6 +167,22 @@ public class WolfCryptCipherTest {
         p = Security.getProvider("SunJCE");
         if (p != null) {
             interopProvider = "SunJCE";
+        }
+
+        /* Generate RSA key pair once up front to reduce test execution time. */
+        if (enabledJCEAlgos.contains("RSA") ||
+            enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            try {
+                KeyPairGenerator keyGen =
+                    KeyPairGenerator.getInstance("RSA");
+                keyGen.initialize(2048, secureRandom);
+                rsaPair = keyGen.generateKeyPair();
+            } catch (Exception e) {
+                /* If key generation fails, tests will fail with appropriate
+                 * error when they try to use the null key pair */
+                System.err.println("Failed to generate RSA key pair in " +
+                    "@BeforeClass: " + e.getMessage());
+            }
         }
     }
 
@@ -3983,10 +4005,9 @@ public class WolfCryptCipherTest {
         byte[] ciphertext = null;
         byte[] plaintext = null;
 
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, secureRandom);
-
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
+        assertNotNull("RSA key pair should not be null", pair);
         PrivateKey priv = pair.getPrivate();
         PublicKey  pub  = pair.getPublic();
 
@@ -4041,10 +4062,9 @@ public class WolfCryptCipherTest {
         byte[] ciphertext = null;
         byte[] plaintext = null;
 
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, secureRandom);
-
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
+        assertNotNull("RSA key pair should not be null", pair);
         PrivateKey priv = pair.getPrivate();
         PublicKey  pub  = pair.getPublic();
 
@@ -4132,10 +4152,9 @@ public class WolfCryptCipherTest {
         byte[] plaintextA  = null;
         byte[] plaintextB  = null;
 
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, secureRandom);
-
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
+        assertNotNull("RSA key pair should not be null", pair);
         PrivateKey priv = pair.getPrivate();
         PublicKey  pub  = pair.getPublic();
 
@@ -4246,10 +4265,9 @@ public class WolfCryptCipherTest {
         byte[] inputA = new byte[2048];
         byte[] inputB = new byte[100];
 
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, secureRandom);
-
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
+        assertNotNull("RSA key pair should not be null", pair);
         PrivateKey priv = pair.getPrivate();
         PublicKey  pub  = pair.getPublic();
 
@@ -4364,10 +4382,9 @@ public class WolfCryptCipherTest {
         byte[] ciphertext = null;
         byte[] plaintext = null;
 
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, secureRandom);
-
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
+        assertNotNull("RSA key pair should not be null", pair);
         PrivateKey priv = pair.getPrivate();
         PublicKey  pub  = pair.getPublic();
 
@@ -5655,10 +5672,9 @@ public class WolfCryptCipherTest {
         throws NoSuchAlgorithmException, NoSuchProviderException,
                InvalidKeyException, NoSuchPaddingException {
 
-        /* Generate RSA key pair for testing */
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-        kpg.initialize(2048);
-        KeyPair keyPair = kpg.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair keyPair = rsaPair;
+        assertNotNull("RSA key pair should not be null", keyPair);
 
         /* Test RSA/ECB/PKCS1Padding with public key */
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
@@ -7182,9 +7198,9 @@ public class WolfCryptCipherTest {
         /* Test RSA no-op update behavior */
         if (enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
             try {
-                KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-                keyGen.initialize(2048);
-                KeyPair keyPair = keyGen.generateKeyPair();
+                /* Use pre-generated RSA key pair */
+                KeyPair keyPair = rsaPair;
+                assertNotNull("RSA key pair should not be null", keyPair);
 
                 Cipher cipher =
                     Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
@@ -7463,10 +7479,9 @@ public class WolfCryptCipherTest {
             return;
         }
 
-        /* Generate RSA key pair - these are CRT keys by default */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, secureRandom);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair - these are CRT keys by default */
+        KeyPair pair = rsaPair;
+        assertNotNull("RSA key pair should not be null", pair);
         RSAPrivateKey privKey = (RSAPrivateKey) pair.getPrivate();
         RSAPublicKey pubKey = (RSAPublicKey) pair.getPublic();
 
@@ -7503,10 +7518,9 @@ public class WolfCryptCipherTest {
             return;
         }
 
-        /* Generate RSA key pair first */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, secureRandom);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
+        assertNotNull("RSA key pair should not be null", pair);
 
         /* Extract RSA components */
         RSAPublicKey rsaPub = (RSAPublicKey) pair.getPublic();
@@ -7562,11 +7576,9 @@ public class WolfCryptCipherTest {
             return;
         }
 
-        /* Generate RSA key pair */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048, secureRandom);
-
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
+        assertNotNull("RSA key pair should not be null", pair);
         RSAPrivateKey privKey = (RSAPrivateKey) pair.getPrivate();
         RSAPublicKey pubKey = (RSAPublicKey) pair.getPublic();
 
