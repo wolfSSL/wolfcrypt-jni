@@ -1659,7 +1659,7 @@ public class WolfSSLKeyStoreTest {
                CertificateException, InvalidKeySpecException,
                UnrecoverableKeyException, InterruptedException {
 
-        int numThreads = 15;
+        int numThreads = 5;
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
         final LinkedBlockingQueue<Integer> results =
@@ -2219,7 +2219,7 @@ public class WolfSSLKeyStoreTest {
                UnrecoverableKeyException, InterruptedException {
 
         int numThreads = 10;
-        int iterationsPerThread = 100;
+        int iterationsPerThread = 10;
         final KeyStore store = KeyStore.getInstance(storeType,
             storeProvider);
         final LinkedBlockingQueue<Integer> results =

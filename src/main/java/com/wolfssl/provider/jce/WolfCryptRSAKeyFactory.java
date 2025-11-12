@@ -361,7 +361,6 @@ public class WolfCryptRSAKeyFactory extends KeyFactorySpi {
         throws InvalidKeySpecException {
 
         byte[] x509Der = null;
-        byte[] pubDer = null;
         Rsa rsa = null;
 
         try {
@@ -378,19 +377,12 @@ public class WolfCryptRSAKeyFactory extends KeyFactorySpi {
 
             log("decoding X509 public key, length: " + x509Der.length);
 
-            /* Import X509 key into Rsa, validates DER */
+            /* Import X509 key into Rsa to validate DER structure */
             rsa = new Rsa();
             rsa.decodePublicKey(x509Der);
 
-            /* Export as X509 to get wolfCrypt DER format */
-            pubDer = rsa.exportPublicDer();
-            if (pubDer == null) {
-                throw new InvalidKeySpecException(
-                    "Failed to export public key as DER from Rsa object");
-            }
-
-            /* Create wolfJCE RSAPublicKey object */
-            return new WolfCryptRSAPublicKey(pubDer);
+            /* Create wolfJCE RSAPublicKey object using original encoding */
+            return new WolfCryptRSAPublicKey(x509Der);
 
         } catch (WolfCryptException e) {
             throw new InvalidKeySpecException(
@@ -400,9 +392,6 @@ public class WolfCryptRSAKeyFactory extends KeyFactorySpi {
         } finally {
             if (rsa != null) {
                 rsa.releaseNativeStruct();
-            }
-            if (pubDer != null) {
-                Arrays.fill(pubDer, (byte)0);
             }
         }
     }
