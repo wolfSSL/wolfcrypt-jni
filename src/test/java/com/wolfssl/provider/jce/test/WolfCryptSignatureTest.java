@@ -96,6 +96,13 @@ public class WolfCryptSignatureTest {
     /* One static SecureRandom to share */
     private static SecureRandom secureRandom = new SecureRandom();
 
+    /* Pre-generated key pairs to share across all tests to reduce test
+     * execution time. Key generation is expensive, especially for RSA-2048
+     * and large ECC curves. These are generated once in @BeforeClass and
+     * reused across all sign/verify tests. */
+    private static KeyPair rsaPair = null;
+    private static KeyPair ecPair = null;
+
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
@@ -122,6 +129,40 @@ public class WolfCryptSignatureTest {
             } catch (NoSuchAlgorithmException e) {
                 /* algo not compiled in */
             }
+        }
+
+        /* Generate key pairs once up front to reduce test execution time.
+         * Generate one RSA and one ECC key pair and reuse them across
+         * sign/verify operations in this class. */
+        try {
+            /* Generate RSA key pair if any RSA algorithms are enabled */
+            for (int i = 0; i < enabledAlgos.size(); i++) {
+                if (enabledAlgos.get(i).contains("RSA") && rsaPair == null) {
+                    KeyPairGenerator keyGen =
+                        KeyPairGenerator.getInstance("RSA");
+                    keyGen.initialize(2048, secureRandom);
+                    rsaPair = keyGen.generateKeyPair();
+                    break;
+                }
+            }
+
+            /* Generate ECC key pair if any ECDSA algorithms are enabled */
+            for (int i = 0; i < enabledAlgos.size(); i++) {
+                if (enabledAlgos.get(i).contains("ECDSA") && ecPair == null) {
+                    KeyPairGenerator keyGen =
+                        KeyPairGenerator.getInstance("EC", "wolfJCE");
+                    ECGenParameterSpec ecSpec =
+                        new ECGenParameterSpec("secp521r1");
+                    keyGen.initialize(ecSpec);
+                    ecPair = keyGen.generateKeyPair();
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            /* If key generation fails, tests will fail with appropriate
+             * error when they try to use the null key pairs */
+            System.err.println("Failed to generate key pairs in " +
+                "@BeforeClass: " + e.getMessage());
         }
     }
 
@@ -175,8 +216,13 @@ public class WolfCryptSignatureTest {
                 verifier.setParameter(pssSpec);
             }
 
-            /* generate key pair */
-            KeyPair pair = generateKeyPair(enabledAlgos.get(i), secureRandom);
+            /* Select appropriate key pair based on algorithm type */
+            KeyPair pair = null;
+            if (enabledAlgos.get(i).contains("RSA")) {
+                pair = rsaPair;
+            } else if (enabledAlgos.get(i).contains("ECDSA")) {
+                pair = ecPair;
+            }
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();
@@ -231,8 +277,13 @@ public class WolfCryptSignatureTest {
                 verifier.setParameter(pssSpec);
             }
 
-            /* generate key pair */
-            KeyPair pair = generateKeyPair(enabledAlgos.get(i), secureRandom);
+            /* Select appropriate key pair based on algorithm type */
+            KeyPair pair = null;
+            if (enabledAlgos.get(i).contains("RSA")) {
+                pair = rsaPair;
+            } else if (enabledAlgos.get(i).contains("ECDSA")) {
+                pair = ecPair;
+            }
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();
@@ -476,8 +527,13 @@ public class WolfCryptSignatureTest {
                 verifier.setParameter(pssSpec);
             }
 
-            /* generate key pair */
-            KeyPair pair = generateKeyPair(enabledAlgos.get(i), secureRandom);
+            /* Select appropriate key pair based on algorithm type */
+            KeyPair pair = null;
+            if (enabledAlgos.get(i).contains("RSA")) {
+                pair = rsaPair;
+            } else if (enabledAlgos.get(i).contains("ECDSA")) {
+                pair = ecPair;
+            }
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();
@@ -697,8 +753,13 @@ public class WolfCryptSignatureTest {
                 verifier.setParameter(pssSpec);
             }
 
-            /* generate key pair */
-            KeyPair pair = generateKeyPair(algorithm, secureRandom);
+            /* Select appropriate key pair based on algorithm type */
+            KeyPair pair = null;
+            if (algorithm.contains("RSA")) {
+                pair = rsaPair;
+            } else if (algorithm.contains("ECDSA")) {
+                pair = ecPair;
+            }
             assertNotNull(pair);
 
             PrivateKey priv = pair.getPrivate();
@@ -785,36 +846,6 @@ public class WolfCryptSignatureTest {
             if (i < offset + length - 1) sb.append(" ");
         }
         return sb.toString();
-    }
-
-    /**
-     * Generates public/private key pair for use in signature tests.
-     * Currently generates keys using default provider, as wolfJCE does not
-     * yet support key generation.
-     */
-    private KeyPair generateKeyPair(String algo, SecureRandom rand)
-        throws NoSuchAlgorithmException, NoSuchProviderException,
-               InvalidAlgorithmParameterException {
-
-        KeyPair pair = null;
-
-        if (algo.contains("RSA")) {
-
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-            keyGen.initialize(2048, rand);
-            pair = keyGen.generateKeyPair();
-
-        } else if (algo.contains("ECDSA")) {
-
-            KeyPairGenerator keyGen =
-                KeyPairGenerator.getInstance("EC", "wolfJCE");
-            ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp521r1");
-            keyGen.initialize(ecSpec);
-
-            pair = keyGen.generateKeyPair();
-        }
-
-        return pair;
     }
 
     private void threadRunnerSignVerify(byte[] inBuf, String algo,
@@ -1005,11 +1036,8 @@ public class WolfCryptSignatureTest {
         byte[] toSignBuf = toSign.getBytes();
         byte[] signature = null;
 
-        /* Generate RSA key pair */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA",
-            "wolfJCE");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
         assertNotNull(pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -1101,11 +1129,8 @@ public class WolfCryptSignatureTest {
         String toSign = "Everyone gets Friday off.";
         byte[] toSignBuf = toSign.getBytes();
 
-        /* Generate RSA key pair */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA",
-            "wolfJCE");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
         assertNotNull(pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -1153,11 +1178,8 @@ public class WolfCryptSignatureTest {
             return;
         }
 
-        /* Generate RSA key pair */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA",
-            "wolfJCE");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
         assertNotNull(pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -1212,11 +1234,8 @@ public class WolfCryptSignatureTest {
         String toSign = "Everyone gets Friday off.";
         byte[] toSignBuf = toSign.getBytes();
 
-        /* Generate RSA key pair */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA",
-            "wolfJCE");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
         assertNotNull(pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -1268,11 +1287,8 @@ public class WolfCryptSignatureTest {
         String toSign = "Everyone gets Friday off.";
         byte[] toSignBuf = toSign.getBytes();
 
-        /* Generate RSA key pair */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA",
-            "wolfJCE");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
         assertNotNull(pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -1320,11 +1336,8 @@ public class WolfCryptSignatureTest {
             return;
         }
 
-        /* Generate RSA key pair */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA",
-            "wolfJCE");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
         assertNotNull(pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -1459,10 +1472,8 @@ public class WolfCryptSignatureTest {
                SignatureException, InvalidKeyException,
                InvalidAlgorithmParameterException {
 
-        /* Generate RSA key pair for testing */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
         assertNotNull(pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -1556,10 +1567,8 @@ public class WolfCryptSignatureTest {
             " with MGF1-" + mgfAlg;
         byte[] messageBytes = message.getBytes();
 
-        /* Generate key pair with default provider */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
         assertNotNull(pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -1618,10 +1627,8 @@ public class WolfCryptSignatureTest {
             " with MGF1-" + mgfAlg;
         byte[] messageBytes = message.getBytes();
 
-        /* Generate key pair with default provider */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
         assertNotNull(pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -1799,10 +1806,8 @@ public class WolfCryptSignatureTest {
         String message = "Testing maximum salt lengths";
         byte[] messageBytes = message.getBytes();
 
-        /* Generate 2048-bit RSA key pair */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated 2048-bit RSA key pair */
+        KeyPair pair = rsaPair;
         assertNotNull(pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -1844,10 +1849,8 @@ public class WolfCryptSignatureTest {
                SignatureException, InvalidKeyException,
                InvalidAlgorithmParameterException {
 
-        /* Generate RSA key pair */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
         assertNotNull(pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -1896,10 +1899,8 @@ public class WolfCryptSignatureTest {
         String message = "Testing zero salt length";
         byte[] messageBytes = message.getBytes();
 
-        /* Generate RSA key pair */
-        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair */
+        KeyPair pair = rsaPair;
         assertNotNull(pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -1947,8 +1948,13 @@ public class WolfCryptSignatureTest {
                 continue; /* Skip PSS algorithms */
             }
 
-            /* Generate appropriate key pair */
-            KeyPair pair = generateKeyPair(algo, secureRandom);
+            /* Select appropriate key pair based on algorithm type */
+            KeyPair pair = null;
+            if (algo.contains("RSA")) {
+                pair = rsaPair;
+            } else if (algo.contains("ECDSA")) {
+                pair = ecPair;
+            }
             assertNotNull("Key pair should not be null for " + algo, pair);
 
             PrivateKey priv = pair.getPrivate();
@@ -2009,8 +2015,13 @@ public class WolfCryptSignatureTest {
                 continue;
             }
 
-            /* Generate appropriate key pair */
-            KeyPair pair = generateKeyPair(algo, secureRandom);
+            /* Select appropriate key pair based on algorithm type */
+            KeyPair pair = null;
+            if (algo.contains("RSA")) {
+                pair = rsaPair;
+            } else if (algo.contains("ECDSA")) {
+                pair = ecPair;
+            }
             assertNotNull("Key pair should not be null for " + algo, pair);
 
             /* Create signature instance */
@@ -2079,11 +2090,8 @@ public class WolfCryptSignatureTest {
             data[i] = (byte) i;
         }
 
-        /* Generate RSA key pair for RSASSA-PSS */
-        KeyPairGenerator keyGen =
-            KeyPairGenerator.getInstance("RSASSA-PSS", "wolfJCE");
-        keyGen.initialize(2048);
-        KeyPair pair = keyGen.generateKeyPair();
+        /* Use pre-generated RSA key pair (works for RSASSA-PSS) */
+        KeyPair pair = rsaPair;
         assertNotNull("Key pair should not be null", pair);
 
         PrivateKey priv = pair.getPrivate();
@@ -2223,8 +2231,8 @@ public class WolfCryptSignatureTest {
             assertEquals("OID and name should map to same implementation for " +
                 algoName, sigByName.getClass(), sigByOid.getClass());
 
-            /* Generate an EC key pair for testing */
-            KeyPair keyPair = generateKeyPair(algoName, secureRandom);
+            /* Use pre-generated EC key pair */
+            KeyPair keyPair = ecPair;
             assertNotNull("Key pair should not be null for " + algoName,
                 keyPair);
 
@@ -2279,8 +2287,8 @@ public class WolfCryptSignatureTest {
                 continue; /* Skip if algorithm not enabled */
             }
 
-            /* Generate ECDSA key pair */
-            KeyPair pair = generateKeyPair(algo, secureRandom);
+            /* Use pre-generated ECDSA key pair */
+            KeyPair pair = ecPair;
             assertNotNull("Key pair should not be null for " + algo, pair);
 
             ECPrivateKey ecPriv = (ECPrivateKey)pair.getPrivate();
