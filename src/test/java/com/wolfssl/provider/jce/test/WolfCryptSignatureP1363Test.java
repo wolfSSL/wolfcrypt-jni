@@ -65,6 +65,13 @@ public class WolfCryptSignatureP1363Test {
     private static ArrayList<String> availableAlgorithms =
         new ArrayList<String>();
 
+    /* Pre-generated key pairs to share across all tests to reduce test
+     * execution time. Key generation is expensive, especially for large
+     * ECC curves. These are generated once in @BeforeClass and reused
+     * across all P1363 signature tests. */
+    private static java.util.HashMap<String, KeyPair> curveKeyPairs =
+        new java.util.HashMap<String, KeyPair>();
+
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
@@ -102,6 +109,22 @@ public class WolfCryptSignatureP1363Test {
             if (isAlgorithmAvailable(algorithm)) {
                 availableAlgorithms.add(algorithm);
             }
+        }
+
+        /* Generate key pairs once up front to reduce test execution time. */
+        try {
+            for (String curve : enabledCurves) {
+                KeyPairGenerator keyGen =
+                    KeyPairGenerator.getInstance("EC", provider);
+                keyGen.initialize(new ECGenParameterSpec(curve));
+                KeyPair keyPair = keyGen.generateKeyPair();
+                curveKeyPairs.put(curve, keyPair);
+            }
+        } catch (Exception e) {
+            /* If key generation fails, tests will fail with appropriate
+             * error when they try to use the null key pairs */
+            System.err.println("Failed to generate key pairs in " +
+                "@BeforeClass: " + e.getMessage());
         }
     }
 
@@ -194,11 +217,10 @@ public class WolfCryptSignatureP1363Test {
             String curve = enabledCurves.get(i);
             int expectedLen = getExpectedP1363Length(curve);
 
-            /* Generate key pair */
-            KeyPairGenerator keyGen =
-                KeyPairGenerator.getInstance("EC", provider);
-            keyGen.initialize(new ECGenParameterSpec(curve));
-            KeyPair keyPair = keyGen.generateKeyPair();
+            /* Use pre-generated key pair for this curve */
+            KeyPair keyPair = curveKeyPairs.get(curve);
+            Assert.assertNotNull("Key pair should not be null for " + curve,
+                keyPair);
 
             /* Test message */
             byte[] message = ("P1363 test message for " + curve).getBytes();
@@ -229,11 +251,10 @@ public class WolfCryptSignatureP1363Test {
             return;
         }
 
-        /* Generate key pair */
-        KeyPairGenerator keyGen =
-            KeyPairGenerator.getInstance("EC", provider);
-        keyGen.initialize(new ECGenParameterSpec("secp256r1"));
-        KeyPair keyPair = keyGen.generateKeyPair();
+        /* Use pre-generated key pair for secp256r1 */
+        KeyPair keyPair = curveKeyPairs.get("secp256r1");
+        Assert.assertNotNull("Key pair should not be null for secp256r1",
+            keyPair);
 
         byte[] message = "P1363 vs DER format test".getBytes();
 
@@ -280,11 +301,10 @@ public class WolfCryptSignatureP1363Test {
             return;
         }
 
-        /* Generate key pair */
-        KeyPairGenerator keyGen =
-            KeyPairGenerator.getInstance("EC", provider);
-        keyGen.initialize(new ECGenParameterSpec("secp384r1"));
-        KeyPair keyPair = keyGen.generateKeyPair();
+        /* Use pre-generated key pair for secp384r1 */
+        KeyPair keyPair = curveKeyPairs.get("secp384r1");
+        Assert.assertNotNull("Key pair should not be null for secp384r1",
+            keyPair);
 
         byte[] message = "SHA384 P1363 test message".getBytes();
 
@@ -319,11 +339,10 @@ public class WolfCryptSignatureP1363Test {
             return;
         }
 
-        /* Generate key pair */
-        KeyPairGenerator keyGen =
-            KeyPairGenerator.getInstance("EC", provider);
-        keyGen.initialize(new ECGenParameterSpec("secp256r1"));
-        KeyPair keyPair = keyGen.generateKeyPair();
+        /* Use pre-generated key pair for secp256r1 */
+        KeyPair keyPair = curveKeyPairs.get("secp256r1");
+        Assert.assertNotNull("Key pair should not be null for secp256r1",
+            keyPair);
 
         byte[] message = "SHA3-256 P1363 test message".getBytes();
 
@@ -358,11 +377,10 @@ public class WolfCryptSignatureP1363Test {
             return;
         }
 
-        /* Generate key pair */
-        KeyPairGenerator keyGen =
-            KeyPairGenerator.getInstance("EC", provider);
-        keyGen.initialize(new ECGenParameterSpec("secp384r1"));
-        KeyPair keyPair = keyGen.generateKeyPair();
+        /* Use pre-generated key pair for secp384r1 */
+        KeyPair keyPair = curveKeyPairs.get("secp384r1");
+        Assert.assertNotNull("Key pair should not be null for secp384r1",
+            keyPair);
 
         byte[] message = "SHA3-384 P1363 test message".getBytes();
 
@@ -397,11 +415,10 @@ public class WolfCryptSignatureP1363Test {
             return;
         }
 
-        /* Generate key pair */
-        KeyPairGenerator keyGen =
-            KeyPairGenerator.getInstance("EC", provider);
-        keyGen.initialize(new ECGenParameterSpec("secp521r1"));
-        KeyPair keyPair = keyGen.generateKeyPair();
+        /* Use pre-generated key pair for secp521r1 */
+        KeyPair keyPair = curveKeyPairs.get("secp521r1");
+        Assert.assertNotNull("Key pair should not be null for secp521r1",
+            keyPair);
 
         byte[] message = "SHA3-512 P1363 test message".getBytes();
 
@@ -431,11 +448,10 @@ public class WolfCryptSignatureP1363Test {
             return;
         }
 
-        /* Generate key pair */
-        KeyPairGenerator keyGen =
-            KeyPairGenerator.getInstance("EC", provider);
-        keyGen.initialize(new ECGenParameterSpec("secp521r1"));
-        KeyPair keyPair = keyGen.generateKeyPair();
+        /* Use pre-generated key pair for secp521r1 */
+        KeyPair keyPair = curveKeyPairs.get("secp521r1");
+        Assert.assertNotNull("Key pair should not be null for secp521r1",
+            keyPair);
 
         byte[] message = "SHA512 P1363 test message".getBytes();
 
@@ -465,11 +481,11 @@ public class WolfCryptSignatureP1363Test {
             return;
         }
 
-        /* Generate key pair using first available curve */
-        KeyPairGenerator keyGen =
-            KeyPairGenerator.getInstance("EC", provider);
-        keyGen.initialize(new ECGenParameterSpec(enabledCurves.get(0)));
-        KeyPair keyPair = keyGen.generateKeyPair();
+        /* Use pre-generated key pair for first available curve */
+        String curve = enabledCurves.get(0);
+        KeyPair keyPair = curveKeyPairs.get(curve);
+        Assert.assertNotNull("Key pair should not be null for " + curve,
+            keyPair);
 
         byte[] message1 = "First part of ".getBytes();
         byte[] message2 = "multi-update message".getBytes();
@@ -514,11 +530,20 @@ public class WolfCryptSignatureP1363Test {
             return;
         }
 
-        /* Generate two key pairs using first available curve */
+        /* Use two different key pairs to verify that signatures don't
+         * cross-verify with wrong keys. We reuse the pre-generated key
+         * pair for keyPair1, but must generate keyPair2 fresh since this
+         * negative test requires different keys and we only have one
+         * pre-generated key pair per curve. */
+        String curve = enabledCurves.get(0);
+        KeyPair keyPair1 = curveKeyPairs.get(curve);
+        Assert.assertNotNull("Key pair 1 should not be null", keyPair1);
+
+        /* Generate a second key pair on the same curve for negative
+         * test verification */
         KeyPairGenerator keyGen =
             KeyPairGenerator.getInstance("EC", provider);
-        keyGen.initialize(new ECGenParameterSpec(enabledCurves.get(0)));
-        KeyPair keyPair1 = keyGen.generateKeyPair();
+        keyGen.initialize(new ECGenParameterSpec(curve));
         KeyPair keyPair2 = keyGen.generateKeyPair();
 
         byte[] message = "Invalid signature test".getBytes();
@@ -551,11 +576,11 @@ public class WolfCryptSignatureP1363Test {
             return;
         }
 
-        /* Generate key pair using first available curve */
-        KeyPairGenerator keyGen =
-            KeyPairGenerator.getInstance("EC", provider);
-        keyGen.initialize(new ECGenParameterSpec(enabledCurves.get(0)));
-        KeyPair keyPair = keyGen.generateKeyPair();
+        /* Use pre-generated key pair for first available curve */
+        String curve = enabledCurves.get(0);
+        KeyPair keyPair = curveKeyPairs.get(curve);
+        Assert.assertNotNull("Key pair should not be null for " + curve,
+            keyPair);
 
         /* Create large message */
         byte[] largeMessage = new byte[10000];
@@ -587,11 +612,11 @@ public class WolfCryptSignatureP1363Test {
             return;
         }
 
-        /* Generate key pair using first available curve */
-        KeyPairGenerator keyGen =
-            KeyPairGenerator.getInstance("EC", provider);
-        keyGen.initialize(new ECGenParameterSpec(enabledCurves.get(0)));
-        KeyPair keyPair = keyGen.generateKeyPair();
+        /* Use pre-generated key pair for first available curve */
+        String curve = enabledCurves.get(0);
+        KeyPair keyPair = curveKeyPairs.get(curve);
+        Assert.assertNotNull("Key pair should not be null for " + curve,
+            keyPair);
 
         byte[] emptyMessage = new byte[0];
 
