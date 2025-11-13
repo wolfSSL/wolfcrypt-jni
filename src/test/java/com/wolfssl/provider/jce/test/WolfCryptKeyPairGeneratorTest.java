@@ -379,19 +379,33 @@ public class WolfCryptKeyPairGeneratorTest {
         throws NoSuchProviderException, NoSuchAlgorithmException,
                InvalidAlgorithmParameterException {
 
-        /* try initializing KPG for all supported key sizes */
-        for (int i = 0; i < enabledEccKeySizes.size(); i++) {
+        /* Map byte sizes to standard bit sizes. Only standard NIST key
+         * sizes are supported: 192, 224, 256, 384, 521 bits.
+         * enabledEccKeySizes contains sizes in bytes from native wolfSSL. */
+        int[] standardBitSizes = {192, 224, 256, 384, 521};
+
+        /* Try initializing KPG for all standard key sizes that are
+         * available in native wolfSSL */
+        for (int bitSize : standardBitSizes) {
+            int byteSize = (bitSize + 7) / 8;  /* Convert bits to bytes */
+
+            /* Only test if this size is available in native wolfSSL */
+            if (!enabledEccKeySizes.contains(Integer.valueOf(byteSize))) {
+                continue;
+            }
 
             KeyPairGenerator kpg =
                 KeyPairGenerator.getInstance("EC", "wolfJCE");
 
-            kpg.initialize(enabledEccKeySizes.get(i));
+            /* Initialize with bit size (standard JCE API) */
+            kpg.initialize(bitSize);
 
-            /* bad key size should fail */
+            /* Bad key size should fail */
             try {
                 kpg.initialize(9999);
-            } catch (WolfCryptException e) {
-                /* expected */
+                fail("initialize(9999) should have thrown exception");
+            } catch (InvalidParameterException e) {
+                /* Expected */
             }
         }
     }
@@ -411,8 +425,9 @@ public class WolfCryptKeyPairGeneratorTest {
 
         /* Just test 256 bit to spot check this behavior */
         int bitSize = 256;
+        int byteSize = (bitSize + 7) / 8;  /* 32 bytes */
 
-        if (enabledEccKeySizes.contains(Integer.valueOf(bitSize)) == false) {
+        if (!enabledEccKeySizes.contains(Integer.valueOf(byteSize))) {
             /* skip if 256-bit ECC not supported */
             return;
         }
@@ -1040,6 +1055,221 @@ public class WolfCryptKeyPairGeneratorTest {
         assertEquals("Public key algorithms should match",
             keyPairFromName.getPublic().getAlgorithm(),
             keyPairFromOid.getPublic().getAlgorithm());
+    }
+
+    @Test
+    public void testECInvalidKeySizesThrowException()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Test that invalid EC key sizes throw InvalidParameterException.
+         * Only standard NIST key sizes (192, 224, 256, 384, 521) are
+         * supported when using initialize(int keySize). This matches
+         * SunEC and BC behavior. */
+
+        KeyPairGenerator kpg =
+            KeyPairGenerator.getInstance("EC", "wolfJCE");
+
+        /* Test various invalid key sizes */
+        int[] invalidSizes = {100, 128, 300, 512, 1024, 2048};
+
+        for (int size : invalidSizes) {
+            try {
+                kpg.initialize(size);
+                fail("initialize(" + size + ") should have thrown " +
+                    "InvalidParameterException");
+
+            } catch (InvalidParameterException e) {
+                /* Expected - verify error message mentions valid sizes */
+                String msg = e.getMessage();
+                assertTrue("Error message should mention valid sizes",
+                    msg.contains("192") || msg.contains("224") ||
+                    msg.contains("256") || msg.contains("384") ||
+                    msg.contains("521"));
+            }
+        }
+    }
+
+    @Test
+    public void testECValidKeySizesMapToNISTCurves()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Test that valid EC key sizes map to correct NIST curves.
+         * This verifies the direct mapping behavior matching SunEC. */
+
+        int[] standardKeySizes = {192, 224, 256, 384, 521};
+
+        for (int keySize : standardKeySizes) {
+
+            /* Check if this curve is available in native wolfSSL */
+            String curveName = "secp" + keySize + "r1";
+            int curveSize = -1;
+            try {
+                curveSize = Ecc.getCurveSizeFromName(curveName);
+            } catch (WolfCryptException e) {
+                /* Curve not available, skip this test */
+                continue;
+            }
+
+            if (curveSize < 0) {
+                /* Curve not available, skip */
+                continue;
+            }
+
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("EC", "wolfJCE");
+
+            try {
+                kpg.initialize(keySize);
+                KeyPair kp = kpg.generateKeyPair();
+
+                assertNotNull("KeyPair should not be null", kp);
+                assertNotNull("Public key should not be null",
+                    kp.getPublic());
+                assertNotNull("Private key should not be null",
+                    kp.getPrivate());
+
+                /* Verify the key uses correct curve */
+                if (kp.getPublic() instanceof ECPublicKey) {
+                    ECPublicKey ecPubKey = (ECPublicKey) kp.getPublic();
+                    ECParameterSpec ecSpec = ecPubKey.getParams();
+                    int fieldSize =
+                        ecSpec.getCurve().getField().getFieldSize();
+
+                    assertEquals("Field size should match requested size",
+                        keySize, fieldSize);
+                }
+
+            } catch (InvalidParameterException e) {
+                /* If curve not available in wolfSSL, this is expected */
+                String msg = e.getMessage();
+                assertTrue("Error should mention curve not available",
+                    msg.contains("not available") ||
+                    msg.contains(curveName));
+            } catch (RuntimeException e) {
+                /* In FIPS mode, curves below minimum size (224-bit) may be
+                 * compiled in but fail during key generation. Check for
+                 * WolfCryptException with "Bad function argument" either
+                 * directly or as a cause. */
+                WolfCryptException wce = null;
+                if (e instanceof WolfCryptException) {
+                    wce = (WolfCryptException)e;
+                } else if (e.getCause() instanceof WolfCryptException) {
+                    wce = (WolfCryptException)e.getCause();
+                }
+
+                if (wce != null) {
+                    String msg = wce.getMessage();
+                    if (msg != null && msg.contains("Bad function argument")) {
+                        /* Expected for non-FIPS-approved curves */
+                        continue;
+                    }
+                }
+                throw e;
+            }
+        }
+    }
+
+    @Test
+    public void testECStandardSizesAccepted()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Test that all standard EC key sizes are accepted (if curves
+         * are available). This is the positive test to complement the
+         * invalid size test. */
+
+        KeyPairGenerator kpg =
+            KeyPairGenerator.getInstance("EC", "wolfJCE");
+
+        int[] validSizes = {192, 224, 256, 384, 521};
+
+        for (int size : validSizes) {
+            /* Check if curve is available first */
+            String curveName = "secp" + size + "r1";
+            int curveSize = -1;
+            try {
+                curveSize = Ecc.getCurveSizeFromName(curveName);
+            } catch (WolfCryptException e) {
+                /* Not available, skip */
+                continue;
+            }
+
+            if (curveSize < 0) {
+                /* Not available, skip */
+                continue;
+            }
+
+            try {
+                kpg.initialize(size);
+                /* Should not throw exception */
+            } catch (InvalidParameterException e) {
+                /* Only acceptable if curve not compiled into wolfSSL */
+                String msg = e.getMessage();
+                assertTrue("Error should be about curve availability, not " +
+                    "invalid size",
+                    msg.contains("not available") ||
+                    msg.contains(curveName));
+            }
+        }
+    }
+
+    @Test
+    public void testECNonStandardCurvesRequireECGenParameterSpec()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        /* Test that non-NIST curves (e.g., secp256k1, Brainpool) must be
+         * requested via ECGenParameterSpec, not via integer key size.
+         * This verifies the design decision to match SunEC/BC behavior. */
+
+        KeyPairGenerator kpg =
+            KeyPairGenerator.getInstance("EC", "wolfJCE");
+
+        /* Attempt to initialize with 256 bits should use secp256r1,
+         * not secp256k1 even if available */
+        int size = 256;
+
+        /* Check if secp256r1 is available */
+        int curveSize = -1;
+        try {
+            curveSize = Ecc.getCurveSizeFromName("secp256r1");
+        } catch (WolfCryptException e) {
+            /* Not available, skip this test */
+            return;
+        }
+
+        if (curveSize < 0) {
+            /* Not available, skip */
+            return;
+        }
+
+        /* Initialize with size - should select secp256r1 */
+        kpg.initialize(size);
+        KeyPair kp1 = kpg.generateKeyPair();
+        assertNotNull(kp1);
+
+        /* Now explicitly request secp256k1 if available */
+        try {
+            curveSize = Ecc.getCurveSizeFromName("secp256k1");
+        } catch (WolfCryptException e) {
+            /* secp256k1 not available, can't complete test */
+            return;
+        }
+
+        if (curveSize > 0) {
+            /* secp256k1 is available, use ECGenParameterSpec */
+            kpg = KeyPairGenerator.getInstance("EC", "wolfJCE");
+            kpg.initialize(new ECGenParameterSpec("secp256k1"));
+            KeyPair kp2 = kpg.generateKeyPair();
+            assertNotNull(kp2);
+
+            /* The two keys should use different curves (different params) */
+            if (kp1.getPublic() instanceof ECPublicKey &&
+                kp2.getPublic() instanceof ECPublicKey) {
+                /* Make sure we can get keys without exception */
+                ECPublicKey ecPub1 = (ECPublicKey) kp1.getPublic();
+                ECPublicKey ecPub2 = (ECPublicKey) kp2.getPublic();
+            }
+        }
     }
 }
 

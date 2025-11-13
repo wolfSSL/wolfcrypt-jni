@@ -165,6 +165,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key_1ex
     ecc_key* ecc = NULL;
     RNG* rng = NULL;
     const char* name;
+    (void)size;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -198,7 +199,12 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key_1ex
         throwWolfCryptException(env, "ECC curve unsupported or not enabled");
 
     } else {
-        ret = wc_ecc_make_key_ex(rng, size, ecc, ret);
+        /* When using a specific curve_id, pass keysize as 0 to let the
+         * curve_id determine the key size. This is required for FIPS mode
+         * compatibility where keysize must be 0 when using approved curves.
+         * The 'size' parameter from Java is ignored here since curve_id
+         * (stored in ret) defines the actual key size. */
+        ret = wc_ecc_make_key_ex(rng, 0, ecc, ret);
 
         if (ret < 0) {
             throwWolfCryptExceptionFromError(env, ret);
@@ -207,6 +213,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key_1ex
 
     LogStr("ecc_make_key_ex(rng, size, ecc=%p) = %d\n", ecc, ret);
 #else
+    (void)this;
+    (void)rng_object;
+    (void)size;
+    (void)curveName;
     throwNotCompiledInException(env);
 #endif
 }
