@@ -25,10 +25,10 @@ import java.math.BigInteger;
 
 import java.security.KeyPairGeneratorSpi;
 import java.security.KeyPair;
+import java.security.InvalidParameterException;
 import java.security.InvalidAlgorithmParameterException;
 
 import java.security.SecureRandom;
-import java.security.InvalidParameterException;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.KeyFactory;
 import java.security.spec.KeySpec;
@@ -53,6 +53,7 @@ import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Rng;
+import com.wolfssl.wolfcrypt.WolfCryptException;
 
 /**
  * wolfCrypt JCE KeyPairGenerator wrapper class
@@ -182,7 +183,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 namedGroup = Dh.WC_FFDHE_8192;
             }
             else {
-                throw new java.security.InvalidParameterException(
+                throw new InvalidParameterException(
                     "DH key size must be 2048, 3072, 4096, 6144, or 8192. " +
                     "Unsupported size: " + keysize);
             }
@@ -197,7 +198,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     this.dhG = params[1];
                 }
                 else {
-                    throw new java.security.InvalidParameterException(
+                    throw new InvalidParameterException(
                         "FFDHE " + keysize + "-bit group not available in " +
                         "native wolfSSL library. Only FFDHE groups compiled " +
                         "into wolfSSL can be used.");
@@ -225,8 +226,64 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         }
 
         if (type == KeyType.WC_ECC) {
-            /* ECC keysize from Java is bits, but wolfSSL expects bytes */
-            this.keysize = (keysize + 7) / 8;
+            /* Validate EC key size and map to standard NIST curve.
+             * Only standard key sizes are supported (192, 224, 256, 384, 521)
+             * which matches SunEC behavior. For non-NIST curves use
+             * ECGenParameterSpec explicitly via
+             * initialize(AlgorithmParameterSpec). */
+
+            int curveSize = -1;
+            String curveName = null;
+
+            if (keysize != 192 && keysize != 224 && keysize != 256 &&
+                keysize != 384 && keysize != 521) {
+                throw new InvalidParameterException(
+                    "EC key size must be 192, 224, 256, 384, or 521. " +
+                    "Unsupported size: " + keysize);
+            }
+
+            /* Map key size to NIST curve name (matching SunEC behavior) */
+            switch (keysize) {
+                case 192:
+                    curveName = "secp192r1";
+                    break;
+                case 224:
+                    curveName = "secp224r1";
+                    break;
+                case 256:
+                    curveName = "secp256r1";
+                    break;
+                case 384:
+                    curveName = "secp384r1";
+                    break;
+                case 521:
+                    curveName = "secp521r1";
+                    break;
+            }
+
+            /* Verify the curve is available in native wolfSSL library */
+            try {
+                curveSize = Ecc.getCurveSizeFromName(curveName);
+            } catch (WolfCryptException e) {
+                throw new InvalidParameterException("EC curve " + curveName +
+                    " for key size " + keysize +
+                    " not available in native wolfSSL library: " +
+                    e.getMessage());
+            }
+
+            if (curveSize < 0) {
+                throw new InvalidParameterException("EC curve " + curveName +
+                    " for key size " + keysize +
+                    " not available in native wolfSSL library");
+            }
+
+            /* Store the curve name and size */
+            this.curve = curveName;
+            this.keysize = curveSize;
+
+            log("init with keysize " + keysize + ", using curve: " +
+                curveName);
+
         } else {
             this.keysize = keysize;
         }
