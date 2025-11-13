@@ -908,11 +908,13 @@ public class WolfCryptCipher extends CipherSpi {
             return true;
         }
 
-        /* AES-GCM and AES-CCM keep all data buffered until final() call,
-         * wolfJCE does not support streaming GCM/CCM yet. */
+        /* AES-GCM, AES-CCM, and AES-CTS keep all data buffered until
+         * final() call. wolfJCE does not support streaming GCM/CCM yet.
+         * CTS requires the entire message for ciphertext stealing. */
         if (cipherType == CipherType.WC_AES &&
             (cipherMode == CipherMode.WC_GCM ||
-             cipherMode == CipherMode.WC_CCM)) {
+             cipherMode == CipherMode.WC_CCM ||
+             cipherMode == CipherMode.WC_CTS)) {
             return true;
         }
 
@@ -973,10 +975,8 @@ public class WolfCryptCipher extends CipherSpi {
         blocks = buffered.length / blockSize;
         bytesToProcess = blocks * blockSize;
 
-        /* CTR, CTS, and OFB are stream ciphers, process all available data.
-         * Note: CTS requires > 16 bytes minimum which is checked elsewhere */
+        /* CTR and OFB are stream ciphers, process all available data */
         if (cipherMode == CipherMode.WC_CTR ||
-            cipherMode == CipherMode.WC_CTS ||
             cipherMode == CipherMode.WC_OFB) {
             bytesToProcess = buffered.length;
         }
@@ -1005,17 +1005,14 @@ public class WolfCryptCipher extends CipherSpi {
         /* process tmpIn[] */
         switch (this.cipherType) {
 
-            /* Only CBC/ECB/CTR/CTS/OFB mode reaches this point currently,
-             * GCM caches all data internally above until final call */
+            /* Only CBC/ECB/CTR/OFB mode reaches this point currently,
+             * GCM/CCM/CTS cache all data internally above until final call */
             case WC_AES:
                 if (cipherMode == CipherMode.WC_ECB) {
                     output = this.aesEcb.update(tmpIn, 0, tmpIn.length);
                 }
                 else if (cipherMode == CipherMode.WC_CTR) {
                     output = this.aesCtr.update(tmpIn, 0, tmpIn.length);
-                }
-                else if (cipherMode == CipherMode.WC_CTS) {
-                    output = this.aesCts.update(tmpIn, 0, tmpIn.length);
                 }
                 else if (cipherMode == CipherMode.WC_OFB) {
                     output = this.aesOfb.update(tmpIn, 0, tmpIn.length);
@@ -1059,10 +1056,11 @@ public class WolfCryptCipher extends CipherSpi {
         this.operationStarted = true;
         totalSz = buffered.length + len;
 
-        /* AES-CTS requires input length > 16 bytes */
-        if (cipherMode == CipherMode.WC_CTS && totalSz <= blockSize) {
+        /* AES-CTS requires input length >= 16 bytes (RFC 3962/8009).
+         * For exactly 16 bytes, CTS reduces to plain CBC, handled in JNI. */
+        if (cipherMode == CipherMode.WC_CTS && totalSz < blockSize) {
             throw new IllegalBlockSizeException(
-                "AES-CTS requires input length > " + blockSize +
+                "AES-CTS requires input length >= " + blockSize +
                 " bytes, got " + totalSz + " bytes");
         }
 

@@ -28,8 +28,8 @@ import java.nio.ByteBuffer;
  *
  * AES-CTS (Ciphertext Stealing mode) is a block cipher mode of operation
  * for AES that allows encryption of messages that are not a multiple of
- * the block size without padding. CTS requires at least two blocks of
- * input (more than 16 bytes).
+ * the block size without padding. CTS requires at least one block (16 bytes)
+ * of input. Per RFC 3962/8009, for exactly 16 bytes, CTS reduces to plain CBC.
  *
  * The native JNI for this wraps AES-CTS functions in the OpenSSL compatibility
  * layer to maintain compatibility with wolfCrypt FIPS library builds. Using
@@ -218,8 +218,8 @@ public class AesCts extends NativeStruct {
     /**
      * AES-CTS encrypt/decrypt operation.
      *
-     * Note: AES-CTS requires input length to be greater than one block
-     * (16 bytes). Input must be at least 17 bytes.
+     * Note: AES-CTS requires input length to be at least one block (16 bytes).
+     * Per RFC 3962/8009, for exactly 16 bytes, CTS reduces to plain CBC.
      *
      * @param input input data for encrypt/decrypt
      *
@@ -239,8 +239,8 @@ public class AesCts extends NativeStruct {
     /**
      * AES-CTS encrypt/decrypt operation.
      *
-     * Note: AES-CTS requires input length to be greater than one block
-     * (16 bytes). Input must be at least 17 bytes.
+     * Note: AES-CTS requires input length to be at least one block (16 bytes).
+     * Per RFC 3962/8009, for exactly 16 bytes, CTS reduces to plain CBC.
      *
      * @param input input data for encrypt/decrypt
      * @param offset offset into input data to begin operation
@@ -262,10 +262,11 @@ public class AesCts extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyNotLoaded();
 
-        /* CTS requires more than one block (16 bytes) */
-        if (length <= BLOCK_SIZE) {
+        /* CTS requires at least one block (16 bytes). For exactly 16 bytes,
+         * CTS reduces to plain CBC per RFC 3962/8009. */
+        if (length < BLOCK_SIZE) {
             throw new WolfCryptException(
-                "AES-CTS requires input length > " + BLOCK_SIZE +
+                "AES-CTS requires input length >= " + BLOCK_SIZE +
                 " bytes, got " + length);
         }
 
@@ -284,8 +285,8 @@ public class AesCts extends NativeStruct {
     /**
      * AES-CTS encrypt/decrypt operation.
      *
-     * Note: AES-CTS requires input length to be greater than one block
-     * (16 bytes). Input must be at least 17 bytes.
+     * Note: AES-CTS requires input length to be at least one block (16 bytes).
+     * Per RFC 3962/8009, for exactly 16 bytes, CTS reduces to plain CBC.
      *
      * @param input input data for encrypt/decrypt
      * @param offset offset into input data to begin operation
@@ -311,10 +312,11 @@ public class AesCts extends NativeStruct {
             throw new WolfCryptException("output buffer cannot be null");
         }
 
-        /* CTS requires more than one block (16 bytes) */
-        if (length <= BLOCK_SIZE) {
+        /* CTS requires at least one block (16 bytes). For exactly 16 bytes,
+         * CTS reduces to plain CBC per RFC 3962/8009. */
+        if (length < BLOCK_SIZE) {
             throw new WolfCryptException(
-                "AES-CTS requires input length > " + BLOCK_SIZE +
+                "AES-CTS requires input length >= " + BLOCK_SIZE +
                 " bytes, got " + length);
         }
 
@@ -325,8 +327,8 @@ public class AesCts extends NativeStruct {
     /**
      * AES-CTS encrypt/decrypt operation using ByteBuffers.
      *
-     * Note: AES-CTS requires input length to be greater than one block
-     * (16 bytes). Input must be at least 17 bytes.
+     * Note: AES-CTS requires input length to be at least one block (16 bytes).
+     * Per RFC 3962/8009, for exactly 16 bytes, CTS reduces to plain CBC.
      *
      * @param input input ByteBuffer for encrypt/decrypt
      * @param output output ByteBuffer to place data
@@ -349,10 +351,11 @@ public class AesCts extends NativeStruct {
 
         inputLength = input.remaining();
 
-        /* CTS requires more than one block (16 bytes) */
-        if (inputLength <= BLOCK_SIZE) {
+        /* CTS requires at least one block (16 bytes). For exactly 16 bytes,
+         * CTS reduces to plain CBC per RFC 3962/8009. */
+        if (inputLength < BLOCK_SIZE) {
             throw new WolfCryptException(
-                "AES-CTS requires input length > " + BLOCK_SIZE +
+                "AES-CTS requires input length >= " + BLOCK_SIZE +
                 " bytes, got " + inputLength);
         }
 

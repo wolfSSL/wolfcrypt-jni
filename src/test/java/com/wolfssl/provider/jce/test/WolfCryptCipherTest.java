@@ -48,6 +48,7 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.BadPaddingException;
+import javax.crypto.ShortBufferException;
 import javax.crypto.AEADBadTagException;
 
 import java.security.Security;
@@ -89,6 +90,7 @@ public class WolfCryptCipherTest {
         "AES/CBC/NoPadding",
         "AES/CBC/PKCS5Padding",
         "AES/CCM/NoPadding",
+        "AES/CTS/NoPadding",
         "AES/CTR/NoPadding",
         "AES/ECB/NoPadding",
         "AES", /* maps to AES/ECB/PKCS5Padding */
@@ -152,6 +154,7 @@ public class WolfCryptCipherTest {
         expectedBlockSizes.put("AES/CBC/NoPadding", 16);
         expectedBlockSizes.put("AES/CBC/PKCS5Padding", 16);
         expectedBlockSizes.put("AES/CCM/NoPadding", 16);
+        expectedBlockSizes.put("AES/CTS/NoPadding", 16);
         expectedBlockSizes.put("AES/CTR/NoPadding", 16);
         expectedBlockSizes.put("AES/ECB/NoPadding", 16);
         expectedBlockSizes.put("AES", 16);
@@ -3575,9 +3578,10 @@ public class WolfCryptCipherTest {
 
         byte[] iv = new byte[16]; /* all zeros */
 
-        /* Test with various data sizes > 16 bytes
-         * CTS requires input > one block (16 bytes) */
-        int[] dataSizes = {17, 18, 31, 32, 33, 47, 48, 49, 63, 64, 65};
+        /* Test with various data sizes >= 16 bytes.
+         * CTS requires input >= one block (16 bytes). For exactly 16 bytes,
+         * CTS reduces to plain CBC per RFC 3962/8009. */
+        int[] dataSizes = {16, 17, 18, 31, 32, 33, 47, 48, 49, 63, 64, 65};
 
         for (int size : dataSizes) {
             byte[] plaintext = new byte[size];
@@ -3624,15 +3628,27 @@ public class WolfCryptCipherTest {
 
         cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
 
-        /* CTS requires > 16 bytes, 16 bytes should fail */
-        byte[] input16 = new byte[16];
+        /* CTS requires >= 16 bytes. Less than 16 bytes should fail */
+        byte[] input15 = new byte[15];
         try {
-            cipher.doFinal(input16);
-            fail("CTS should require input length > 16 bytes");
+            cipher.doFinal(input15);
+            fail("CTS should require input length >= 16 bytes");
         } catch (IllegalBlockSizeException e) {
             /* Expected */
         } catch (BadPaddingException e) {
             /* May also throw BadPaddingException */
+        }
+
+        /* RFC 3962/8009: Exactly 16 bytes should succeed, reduces to CBC */
+        byte[] input16 = new byte[16];
+        try {
+            byte[] result = cipher.doFinal(input16);
+            assertNotNull("16 byte input should succeed (RFC 3962/8009)",
+                result);
+            assertEquals("Output length should match input length",
+                16, result.length);
+        } catch (Exception e) {
+            fail("16 byte input should succeed: " + e.getMessage());
         }
 
         /* 17 bytes should succeed */
@@ -3645,6 +3661,119 @@ public class WolfCryptCipherTest {
         } catch (Exception e) {
             fail("17 byte input should succeed: " + e.getMessage());
         }
+    }
+
+    /** Test exactly one block (16 bytes) edge case.
+     * Per RFC 3962/8009, for exactly 16 bytes, CTS reduces to plain CBC.
+     * This tests that the edge case is handled correctly.
+     */
+    @Test
+    public void testAesCtsOneBlockEdgeCase()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/CTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        byte[] key = new byte[Aes.BLOCK_SIZE];
+        byte[] iv = new byte[Aes.BLOCK_SIZE];
+        byte[] plaintext = new byte[Aes.BLOCK_SIZE];
+
+        secureRandom.nextBytes(key);
+        secureRandom.nextBytes(plaintext);
+
+        /* Test encryption */
+        Cipher cipher = Cipher.getInstance("AES/CTS/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        byte[] ciphertext = cipher.doFinal(plaintext);
+
+        assertNotNull("Ciphertext should not be null", ciphertext);
+        assertEquals("CTS output length should equal input length",
+            plaintext.length, ciphertext.length);
+
+        /* Test decryption */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+
+        assertNotNull("Decrypted plaintext should not be null", decrypted);
+        assertEquals("Decrypted length should equal original",
+            plaintext.length, decrypted.length);
+        assertArrayEquals("Decryption should recover original plaintext",
+            plaintext, decrypted);
+    }
+
+    /** Test that the ByteBuffer code path also handles 16-byte inputs
+     * correctly (RFC 3962/8009 edge case) */
+    @Test
+    public void testAesCtsOneBlockByteBuffer()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException, ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/CTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        byte[] key = new byte[Aes.BLOCK_SIZE];
+        byte[] iv = new byte[Aes.BLOCK_SIZE];
+        byte[] plaintext = new byte[Aes.BLOCK_SIZE];
+
+        secureRandom.nextBytes(key);
+        secureRandom.nextBytes(plaintext);
+
+        /* Allocate direct ByteBuffers */
+        ByteBuffer inputBuf = ByteBuffer.allocateDirect(16);
+        ByteBuffer outputBuf = ByteBuffer.allocateDirect(16);
+        ByteBuffer decryptBuf = ByteBuffer.allocateDirect(16);
+
+        inputBuf.put(plaintext);
+        inputBuf.flip();
+
+        Cipher cipher = Cipher.getInstance("AES/CTS/NoPadding", jceProvider);
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+        /* Encrypt using ByteBuffer */
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        int encLen = cipher.doFinal(inputBuf, outputBuf);
+
+        assertEquals("Encryption should process 16 bytes",
+            Aes.BLOCK_SIZE, encLen);
+        assertEquals("Output buffer should have 16 bytes",
+            Aes.BLOCK_SIZE, outputBuf.position());
+
+        /* Extract ciphertext */
+        outputBuf.flip();
+        byte[] ciphertext = new byte[Aes.BLOCK_SIZE];
+        outputBuf.get(ciphertext);
+
+        /* Decrypt using ByteBuffer */
+        outputBuf.flip();
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+        int decLen = cipher.doFinal(outputBuf, decryptBuf);
+
+        assertEquals("Decryption should process 16 bytes",
+            Aes.BLOCK_SIZE, decLen);
+        assertEquals("Decrypt buffer should have 16 bytes",
+            Aes.BLOCK_SIZE, decryptBuf.position());
+
+        /* Extract and verify decrypted plaintext */
+        decryptBuf.flip();
+        byte[] decrypted = new byte[Aes.BLOCK_SIZE];
+        decryptBuf.get(decrypted);
+
+        assertArrayEquals(
+            "ByteBuffer decryption should recover original plaintext",
+            plaintext, decrypted);
     }
 
     @Test
@@ -4799,7 +4928,7 @@ public class WolfCryptCipherTest {
             }
 
             /* Test nonce too long (16 bytes) */
-            byte[] longNonce = new byte[16];
+            byte[] longNonce = new byte[Aes.BLOCK_SIZE];
             GCMParameterSpec longSpec = new GCMParameterSpec(128, longNonce);
 
             try {
@@ -4811,7 +4940,7 @@ public class WolfCryptCipherTest {
             }
 
             /* Test valid nonce lengths (7-15 bytes) */
-            for (int len = 7; len <= 15; len++) {
+            for (int len = 7; len <= (Aes.BLOCK_SIZE - 1); len++) {
                 byte[] validNonce = new byte[len];
                 GCMParameterSpec validSpec =
                     new GCMParameterSpec(128, validNonce);

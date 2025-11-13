@@ -157,8 +157,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
         offset < 0 || length < 0 || outputOffset < 0) {
         ret = BAD_FUNC_ARG;
     }
-    else if (length <= AES_BLOCK_SIZE) {
-        /* CTS requires more than one block of input */
+    else if (length < AES_BLOCK_SIZE) {
+        /* CTS requires at least one block of input */
         ret = BUFFER_E;
     }
     else if ((word32)(offset + length) >
@@ -179,14 +179,30 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
         LogStr("Input plaintext:\n");
         LogHex((byte*)(input + offset), 0, length);
 
-        if (opmode == 0) {
-            /* ENCRYPT_MODE */
+        if (length == AES_BLOCK_SIZE) {
+            /* RFC 3962/8009: Special case for exactly one block.
+             * CTS reduces to plain CBC encryption - no stealing needed.
+             * wolfSSL_CRYPTO_cts128_encrypt() expects len > one block. */
+            if (opmode == 0) {
+                /* ENCRYPT_MODE */
+                AES_cbc_encrypt(input + offset, output + outputOffset,
+                    (size_t)length, &ctx->key, iv, AES_ENCRYPT);
+            }
+            else {
+                /* DECRYPT_MODE */
+                AES_cbc_encrypt(input + offset, output + outputOffset,
+                    (size_t)length, &ctx->key, iv, AES_DECRYPT);
+            }
+            outLen = length;
+        }
+        else if (opmode == 0) {
+            /* ENCRYPT_MODE - more than one block */
             outLen = wolfSSL_CRYPTO_cts128_encrypt(input + offset,
                 output + outputOffset, (size_t)length, &ctx->key,
                 iv, (cbc128_f)AES_cbc_encrypt);
         }
         else {
-            /* DECRYPT_MODE */
+            /* DECRYPT_MODE - more than one block */
             outLen = wolfSSL_CRYPTO_cts128_decrypt(input + offset,
                 output + outputOffset, (size_t)length, &ctx->key,
                 iv, (cbc128_f)AES_cbc_encrypt);
@@ -253,8 +269,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
         offset < 0 || length < 0 || outputOffset < 0) {
         ret = BAD_FUNC_ARG;
     }
-    else if (length <= AES_BLOCK_SIZE) {
-        /* CTS requires more than one block of input */
+    else if (length < AES_BLOCK_SIZE) {
+        /* CTS requires at least one block of input */
         ret = BUFFER_E;
     }
     else if ((word32)(offset + length) >
@@ -270,14 +286,30 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
          * operation, so we use a local copy to preserve the original. */
         XMEMCPY(iv, ctx->iv, AES_BLOCK_SIZE);
 
-        if (opmode == 0) {
-            /* ENCRYPT_MODE */
+        if (length == AES_BLOCK_SIZE) {
+            /* RFC 3962/8009: Special case for exactly one block.
+             * CTS reduces to plain CBC encryption - no stealing needed.
+             * wolfSSL_CRYPTO_cts128_encrypt() expects len > one block. */
+            if (opmode == 0) {
+                /* ENCRYPT_MODE */
+                AES_cbc_encrypt(input + offset, output + outputOffset,
+                    (size_t)length, &ctx->key, iv, AES_ENCRYPT);
+            }
+            else {
+                /* DECRYPT_MODE */
+                AES_cbc_encrypt(input + offset, output + outputOffset,
+                    (size_t)length, &ctx->key, iv, AES_DECRYPT);
+            }
+            outLen = length;
+        }
+        else if (opmode == 0) {
+            /* ENCRYPT_MODE - more than one block */
             outLen = wolfSSL_CRYPTO_cts128_encrypt(input + offset,
                 output + outputOffset, (size_t)length, &ctx->key,
                 iv, (cbc128_f)AES_cbc_encrypt);
         }
         else {
-            /* DECRYPT_MODE */
+            /* DECRYPT_MODE - more than one block */
             outLen = wolfSSL_CRYPTO_cts128_decrypt(input + offset,
                 output + outputOffset, (size_t)length, &ctx->key,
                 iv, (cbc128_f)AES_cbc_encrypt);
