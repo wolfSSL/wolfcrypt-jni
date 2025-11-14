@@ -35,6 +35,7 @@ import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
+import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.AesCts;
 import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptError;
@@ -132,9 +133,9 @@ public class AesCtsTest {
 
     @Test
     public void checkUpdateParams() {
-        /* CTS requires > 16 bytes */
-        byte[] input = new byte[32];
-        byte[] output = new byte[32];
+        /* CTS requires >= 16 bytes */
+        byte[] input = new byte[Aes.BLOCK_SIZE * 2];
+        byte[] output = new byte[Aes.BLOCK_SIZE * 2];
 
         AesCts aesCts = new AesCts();
         aesCts.setKey(KEY_128, IV, AesCts.ENCRYPT_MODE);
@@ -142,25 +143,25 @@ public class AesCtsTest {
         aesCts.update(input);
 
         try {
-            aesCts.update(null, 0, 32, output, 0);
+            aesCts.update(null, 0, input.length, output, 0);
             fail("input should not be null.");
         } catch (WolfCryptException e) {
             /* test must throw */
         }
 
         try {
-            aesCts.update(input, 0, 32, null, 0);
+            aesCts.update(input, 0, input.length, null, 0);
             fail("output should not be null.");
         } catch (WolfCryptException e) {
             /* test must throw WolfCryptException for null output */
         }
 
-        aesCts.update(input, 0, 32, output, 0);
+        aesCts.update(input, 0, input.length, output, 0);
 
         aesCts.releaseNativeStruct();
 
         try {
-            aesCts.update(input, 0, 32, output, 0);
+            aesCts.update(input, 0, input.length, output, 0);
             fail("native struct should not be null.");
         } catch (IllegalStateException e) {
             /* test must throw */
@@ -172,22 +173,34 @@ public class AesCtsTest {
         AesCts aesCts = new AesCts();
         aesCts.setKey(KEY_128, IV, AesCts.ENCRYPT_MODE);
 
-        /* CTS requires > 16 bytes, test with 16 bytes should fail */
-        byte[] input16 = new byte[16];
+        /* CTS requires >= 16 bytes, test with 15 bytes should fail */
+        byte[] input15 = new byte[Aes.BLOCK_SIZE - 1];
 
         try {
-            aesCts.update(input16);
-            fail("CTS should require input length > 16 bytes");
+            aesCts.update(input15);
+            fail("CTS should require input length >= 16 bytes");
         } catch (WolfCryptException e) {
             /* Expected - input too small */
         }
 
-        /* Test with 17 bytes should succeed */
-        byte[] input17 = new byte[17];
-        byte[] result = aesCts.update(input17);
-        assertNotNull("17 byte input should succeed", result);
+        /* RFC 3962/8009: Exactly 16 bytes should succeed (reduces to CBC) */
+        byte[] input16 = new byte[Aes.BLOCK_SIZE];
+        byte[] result16 = aesCts.update(input16);
+        assertNotNull("16 byte input should succeed (RFC 3962/8009)",
+            result16);
         assertEquals("Output length should match input length",
-            17, result.length);
+            Aes.BLOCK_SIZE, result16.length);
+
+        aesCts.releaseNativeStruct();
+
+        /* Test with 17 bytes should succeed */
+        aesCts = new AesCts();
+        aesCts.setKey(KEY_128, IV, AesCts.ENCRYPT_MODE);
+        byte[] input17 = new byte[Aes.BLOCK_SIZE + 1];
+        byte[] result17 = aesCts.update(input17);
+        assertNotNull("17 byte input should succeed", result17);
+        assertEquals("Output length should match input length",
+            Aes.BLOCK_SIZE + 1, result17.length);
 
         aesCts.releaseNativeStruct();
     }
