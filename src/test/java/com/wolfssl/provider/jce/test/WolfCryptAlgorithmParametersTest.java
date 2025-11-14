@@ -41,6 +41,9 @@ import java.security.spec.InvalidParameterSpecException;
 import java.security.spec.AlgorithmParameterSpec;
 import java.util.Arrays;
 
+import java.security.spec.PSSParameterSpec;
+import java.security.spec.MGF1ParameterSpec;
+
 import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 
@@ -594,6 +597,573 @@ public class WolfCryptAlgorithmParametersTest {
 
         /* Verify encodings are identical */
         assertTrue(Arrays.equals(encoded1, encoded2));
+    }
+
+    @Test
+    public void testRSAPSSParametersGetInstance()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        AlgorithmParameters params;
+        params = AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        assertNotNull(params);
+    }
+
+    @Test
+    public void testRSAPSSParametersInitWithDefaultSpec()
+        throws Exception {
+
+        /* Create default PSS parameters (SHA-256, MGF1-SHA256, salt=32) */
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1
+        );
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        assertNotNull(params);
+
+        params.init(spec);
+
+        /* Retrieve parameters back */
+        PSSParameterSpec retrievedSpec =
+            params.getParameterSpec(PSSParameterSpec.class);
+        assertNotNull(retrievedSpec);
+        assertEquals("SHA-256", retrievedSpec.getDigestAlgorithm());
+        assertEquals("MGF1", retrievedSpec.getMGFAlgorithm());
+        assertEquals(32, retrievedSpec.getSaltLength());
+        assertEquals(1, retrievedSpec.getTrailerField());
+
+        /* Check MGF1 parameters */
+        assertTrue(
+            retrievedSpec.getMGFParameters() instanceof MGF1ParameterSpec);
+        MGF1ParameterSpec mgf1Spec =
+            (MGF1ParameterSpec) retrievedSpec.getMGFParameters();
+        assertEquals("SHA-256", mgf1Spec.getDigestAlgorithm());
+    }
+
+    @Test
+    public void testRSAPSSParametersInitWithSHA1Spec()
+        throws Exception {
+
+        /* SHA-1 with MGF1-SHA1, salt=20 */
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-1", "MGF1", MGF1ParameterSpec.SHA1, 20, 1
+        );
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params.init(spec);
+
+        PSSParameterSpec retrievedSpec =
+            params.getParameterSpec(PSSParameterSpec.class);
+        assertEquals("SHA-1", retrievedSpec.getDigestAlgorithm());
+        MGF1ParameterSpec mgf1Spec =
+            (MGF1ParameterSpec) retrievedSpec.getMGFParameters();
+        assertEquals("SHA-1", mgf1Spec.getDigestAlgorithm());
+        assertEquals(20, retrievedSpec.getSaltLength());
+    }
+
+    @Test
+    public void testRSAPSSParametersInitWithSHA384Spec()
+        throws Exception {
+
+        /* SHA-384 with MGF1-SHA384, salt=48 */
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-384", "MGF1", MGF1ParameterSpec.SHA384, 48, 1
+        );
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params.init(spec);
+
+        PSSParameterSpec retrievedSpec =
+            params.getParameterSpec(PSSParameterSpec.class);
+        assertEquals("SHA-384", retrievedSpec.getDigestAlgorithm());
+        MGF1ParameterSpec mgf1Spec =
+            (MGF1ParameterSpec) retrievedSpec.getMGFParameters();
+        assertEquals("SHA-384", mgf1Spec.getDigestAlgorithm());
+        assertEquals(48, retrievedSpec.getSaltLength());
+    }
+
+    @Test
+    public void testRSAPSSParametersInitWithSHA512Spec()
+        throws Exception {
+
+        /* SHA-512 with MGF1-SHA512, salt=64 */
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-512", "MGF1", MGF1ParameterSpec.SHA512, 64, 1
+        );
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params.init(spec);
+
+        PSSParameterSpec retrievedSpec =
+            params.getParameterSpec(PSSParameterSpec.class);
+        assertEquals("SHA-512", retrievedSpec.getDigestAlgorithm());
+        MGF1ParameterSpec mgf1Spec =
+            (MGF1ParameterSpec) retrievedSpec.getMGFParameters();
+        assertEquals("SHA-512", mgf1Spec.getDigestAlgorithm());
+        assertEquals(64, retrievedSpec.getSaltLength());
+    }
+
+    @Test
+    public void testRSAPSSParametersEncodingDERWithDefaults()
+        throws Exception {
+
+        /* RFC 4055 defaults: SHA-1, MGF1-SHA1, salt=20 */
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-1", "MGF1", MGF1ParameterSpec.SHA1, 20, 1
+        );
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params.init(spec);
+
+        /* Get DER encoding */
+        byte[] encoded = params.getEncoded();
+        assertNotNull(encoded);
+        assertTrue(encoded.length > 0);
+
+        /* With all defaults, should be minimal SEQUENCE */
+        /* SEQUENCE { } = 0x30 0x00 */
+        assertEquals(0x30, encoded[0] & 0xFF);
+        assertEquals(0x00, encoded[1] & 0xFF);
+
+        /* Decode and verify */
+        AlgorithmParameters params2 =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params2.init(encoded);
+
+        PSSParameterSpec spec2 =
+            params2.getParameterSpec(PSSParameterSpec.class);
+        assertEquals("SHA-1", spec2.getDigestAlgorithm());
+        assertEquals(20, spec2.getSaltLength());
+    }
+
+    @Test
+    public void testRSAPSSParametersEncodingDERWithNonDefaults()
+        throws Exception {
+
+        /* Non-default values: SHA-256, MGF1-SHA256, salt=32 */
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1
+        );
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params.init(spec);
+
+        /* Get DER encoding */
+        byte[] encoded = params.getEncoded();
+        assertNotNull(encoded);
+        assertTrue(encoded.length > 0);
+
+        /* Should start with SEQUENCE tag */
+        assertEquals(0x30, encoded[0] & 0xFF);
+
+        /* Should be longer than minimal since we have non-defaults */
+        assertTrue(encoded.length > 2);
+
+        /* Decode and verify round trip */
+        AlgorithmParameters params2 =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params2.init(encoded);
+
+        PSSParameterSpec spec2 =
+            params2.getParameterSpec(PSSParameterSpec.class);
+        assertEquals("SHA-256", spec2.getDigestAlgorithm());
+        assertEquals("MGF1", spec2.getMGFAlgorithm());
+        assertEquals(32, spec2.getSaltLength());
+        assertEquals(1, spec2.getTrailerField());
+
+        MGF1ParameterSpec mgf1Spec =
+            (MGF1ParameterSpec) spec2.getMGFParameters();
+        assertEquals("SHA-256", mgf1Spec.getDigestAlgorithm());
+    }
+
+    @Test
+    public void testRSAPSSParametersEncodingAllHashAlgorithms()
+        throws Exception {
+
+        /* Test all supported hash algorithms */
+        String[] hashAlgs = {
+            "SHA-1", "SHA-224", "SHA-256", "SHA-384", "SHA-512",
+            "SHA-512/224", "SHA-512/256"
+        };
+
+        MGF1ParameterSpec[] mgf1Specs = {
+            MGF1ParameterSpec.SHA1,
+            MGF1ParameterSpec.SHA224,
+            MGF1ParameterSpec.SHA256,
+            MGF1ParameterSpec.SHA384,
+            MGF1ParameterSpec.SHA512,
+            new MGF1ParameterSpec("SHA-512/224"),
+            new MGF1ParameterSpec("SHA-512/256")
+        };
+
+        for (int i = 0; i < hashAlgs.length; i++) {
+            PSSParameterSpec spec = new PSSParameterSpec(
+                hashAlgs[i], "MGF1", mgf1Specs[i], 32, 1
+            );
+
+            AlgorithmParameters params =
+                AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+            params.init(spec);
+
+            byte[] encoded = params.getEncoded();
+            assertNotNull(encoded);
+
+            /* Decode and verify */
+            AlgorithmParameters params2 =
+                AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+            params2.init(encoded);
+
+            PSSParameterSpec spec2 =
+                params2.getParameterSpec(PSSParameterSpec.class);
+            assertEquals(hashAlgs[i], spec2.getDigestAlgorithm());
+
+            MGF1ParameterSpec mgf1Retrieved =
+                (MGF1ParameterSpec) spec2.getMGFParameters();
+            assertEquals(hashAlgs[i], mgf1Retrieved.getDigestAlgorithm());
+        }
+    }
+
+    @Test
+    public void testRSAPSSParametersEncodingVariousSaltLengths()
+        throws Exception {
+
+        int[] saltLengths = {0, 1, 16, 20, 32, 48, 64, 128, 255};
+
+        for (int saltLen : saltLengths) {
+            PSSParameterSpec spec = new PSSParameterSpec(
+                "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, saltLen, 1
+            );
+
+            AlgorithmParameters params =
+                AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+            params.init(spec);
+
+            byte[] encoded = params.getEncoded();
+            assertNotNull(encoded);
+
+            /* Decode and verify salt length preserved */
+            AlgorithmParameters params2 =
+                AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+            params2.init(encoded);
+
+            PSSParameterSpec spec2 =
+                params2.getParameterSpec(PSSParameterSpec.class);
+            assertEquals(saltLen, spec2.getSaltLength());
+        }
+    }
+
+    @Test
+    public void testRSAPSSParametersEncodingMixedHashAlgorithms()
+        throws Exception {
+
+        /* Test with different hash for digest and MGF */
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-256", "MGF1", MGF1ParameterSpec.SHA1, 32, 1
+        );
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params.init(spec);
+
+        byte[] encoded = params.getEncoded();
+
+        AlgorithmParameters params2 =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params2.init(encoded);
+
+        PSSParameterSpec spec2 =
+            params2.getParameterSpec(PSSParameterSpec.class);
+        assertEquals("SHA-256", spec2.getDigestAlgorithm());
+
+        MGF1ParameterSpec mgf1Spec =
+            (MGF1ParameterSpec) spec2.getMGFParameters();
+        assertEquals("SHA-1", mgf1Spec.getDigestAlgorithm());
+    }
+
+    @Test
+    public void testRSAPSSParametersRoundTrip()
+        throws Exception {
+
+        PSSParameterSpec originalSpec = new PSSParameterSpec(
+            "SHA-384", "MGF1", MGF1ParameterSpec.SHA384, 48, 1
+        );
+
+        /* Round trip 1: spec -> params -> encoded */
+        AlgorithmParameters params1 =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params1.init(originalSpec);
+        byte[] encoded1 = params1.getEncoded();
+
+        /* Round trip 2: encoded -> params -> encoded */
+        AlgorithmParameters params2 =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params2.init(encoded1);
+        byte[] encoded2 = params2.getEncoded();
+
+        /* Round trip 3: encoded -> params -> spec */
+        AlgorithmParameters params3 =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params3.init(encoded2);
+        PSSParameterSpec finalSpec =
+            params3.getParameterSpec(PSSParameterSpec.class);
+
+        /* Verify all parameters match original */
+        assertEquals(originalSpec.getDigestAlgorithm(),
+            finalSpec.getDigestAlgorithm());
+        assertEquals(originalSpec.getMGFAlgorithm(),
+            finalSpec.getMGFAlgorithm());
+        assertEquals(originalSpec.getSaltLength(),
+            finalSpec.getSaltLength());
+        assertEquals(originalSpec.getTrailerField(),
+            finalSpec.getTrailerField());
+
+        /* Verify encodings are identical */
+        assertTrue(Arrays.equals(encoded1, encoded2));
+    }
+
+    @Test
+    public void testRSAPSSParametersInitWithInvalidParameterSpec()
+        throws Exception {
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+
+        /* Try to initialize with wrong type of ParameterSpec */
+        try {
+            DHParameterSpec invalidSpec =
+                new DHParameterSpec(
+                    BigInteger.valueOf(123), BigInteger.valueOf(2));
+            params.init(invalidSpec);
+
+            fail("AlgorithmParameters.init should throw " +
+                 "InvalidParameterSpecException when given wrong spec type");
+
+        } catch (InvalidParameterSpecException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testRSAPSSParametersInitWithNullBytes()
+        throws Exception {
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+
+        try {
+            params.init((byte[]) null);
+            fail("Should throw IOException for null parameters");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testRSAPSSParametersInitWithEmptyBytes()
+        throws Exception {
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+
+        try {
+            params.init(new byte[0]);
+            fail("Should throw IOException for empty parameters");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testRSAPSSParametersInitWithInvalidDERBytes()
+        throws Exception {
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+
+        /* Invalid DER: not a SEQUENCE */
+        byte[] invalidDER = new byte[] {0x02, 0x01, 0x00};
+
+        try {
+            params.init(invalidDER);
+            fail("Should throw IOException for invalid DER encoding");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testRSAPSSParametersInitWithTruncatedDER()
+        throws Exception {
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+
+        /* SEQUENCE with length > actual data */
+        byte[] truncatedDER = new byte[] {0x30, 0x10, 0x00};
+
+        try {
+            params.init(truncatedDER);
+            fail("Should throw IOException for truncated DER encoding");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testRSAPSSParametersGetEncodedBeforeInit()
+        throws Exception {
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+
+        try {
+            params.getEncoded();
+            fail("Should throw IOException when getEncoded " +
+                 "called before init");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testRSAPSSParametersGetParameterSpecBeforeInit()
+        throws Exception {
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+
+        try {
+            params.getParameterSpec(PSSParameterSpec.class);
+            fail("Should throw InvalidParameterSpecException " +
+                 "when called before init");
+        } catch (InvalidParameterSpecException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testRSAPSSParametersGetParameterSpecWithWrongClass()
+        throws Exception {
+
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1
+        );
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params.init(spec);
+
+        try {
+            params.getParameterSpec(DHParameterSpec.class);
+            fail("Should throw InvalidParameterSpecException for wrong class");
+        } catch (InvalidParameterSpecException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testRSAPSSParametersGetParameterSpecWithNull()
+        throws Exception {
+
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1
+        );
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params.init(spec);
+
+        try {
+            params.getParameterSpec(null);
+            fail("Should throw InvalidParameterSpecException for null class");
+        } catch (InvalidParameterSpecException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testRSAPSSParametersToString()
+        throws Exception {
+
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1
+        );
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params.init(spec);
+
+        String str = params.toString();
+        assertNotNull(str);
+        assertTrue(str.contains("PSS Parameters"));
+        assertTrue(str.contains("SHA-256"));
+    }
+
+    @Test
+    public void testRSAPSSParametersEncodingWithFormat()
+        throws Exception {
+
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1
+        );
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params.init(spec);
+
+        /* Test ASN.1 format */
+        byte[] asnEncoded = params.getEncoded("ASN.1");
+        assertNotNull(asnEncoded);
+
+        /* ASN.1 and default should be the same */
+        byte[] defaultEncoded = params.getEncoded();
+        assertTrue(Arrays.equals(asnEncoded, defaultEncoded));
+
+        /* Test case insensitivity */
+        byte[] lowerEncoded = params.getEncoded("asn.1");
+        assertTrue(Arrays.equals(asnEncoded, lowerEncoded));
+    }
+
+    @Test
+    public void testRSAPSSParametersEncodingUnsupportedFormat()
+        throws Exception {
+
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1
+        );
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params.init(spec);
+
+        try {
+            params.getEncoded("PEM");
+            fail("Should throw IOException for unsupported format");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testRSAPSSParametersInitWithUnsupportedFormat()
+        throws Exception {
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+
+        byte[] data = new byte[] {0x30, 0x00};
+
+        try {
+            params.init(data, "PEM");
+            fail("Should throw IOException for unsupported format");
+        } catch (IOException e) {
+            /* expected */
+        }
     }
 }
 
