@@ -35,11 +35,47 @@ import java.math.BigInteger;
 public class WolfCryptASN1Util {
 
     /* ASN.1 Universal Tags */
-    private static final byte ASN1_INTEGER = 0x02;
-    private static final byte ASN1_BIT_STRING = 0x03;
-    private static final byte ASN1_OCTET_STRING = 0x04;
-    private static final byte ASN1_OBJECT_IDENTIFIER = 0x06;
-    private static final byte ASN1_SEQUENCE = 0x30;
+    static final byte ASN1_INTEGER           = 0x02;
+    static final byte ASN1_BIT_STRING        = 0x03;
+    static final byte ASN1_OCTET_STRING      = 0x04;
+    static final byte ASN1_NULL              = 0x05;
+    static final byte ASN1_OBJECT_IDENTIFIER = 0x06;
+    static final byte ASN1_SEQUENCE          = 0x30;
+
+    /* ASN.1 Context-Specific Tags (Constructed) */
+    static final byte ASN1_CONTEXT_SPECIFIC_0 = (byte)0xa0;
+    static final byte ASN1_CONTEXT_SPECIFIC_1 = (byte)0xa1;
+    static final byte ASN1_CONTEXT_SPECIFIC_2 = (byte)0xa2;
+    static final byte ASN1_CONTEXT_SPECIFIC_3 = (byte)0xa3;
+
+    /* Hash Algorithm OIDs. No tag/length, just encoded value. */
+    private static final byte[] OID_SHA1 =
+        { 0x2b, 0x0e, 0x03, 0x02, 0x1a };
+    private static final byte[] OID_SHA224 =
+        { 0x60, (byte)0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04 };
+    private static final byte[] OID_SHA256 =
+        { 0x60, (byte)0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01};
+    private static final byte[] OID_SHA384 =
+        { 0x60, (byte)0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02 };
+    private static final byte[] OID_SHA512 =
+        { 0x60, (byte)0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03 };
+    private static final byte[] OID_SHA512_224 =
+        { 0x60, (byte)0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x05 };
+    private static final byte[] OID_SHA512_256 =
+        { 0x60, (byte)0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x06 };
+    private static final byte[] OID_SHA3_224 =
+        { 0x60, (byte)0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x07 };
+    private static final byte[] OID_SHA3_256 =
+        { 0x60, (byte)0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x08 };
+    private static final byte[] OID_SHA3_384 =
+        { 0x60, (byte)0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x09 };
+    private static final byte[] OID_SHA3_512 =
+        { 0x60, (byte)0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x0a };
+
+    /* MGF1 OID: 1.2.840.113549.1.1.8 */
+    private static final byte[] OID_MGF1 =
+        { 0x2a, (byte)0x86, 0x48, (byte)0x86, (byte)0xf7,
+         0x0d, 0x01, 0x01, 0x08 };
 
     /* DH Algorithm OID: 1.2.840.113549.1.3.1 (pkcs-3) */
     private static final byte[] DH_ALGORITHM_OID = {
@@ -49,14 +85,12 @@ public class WolfCryptASN1Util {
         (byte)0x01
     };
 
-    /**
-     * Private constructor, all methods are static.
-     */
+    /** Private constructor, all methods are static. */
     private WolfCryptASN1Util() {
     }
 
     /**
-     * Encode a BigInteger as a DER INTEGER.
+     * Encode BigInteger as a DER INTEGER.
      *
      * DER INTEGER format:
      * - Tag: 0x02
@@ -83,8 +117,8 @@ public class WolfCryptASN1Util {
         valueBytes = value.toByteArray();
 
         /* BigInteger.toByteArray() handles sign bit correctly:
-         * - For positive numbers, adds leading 0x00 if MSB is set
-         * - For negative numbers (shouldn't happen), uses two's complement */
+         * - Positive numbers, adds leading 0x00 if MSB is set
+         * - Negative numbers, uses two's complement */
         out = new ByteArrayOutputStream();
 
         try {
@@ -479,6 +513,396 @@ public class WolfCryptASN1Util {
         }
 
         return bytes;
+    }
+
+    /**
+     * Encode an integer as a DER INTEGER.
+     *
+     * DER INTEGER format:
+     * - Tag: 0x02
+     * - Length: variable
+     * - Value: big-endian bytes, with leading 0x00 if MSB is set
+     *
+     * @param value the integer value to encode (must be non-negative)
+     *
+     * @return DER-encoded INTEGER (tag + length + value)
+     *
+     * @throws IllegalArgumentException if value is negative
+     */
+    static byte[] encodeDERInteger(int value)
+        throws IllegalArgumentException {
+
+        ByteArrayOutputStream result;
+
+        if (value < 0) {
+            throw new IllegalArgumentException(
+                "Negative integers not supported");
+        }
+
+        result = new ByteArrayOutputStream();
+
+        try {
+            result.write(ASN1_INTEGER);
+
+            if (value == 0) {
+                result.write(0x01);
+                result.write(0x00);
+            }
+            else {
+                /* Determine minimum bytes needed */
+                int temp = value;
+                int numBytes = 0;
+                while (temp > 0) {
+                    numBytes++;
+                    temp >>= 8;
+                }
+
+                /* Build byte array */
+                byte[] bytes = new byte[numBytes];
+                int tempValue = value;
+                for (int i = numBytes - 1; i >= 0; i--) {
+                    bytes[i] = (byte) (tempValue & 0xff);
+                    tempValue >>= 8;
+                }
+
+                /* Add padding byte if high bit set (to keep positive) */
+                if ((bytes[0] & 0x80) != 0) {
+                    result.write(encodeDERLength(numBytes + 1));
+                    result.write(0x00);
+                    result.write(bytes);
+                }
+                else {
+                    result.write(encodeDERLength(numBytes));
+                    result.write(bytes);
+                }
+            }
+
+            return result.toByteArray();
+
+        } catch (IOException e) {
+            throw new IllegalArgumentException(
+                "Failed to encode INTEGER: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Decode DER length from encoded bytes, returning length and
+     * new offset.
+     *
+     * Reads DER length encoding at the specified offset and returns
+     * an array containing [length, newOffset] where newOffset points
+     * to the first byte after the length encoding.
+     *
+     * @param data DER-encoded data
+     * @param offset index where length encoding starts
+     *
+     * @return int array with [length, newOffset]
+     *
+     * @throws IllegalArgumentException if data is null, offset invalid,
+     *         or encoding is invalid
+     */
+    static int[] decodeDERLengthWithOffset(byte[] data, int offset)
+        throws IllegalArgumentException {
+
+        int firstByte, numBytes, length;
+
+        if (data == null) {
+            throw new IllegalArgumentException("Data cannot be null");
+        }
+        if (offset < 0 || offset >= data.length) {
+            throw new IllegalArgumentException(
+                "Invalid offset: " + offset);
+        }
+
+        firstByte = data[offset++] & 0xff;
+
+        if ((firstByte & 0x80) == 0) {
+            /* Short form */
+            return new int[] {firstByte, offset};
+        }
+        else {
+            /* Long form */
+            numBytes = firstByte & 0x7f;
+
+            if (numBytes == 0) {
+                throw new IllegalArgumentException(
+                    "Indefinite length encoding not supported");
+            }
+
+            if (numBytes > 4) {
+                throw new IllegalArgumentException("Length too large");
+            }
+
+            if (offset + numBytes > data.length) {
+                throw new IllegalArgumentException(
+                    "Invalid DER length: extends beyond data");
+            }
+
+            length = 0;
+            for (int i = 0; i < numBytes; i++) {
+                length = (length << 8) | (data[offset++] & 0xff);
+            }
+
+            return new int[] {length, offset};
+        }
+    }
+
+    /**
+     * Decode a DER INTEGER value.
+     *
+     * Decodes a DER-encoded INTEGER (including tag and length) and
+     * returns the integer value. Only supports non-negative integers
+     * that fit in a Java int (32 bits).
+     *
+     * @param data DER-encoded INTEGER (including tag and length)
+     *
+     * @return the decoded integer value
+     *
+     * @throws IllegalArgumentException if data is null, invalid,
+     *         or represents a negative number
+     */
+    static int decodeDERInteger(byte[] data)
+        throws IllegalArgumentException {
+
+        int idx, len, value;
+        int[] lenInfo;
+
+        if (data == null || data.length < 3) {
+            throw new IllegalArgumentException(
+                "Invalid INTEGER: too short");
+        }
+
+        idx = 0;
+
+        /* Check INTEGER tag */
+        if (data[idx++] != ASN1_INTEGER) {
+            throw new IllegalArgumentException(
+                "Invalid INTEGER: expected tag 0x02");
+        }
+
+        /* Get length */
+        lenInfo = decodeDERLengthWithOffset(data, idx);
+        len = lenInfo[0];
+        idx = lenInfo[1];
+
+        if (len < 1 || len > 4) {
+            throw new IllegalArgumentException(
+                "Invalid INTEGER: length out of range");
+        }
+
+        if (idx + len > data.length) {
+            throw new IllegalArgumentException(
+                "Invalid INTEGER: value extends beyond data");
+        }
+
+        /* Check for negative integers (high bit set on first byte).
+         * We don't support negative integers. */
+        if ((data[idx] & 0x80) != 0) {
+            throw new IllegalArgumentException(
+                "Negative integers not supported");
+        }
+
+        /* Decode value */
+        value = 0;
+        for (int i = 0; i < len; i++) {
+            value = (value << 8) | (data[idx++] & 0xff);
+        }
+
+        return value;
+    }
+
+    /**
+     * Encode contents as a DER OBJECT IDENTIFIER.
+     *
+     * DER OBJECT IDENTIFIER format:
+     * - Tag: 0x06
+     * - Length: variable
+     * - Contents: encoded OID bytes
+     *
+     * @param oidBytes the OID bytes (already encoded, without tag/length)
+     *
+     * @return DER-encoded OBJECT IDENTIFIER (tag + length + oidBytes)
+     *
+     * @throws IllegalArgumentException if oidBytes is null
+     */
+    static byte[] encodeDERObjectIdentifier(byte[] oidBytes)
+        throws IllegalArgumentException {
+
+        ByteArrayOutputStream out;
+
+        if (oidBytes == null) {
+            throw new IllegalArgumentException("OID bytes cannot be null");
+        }
+
+        out = new ByteArrayOutputStream();
+
+        try {
+            out.write(ASN1_OBJECT_IDENTIFIER);
+            out.write(encodeDERLength(oidBytes.length));
+            out.write(oidBytes);
+
+            return out.toByteArray();
+
+        } catch (IOException e) {
+            throw new IllegalArgumentException(
+                "Failed to encode OBJECT IDENTIFIER: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Encode NULL as a DER NULL.
+     *
+     * DER NULL format:
+     * - Tag: 0x05
+     * - Length: 0x00
+     *
+     * @return DER-encoded NULL (0x05 0x00)
+     */
+    static byte[] encodeDERNull() {
+        return new byte[] {0x05, 0x00};
+    }
+
+    /**
+     * Get hash algorithm OID bytes.
+     *
+     * Returns the OID bytes (without tag and length) for the specified
+     * hash algorithm.
+     *
+     * @param hashAlgorithm the hash algorithm name
+     *        (e.g., "SHA-1", "SHA-256", etc.)
+     *
+     * @return OID bytes (cloned array)
+     *
+     * @throws IllegalArgumentException if hash algorithm not supported
+     */
+    static byte[] getHashAlgorithmOID(String hashAlgorithm)
+        throws IllegalArgumentException {
+
+        if (hashAlgorithm == null) {
+            throw new IllegalArgumentException(
+                "Hash algorithm cannot be null");
+        }
+
+        switch (hashAlgorithm.toUpperCase()) {
+            case "SHA-1":
+                return OID_SHA1.clone();
+            case "SHA-224":
+                return OID_SHA224.clone();
+            case "SHA-256":
+                return OID_SHA256.clone();
+            case "SHA-384":
+                return OID_SHA384.clone();
+            case "SHA-512":
+                return OID_SHA512.clone();
+            case "SHA-512/224":
+                return OID_SHA512_224.clone();
+            case "SHA-512/256":
+                return OID_SHA512_256.clone();
+            case "SHA3-224":
+                return OID_SHA3_224.clone();
+            case "SHA3-256":
+                return OID_SHA3_256.clone();
+            case "SHA3-384":
+                return OID_SHA3_384.clone();
+            case "SHA3-512":
+                return OID_SHA3_512.clone();
+            default:
+                throw new IllegalArgumentException(
+                    "Unsupported hash algorithm: " + hashAlgorithm);
+        }
+    }
+
+    /**
+     * Get hash algorithm name from OID bytes.
+     *
+     * Returns the hash algorithm name for the given OID bytes
+     * (without tag and length).
+     *
+     * @param oidBytes the OID bytes
+     *
+     * @return hash algorithm name
+     *
+     * @throws IllegalArgumentException if OID not recognized
+     */
+    static String getHashAlgorithmName(byte[] oidBytes)
+        throws IllegalArgumentException {
+
+        if (oidBytes == null) {
+            throw new IllegalArgumentException("OID bytes cannot be null");
+        }
+
+        if (bytesEqual(oidBytes, OID_SHA1)) {
+            return "SHA-1";
+        }
+        else if (bytesEqual(oidBytes, OID_SHA224)) {
+            return "SHA-224";
+        }
+        else if (bytesEqual(oidBytes, OID_SHA256)) {
+            return "SHA-256";
+        }
+        else if (bytesEqual(oidBytes, OID_SHA384)) {
+            return "SHA-384";
+        }
+        else if (bytesEqual(oidBytes, OID_SHA512)) {
+            return "SHA-512";
+        }
+        else if (bytesEqual(oidBytes, OID_SHA512_224)) {
+            return "SHA-512/224";
+        }
+        else if (bytesEqual(oidBytes, OID_SHA512_256)) {
+            return "SHA-512/256";
+        }
+        else if (bytesEqual(oidBytes, OID_SHA3_224)) {
+            return "SHA3-224";
+        }
+        else if (bytesEqual(oidBytes, OID_SHA3_256)) {
+            return "SHA3-256";
+        }
+        else if (bytesEqual(oidBytes, OID_SHA3_384)) {
+            return "SHA3-384";
+        }
+        else if (bytesEqual(oidBytes, OID_SHA3_512)) {
+            return "SHA3-512";
+        }
+        else {
+            throw new IllegalArgumentException("Unrecognized hash OID");
+        }
+    }
+
+    /**
+     * Get MGF1 algorithm OID bytes.
+     *
+     * Returns the OID bytes (without tag and length) for MGF1.
+     *
+     * @return MGF1 OID bytes (cloned array)
+     */
+    static byte[] getMGF1OID() {
+        return OID_MGF1.clone();
+    }
+
+    /**
+     * Compare two byte arrays for equality, constant time.
+     *
+     * @param a first array
+     * @param b second array
+     *
+     * @return true if arrays are equal, false otherwise
+     */
+    static boolean bytesEqual(byte[] a, byte[] b) {
+        int result = 0, i = 0;
+
+        if (a == null || b == null || a.length != b.length) {
+            return false;
+        }
+
+        for (i = 0; i < a.length; i++) {
+            result |= a[i] ^ b[i];
+        }
+
+        if (result == 0) {
+            return true;
+        }
+        return false;
     }
 }
 
