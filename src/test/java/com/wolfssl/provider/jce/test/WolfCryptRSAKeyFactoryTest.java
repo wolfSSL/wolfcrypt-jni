@@ -708,5 +708,81 @@ public class WolfCryptRSAKeyFactoryTest {
             fail("Unexpected exception: " + e);
         }
     }
+
+    /**
+     * Test that RSAPrivateKey.equals() is symmetric with RSAPrivateCrtKey.
+     *
+     * This matches SunJCE behavior where a non-CRT key is never equal to a
+     * CRT key (in either direction), even if they have the same modulus and
+     * private exponent.
+     */
+    @Test
+    public void testPrivateKeyEqualsSymmetry() {
+
+        KeyFactory kf;
+        KeyPairGenerator kpg;
+        KeyPair pair;
+        PrivateKey crtKeyFromSpec;
+        PrivateKey nonCrtKey;
+        RSAPrivateKey nonCrtRsa;
+        RSAPrivateCrtKey crtKey;
+        RSAPrivateCrtKey crtRsa;
+        PKCS8EncodedKeySpec pkcs8Spec;
+        RSAPrivateKeySpec nonCrtSpec;
+
+        if (!rsaKeyFactoryAvailable()) {
+            return;
+        }
+
+        try {
+            kf = KeyFactory.getInstance("RSA", "wolfJCE");
+
+            /* Generate RSA key pair to get CRT parameters */
+            kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            pair = kpg.generateKeyPair();
+            crtKey = (RSAPrivateCrtKey)pair.getPrivate();
+
+            /* Create CRT key from PKCS8 encoding */
+            pkcs8Spec = new PKCS8EncodedKeySpec(crtKey.getEncoded());
+            crtKeyFromSpec = kf.generatePrivate(pkcs8Spec);
+            assertTrue("Key from PKCS8 should be RSAPrivateCrtKey",
+                crtKeyFromSpec instanceof RSAPrivateCrtKey);
+
+            /* Create non-CRT key with only modulus and private exponent */
+            nonCrtSpec = new RSAPrivateKeySpec(
+                crtKey.getModulus(), crtKey.getPrivateExponent());
+            nonCrtKey = kf.generatePrivate(nonCrtSpec);
+            assertNotNull("Should create non-CRT key", nonCrtKey);
+            assertTrue("Should be RSAPrivateKey",
+                nonCrtKey instanceof RSAPrivateKey);
+            assertFalse("Non-CRT key should not be RSAPrivateCrtKey",
+                nonCrtKey instanceof RSAPrivateCrtKey);
+
+            /* Verify equals() is symmetric - both directions must be false */
+            assertFalse("CRT key should not equal non-CRT key",
+                crtKeyFromSpec.equals(nonCrtKey));
+            assertFalse("Non-CRT key should not equal CRT key",
+                nonCrtKey.equals(crtKeyFromSpec));
+
+            /* Also verify they both have the same modulus and private exp */
+            nonCrtRsa = (RSAPrivateKey)nonCrtKey;
+            crtRsa = (RSAPrivateCrtKey)crtKeyFromSpec;
+            assertEquals("Modulus should match",
+                crtRsa.getModulus(), nonCrtRsa.getModulus());
+            assertEquals("Private exponent should match",
+                crtRsa.getPrivateExponent(), nonCrtRsa.getPrivateExponent());
+
+            /* Verify self-equality works */
+            assertTrue("CRT key should equal itself",
+                crtKeyFromSpec.equals(crtKeyFromSpec));
+            assertTrue("Non-CRT key should equal itself",
+                nonCrtKey.equals(nonCrtKey));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail("Unexpected exception: " + e);
+        }
+    }
 }
 
