@@ -24,6 +24,7 @@ package com.wolfssl.provider.jce;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.math.BigInteger;
+import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.util.Arrays;
 import javax.security.auth.Destroyable;
@@ -288,6 +289,11 @@ public class WolfCryptRSAPrivateKey implements RSAPrivateKey, Destroyable {
         if (this == obj) {
             return true;
         }
+        /* Non-CRT key is not equal to a CRT key */
+        if (obj instanceof RSAPrivateCrtKey) {
+            return false;
+        }
+
         if (!(obj instanceof RSAPrivateKey)) {
             return false;
         }
