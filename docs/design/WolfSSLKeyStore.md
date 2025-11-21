@@ -13,6 +13,8 @@ please reference the appropriate Security Policy or contact fips@wolfssl.com.
 | --- | --- | --- | --- |
 | `wolfjce.wks.iterationCount` | 210,000 | 10,000 | PBKDF2 iteration count |
 | `wolfjce.wks.maxCertChainLength` | 100 | N/A | Max cert chain length |
+| `wolfjce.keystore.kekCacheEnabled` | false | N/A | Enable KEK caching |
+| `wolfjce.keystore.kekCacheTtlSec` | 300 | 1 | Cache TTL in seconds |
 
 ## Notes on Algorithm and Security Properties
 
@@ -228,6 +230,88 @@ Process of storing a SecretKey is the same as PrivateKey above, except
 there is no certificate so no certifiate or private key sanity checks are done.
 The same encrypt/decrypt process is shared between PrivateKey and SecretKey
 protection.
+
+## KEK Caching for Performance
+
+### Overview
+
+Repeated calls to `getKey()` on the same KeyStore can be slow due to PBKDF2
+happening on each call to derive the Key Encryption Key (KEK) from the user
+password. PBKDF2 on each `getKey()` operation ensures that neither password
+nor KEK are stored in memory for more time that is needed to derive the KEK and
+decrypt the key entry. Although this is the most secure approach, PBKDF2 on
+each `getKey()` can be too performance expensive for some use cases.
+
+The WKS KeyStore includes an optional KEK (Key Encryption Key) cache that
+stores derived keys in memory to avoid repeated PBKDF2 computations for the
+same password/salt combination. With KEK caching enabled, follow up calls
+to `getKey()` are much faster.
+
+### Cache Design
+
+The cache uses the following design:
+
+- **Cache Key:** `SHA-256(passwordHash + kdfSalt + kdfIterations)`
+  - `passwordHash` = `SHA-256(password)` - avoids storing plaintext passwords
+  - Including `kdfSalt` and `kdfIterations` ensures different entries with
+    the same password but different PBKDF2 parameters have separate cache keys
+- **Cache Entry:** Stores the derived key (KEK + HMAC key), password hash for
+  verification, and TTL expiry timestamp
+- **Password Verification:** On cache hit, the provided password is hashed and
+  compared against the stored hash.
+- **HMAC Verification:** Caching only occurs after successful HMAC verification
+  to ensure data integrity is maintained.
+
+### Security Properties
+
+| Property | Default | Description |
+| --- | --- | --- |
+| `wolfjce.keystore.kekCacheEnabled` | `false` | Set to `"true"` to enable caching |
+| `wolfjce.keystore.kekCacheTtlSec` | `300` | Cache entry TTL in seconds (5 min) |
+
+Example usage:
+
+```java
+/* Enable KEK caching with 10 minute TTL */
+Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
+Security.setProperty("wolfjce.keystore.kekCacheTtlSec", "600");
+```
+
+### Cache Lifecycle
+
+The cache is cleared in the following scenarios:
+- **Entry deletion:** When `deleteEntry()` is called on an encrypted entry
+- **Entry overwrite:** When `setKeyEntry()` overwrites an existing encrypted
+  entry
+- **KeyStore reload:** When `load()` is called to load a new KeyStore
+- **TTL expiration:** Individual entries are removed when their TTL expires
+- **Explicit clear:** When `clearCache()` is called on the KeyStore instance
+- **Garbage collection:** Automatically when the KeyStore object is finalized
+
+For deterministic cleanup of sensitive cached data, explicitly call
+`clearCache()` when the KeyStore is no longer needed:
+
+```java
+KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+/* ... use the KeyStore ... */
+
+/* Explicitly clear cached keys before discarding */
+if (store instanceof com.wolfssl.provider.jce.WolfSSLKeyStore) {
+    ((com.wolfssl.provider.jce.WolfSSLKeyStore) store).clearCache();
+}
+```
+
+### Security Considerations
+
+1. **Memory exposure:** Cached derived keys remain in memory for the TTL
+   duration. Only enable in trusted environments where performance benefits
+   outweigh the increased memory exposure window.
+
+### Performance Characteristics
+
+- **First call:** Full PBKDF2 derivation to generate KEK from password
+- **Subsequent calls:** Cache lookup and verification
+- **Cache overhead:** ~1-2 SHA-256 operations per call for cache key computation
 
 ## Certificate Protection
 
