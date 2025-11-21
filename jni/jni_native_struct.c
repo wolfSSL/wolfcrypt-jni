@@ -40,12 +40,37 @@
 
 JavaVM* g_vm = NULL;
 
+/* Forward declarations for WolfSSLCertManager init/cleanup */
+extern int wolfSSL_CertManager_init(void);
+extern void wolfSSL_CertManager_cleanup(void);
+
 /* called when native library is loaded */
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
 {
+    (void)reserved;
+
     /* store JavaVM */
     g_vm = vm;
+
+    /* Initialize WolfSSLCertManager global mutex for thread-safe callback
+     * handling. Done here so it is before any CertManager ops happen. */
+    if (wolfSSL_CertManager_init() != 0) {
+        return JNI_ERR;
+    }
+
     return JNI_VERSION_1_6;
+}
+
+/* called when native library is unloaded */
+JNIEXPORT void JNICALL JNI_OnUnload(JavaVM* vm, void* reserved)
+{
+    (void)vm;
+    (void)reserved;
+
+    /* Cleanup WolfSSLCertManager global mutex */
+    wolfSSL_CertManager_cleanup();
+
+    g_vm = NULL;
 }
 
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_NativeStruct_xfree(

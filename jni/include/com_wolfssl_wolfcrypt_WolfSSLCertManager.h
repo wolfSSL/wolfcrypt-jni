@@ -79,6 +79,22 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerLoadCRLBuffer
   (JNIEnv *, jclass, jlong, jbyteArray, jlong, jint);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerSetVerify
+ * Signature: (JLjava/lang/Object;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerSetVerify
+  (JNIEnv *, jclass, jlong, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerClearVerify
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerClearVerify
+  (JNIEnv *, jclass, jlong);
+
 #ifdef __cplusplus
 }
 #endif
