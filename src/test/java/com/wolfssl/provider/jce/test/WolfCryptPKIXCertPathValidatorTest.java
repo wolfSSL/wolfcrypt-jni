@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Set;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
@@ -56,6 +58,7 @@ import java.security.cert.PKIXParameters;
 import java.security.cert.PKIXCertPathValidatorResult;
 import java.security.cert.CertificateException;
 import java.security.cert.CertPathValidatorException;
+import java.security.cert.CertPathValidatorException.BasicReason;
 import java.security.cert.TrustAnchor;
 import java.security.cert.X509CertSelector;
 import java.security.cert.CRL;
@@ -1341,6 +1344,335 @@ public class WolfCryptPKIXCertPathValidatorTest {
             (PKIXCertPathValidatorResult)result;
         assertNotNull("TrustAnchor must not be null (findTrustAnchor " +
             "must use date override)", pkixResult.getTrustAnchor());
+    }
+
+    @Test
+    public void testAlgorithmConstraintsRejectsSHA256() throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        X509Certificate clientCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath path = null;
+        CertPathValidator validator = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load wolfSSL CA certificate (uses SHA256withRSA) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Load wolfSSL client certificate (uses SHA256withRSA) */
+            fis = new FileInputStream(clientCertDer);
+            clientCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Set SHA256 as disabled algorithm to test constraint checking */
+            Security.setProperty("jdk.certpath.disabledAlgorithms", "SHA256");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Create CertPath with client cert */
+            List<Certificate> certList = new ArrayList<Certificate>();
+            certList.add(clientCert);
+            path = cf.generateCertPath(certList);
+
+            /* Validate - should fail with ALGORITHM_CONSTRAINED since
+             * SHA256 is disabled */
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            try {
+                validator.validate(path, params);
+                fail("Expected CertPathValidatorException for SHA256 " +
+                     "disabled algorithm");
+            } catch (CertPathValidatorException cpve) {
+                /* Expected exception, verify reason is ALGORITHM_CONSTRAINED */
+                assertEquals("Expected BasicReason.ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testAlgorithmConstraintsRejectsRSA() throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        X509Certificate clientCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath path = null;
+        CertPathValidator validator = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load wolfSSL CA certificate (uses RSA public key) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Load wolfSSL client certificate (uses RSA public key) */
+            fis = new FileInputStream(clientCertDer);
+            clientCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Set RSA as disabled algorithm to test public key constraint */
+            Security.setProperty("jdk.certpath.disabledAlgorithms", "RSA");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Create CertPath with client cert */
+            List<Certificate> certList = new ArrayList<Certificate>();
+            certList.add(clientCert);
+            path = cf.generateCertPath(certList);
+
+            /* Validate - should fail with ALGORITHM_CONSTRAINED since
+             * RSA is disabled */
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            try {
+                validator.validate(path, params);
+                fail("Expected CertPathValidatorException for RSA " +
+                     "disabled algorithm");
+            } catch (CertPathValidatorException cpve) {
+                /* Expected exception, verify reason is ALGORITHM_CONSTRAINED */
+                assertEquals("Expected BasicReason.ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testAlgorithmConstraintsRejectsSmallKeySize()
+        throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        X509Certificate clientCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath path = null;
+        CertPathValidator validator = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load wolfSSL CA certificate (uses 2048-bit RSA key) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Load wolfSSL client certificate (uses 2048-bit RSA key) */
+            fis = new FileInputStream(clientCertDer);
+            clientCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Set minimum RSA key size to 4096 bits, which will reject
+             * our 2048-bit certificate */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 4096");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Create CertPath with client cert */
+            List<Certificate> certList = new ArrayList<Certificate>();
+            certList.add(clientCert);
+            path = cf.generateCertPath(certList);
+
+            /* Validate - should fail with ALGORITHM_CONSTRAINED since
+             * key size is too small */
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            try {
+                validator.validate(path, params);
+                fail("Expected CertPathValidatorException for RSA key " +
+                     "size constraint");
+            } catch (CertPathValidatorException cpve) {
+                /* Expected exception, verify reason is ALGORITHM_CONSTRAINED */
+                assertEquals("Expected BasicReason.ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testAlgorithmConstraintsWithSHAVariant() throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        X509Certificate clientCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath path = null;
+        CertPathValidator validator = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load wolfSSL CA certificate (uses SHA256withRSA) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Load wolfSSL client certificate (uses SHA256withRSA) */
+            fis = new FileInputStream(clientCertDer);
+            clientCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Set SHA-256 (hyphenated variant) as disabled algorithm.
+             * Should still match SHA256withRSA signature algorithm due to
+             * variant handling */
+            Security.setProperty("jdk.certpath.disabledAlgorithms", "SHA-256");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Create CertPath with client cert */
+            List<Certificate> certList = new ArrayList<Certificate>();
+            certList.add(clientCert);
+            path = cf.generateCertPath(certList);
+
+            /* Validate - should fail with ALGORITHM_CONSTRAINED since
+             * SHA-256 variant should match SHA256 in certificate */
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            try {
+                validator.validate(path, params);
+                fail("Expected CertPathValidatorException for SHA-256 " +
+                     "disabled algorithm variant");
+            } catch (CertPathValidatorException cpve) {
+                /* Expected exception, verify reason is ALGORITHM_CONSTRAINED */
+                assertEquals("Expected BasicReason.ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
     }
 }
 
