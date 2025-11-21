@@ -62,6 +62,8 @@ import java.security.cert.CRL;
 import java.security.cert.CertStore;
 import java.security.cert.CollectionCertStoreParameters;
 import java.lang.IllegalArgumentException;
+import java.util.Date;
+import java.util.Calendar;
 
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.provider.jce.WolfCryptProvider;
@@ -893,6 +895,452 @@ public class WolfCryptPKIXCertPathValidatorTest {
         } catch (CertPathValidatorException e) {
             /* expected */
         }
+    }
+
+    /**
+     * Test that date override works with valid historical date.
+     * Uses RSA cert chain and sets validation date to a time when the
+     * certificates were valid.
+     */
+    @Test
+    public void testDateOverrideWithValidHistoricalDate() throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(serverCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        X509Certificate x509Cert = (X509Certificate)cert;
+        Date notBefore = x509Cert.getNotBefore();
+        Date notAfter = x509Cert.getNotAfter();
+
+        /* Create date that is within cert validity period */
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(notBefore);
+        cal.add(Calendar.DAY_OF_MONTH, 30);
+        Date validDate = cal.getTime();
+
+        /* Ensure our test date is within validity */
+        if (validDate.before(notBefore) || validDate.after(notAfter)) {
+            throw new Exception(
+                "Test setup error: validDate not within cert validity");
+        }
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Set override date to valid historical date */
+        params.setDate(validDate);
+
+        /* Validate cert chain, should succeed with date override */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        CertPathValidatorResult result = cpv.validate(path, params);
+        assertNotNull("CertPathValidatorResult should not be null", result);
+    }
+
+    /**
+     * Test that date override rejects cert when date is before notBefore.
+     */
+    @Test
+    public void testDateOverrideRejectsDateBeforeNotBefore()
+        throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(serverCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        X509Certificate x509Cert = (X509Certificate)cert;
+        Date notBefore = x509Cert.getNotBefore();
+
+        /* Create date that is before cert notBefore */
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(notBefore);
+        cal.add(Calendar.DAY_OF_MONTH, -30);
+        Date tooEarlyDate = cal.getTime();
+
+        /* Ensure our test date is before notBefore */
+        if (!tooEarlyDate.before(notBefore)) {
+            throw new Exception(
+                "Test setup error: tooEarlyDate not before notBefore");
+        }
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Set override date to date before cert is valid */
+        params.setDate(tooEarlyDate);
+
+        /* Validate cert chain, should fail */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("Expected validation to fail with date before notBefore");
+        } catch (CertPathValidatorException e) {
+            /* Expected - date is before certificate validity */
+        }
+    }
+
+    /**
+     * Test that date override rejects cert when date is after notAfter.
+     */
+    @Test
+    public void testDateOverrideRejectsDateAfterNotAfter()
+        throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(serverCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        X509Certificate x509Cert = (X509Certificate)cert;
+        Date notAfter = x509Cert.getNotAfter();
+
+        /* Create date that is after cert notAfter */
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(notAfter);
+        cal.add(Calendar.DAY_OF_MONTH, 30);
+        Date tooLateDate = cal.getTime();
+
+        /* Ensure our test date is after notAfter */
+        if (!tooLateDate.after(notAfter)) {
+            throw new Exception(
+                "Test setup error: tooLateDate not after notAfter");
+        }
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Set override date to date after cert expired */
+        params.setDate(tooLateDate);
+
+        /* Validate cert chain, should fail */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("Expected validation to fail with date after notAfter");
+        } catch (CertPathValidatorException e) {
+            /* Expected - date is after certificate expiration */
+        }
+    }
+
+    /**
+     * Test date override with ECC certificate chain.
+     */
+    @Test
+    public void testDateOverrideWithECCCerts()
+        throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies server-ecc.der */
+        store = createKeyStoreFromFile(jksCaServerECC256, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(serverEccDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        X509Certificate x509Cert = (X509Certificate)cert;
+        Date notBefore = x509Cert.getNotBefore();
+        Date notAfter = x509Cert.getNotAfter();
+
+        /* Create date that is within cert validity period */
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(notBefore);
+        cal.add(Calendar.DAY_OF_MONTH, 30);
+        Date validDate = cal.getTime();
+
+        /* Ensure our test date is within validity */
+        if (validDate.before(notBefore) || validDate.after(notAfter)) {
+            throw new Exception(
+                "Test setup error: validDate not within cert validity");
+        }
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Set override date to valid historical date */
+        params.setDate(validDate);
+
+        /* Validate cert chain, should succeed with date override */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        CertPathValidatorResult result = cpv.validate(path, params);
+        assertNotNull(
+            "CertPathValidatorResult should not be null with ECC certs",
+            result);
+    }
+
+    /**
+     * Test date override with intermediate certificate chain.
+     * Ensures date override applies to all certs in chain.
+     */
+    @Test
+    public void testDateOverrideWithIntermediateCerts()
+        throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies intermediate chain */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain with intermediates */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(intRsaServerCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Get validity dates from server cert */
+        X509Certificate x509Cert = (X509Certificate)cert;
+        Date notBefore = x509Cert.getNotBefore();
+        Date notAfter = x509Cert.getNotAfter();
+
+        /* Intermediate CA 2 */
+        fis = new FileInputStream(intRsaInt2CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Intermediate CA 1 */
+        fis = new FileInputStream(intRsaInt1CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Create date that is within cert validity period */
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(notBefore);
+        cal.add(Calendar.DAY_OF_MONTH, 30);
+        Date validDate = cal.getTime();
+
+        /* Ensure our test date is within validity */
+        if (validDate.before(notBefore) || validDate.after(notAfter)) {
+            throw new Exception(
+                "Test setup error: validDate not within cert validity");
+        }
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Set override date */
+        params.setDate(validDate);
+
+        /* Validate cert chain with intermediates */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        CertPathValidatorResult result = cpv.validate(path, params);
+        assertNotNull(
+            "CertPathValidatorResult should not be null with " +
+            "intermediate certs", result);
+    }
+
+    /**
+     * Test that validation without date override still works normally.
+     * This ensures our implementation doesn't break existing behavior.
+     */
+    @Test
+    public void testValidationWithoutDateOverride()
+        throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(serverCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Do not set override date - should use current system time */
+
+        /* Validate cert chain */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        CertPathValidatorResult result = cpv.validate(path, params);
+        /* If certs are currently valid, this succeeds */
+        assertNotNull(
+            "CertPathValidatorResult should not be null", result);
+    }
+
+    /**
+     * Test that findTrustAnchor() uses date override when searching for
+     * matching trust anchor.
+     */
+    @Test
+    public void testFindTrustAnchorWithDateOverride() throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(serverCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        X509Certificate x509Cert = (X509Certificate)cert;
+        Date notBefore = x509Cert.getNotBefore();
+        Date notAfter = x509Cert.getNotAfter();
+
+        /* Create date that is within cert validity period */
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(notBefore);
+        cal.add(Calendar.DAY_OF_MONTH, 30);
+        Date validDate = cal.getTime();
+
+        /* Ensure our test date is within validity */
+        if (validDate.before(notBefore) || validDate.after(notAfter)) {
+            throw new Exception(
+                "Test setup error: validDate not within cert validity");
+        }
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Set override date - this tests that findTrustAnchor() respects it */
+        params.setDate(validDate);
+
+        /* Validate cert chain */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        CertPathValidatorResult result = cpv.validate(path, params);
+        assertNotNull("CertPathValidatorResult should not be null", result);
+
+        /* Verify we got a non-null trust anchor (regression test) */
+        assertTrue("Result should be PKIXCertPathValidatorResult",
+            result instanceof PKIXCertPathValidatorResult);
+        PKIXCertPathValidatorResult pkixResult =
+            (PKIXCertPathValidatorResult)result;
+        assertNotNull("TrustAnchor must not be null (findTrustAnchor " +
+            "must use date override)", pkixResult.getTrustAnchor());
     }
 }
 

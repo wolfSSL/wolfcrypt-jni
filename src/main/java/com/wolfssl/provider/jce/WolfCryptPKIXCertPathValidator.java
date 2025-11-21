@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.Collection;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Date;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
@@ -50,7 +53,9 @@ import javax.security.auth.x500.X500Principal;
 
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfSSLCertManager;
+import com.wolfssl.wolfcrypt.WolfSSLCertManagerVerifyCallback;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 
 /**
@@ -62,13 +67,136 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
  *
  *     A. Certificate policies, and this related setters/getters. As such,
  *        validation will not return PolicyNode in CertPathValidatorResult
- *     B. Overriding current date for validation (PKIXParameters.setDate())
- *     C. getRevocationChecker() throws UnsupportedOperationException.
+ *     B. getRevocationChecker() throws UnsupportedOperationException.
  *        Internal revocation is done with CRL if
  *        PKIXParameters.isRevocationEnabled() is true and appropriate CRLs
  *        have been loaded into CertStore Set
  */
 public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
+
+    /**
+     * Inner class implementing verification callback for date override.
+     *
+     * This callback is registered with WolfSSLCertManager when
+     * PKIXParameters.getDate() returns a non-null override date. It
+     * intercepts certificate date validation errors and re-validates
+     * the certificate dates against the override date instead of the
+     * current system time.
+     *
+     * For thread safety, each CertPathValidator creates its own callback
+     * instance with its own certificate map and override date.
+     */
+    private class DateOverrideVerifyCallback
+        implements WolfSSLCertManagerVerifyCallback {
+
+        private final Date overrideDate;
+        private final Map<Integer, X509Certificate> certsByDepth;
+
+        /**
+         * Create new DateOverrideVerifyCallback.
+         *
+         * @param date Override date to use for validation
+         * @param certs List of certificates in chain, ordered from
+         *              end-entity (index 0) to root
+         */
+        public DateOverrideVerifyCallback(
+            Date date, List<X509Certificate> certs) {
+
+            this.overrideDate = date;
+            this.certsByDepth = new HashMap<>();
+
+            /* Map certificates by depth for lookup in callback.
+             * Depth 0 = end entity cert, increasing depth toward root. */
+            for (int i = 0; i < certs.size(); i++) {
+                certsByDepth.put(i, certs.get(i));
+            }
+        }
+
+        /**
+         * Verify callback implementation that overrides date validation.
+         *
+         * When a date validation error occurs (ASN_BEFORE_DATE_E or
+         * ASN_AFTER_DATE_E), this checks if the override date falls
+         * within the certificate's validity period. If so, the error is
+         * overridden and verification continues. For all other errors,
+         * the original preverify result is used.
+         *
+         * This callback is called from native JNI.
+         *
+         * @param preverify  1 if pre-verification passed, 0 if failed
+         * @param error      Error code from verification (0 = no error)
+         * @param errorDepth Certificate depth in chain (0 = end entity)
+         *
+         * @return 1 to accept certificate, 0 to reject
+         */
+        @Override
+        public int verify(int preverify, int error, int errorDepth) {
+
+            Date notBefore;
+            Date notAfter;
+            X509Certificate cert;
+
+            /* Get the certificate at this depth */
+            cert = certsByDepth.get(errorDepth);
+            if (cert == null) {
+                /* Reject if cert not found */
+                log("Date override: cert not found at depth " + errorDepth +
+                    ", rejecting");
+                return 0;
+            }
+
+            /* Get certificate validity dates */
+            notBefore = cert.getNotBefore();
+            notAfter = cert.getNotAfter();
+
+            /* When date override is active, always validate against the
+             * override date, ignoring system time. This handles both:
+             * - Accepting expired certs if override date is within validity
+             * - Rejecting valid certs if override date is outside validity */
+
+            /* If date error exists but override date is valid, accept */
+            if (error == WolfCryptError.ASN_BEFORE_DATE_E.getCode() ||
+                error == WolfCryptError.ASN_AFTER_DATE_E.getCode()) {
+
+                /* Override date must be within cert validity */
+                if (overrideDate.before(notBefore) ||
+                    overrideDate.after(notAfter)) {
+                    log("Date override: override date " + overrideDate +
+                        " outside validity window (notBefore: " + notBefore +
+                        ", notAfter: " + notAfter + "), rejecting");
+                    return 0;
+                }
+
+                log("Date override: override date " + overrideDate +
+                    " within validity, accepting despite date error");
+
+                return 1;
+            }
+
+            /* No date error, but still need to validate override date.
+             * If override date is outside cert validity, reject even though
+             * current system time might be valid. */
+            if (overrideDate.before(notBefore)) {
+                log("Date override: override date " + overrideDate +
+                    " before cert validity (notBefore: " + notBefore +
+                    "), rejecting");
+                return 0;
+            }
+
+            if (overrideDate.after(notAfter)) {
+                log("Date override: override date " + overrideDate +
+                    " after cert validity (notAfter: " + notAfter +
+                    "), rejecting");
+                return 0;
+            }
+
+            /* Override date is valid, accept */
+            log("Date override: override date " + overrideDate +
+                " within validity, accepting");
+
+            return 1;
+        }
+    }
 
     /**
      * Create new WolfCryptPKIXCertPathValidator object.
@@ -411,6 +539,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         TrustAnchor anchorFound = null;
         X500Principal issuer = null;
         WolfSSLCertManager cm = null;
+        Date overrideDate = null;
 
         if (params == null || cert == null) {
             throw new CertPathValidatorException(
@@ -436,6 +565,23 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         } catch (WolfCryptException e) {
             throw new CertPathValidatorException(
                 "Failed to create native WolfSSLCertManager");
+        }
+
+        /* If date override is set, register callback on this CertManager */
+        overrideDate = params.getDate();
+        if (overrideDate != null) {
+            try {
+                /* Create simple single-cert callback for this verification */
+                List<X509Certificate> singleCert = new ArrayList<>();
+                singleCert.add(cert);
+                DateOverrideVerifyCallback callback =
+                    new DateOverrideVerifyCallback(overrideDate, singleCert);
+                cm.setVerifyCallback(callback);
+            } catch (WolfCryptException e) {
+                cm.free();
+                throw new CertPathValidatorException(
+                    "Failed to set date override callback in findTrustAnchor");
+            }
         }
 
         /* Iterate through TrustAnchors and check for match */
@@ -635,18 +781,10 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         }
 
         try {
-            if (pkixParams.getDate() != null) {
-                /* TODO: If pkixParams.getDate() is not null, we should
-                 * use that time for verification instead of current time.
-                 * Will need to wrap/register/use native time callback
-                 * with wc_SetTimeCb() */
-                throw new CertPathValidatorException(
-                    "Overriding date not supported with wolfJCE " +
-                    "CertPathValidator implementation yet");
-            }
-
             /* Get List of Certificate objects in CertPath, sanity check
-             * that they are X509Certificate instances. */
+             * that they are X509Certificate instances. This needs to be
+             * done before date override callback registration since
+             * callback needs access to certificate list. */
             certs = new ArrayList<>();
             for (Certificate cert : certPath.getCertificates()) {
                 if (cert instanceof X509Certificate) {
@@ -656,6 +794,25 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             if (certs.size() == 0) {
                 throw new CertPathValidatorException(
                     "No Certificate objects in CertPath");
+            }
+
+            /* Register verify callback to override date validation if
+             * PKIXParameters specifies an override date */
+            if (pkixParams.getDate() != null) {
+                try {
+                    DateOverrideVerifyCallback callback =
+                        new DateOverrideVerifyCallback(
+                            pkixParams.getDate(), certs);
+                    cm.setVerifyCallback(callback);
+
+                    log("Registered date override callback for " +
+                        "validation date: " + pkixParams.getDate());
+
+                } catch (WolfCryptException e) {
+                    throw new CertPathValidatorException(
+                        "Failed to register date override callback: " +
+                        e.getMessage());
+                }
             }
 
             /* Sanity checks on certs from PKIXParameters constraints */

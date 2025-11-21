@@ -55,6 +55,9 @@ public class WolfSSLCertManager {
     /* lock around native WOLFSSL_CERT_MANAGER pointer use */
     private final Object cmLock = new Object();
 
+    /* Verification callback, null if not set */
+    private WolfSSLCertManagerVerifyCallback verifyCallback = null;
+
     static native long CertManagerNew();
     static native void CertManagerFree(long cm);
     static native int CertManagerLoadCA(long cm, String f, String d);
@@ -67,6 +70,8 @@ public class WolfSSLCertManager {
     static native int CertManagerDisableCRL(long cm);
     static native int CertManagerLoadCRLBuffer(
         long cm, byte[] in, long sz, int type);
+    static native int CertManagerSetVerify(long cm, Object callback);
+    static native int CertManagerClearVerify(long cm);
 
     /**
      * Create new WolfSSLCertManager object
@@ -408,6 +413,69 @@ public class WolfSSLCertManager {
                 crl.getEncoded().length, WolfCrypt.SSL_FILETYPE_ASN1);
         } catch (CRLException e) {
             throw new WolfCryptException(e);
+        }
+    }
+
+    /**
+     * Set verification callback for this CertManager.
+     *
+     * The callback will be invoked during certificate chain verification
+     * for each certificate in the chain. This allows custom verification
+     * logic such as overriding date validation errors.
+     *
+     * Each WolfSSLCertManager instance has its own callback, making this
+     * thread safe when each thread uses its own CertManager instance.
+     *
+     * @param callback WolfSSLCertManagerVerifyCallback implementation,
+     *                 or null to clear the callback
+     *
+     * @throws IllegalStateException WolfSSLCertManager has been freed
+     * @throws WolfCryptException on native wolfSSL error
+     */
+    public synchronized void setVerifyCallback(
+        WolfSSLCertManagerVerifyCallback callback)
+        throws IllegalStateException, WolfCryptException {
+
+        int ret = 0;
+
+        confirmObjectIsActive();
+
+        synchronized (cmLock) {
+            if (callback != null) {
+                /* Register callback with native wolfSSL */
+                ret = CertManagerSetVerify(this.cmPtr, callback);
+                if (ret != WolfCrypt.WOLFSSL_SUCCESS) {
+                    throw new WolfCryptException(
+                        "Failed to set verify callback, ret = " + ret);
+                }
+                this.verifyCallback = callback;
+            }
+            else {
+                /* Clear callback */
+                ret = CertManagerClearVerify(this.cmPtr);
+                if (ret != WolfCrypt.WOLFSSL_SUCCESS) {
+                    throw new WolfCryptException(
+                        "Failed to clear verify callback, ret = " + ret);
+                }
+                this.verifyCallback = null;
+            }
+        }
+    }
+
+    /**
+     * Get the currently registered verification callback.
+     *
+     * @return WolfSSLCertManagerVerifyCallback if set, null otherwise
+     *
+     * @throws IllegalStateException WolfSSLCertManager has been freed
+     */
+    public synchronized WolfSSLCertManagerVerifyCallback getVerifyCallback()
+        throws IllegalStateException {
+
+        confirmObjectIsActive();
+
+        synchronized (cmLock) {
+            return this.verifyCallback;
         }
     }
 
