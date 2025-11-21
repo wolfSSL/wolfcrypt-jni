@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Date;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.security.cert.TrustAnchor;
@@ -39,6 +40,7 @@ import java.security.cert.CertPath;
 import java.security.cert.CertPathChecker;
 import java.security.cert.CertPathParameters;
 import java.security.cert.CertPathValidatorException;
+import java.security.cert.CertPathValidatorException.BasicReason;
 import java.security.cert.CertSelector;
 import java.security.cert.CertStore;
 import java.security.cert.CertStoreException;
@@ -347,6 +349,54 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
     }
 
     /**
+     * Check certificate against disabled algorithms constraints from
+     * security property jdk.certpath.disabledAlgorithms.
+     *
+     * Validates both the signature algorithm and public key algorithm/size
+     * against the disabled algorithms list.
+     *
+     * @param cert certificate to check
+     * @param certIdx index of certificate, used when throwing exception
+     * @param path CertPath used when throwing exception
+     *
+     * @throws CertPathValidatorException if algorithm is disabled or key
+     *         size is too small, with BasicReason.ALGORITHM_CONSTRAINED
+     */
+    private void checkAlgorithmConstraints(X509Certificate cert,
+        int certIdx, CertPath path) throws CertPathValidatorException {
+
+        String sigAlg = null;
+        PublicKey pubKey = null;
+        String propertyName = "jdk.certpath.disabledAlgorithms";
+
+        if (cert == null) {
+            throw new CertPathValidatorException(
+                "X509Certificate is null when checking algorithm constraints");
+        }
+
+        /* Check signature algorithm against disabled list */
+        sigAlg = cert.getSigAlgName();
+        if (WolfCryptUtil.isAlgorithmDisabled(sigAlg, propertyName)) {
+            log("Algorithm constraints check failed on signature " +
+                "algorithm: " + sigAlg);
+            throw new CertPathValidatorException(
+                "Algorithm constraints check failed on signature " +
+                "algorithm: " + sigAlg, null, path, certIdx,
+                BasicReason.ALGORITHM_CONSTRAINED);
+        }
+
+        /* Check public key algorithm and size against constraints */
+        pubKey = cert.getPublicKey();
+        if (!WolfCryptUtil.isKeyAllowed(pubKey, propertyName)) {
+            log("Algorithm constraints check failed on public key: " +
+                pubKey.getAlgorithm());
+            throw new CertPathValidatorException(
+                "Algorithm constraints check failed on public key",
+                null, path, certIdx, BasicReason.ALGORITHM_CONSTRAINED);
+        }
+    }
+
+    /**
      * Check X509Certificate against constraints or settings inside
      * PKIXParameters.
      *
@@ -365,6 +415,9 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             throw new CertPathValidatorException(
                 "X509Certificate in chain or PKIXParameters is null");
         }
+
+        /* Check algorithm constraints from jdk.certpath.disabledAlgorithms */
+        checkAlgorithmConstraints(cert, certIdx, path);
 
         /* Check target cert constraints, if set in parameters */
         checkTargetCertConstraints(cert, certIdx, path, params);
