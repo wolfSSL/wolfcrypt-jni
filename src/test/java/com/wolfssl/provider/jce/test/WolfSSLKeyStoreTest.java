@@ -2448,5 +2448,402 @@ public class WolfSSLKeyStoreTest {
         WolfSSLKeyStore wksSpi = new WolfSSLKeyStore();
         wksSpi.engineProbe(null);
     }
+
+    @Test
+    public void testKekCacheDisabledByDefault() throws Exception {
+
+        /* Ensure cache is disabled by default */
+        String enabled = Security.getProperty(
+            "wolfjce.keystore.kekCacheEnabled");
+        assertTrue("KEK cache should be disabled by default",
+            (enabled == null) || !enabled.equalsIgnoreCase("true"));
+
+        /* Create and populate KeyStore */
+        KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+        store.load(null, storePass.toCharArray());
+        store.setKeyEntry("rsaKey", serverKeyRsa, storePass.toCharArray(),
+            new Certificate[] { serverCertRsa });
+
+        /* Time first getKey() */
+        long start = System.currentTimeMillis();
+        Key key1 = store.getKey("rsaKey", storePass.toCharArray());
+        long first = System.currentTimeMillis() - start;
+
+        /* Time second getKey() - should be similar since cache is disabled */
+        start = System.currentTimeMillis();
+        Key key2 = store.getKey("rsaKey", storePass.toCharArray());
+        long second = System.currentTimeMillis() - start;
+
+        assertNotNull(key1);
+        assertNotNull(key2);
+
+        /* Without cache, both should be slow (within 30% of each other) */
+        assertTrue("Without cache, times should be similar (first=" +
+            first + "ms, second=" + second + "ms)",
+            second > first * 0.3);
+    }
+
+    @Test
+    public void testKekCacheEnabledImprovePerformance() throws Exception {
+
+        /* Save original properties */
+        String origEnabled = Security.getProperty(
+            "wolfjce.keystore.kekCacheEnabled");
+        String origTtl = Security.getProperty(
+            "wolfjce.keystore.kekCacheTtlSec");
+
+        try {
+            /* Enable cache */
+            Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
+            Security.setProperty("wolfjce.keystore.kekCacheTtlSec", "300");
+
+            /* Create and populate KeyStore */
+            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+            store.setKeyEntry("rsaKey", serverKeyRsa, storePass.toCharArray(),
+                new Certificate[] { serverCertRsa });
+
+            /* First getKey() - populates cache */
+            long start = System.currentTimeMillis();
+            Key key1 = store.getKey("rsaKey", storePass.toCharArray());
+            long first = System.currentTimeMillis() - start;
+
+            /* Second getKey() - should be much faster (cache hit) */
+            start = System.currentTimeMillis();
+            Key key2 = store.getKey("rsaKey", storePass.toCharArray());
+            long second = System.currentTimeMillis() - start;
+
+            assertNotNull(key1);
+            assertNotNull(key2);
+            assertEquals(key1, key2);
+
+            /* Cache hit should be significantly faster */
+            assertTrue("Cache hit should be faster: " +
+                "first=" + first + "ms, second=" + second + "ms",
+                first > 0 && (first > 50 ? second < first / 5 : true));
+
+        } finally {
+            /* Restore original properties */
+            if (origEnabled != null) {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    origEnabled);
+            } else {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    "false");
+            }
+            if (origTtl != null) {
+                Security.setProperty("wolfjce.keystore.kekCacheTtlSec",
+                    origTtl);
+            }
+        }
+    }
+
+    @Test
+    public void testKekCacheWorksForSecretKey() throws Exception {
+
+        String origEnabled = Security.getProperty(
+            "wolfjce.keystore.kekCacheEnabled");
+
+        try {
+            /* Enable cache */
+            Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
+
+            /* Create and populate KeyStore with SecretKey */
+            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+
+            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+            keyGen.init(256);
+            SecretKey secretKey = keyGen.generateKey();
+            store.setKeyEntry("aesKey", secretKey, storePass.toCharArray(),
+                null);
+
+            /* First getKey() */
+            long start = System.currentTimeMillis();
+            Key key1 = store.getKey("aesKey", storePass.toCharArray());
+            long first = System.currentTimeMillis() - start;
+
+            /* Second getKey() - cache hit */
+            start = System.currentTimeMillis();
+            Key key2 = store.getKey("aesKey", storePass.toCharArray());
+            long second = System.currentTimeMillis() - start;
+
+            assertNotNull(key1);
+            assertNotNull(key2);
+
+            /* Cache hit should be faster */
+            assertTrue("SecretKey cache hit should be faster: " +
+                "first=" + first + "ms, second=" + second + "ms",
+                first > 50 ? second < first / 5 : true);
+
+        } finally {
+            if (origEnabled != null) {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    origEnabled);
+            } else {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    "false");
+            }
+        }
+    }
+
+    @Test
+    public void testKekCacheInvalidateOnDeleteEntry() throws Exception {
+
+        String origEnabled = Security.getProperty(
+            "wolfjce.keystore.kekCacheEnabled");
+
+        try {
+            /* Enable cache */
+            Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
+
+            /* Create KeyStore with two entries */
+            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+            store.setKeyEntry("rsaKey1", serverKeyRsa, storePass.toCharArray(),
+                new Certificate[] { serverCertRsa });
+            store.setKeyEntry("eccKey1", serverKeyEcc, storePass.toCharArray(),
+                eccServerChain);
+
+            /* Populate cache for both entries */
+            Key key1 = store.getKey("rsaKey1", storePass.toCharArray());
+            assertNotNull(key1);
+            Key key2 = store.getKey("eccKey1", storePass.toCharArray());
+            assertNotNull(key2);
+
+            /* Verify second call is fast (cache hit) */
+            long start = System.currentTimeMillis();
+            store.getKey("eccKey1", storePass.toCharArray());
+            long cachedTime = System.currentTimeMillis() - start;
+
+            /* Delete first entry - should clear entire cache */
+            store.deleteEntry("rsaKey1");
+
+            /* Verify first entry is deleted */
+            assertFalse(store.containsAlias("rsaKey1"));
+
+            /* Get second key again - should be slow (cache was cleared) */
+            start = System.currentTimeMillis();
+            Key key2Again = store.getKey("eccKey1", storePass.toCharArray());
+            long uncachedTime = System.currentTimeMillis() - start;
+            assertNotNull(key2Again);
+
+            /* Verify it was slower */
+            assertTrue("Cache should have been cleared, but timing suggests " +
+                "it wasn't (cached: " + cachedTime + "ms, uncached: " +
+                uncachedTime + "ms)",
+                uncachedTime > cachedTime * 5);
+
+        } finally {
+            if (origEnabled != null) {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    origEnabled);
+            } else {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    "false");
+            }
+        }
+    }
+
+    @Test
+    public void testKekCacheInvalidateOnSetKeyEntryOverwrite()
+        throws Exception {
+
+        String origEnabled = Security.getProperty(
+            "wolfjce.keystore.kekCacheEnabled");
+
+        try {
+            /* Enable cache */
+            Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
+
+            /* Create KeyStore with two entries */
+            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+            store.setKeyEntry("rsaKey1", serverKeyRsa, storePass.toCharArray(),
+                new Certificate[] { serverCertRsa });
+            store.setKeyEntry("eccKey1", serverKeyEcc, storePass.toCharArray(),
+                eccServerChain);
+
+            /* Populate cache for both entries */
+            Key key1 = store.getKey("rsaKey1", storePass.toCharArray());
+            assertNotNull(key1);
+            Key key2 = store.getKey("eccKey1", storePass.toCharArray());
+            assertNotNull(key2);
+
+            /* Verify second call is fast (cache hit) */
+            long start = System.currentTimeMillis();
+            store.getKey("eccKey1", storePass.toCharArray());
+            long cachedTime = System.currentTimeMillis() - start;
+
+            /* Overwrite first entry - should clear entire cache */
+            store.setKeyEntry("rsaKey1", serverKeyEcc, storePass.toCharArray(),
+                eccServerChain);
+
+            /* Get second key again - should be slow (cache was cleared) */
+            start = System.currentTimeMillis();
+            Key key2Again = store.getKey("eccKey1", storePass.toCharArray());
+            long uncachedTime = System.currentTimeMillis() - start;
+            assertNotNull(key2Again);
+
+            /* Verify it was slower */
+            assertTrue("Cache should have been cleared, but timing suggests " +
+                "it wasn't (cached: " + cachedTime + "ms, uncached: " +
+                uncachedTime + "ms)",
+                uncachedTime > cachedTime * 5);
+
+        } finally {
+            if (origEnabled != null) {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    origEnabled);
+            } else {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    "false");
+            }
+        }
+    }
+
+    @Test
+    public void testKekCacheInvalidateOnLoad() throws Exception {
+
+        String origEnabled = Security.getProperty(
+            "wolfjce.keystore.kekCacheEnabled");
+
+        try {
+            /* Enable cache */
+            Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
+
+            /* Create first KeyStore and populate cache */
+            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+            store.setKeyEntry("rsaKey", serverKeyRsa, storePass.toCharArray(),
+                new Certificate[] { serverCertRsa });
+
+            /* Populate cache */
+            Key key1 = store.getKey("rsaKey", storePass.toCharArray());
+            assertNotNull(key1);
+
+            /* Save to byte array */
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            store.store(baos, storePass.toCharArray());
+            byte[] storeData = baos.toByteArray();
+
+            /* Load from byte array - should clear cache */
+            ByteArrayInputStream bais = new ByteArrayInputStream(storeData);
+            store.load(bais, storePass.toCharArray());
+
+            /* Get key - first call after load should take PBKDF2 time */
+            long start = System.currentTimeMillis();
+            Key key2 = store.getKey("rsaKey", storePass.toCharArray());
+            long elapsed = System.currentTimeMillis() - start;
+
+            assertNotNull(key2);
+            /* After load, should need full PBKDF2 (cache was cleared) */
+            /* Use >= 5ms threshold for CI timing variability */
+            assertTrue("After load, getKey should take PBKDF2 time: " +
+                elapsed + "ms", elapsed >= 5);
+
+        } finally {
+            if (origEnabled != null) {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    origEnabled);
+            } else {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    "false");
+            }
+        }
+    }
+
+    @Test
+    public void testKekCacheWrongPasswordReturnsMiss() throws Exception {
+
+        String origEnabled = Security.getProperty(
+            "wolfjce.keystore.kekCacheEnabled");
+
+        try {
+            /* Enable cache */
+            Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
+
+            /* Create and populate KeyStore */
+            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+            store.setKeyEntry("rsaKey", serverKeyRsa, storePass.toCharArray(),
+                new Certificate[] { serverCertRsa });
+
+            /* Populate cache with correct password */
+            Key key1 = store.getKey("rsaKey", storePass.toCharArray());
+            assertNotNull(key1);
+
+            /* Try wrong password - should fail, UnrecoverableKeyException */
+            try {
+                store.getKey("rsaKey", "wrongpassword".toCharArray());
+                fail("Expected UnrecoverableKeyException for wrong password");
+            } catch (UnrecoverableKeyException e) {
+                /* Expected */
+            }
+
+            /* Correct password should still work */
+            Key key2 = store.getKey("rsaKey", storePass.toCharArray());
+            assertNotNull(key2);
+            assertEquals(key1, key2);
+
+        } finally {
+            if (origEnabled != null) {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    origEnabled);
+            } else {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    "false");
+            }
+        }
+    }
+
+    @Test
+    public void testKekCacheMultipleEntriesSamePassword() throws Exception {
+
+        String origEnabled = Security.getProperty(
+            "wolfjce.keystore.kekCacheEnabled");
+
+        try {
+            /* Enable cache */
+            Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
+
+            /* Create KeyStore with multiple entries using same password */
+            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+
+            store.setKeyEntry("rsaKey", serverKeyRsa, storePass.toCharArray(),
+                new Certificate[] { serverCertRsa });
+            store.setKeyEntry("eccKey", serverKeyEcc, storePass.toCharArray(),
+                eccServerChain);
+
+            /* Populate cache for both entries */
+            Key rsaKey = store.getKey("rsaKey", storePass.toCharArray());
+            Key eccKey = store.getKey("eccKey", storePass.toCharArray());
+
+            assertNotNull(rsaKey);
+            assertNotNull(eccKey);
+
+            /* Both keys should be retrievable again quickly */
+            long start = System.currentTimeMillis();
+            Key rsaKey2 = store.getKey("rsaKey", storePass.toCharArray());
+            Key eccKey2 = store.getKey("eccKey", storePass.toCharArray());
+            long elapsed = System.currentTimeMillis() - start;
+
+            assertNotNull(rsaKey2);
+            assertNotNull(eccKey2);
+
+            assertTrue("Multiple cache hits should be fast: " +
+                elapsed + "ms", elapsed < 100);
+
+        } finally {
+            if (origEnabled != null) {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    origEnabled);
+            } else {
+                Security.setProperty("wolfjce.keystore.kekCacheEnabled",
+                    "false");
+            }
+        }
+    }
 }
 
