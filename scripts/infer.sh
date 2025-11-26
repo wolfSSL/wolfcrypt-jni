@@ -102,6 +102,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha512.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPBEKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPKIXCertPathValidator.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptPKIXRevocationChecker.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptProvider.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPssParameters.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptRandom.java \

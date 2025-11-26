@@ -48,6 +48,7 @@ import java.security.cert.X509CertSelector;
 import java.security.cert.PKIXParameters;
 import java.security.cert.PKIXCertPathChecker;
 import java.security.cert.PKIXCertPathValidatorResult;
+import java.security.cert.PKIXRevocationChecker;
 import java.security.cert.CRL;
 import java.security.cert.X509CRL;
 import java.security.cert.X509CRLSelector;
@@ -67,12 +68,14 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
  * following items. If needed, please contact support@wolfssl.com
  * with details of required support.
  *
- *     A. Certificate policies, and this related setters/getters. As such,
+ *     A. Certificate policies, and the related setters/getters. As such,
  *        validation will not return PolicyNode in CertPathValidatorResult
- *     B. getRevocationChecker() throws UnsupportedOperationException.
- *        Internal revocation is done with CRL if
- *        PKIXParameters.isRevocationEnabled() is true and appropriate CRLs
- *        have been loaded into CertStore Set
+ *
+ * Revocation checking is supported via:
+ *     - CRL: If PKIXParameters.isRevocationEnabled() is true and appropriate
+ *       CRLs have been loaded into CertStore Set
+ *     - OCSP: via getRevocationChecker() which returns a
+ *       WolfCryptPKIXRevocationChecker supporting OCSP and options
  */
 public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
 
@@ -152,9 +155,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             notAfter = cert.getNotAfter();
 
             /* When date override is active, always validate against the
-             * override date, ignoring system time. This handles both:
-             * - Accepting expired certs if override date is within validity
-             * - Rejecting valid certs if override date is outside validity */
+             * override date, not system time. */
 
             /* If date error exists but override date is valid, accept */
             if (error == WolfCryptError.ASN_BEFORE_DATE_E.getCode() ||
@@ -429,34 +430,81 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
     }
 
     /**
-     * Call all PKIXCertPathCheckers that have been registered into
-     * PKIXParameters. This allows users to do additional verification
-     * steps on certificates if needed.
+     * Initialize and return all PKIXCertPathCheckers that have been registered
+     * into PKIXParameters. This gets the list once and returns it so the same
+     * instances can be used for check() calls.
+     *
+     * @param params parameters from which to get PKIXCertPathChecker list
+     * @param cm WolfSSLCertManager for use by WolfCryptPKIXRevocationChecker
+     *
+     * @return List of initialized PKIXCertPathChecker instances
+     *
+     * @throws CertPathValidatorException if a checker fails initialization
+     */
+    private List<PKIXCertPathChecker> initCertPathCheckers(
+        PKIXParameters params, WolfSSLCertManager cm,
+        List<X509Certificate> certs) throws CertPathValidatorException {
+
+        int i = 0;
+        List<PKIXCertPathChecker> pathCheckers = null;
+
+        if (params == null) {
+            throw new CertPathValidatorException(
+                "PKIXParameters is null when initializing checkers");
+        }
+
+        pathCheckers = params.getCertPathCheckers();
+        if (pathCheckers == null) {
+            throw new CertPathValidatorException(
+                "PKIXParameters.getCertPathCheckers() should not return null");
+        }
+        if (pathCheckers.isEmpty()) {
+            return pathCheckers;
+        }
+
+        for (i = 0; i < pathCheckers.size(); i++) {
+            PKIXCertPathChecker checker = pathCheckers.get(i);
+            log("initializing CertPathChecker: " + checker);
+
+            /* If this is our WolfCryptPKIXRevocationChecker, set the
+             * CertManager, cert chain, and trust anchors */
+            if (checker instanceof WolfCryptPKIXRevocationChecker) {
+                WolfCryptPKIXRevocationChecker revChecker =
+                    (WolfCryptPKIXRevocationChecker)checker;
+                revChecker.setCertManager(cm);
+                revChecker.setCertChain(certs);
+                revChecker.setTrustAnchors(params.getTrustAnchors());
+            }
+
+            /* Initialize the checker. wolfSSL validates in reverse order
+             * (leaf to root), so forward is false */
+            checker.init(false);
+        }
+
+        return pathCheckers;
+    }
+
+    /**
+     * Call all PKIXCertPathCheckers on the given certificate.
      *
      * @param cert certificate to be checked
-     * @param params parameters from which to get PKIXCertPathChecker list
+     * @param pathCheckers list of initialized checkers to call
      *
      * @throws CertPathValidatorException if a checker fails validation on
      *         the given Certificate
      */
     private void callCertPathCheckers(X509Certificate cert,
-        PKIXParameters params) throws CertPathValidatorException {
+        List<PKIXCertPathChecker> pathCheckers)
+        throws CertPathValidatorException {
 
         int i = 0;
-        List<PKIXCertPathChecker> pathCheckers = null;
 
-        if (cert == null || params == null) {
+        if (cert == null) {
             throw new CertPathValidatorException(
-                "X509Certificate in chain or PKIXParameters is null");
+                "X509Certificate in chain is null");
         }
 
-        pathCheckers = params.getCertPathCheckers();
-        if (pathCheckers == null) {
-            /* Spec says this cannot be null */
-            throw new CertPathValidatorException(
-                "PKIXParameters.getCertPathCheckers() should not return null");
-        }
-        if (pathCheckers.isEmpty()) {
+        if (pathCheckers == null || pathCheckers.isEmpty()) {
             return;
         }
 
@@ -689,27 +737,65 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
      * Check if revocation has been enabled in PKIXParameters, and if so
      * find and load any CRLs in params.getCertStores().
      *
+     * When a PKIXRevocationChecker has been registered via
+     * addCertPathChecker(), that checker handles revocation checking. CRL
+     * checking in the native CertManager is only enabled if:
+     *   - No PKIXRevocationChecker is present (default CRL behavior), OR
+     *   - PKIXRevocationChecker has PREFER_CRLS option set
+     *
      * @param params parameters used to check if revocation is enabled
      *        and if so load any CRLs available
      * @param cm WolfSSLCertManager to load CRLs into
      * @param targetCert peer/leaf cert used to find matching CRL
+     * @param pathCheckers list of registered CertPathCheckers
      *
      * @throws CertPathValidatorException if error is encountered during
      *        revocation checking or CRL loading
      */
     private void checkRevocationEnabledAndLoadCRLs(
         PKIXParameters params, WolfSSLCertManager cm,
-        X509Certificate targetCert)
+        X509Certificate targetCert,
+        List<PKIXCertPathChecker> pathCheckers)
         throws CertPathValidatorException {
 
         int i = 0;
         int loadedCount = 0;
+        int certCount = 0;
         List<CertStore> stores = null;
         Collection<? extends CRL> crls = null;
+        boolean hasRevocationChecker = false;
+        boolean preferCrls = false;
 
         if (params == null || cm == null) {
             throw new CertPathValidatorException(
                 "PKIXParameters or WolfSSLCertManager is null");
+        }
+
+        /* Check if a PKIXRevocationChecker has been registered. If so, it
+         * handles revocation checking and we only enable CRL in native
+         * CertManager if PREFER_CRLS option is set. */
+        if (pathCheckers != null) {
+            for (PKIXCertPathChecker checker : pathCheckers) {
+                if (checker instanceof WolfCryptPKIXRevocationChecker) {
+                    hasRevocationChecker = true;
+                    WolfCryptPKIXRevocationChecker revChecker =
+                        (WolfCryptPKIXRevocationChecker)checker;
+                    Set<PKIXRevocationChecker.Option> options =
+                        revChecker.getOptions();
+                    if (options != null &&
+                        options.contains(
+                            PKIXRevocationChecker.Option.PREFER_CRLS)) {
+                        preferCrls = true;
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (hasRevocationChecker && !preferCrls) {
+            log("PKIXRevocationChecker registered, skipping CRL setup " +
+                "(OCSP handles revocation)");
+            return;
         }
 
         if (params.isRevocationEnabled()) {
@@ -732,6 +818,35 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 log("no CertStores in PKIXParameters to load CRLs");
                 return;
             }
+
+            /* Load certificates from CertStores into CertManager. CRL issuer
+             * certificates may be in CertStores but not in the cert path being
+             * validated. Load before CRLs so wolfSSL can verify CRL sigs */
+            try {
+                for (i = 0; i < stores.size(); i++) {
+                    /* Use null selector to get all certificates */
+                    Collection<? extends Certificate> storeCerts =
+                        stores.get(i).getCertificates(null);
+                    for (Certificate cert : storeCerts) {
+                        if (cert instanceof X509Certificate) {
+                            try {
+                                cm.CertManagerLoadCA((X509Certificate)cert);
+                                certCount++;
+                            } catch (WolfCryptException e) {
+                                /* Log but not hard fail */
+                                log("Warning: failed to load cert from " +
+                                    "CertStore: " + e.getMessage());
+                            }
+                        }
+                    }
+                }
+            } catch (CertStoreException e) {
+                throw new CertPathValidatorException(
+                    "Failed to load certificates from CertStore", e);
+            }
+
+            log("loaded " + certCount +
+                " certs from CertStores into WolfSSLCertManager");
 
             /* Create CRL selector to help match target X509Certificate */
             X509CRLSelector selector = new X509CRLSelector();
@@ -800,6 +915,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         int i = 0;
         PKIXParameters pkixParams = null;
         List<X509Certificate> certs = null;
+        List<PKIXCertPathChecker> pathCheckers = null;
         WolfSSLCertManager cm = null;
         TrustAnchor trustAnchor = null;
 
@@ -825,7 +941,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             }
         }
 
-        /* Use wolfSSL CertManager to facilitate chain verification */
+        /* Use wolfSSL CertManager to do chain verification */
         try {
             cm = new WolfSSLCertManager();
         } catch (WolfCryptException e) {
@@ -868,20 +984,31 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 }
             }
 
+            /* Load trust anchors into CertManager from PKIXParameters.
+             * This must happen before initializing cert path checkers since
+             * OCSP validation requires trust anchors to verify responses. */
+            loadTrustAnchorsIntoCertManager(pkixParams, cm);
+
+            /* Initialize all PKIXCertPathCheckers before calling check().
+             * Store the returned list so we use the same checker instances
+             * for both init() and check() calls. Pass certs so revocation
+             * checker can find issuers for OCSP response verification. */
+            pathCheckers = initCertPathCheckers(pkixParams, cm, certs);
+
             /* Sanity checks on certs from PKIXParameters constraints */
             for (i = 0; i < certs.size(); i++) {
                 sanitizeX509Certificate(certs.get(i), i, certPath, pkixParams);
-                callCertPathCheckers(certs.get(i), pkixParams);
+                callCertPathCheckers(certs.get(i), pathCheckers);
             }
-
-            /* Load trust anchors into CertManager from PKIXParameters */
-            loadTrustAnchorsIntoCertManager(pkixParams, cm);
 
             /* Enable CRL if PKIXParameters.isRevocationEnabled(), load
              * any CRLs found in PKIXParameters.getCertStores(). Needs to
              * happen after trust anchors are loaded, since native wolfSSL
-             * will try to find/verify CRL against trusted roots on load */
-            checkRevocationEnabledAndLoadCRLs(pkixParams, cm, certs.get(0));
+             * will try to find/verify CRL against trusted roots on load.
+             * Pass pathCheckers so we can skip CRL setup when a
+             * PKIXRevocationChecker is handling revocation via OCSP. */
+            checkRevocationEnabledAndLoadCRLs(pkixParams, cm, certs.get(0),
+                pathCheckers);
 
             /* Verify cert chain */
             verifyCertChain(certPath, pkixParams, certs, cm);
@@ -906,18 +1033,26 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
      * Returns a CertPathChecker that this implementation uses to check the
      * revocation status of certificates.
      *
-     * Not currently implemented in wolfJCE.
+     * This implementation returns a WolfCryptPKIXRevocationChecker that
+     * supports both OCSP and CRL checking. The returned checker can be
+     * customized with OCSP responder URLs, pre-loaded OCSP responses, and
+     * various checking options before being passed to the validate() method
+     * via PKIXParameters.addCertPathChecker().
+     *
+     * Note: The CertManager will be provided to the checker during
+     * certificate path validation when the checker's init() method is
+     * called with the appropriate parameters.
      *
      * @return a CertPathChecker object that this implementation uses to
      *         check the revocation status of certificates.
-     * @throws UnsupportedOperationException if this method is not implemented
      */
     @Override
-    public CertPathChecker engineGetRevocationChecker()
-        throws UnsupportedOperationException {
+    public CertPathChecker engineGetRevocationChecker() {
 
-        throw new UnsupportedOperationException(
-            "getRevocationChecker() not supported by wolfJCE");
+        WolfCryptPKIXRevocationChecker checker =
+            new WolfCryptPKIXRevocationChecker();
+
+        return checker;
     }
 
     /**

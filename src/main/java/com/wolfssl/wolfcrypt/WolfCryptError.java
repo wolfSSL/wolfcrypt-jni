@@ -348,7 +348,34 @@ public enum WolfCryptError {
     WC_LAST_E            (-299),
 
     /** errors -101 - -299 */
-    MIN_CODE_E           (-300);
+    MIN_CODE_E           (-300),
+
+    /** OCSP Certificate revoked */
+    OCSP_CERT_REVOKED    (-360),
+    /** OCSP need an URL for lookup */
+    OCSP_NEED_URL        (-365),
+    /** OCSP responder doesn't know */
+    OCSP_CERT_UNKNOWN    (-366),
+    /** OCSP lookup not successful */
+    OCSP_LOOKUP_FAIL     (-367),
+    /** Invalid OCSP Status */
+    OCSP_INVALID_STATUS  (-407),
+    /** OCSP callback response WOLFSSL_CBIO_ERR_WANT_READ */
+    OCSP_WANT_READ       (-408),
+    /** HTTP timeout for OCSP or CRL req */
+    HTTP_TIMEOUT         (-417),
+    /** HTTP Receive error */
+    HTTP_RECV_ERR        (-444),
+    /** HTTP Header error */
+    HTTP_HEADER_ERR      (-445),
+    /** HTTP Protocol error */
+    HTTP_PROTO_ERR       (-446),
+    /** HTTP Status error */
+    HTTP_STATUS_ERR      (-447),
+    /** HTTP Version error */
+    HTTP_VERSION_ERR     (-448),
+    /** HTTP Application string error */
+    HTTP_APPSTR_ERR      (-449);
 
     private final int code;
 

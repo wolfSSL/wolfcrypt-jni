@@ -81,6 +81,46 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
 
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerEnableOCSP
+ * Signature: (JI)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerEnableOCSP
+  (JNIEnv *, jclass, jlong, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerDisableOCSP
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerDisableOCSP
+  (JNIEnv *, jclass, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerSetOCSPOverrideURL
+ * Signature: (JLjava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerSetOCSPOverrideURL
+  (JNIEnv *, jclass, jlong, jstring);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerCheckOCSP
+ * Signature: (J[BI)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerCheckOCSP
+  (JNIEnv *, jclass, jlong, jbyteArray, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerCheckOCSPResponse
+ * Signature: (J[BI[BI)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerCheckOCSPResponse
+  (JNIEnv *, jclass, jlong, jbyteArray, jint, jbyteArray, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
  * Method:    CertManagerSetVerify
  * Signature: (JLjava/lang/Object;)I
  */
