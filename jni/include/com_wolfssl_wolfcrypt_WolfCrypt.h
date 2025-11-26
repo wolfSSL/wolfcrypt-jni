@@ -149,6 +149,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1S
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_CrlEnabled
   (JNIEnv *, jclass);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    OcspEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_OcspEnabled
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif

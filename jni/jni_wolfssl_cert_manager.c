@@ -29,6 +29,9 @@
 
 #include <wolfssl/ssl.h>
 #include <wolfssl/error-ssl.h>
+#include <wolfssl/ocsp.h>
+#include <wolfssl/wolfcrypt/asn.h>
+#include <wolfssl/wolfcrypt/asn_public.h>
 #include <com_wolfssl_wolfcrypt_WolfSSLCertManager.h>
 #include <wolfcrypt_jni_error.h>
 
@@ -471,6 +474,243 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     (void)in;
     (void)sz;
     (void)type;
+    return NOT_COMPILED_IN;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerEnableOCSP
+  (JNIEnv* env, jclass jcl, jlong cmPtr, jint options)
+{
+#ifdef HAVE_OCSP
+    WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
+    (void)jcl;
+
+    if (env == NULL || cm == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
+    return wolfSSL_CertManagerEnableOCSP(cm, (int)options);
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)cmPtr;
+    (void)options;
+    return NOT_COMPILED_IN;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerDisableOCSP
+  (JNIEnv* env, jclass jcl, jlong cmPtr)
+{
+#ifdef HAVE_OCSP
+    WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
+    (void)jcl;
+
+    if (env == NULL || cm == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
+    return wolfSSL_CertManagerDisableOCSP(cm);
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)cmPtr;
+    return NOT_COMPILED_IN;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerSetOCSPOverrideURL
+  (JNIEnv* env, jclass jcl, jlong cmPtr, jstring url)
+{
+#ifdef HAVE_OCSP
+    int ret = 0;
+    const char* urlStr = NULL;
+    WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
+    (void)jcl;
+
+    if (env == NULL || cm == NULL || url == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
+    urlStr = (*env)->GetStringUTFChars(env, url, NULL);
+    if (urlStr == NULL) {
+        return MEMORY_E;
+    }
+
+    ret = wolfSSL_CertManagerSetOCSPOverrideURL(cm, urlStr);
+
+    (*env)->ReleaseStringUTFChars(env, url, urlStr);
+
+    return (jint)ret;
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)cmPtr;
+    (void)url;
+    return NOT_COMPILED_IN;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerCheckOCSP
+  (JNIEnv* env, jclass jcl, jlong cmPtr, jbyteArray cert, jint sz)
+{
+#ifdef HAVE_OCSP
+    int ret = 0;
+    word32 certSz = 0;
+    byte* certBuf = NULL;
+    WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
+    (void)jcl;
+
+    if (env == NULL || cm == NULL || cert == NULL || (sz < 0)) {
+        return BAD_FUNC_ARG;
+    }
+
+    certBuf = (byte*)(*env)->GetByteArrayElements(env, cert, NULL);
+    if (certBuf == NULL) {
+        return MEMORY_E;
+    }
+    certSz = (*env)->GetArrayLength(env, cert);
+
+    ret = wolfSSL_CertManagerCheckOCSP(cm, certBuf, certSz);
+
+    (*env)->ReleaseByteArrayElements(env, cert, (jbyte*)certBuf, JNI_ABORT);
+
+    LogStr("wolfSSL_CertManagerCheckOCSP(cm=%p, certSz=%d) = %d\n",
+        cm, certSz, ret);
+
+    return (jint)ret;
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)cmPtr;
+    (void)cert;
+    (void)sz;
+    return NOT_COMPILED_IN;
+#endif
+}
+
+/* Verify OCSP response for a certificate.
+ *
+ * Returns 0 (WOLFSSL_SUCCESS) on valid OCSP response, negative on error:
+ *   BAD_FUNC_ARG (-173)  - Invalid arguments (NULL pointers, negative sizes)
+ *   MEMORY_E (-125)      - Memory allocation failure
+ *   ASN_PARSE_E (-140)   - Failed to parse OCSP response or certificate
+ *   OCSP_LOOKUP_FAIL     - OCSP response status not successful
+ *   OCSP_CERT_REVOKED    - Certificate has been revoked
+ *   OCSP_CERT_UNKNOWN    - Certificate status unknown
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerCheckOCSPResponse
+  (JNIEnv* env, jclass jcl, jlong cmPtr, jbyteArray response,
+   jint responseSz, jbyteArray cert, jint certSz)
+{
+#ifdef HAVE_OCSP
+    int ret = 0;
+    word32 respBufSz = 0;
+    word32 certBufSz = 0;
+    byte* respBuf = NULL;
+    byte* certBuf = NULL;
+    WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
+    OcspEntry* entry = NULL;
+    CertStatus* status = NULL;
+    OcspRequest* request = NULL;
+    DecodedCert* cert_decoded = NULL;
+    (void)jcl;
+    (void)responseSz;
+
+    if (env == NULL || cm == NULL || response == NULL || cert == NULL ||
+        (responseSz < 0) || (certSz < 0)) {
+        return BAD_FUNC_ARG;
+    }
+
+    /* Get response buffer and size */
+    respBuf = (byte*)(*env)->GetByteArrayElements(env, response, NULL);
+    if (respBuf == NULL) {
+        return MEMORY_E;
+    }
+    respBufSz = (*env)->GetArrayLength(env, response);
+
+    /* Get cert buffer and size */
+    certBuf = (byte*)(*env)->GetByteArrayElements(env, cert, NULL);
+    if (certBuf == NULL) {
+        (*env)->ReleaseByteArrayElements(env, response,
+            (jbyte*)respBuf, JNI_ABORT);
+        return MEMORY_E;
+    }
+    certBufSz = (*env)->GetArrayLength(env, cert);
+
+    /* Allocate request and decoded cert structures */
+    request = wolfSSL_OCSP_REQUEST_new();
+    if (request != NULL) {
+        cert_decoded = (DecodedCert*)XMALLOC(sizeof(DecodedCert), NULL,
+            DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
+    if (request != NULL && cert_decoded != NULL) {
+        /* Decode the certificate to extract OCSP request info */
+        InitDecodedCert(cert_decoded, certBuf, certBufSz, NULL);
+        ret = ParseCert(cert_decoded, CERT_TYPE, NO_VERIFY, NULL);
+        if (ret == 0) {
+            /* Populate OcspRequest from decoded certificate.
+             * Need serial number, issuer hash, and issuer key hash. */
+            if (cert_decoded->serialSz > 0) {
+                request->serialSz = cert_decoded->serialSz;
+                request->serial = (byte*)XMALLOC(cert_decoded->serialSz,
+                    NULL, DYNAMIC_TYPE_OCSP_REQUEST);
+                if (request->serial != NULL) {
+                    XMEMCPY(request->serial, cert_decoded->serial,
+                        cert_decoded->serialSz);
+                    XMEMCPY(request->issuerHash, cert_decoded->issuerHash,
+                        KEYID_SIZE);
+                    XMEMCPY(request->issuerKeyHash,
+                        cert_decoded->issuerKeyHash, KEYID_SIZE);
+
+                    /* CertManager operations are internally thread-safe
+                     * wolfSSL uses mutex locking on the OCSP cache. */
+                    ret = wolfSSL_CertManagerCheckOCSPResponse(cm, respBuf,
+                        respBufSz, NULL, status, entry, request);
+                }
+                else {
+                    ret = MEMORY_E;
+                }
+            }
+            else {
+                ret = ASN_PARSE_E;
+            }
+        }
+        FreeDecodedCert(cert_decoded);
+    }
+    else {
+        ret = MEMORY_E;
+    }
+
+    /* Release JNI byte array elements */
+    (*env)->ReleaseByteArrayElements(env, response,
+        (jbyte*)respBuf, JNI_ABORT);
+    (*env)->ReleaseByteArrayElements(env, cert,
+        (jbyte*)certBuf, JNI_ABORT);
+
+    /* Free allocated native structures */
+    if (request != NULL) {
+        wolfSSL_OCSP_REQUEST_free(request);
+    }
+    if (cert_decoded != NULL) {
+        XFREE(cert_decoded, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
+    return (jint)ret;
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)cmPtr;
+    (void)response;
+    (void)responseSz;
+    (void)cert;
+    (void)certSz;
     return NOT_COMPILED_IN;
 #endif
 }

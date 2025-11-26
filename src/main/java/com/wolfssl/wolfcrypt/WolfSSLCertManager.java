@@ -70,6 +70,12 @@ public class WolfSSLCertManager {
     static native int CertManagerDisableCRL(long cm);
     static native int CertManagerLoadCRLBuffer(
         long cm, byte[] in, long sz, int type);
+    static native int CertManagerEnableOCSP(long cm, int options);
+    static native int CertManagerDisableOCSP(long cm);
+    static native int CertManagerSetOCSPOverrideURL(long cm, String url);
+    static native int CertManagerCheckOCSP(long cm, byte[] cert, int sz);
+    static native int CertManagerCheckOCSPResponse(
+        long cm, byte[] response, int responseSz, byte[] cert, int certSz);
     static native int CertManagerSetVerify(long cm, Object callback);
     static native int CertManagerClearVerify(long cm);
 
@@ -412,6 +418,207 @@ public class WolfSSLCertManager {
             CertManagerLoadCRLBuffer(crl.getEncoded(),
                 crl.getEncoded().length, WolfCrypt.SSL_FILETYPE_ASN1);
         } catch (CRLException e) {
+            throw new WolfCryptException(e);
+        }
+    }
+
+    /**
+     * Enable OCSP (Online Certificate Status Protocol) for this CertManager.
+     *
+     * @param options OCSP options, can be combination of:
+     *        WolfCrypt.WOLFSSL_OCSP_CHECKALL - Check all certificates in chain
+     *        WolfCrypt.WOLFSSL_OCSP_URL_OVERRIDE - Use override URL
+     *        WolfCrypt.WOLFSSL_OCSP_NO_NONCE - Don't send nonce
+     *
+     * @throws IllegalStateException WolfSSLCertManager has been freed
+     * @throws WolfCryptException on native wolfSSL error or if OCSP is not
+     *         compiled into native wolfSSL library
+     */
+    public synchronized void CertManagerEnableOCSP(int options)
+        throws IllegalStateException, WolfCryptException {
+
+        int ret = 0;
+
+        confirmObjectIsActive();
+
+        synchronized (cmLock) {
+            ret = CertManagerEnableOCSP(this.cmPtr, options);
+            if (ret != WolfCrypt.WOLFSSL_SUCCESS) {
+                throw new WolfCryptException(ret);
+            }
+        }
+    }
+
+    /**
+     * Disable OCSP checking for this CertManager.
+     *
+     * @throws IllegalStateException WolfSSLCertManager has been freed
+     * @throws WolfCryptException on native wolfSSL error or if OCSP is not
+     *         compiled into native wolfSSL library
+     */
+    public synchronized void CertManagerDisableOCSP()
+        throws IllegalStateException, WolfCryptException {
+
+        int ret = 0;
+
+        confirmObjectIsActive();
+
+        synchronized (cmLock) {
+            ret = CertManagerDisableOCSP(this.cmPtr);
+            if (ret != WolfCrypt.WOLFSSL_SUCCESS) {
+                throw new WolfCryptException(ret);
+            }
+        }
+    }
+
+    /**
+     * Set OCSP override URL for this CertManager.
+     *
+     * When set, all OCSP requests will use this URL instead of the
+     * URL from the certificate's AIA extension.
+     *
+     * @param url OCSP responder URL
+     *
+     * @throws IllegalStateException WolfSSLCertManager has been freed
+     * @throws WolfCryptException on native wolfSSL error or if OCSP is not
+     *         compiled into native wolfSSL library
+     */
+    public synchronized void CertManagerSetOCSPOverrideURL(String url)
+        throws IllegalStateException, WolfCryptException {
+
+        int ret = 0;
+
+        confirmObjectIsActive();
+
+        if (url == null) {
+            throw new WolfCryptException("OCSP URL cannot be null");
+        }
+
+        synchronized (cmLock) {
+            ret = CertManagerSetOCSPOverrideURL(this.cmPtr, url);
+            if (ret != WolfCrypt.WOLFSSL_SUCCESS) {
+                throw new WolfCryptException(ret);
+            }
+        }
+    }
+
+    /**
+     * Check certificate via OCSP.
+     *
+     * @param cert Certificate to check in DER format
+     * @param sz Size of certificate
+     *
+     * @throws IllegalStateException WolfSSLCertManager has been freed
+     * @throws WolfCryptException on native wolfSSL error, if OCSP check
+     *         fails, or if certificate is revoked
+     */
+    public synchronized void CertManagerCheckOCSP(byte[] cert, int sz)
+        throws IllegalStateException, WolfCryptException {
+
+        int ret = 0;
+
+        confirmObjectIsActive();
+
+        if (cert == null) {
+            throw new WolfCryptException("Certificate cannot be null");
+        }
+
+        synchronized (cmLock) {
+            ret = CertManagerCheckOCSP(this.cmPtr, cert, sz);
+            if (ret != WolfCrypt.WOLFSSL_SUCCESS) {
+                throw new WolfCryptException(ret);
+            }
+        }
+    }
+
+    /**
+     * Check certificate against OCSP response.
+     *
+     * @param cert X509Certificate to check
+     *
+     * @throws IllegalStateException WolfSSLCertManager has been freed
+     * @throws WolfCryptException on native wolfSSL error or if certificate
+     *         is revoked
+     */
+    public synchronized void CertManagerCheckOCSP(X509Certificate cert)
+        throws IllegalStateException, WolfCryptException {
+
+        byte[] der;
+
+        if (cert == null) {
+            throw new WolfCryptException("Input X509Certificate is null");
+        }
+
+        try {
+            der = cert.getEncoded();
+            CertManagerCheckOCSP(der, der.length);
+
+        } catch (CertificateEncodingException e) {
+            throw new WolfCryptException(e);
+        }
+    }
+
+    /**
+     * Check OCSP response for a certificate.
+     *
+     * @param response OCSP response bytes
+     * @param responseSz Size of OCSP response
+     * @param cert Certificate being checked in DER format
+     * @param certSz Size of certificate
+     *
+     * @throws IllegalStateException WolfSSLCertManager has been freed
+     * @throws WolfCryptException if response validation fails or
+     *         certificate is revoked
+     */
+    public synchronized void CertManagerCheckOCSPResponse(
+        byte[] response, int responseSz, byte[] cert, int certSz)
+        throws IllegalStateException, WolfCryptException {
+
+        int ret = 0;
+
+        confirmObjectIsActive();
+
+        if (response == null || cert == null) {
+            throw new WolfCryptException(
+                "OCSP response and certificate cannot be null");
+        }
+
+        synchronized (cmLock) {
+            ret = CertManagerCheckOCSPResponse(
+                this.cmPtr, response, responseSz, cert, certSz);
+            if (ret != WolfCrypt.WOLFSSL_SUCCESS) {
+                throw new WolfCryptException(ret);
+            }
+        }
+    }
+
+    /**
+     * Check OCSP response for a certificate.
+     *
+     * @param response OCSP response bytes
+     * @param cert X509Certificate being checked
+     *
+     * @throws IllegalStateException WolfSSLCertManager has been freed
+     * @throws WolfCryptException if response validation fails or
+     *         certificate is revoked
+     */
+    public synchronized void CertManagerCheckOCSPResponse(
+        byte[] response, X509Certificate cert)
+        throws IllegalStateException, WolfCryptException {
+
+        byte[] der;
+
+        if (response == null || cert == null) {
+            throw new WolfCryptException(
+                "OCSP response and certificate cannot be null");
+        }
+
+        try {
+            der = cert.getEncoded();
+            CertManagerCheckOCSPResponse(
+                response, response.length, der, der.length);
+
+        } catch (CertificateEncodingException e) {
             throw new WolfCryptException(e);
         }
     }
