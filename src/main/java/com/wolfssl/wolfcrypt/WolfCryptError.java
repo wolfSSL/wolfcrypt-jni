@@ -375,7 +375,292 @@ public enum WolfCryptError {
     /** HTTP Version error */
     HTTP_VERSION_ERR     (-448),
     /** HTTP Application string error */
-    HTTP_APPSTR_ERR      (-449);
+    HTTP_APPSTR_ERR      (-449),
+
+    /* Additional SSL/TLS error codes from error-ssl.h */
+
+    /** Process input state error */
+    INPUT_CASE_ERROR     (-301),
+    /** Bad index to key rounds */
+    PREFIX_ERROR         (-302),
+    /** Out of memory (SSL) */
+    MEMORY_ERROR         (-303),
+    /** Verify problem on finished */
+    VERIFY_FINISHED_ERROR (-304),
+    /** Verify MAC problem */
+    VERIFY_MAC_ERROR     (-305),
+    /** Parse error on header */
+    PARSE_ERROR          (-306),
+    /** Weird handshake type */
+    UNKNOWN_HANDSHAKE_TYPE (-307),
+    /** Error state on socket */
+    SOCKET_ERROR_E       (-308),
+    /** Expected data not there */
+    SOCKET_NODATA        (-309),
+    /** Incomplete data */
+    INCOMPLETE_DATA      (-310),
+    /** Unknown type in record header */
+    UNKNOWN_RECORD_TYPE  (-311),
+    /** Error during decryption */
+    DECRYPT_ERROR        (-312),
+    /** Received alert fatal error */
+    FATAL_ERROR          (-313),
+    /** Error during encryption */
+    ENCRYPT_ERROR        (-314),
+    /** fread problem */
+    FREAD_ERROR          (-315),
+    /** Need peer key */
+    NO_PEER_KEY          (-316),
+    /** Need the private key */
+    NO_PRIVATE_KEY       (-317),
+    /** Error during RSA private op */
+    RSA_PRIVATE_ERROR    (-318),
+    /** Server missing DH params */
+    NO_DH_PARAMS         (-319),
+    /** Build message failure */
+    BUILD_MSG_ERROR      (-320),
+    /** Client hello malformed */
+    BAD_HELLO            (-321),
+    /** Peer subject name mismatch */
+    DOMAIN_NAME_MISMATCH (-322),
+    /** Want read, call again */
+    WANT_READ            (-323),
+    /** Handshake layer not ready */
+    NOT_READY_ERROR      (-324),
+    /** Peer IP address mismatch */
+    IPADDR_MISMATCH      (-325),
+    /** Record layer version error */
+    VERSION_ERROR        (-326),
+    /** Want write, call again */
+    WANT_WRITE           (-327),
+    /** Malformed buffer input */
+    BUFFER_ERROR_SSL     (-328),
+    /** Verify cert error */
+    VERIFY_CERT_ERROR    (-329),
+    /** Verify sign error */
+    VERIFY_SIGN_ERROR    (-330),
+    /** PSK client identity error */
+    CLIENT_ID_ERROR      (-331),
+    /** PSK server hint error */
+    SERVER_HINT_ERROR    (-332),
+    /** PSK key error */
+    PSK_KEY_ERROR        (-333),
+    /** gettimeofday failed */
+    GETTIME_ERROR        (-337),
+    /** getitimer failed */
+    GETITIMER_ERROR      (-338),
+    /** sigaction failed */
+    SIGACT_ERROR         (-339),
+    /** setitimer failed */
+    SETITIMER_ERROR      (-340),
+    /** Record layer length error */
+    LENGTH_ERROR         (-341),
+    /** Can't decode peer key */
+    PEER_KEY_ERROR       (-342),
+    /** Peer sent close notify */
+    ZERO_RETURN          (-343),
+    /** Wrong client/server type */
+    SIDE_ERROR           (-344),
+    /** Peer didn't send cert */
+    NO_PEER_CERT         (-345),
+    /** Bad ECC curve type */
+    ECC_CURVETYPE_ERROR  (-350),
+    /** Bad ECC curve */
+    ECC_CURVE_ERROR      (-351),
+    /** Bad peer ECC key */
+    ECC_PEERKEY_ERROR    (-352),
+    /** Bad make ECC key */
+    ECC_MAKEKEY_ERROR    (-353),
+    /** Bad ECC export key */
+    ECC_EXPORT_ERROR     (-354),
+    /** Bad ECC shared secret */
+    ECC_SHARED_ERROR     (-355),
+    /** Not a CA cert error */
+    NOT_CA_ERROR         (-357),
+    /** Bad cert manager */
+    BAD_CERT_MANAGER_ERROR (-359),
+    /** CRL certificate revoked */
+    CRL_CERT_REVOKED     (-361),
+    /** CRL not loaded */
+    CRL_MISSING          (-362),
+    /** CRL monitor setup error */
+    MONITOR_SETUP_E      (-363),
+    /** Thread create error */
+    THREAD_CREATE_E      (-364),
+    /** Max chain depth exceeded */
+    MAX_CHAIN_ERROR      (-368),
+    /** DTLS cookie error */
+    COOKIE_ERROR         (-369),
+    /** DTLS sequence error */
+    SEQUENCE_ERROR       (-370),
+    /** Suites pointer error */
+    SUITES_ERROR         (-371),
+    /** Max cert extension exceeded */
+    MAX_CERT_EXTENSIONS_ERR (-372),
+    /** Out of order message */
+    OUT_OF_ORDER_E       (-373),
+    /** Bad KEA type found */
+    BAD_KEA_TYPE_E       (-374),
+    /** Sanity check on cipher error */
+    SANITY_CIPHER_E      (-375),
+    /** RXCB returned more than read */
+    RECV_OVERFLOW_E      (-376),
+    /** Generate cookie error */
+    GEN_COOKIE_E         (-377),
+    /** Need peer cert verify error */
+    NO_PEER_VERIFY       (-378),
+    /** fwrite problem */
+    FWRITE_ERROR         (-379),
+    /** Cache header match error */
+    CACHE_MATCH_ERROR    (-380),
+    /** Unrecognized host name error */
+    UNKNOWN_SNI_HOST_NAME_E (-381),
+    /** Unrecognized max frag len error */
+    UNKNOWN_MAX_FRAG_LEN_E (-382),
+    /** KeyUse digSignature error */
+    KEYUSE_SIGNATURE_E   (-383),
+    /** KeyUse keyEncipher error */
+    KEYUSE_ENCIPHER_E    (-385),
+    /** ExtKeyUse server/client auth */
+    EXTKEYUSE_AUTH_E     (-386),
+    /** Send callback out of bounds read */
+    SEND_OOB_READ_E      (-387),
+    /** Invalid renegotiation info */
+    SECURE_RENEGOTIATION_E (-388),
+    /** Session ticket too large */
+    SESSION_TICKET_LEN_E (-389),
+    /** Session ticket missing */
+    SESSION_TICKET_EXPECT_E (-390),
+    /** SCR different cert error */
+    SCR_DIFFERENT_CERT_E (-391),
+    /** Session secret callback failure */
+    SESSION_SECRET_CB_E  (-392),
+    /** Finished before change cipher */
+    NO_CHANGE_CIPHER_E   (-393),
+    /** Sanity check on msg order error */
+    SANITY_MSG_E         (-394),
+    /** Duplicate message error */
+    DUPLICATE_MSG_E      (-395),
+    /** SSL 3.0 does not support SNI */
+    SNI_UNSUPPORTED      (-396),
+    /** Underlying transport closed */
+    SOCKET_PEER_CLOSED_E (-397),
+    /** Bad session ticket key cb size */
+    BAD_TICKET_KEY_CB_SZ (-398),
+    /** Bad session ticket msg size */
+    BAD_TICKET_MSG_SZ    (-399),
+    /** Bad user ticket encrypt */
+    BAD_TICKET_ENCRYPT   (-400),
+    /** DH key too small */
+    DH_KEY_SIZE_E        (-401),
+    /** No SNI request */
+    SNI_ABSENT_ERROR     (-402),
+    /** RSA sign fault */
+    RSA_SIGN_FAULT       (-403),
+    /** Handshake message too large */
+    HANDSHAKE_SIZE_ERROR (-404),
+    /** Unrecognized protocol name error */
+    UNKNOWN_ALPN_PROTOCOL_NAME_E (-405),
+    /** Bad certificate status message */
+    BAD_CERTIFICATE_STATUS_ERROR (-406),
+    /** RSA key too small */
+    RSA_KEY_SIZE_E       (-409),
+    /** ECC key too small */
+    ECC_KEY_SIZE_E       (-410),
+    /** Export version error */
+    DTLS_EXPORT_VER_E    (-411),
+    /** Input size too big error */
+    INPUT_SIZE_E         (-412),
+    /** Initialize ctx mutex error */
+    CTX_INIT_MUTEX_E     (-413),
+    /** Need EMS enabled to resume */
+    EXT_MASTER_SECRET_NEEDED_E (-414),
+    /** Exceeded DTLS pool size */
+    DTLS_POOL_SZ_E       (-415),
+    /** Decode handshake message error */
+    DECODE_E             (-416),
+    /** Write dup write side can't read */
+    WRITE_DUP_READ_E     (-418),
+    /** Write dup read side can't write */
+    WRITE_DUP_WRITE_E    (-419),
+    /** TLS cert ctx not matching */
+    INVALID_CERT_CTX_E   (-420),
+    /** Key share data invalid */
+    BAD_KEY_SHARE_DATA   (-421),
+    /** Handshake message missing data */
+    MISSING_HANDSHAKE_DATA (-422),
+    /** Binder does not match */
+    BAD_BINDER           (-423),
+    /** Extension not allowed in msg */
+    EXT_NOT_ALLOWED      (-424),
+    /** Security parameter invalid */
+    INVALID_PARAMETER    (-425),
+    /** Multicast highwater cb err */
+    MCAST_HIGHWATER_CB_E (-426),
+    /** Alert count exceeded err */
+    ALERT_COUNT_E        (-427),
+    /** Required extension not found */
+    EXT_MISSING          (-428),
+    /** TLSX not requested by client */
+    UNSUPPORTED_EXTENSION (-429),
+    /** PRF not compiled in */
+    PRF_MISSING          (-430),
+    /** Retransmit DTLS flight over */
+    DTLS_RETX_OVER_TX    (-431),
+    /** DH params from server not FFDHE */
+    DH_PARAMS_NOT_FFDHE_E (-432),
+    /** TLSX TCA ID type invalid */
+    TCA_INVALID_ID_TYPE  (-433),
+    /** TLSX TCA ID no response */
+    TCA_ABSENT_ERROR     (-434),
+    /** Invalid MAC size for TSIP */
+    TSIP_MAC_DIGSZ_E     (-435),
+    /** Client cert callback error */
+    CLIENT_CERT_CB_ERROR (-436),
+    /** Shutdown called redundantly */
+    SSL_SHUTDOWN_ALREADY_DONE_E (-437),
+    /** Trying to send too much data */
+    DTLS_SIZE_ERROR      (-439),
+    /** TLS1.3 no cert set error */
+    NO_CERT_ERROR        (-440),
+    /** DTLS1.2 application data ready */
+    APP_DATA_READY       (-441),
+    /** Too much early data */
+    TOO_MUCH_EARLY_DATA  (-442),
+    /** Session stopped by network filter */
+    SOCKET_FILTERED_E    (-443),
+    /** Bad/unsupported protocol version */
+    UNSUPPORTED_PROTO_VERSION (-450),
+    /** Wrong key size for Falcon */
+    FALCON_KEY_SIZE_E    (-451),
+    /** QUIC transport parameter missing */
+    QUIC_TP_MISSING_E    (-452),
+    /** Wrong key size for Dilithium */
+    DILITHIUM_KEY_SIZE_E (-453),
+    /** Wrong or missing CID */
+    DTLS_CID_ERROR       (-454),
+    /** Received too many fragments */
+    DTLS_TOO_MANY_FRAGMENTS_E (-455),
+    /** QUIC data received on wrong encryption level */
+    QUIC_WRONG_ENC_LEVEL (-456),
+    /** Duplicate TLS extension in msg */
+    DUPLICATE_TLS_EXT_E  (-457),
+    /** TLS extension not found */
+    WOLFSSL_ALPN_NOT_FOUND (-458),
+    /** Certificate type not supported */
+    WOLFSSL_BAD_CERTTYPE (-459),
+    /** Not used */
+    WOLFSSL_BAD_STAT     (-460),
+    /** No certificates found at designated path */
+    WOLFSSL_BAD_PATH     (-461),
+    /** Data format not supported */
+    WOLFSSL_BAD_FILETYPE (-462),
+    /** Input/output error on file */
+    WOLFSSL_BAD_FILE     (-463),
+    /** Function not implemented */
+    WOLFSSL_NOT_IMPLEMENTED (-464),
+    /** Unknown algorithm (EVP) */
+    WOLFSSL_UNKNOWN      (-465);
 
     private final int code;
 
