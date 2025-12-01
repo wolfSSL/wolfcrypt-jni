@@ -586,6 +586,20 @@ is simply no CRL available for that certificate).
 If this behavior is needed, please submit a feature request to
 support@wolfssl.com.
 
+#### Name Constraints with RegisteredID Not Supported
+
+Native wolfSSL validates Name Constraints for email (rfc822Name), DNS, and
+directory name types, but does not enforce name constraints for registeredID
+(RID) types. If a CA certificate contains a Name Constraint that excludes or
+permits specific registeredID values, certificates with subjectAltName entries
+of type registeredID will not be validated against these constraints.
+
+As a result, certificates that should be rejected due to a registeredID name
+constraint violation will pass validation in wolfJCE.
+
+If this behavior is needed, please submit a feature request to
+support@wolfssl.com.
+
 ### Support
 ---------
 
