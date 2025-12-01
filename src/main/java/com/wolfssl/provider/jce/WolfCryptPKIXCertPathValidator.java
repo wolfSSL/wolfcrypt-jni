@@ -926,6 +926,18 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
 
         pkixParams = (PKIXParameters)params;
 
+        /* Check if any TrustAnchors have name constraints. Native wolfSSL
+         * does not apply TrustAnchor name constraints during chain
+         * verification, only name constraints from certificates in the
+         * chain. To match SunJCE behavior, throw InvalidAlgorithmParameter
+         * Exception if TrustAnchors have name constraints. */
+        for (TrustAnchor anchor : pkixParams.getTrustAnchors()) {
+            if (anchor.getNameConstraints() != null) {
+                throw new InvalidAlgorithmParameterException(
+                    "TrustAnchors with name constraints are not supported");
+            }
+        }
+
         /* If we are in FIPS mode, verify wolfJCE is the Signature provider
          * to help maintain FIPS compliance */
         if (Fips.enabled && pkixParams.getSigProvider() != "wolfJCE") {

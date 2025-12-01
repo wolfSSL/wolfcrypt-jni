@@ -520,6 +520,17 @@ the current system time by wolfSSL. This means that preloaded OCSP responses
 thisUpdate and nextUpdate dates. Historical OCSP responses with expired dates
 cannot be used, even with a date override.
 
+#### TrustAnchor Name Constraints
+
+Name constraints specified directly on a TrustAnchor (via the
+`TrustAnchor(X509Certificate, byte[])` constructor) are not supported.
+wolfJCE throws `InvalidAlgorithmParameterException` if any TrustAnchor in
+PKIXParameters has name constraints set. This matches SunJCE behavior.
+
+Applications should use TrustAnchors without explicit name constraints; if
+name constraint enforcement is needed, the constraints should be embedded in
+the trust anchor certificate itself.
+
 ### Behavior Discrepancies with SunJCE
 ---------
 
