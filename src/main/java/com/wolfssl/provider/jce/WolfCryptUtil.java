@@ -33,11 +33,21 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.Provider;
+import java.security.PublicKey;
 import java.security.Security;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.interfaces.RSAPublicKey;
+import java.security.interfaces.DSAPublicKey;
+import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECParameterSpec;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 /**
  * Utility class containing helper functions for wolfCrypt JCE provider.
@@ -387,4 +397,403 @@ public class WolfCryptUtil {
             return ks;
         }
     }
+
+    /**
+     * Check if a given algorithm is disabled based on a security property.
+     *
+     * This method checks both the full algorithm name and decomposed parts.
+     * For example, "MD2withRSA" will check for "MD2withRSA", "MD2", and
+     * "RSA" in the disabled algorithms list.
+     *
+     * @param algorithm Algorithm name to check (e.g., "MD2", "MD5",
+     *                  "SHA1withRSA", "MD2withRSA")
+     * @param propertyName Security property name to check against
+     *                     (e.g., "jdk.certpath.disabledAlgorithms")
+     *
+     * @return true if algorithm is disabled, false otherwise
+     */
+    public static boolean isAlgorithmDisabled(String algorithm,
+        String propertyName) {
+
+        List<String> disabledList = null;
+        String disabledAlgos = null;
+
+        if (algorithm == null || algorithm.isEmpty()) {
+            return false;
+        }
+
+        if (propertyName == null || propertyName.isEmpty()) {
+            return false;
+        }
+
+        disabledAlgos = Security.getProperty(propertyName);
+        if (disabledAlgos == null || disabledAlgos.isEmpty()) {
+            return false;
+        }
+
+        /* Remove spaces after commas, split into List */
+        disabledAlgos = disabledAlgos.replaceAll(", ", ",");
+        disabledList = Arrays.asList(disabledAlgos.split(","));
+
+        /* Check full algorithm name first (case-insensitive) */
+        for (String disabled : disabledList) {
+            if (disabled.equalsIgnoreCase(algorithm)) {
+                return true;
+            }
+        }
+
+        /* Decompose composite algorithm names like "MD2withRSA" into
+         * constituent parts and check each. Common formats:
+         *   - "MD2withRSA" - ["MD2", "RSA"]
+         *   - "SHA1withECDSA" - ["SHA1", "ECDSA"]
+         *   - "SHA256withRSA" - ["SHA256", "RSA"]
+         * Use case-insensitive matching to match SunJCE behavior */
+        String[] parts = decomposeAlgorithmName(algorithm);
+        for (String part : parts) {
+            for (String disabled : disabledList) {
+                if (disabled.equalsIgnoreCase(part)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Decompose a composite algorithm name into constituent parts.
+     *
+     * - Splits on "/" for algorithm/mode/padding format
+     * - Splits on "with", "and", and "in" (case-insensitive)
+     * - Avoids splitting "in" when part of "padding"
+     *
+     * Examples:
+     *   "MD2withRSA" - ["MD2", "RSA"]
+     *   "SHA1withECDSA" - ["SHA1", "ECDSA"]
+     *   "SHA256withRSA/PSS" - ["SHA256", "RSA", "PSS"]
+     *   "PBEWithMD5AndDES" - ["PBE", "MD5", "DES"]
+     *   "AES/CBC/PKCS5Padding" - ["AES", "CBC", "PKCS5Padding"]
+     *
+     * @param algorithm Algorithm name to decompose
+     *
+     * @return Array of algorithm parts, empty array if input is null/empty
+     */
+    private static String[] decomposeAlgorithmName(String algorithm) {
+
+        ArrayList<String> components = new ArrayList<String>();
+        Pattern delimiter = null;
+        String[] pathComponents = null;
+        int originalSize = 0;
+
+        /* Delimiter pattern matches "with", "and", or "in" (case-insensitive),
+         * but not "in" when preceded by "padd" (as in "padding"). Uses
+         * negative lookbehind (?<!padd) to preserve "padding". */
+        String delimPattern = "with|and|(?<!padd)in";
+
+        if (algorithm == null || algorithm.isEmpty()) {
+            return new String[0];
+        }
+
+        /* Build delimiter pattern */
+        delimiter = Pattern.compile(delimPattern, Pattern.CASE_INSENSITIVE);
+
+        /* Handle algorithm/mode/padding format by splitting on "/" */
+        pathComponents = algorithm.split("/");
+
+        /* Process each path component through delimiter pattern */
+        for (String pathComponent : pathComponents) {
+            if (pathComponent != null && !pathComponent.isEmpty()) {
+                /* Apply delimiter pattern to split on "with", "and", "in" */
+                String[] delimitedParts = delimiter.split(pathComponent);
+
+                /* Collect non-empty trimmed parts */
+                for (String part : delimitedParts) {
+                    if (part != null && !part.isEmpty()) {
+                        components.add(part.trim());
+                    }
+                }
+            }
+        }
+
+        /* Add SHA algorithm name variants. Java accepts both hyphenated and
+         * non-hyphenated forms: SHA1 / SHA-1, SHA224 / SHA-224, etc.
+         * Iterate only over original components to avoid infinite loop */
+        originalSize = components.size();
+        for (int i = 0; i < originalSize; i++) {
+            String variant = getSHAVariant(components.get(i));
+            if (variant != null) {
+                components.add(variant);
+            }
+        }
+
+        /* Return final decomposed components as array */
+        return components.toArray(new String[components.size()]);
+    }
+
+    /**
+     * Get alternate SHA algorithm name variant for a given component.
+     *
+     * Returns the alternate form between hyphenated and non-hyphenated:
+     * "SHA1" - "SHA-1", "SHA-1" - "SHA1", etc.
+     * Also handles SHA-3 variants: "SHA3-224" - "SHA3224", etc.
+     *
+     * @param component Algorithm component to check
+     *
+     * @return Alternate variant if this is a SHA algorithm, null otherwise
+     */
+    private static String getSHAVariant(String component) {
+
+        if (component == null) {
+            return null;
+        }
+
+        /* SHA1 / SHA-1 variants */
+        if (component.equalsIgnoreCase("SHA1")) {
+            return "SHA-1";
+        }
+        if (component.equalsIgnoreCase("SHA-1")) {
+            return "SHA1";
+        }
+
+        /* SHA224 / SHA-224 variants */
+        if (component.equalsIgnoreCase("SHA224")) {
+            return "SHA-224";
+        }
+        if (component.equalsIgnoreCase("SHA-224")) {
+            return "SHA224";
+        }
+
+        /* SHA256 / SHA-256 variants */
+        if (component.equalsIgnoreCase("SHA256")) {
+            return "SHA-256";
+        }
+        if (component.equalsIgnoreCase("SHA-256")) {
+            return "SHA256";
+        }
+
+        /* SHA384 / SHA-384 variants */
+        if (component.equalsIgnoreCase("SHA384")) {
+            return "SHA-384";
+        }
+        if (component.equalsIgnoreCase("SHA-384")) {
+            return "SHA384";
+        }
+
+        /* SHA512 / SHA-512 variants */
+        if (component.equalsIgnoreCase("SHA512")) {
+            return "SHA-512";
+        }
+        if (component.equalsIgnoreCase("SHA-512")) {
+            return "SHA512";
+        }
+
+        /* SHA3-224 / SHA3224 variants */
+        if (component.equalsIgnoreCase("SHA3-224")) {
+            return "SHA3224";
+        }
+        if (component.equalsIgnoreCase("SHA3224")) {
+            return "SHA3-224";
+        }
+
+        /* SHA3-256 / SHA3256 variants */
+        if (component.equalsIgnoreCase("SHA3-256")) {
+            return "SHA3256";
+        }
+        if (component.equalsIgnoreCase("SHA3256")) {
+            return "SHA3-256";
+        }
+
+        /* SHA3-384 / SHA3384 variants */
+        if (component.equalsIgnoreCase("SHA3-384")) {
+            return "SHA3384";
+        }
+        if (component.equalsIgnoreCase("SHA3384")) {
+            return "SHA3-384";
+        }
+
+        /* SHA3-512 / SHA3512 variants */
+        if (component.equalsIgnoreCase("SHA3-512")) {
+            return "SHA3512";
+        }
+        if (component.equalsIgnoreCase("SHA3512")) {
+            return "SHA3-512";
+        }
+
+        /* Not a recognized SHA variant */
+        return null;
+    }
+
+    /**
+     * Get minimum key size limit from disabled algorithms security property
+     * for specified algorithm.
+     *
+     * Parses constraints like "RSA keySize &lt; 1024" from the security
+     * property and returns the minimum allowed key size.
+     *
+     * @param algo Algorithm to search for key size limitation for, options
+     *             are "RSA", "DH", "DSA", and "EC".
+     * @param propertyName Security property name to check
+     *                     (e.g., "jdk.certpath.disabledAlgorithms")
+     *
+     * @return minimum key size allowed, or 0 if not set in property
+     */
+    public static int getDisabledAlgorithmsKeySizeLimit(String algo,
+        String propertyName) {
+
+        int ret = 0;
+        List<String> disabledList = null;
+        Pattern p = Pattern.compile("\\d+");
+        Matcher match = null;
+        String needle = null;
+        String disabledAlgos = null;
+
+        if (algo == null || algo.isEmpty()) {
+            return ret;
+        }
+
+        if (propertyName == null || propertyName.isEmpty()) {
+            return ret;
+        }
+
+        disabledAlgos = Security.getProperty(propertyName);
+        if (disabledAlgos == null) {
+            return ret;
+        }
+
+        switch (algo) {
+            case "RSA":
+                needle = "RSA keySize <";
+                break;
+            case "DH":
+                needle = "DH keySize <";
+                break;
+            case "DSA":
+                needle = "DSA keySize <";
+                break;
+            case "EC":
+                needle = "EC keySize <";
+                break;
+            default:
+                return ret;
+        }
+
+        /* Remove spaces after commas, split into List */
+        disabledAlgos = disabledAlgos.replaceAll(", ", ",");
+        disabledList = Arrays.asList(disabledAlgos.split(","));
+
+        for (String s: disabledList) {
+            if (s.contains(needle)) {
+                match = p.matcher(s);
+                if (match.find()) {
+                    try {
+                        ret = Integer.parseInt(match.group());
+                    } catch (NumberFormatException e) {
+                        /* Number exceeds Integer.MAX_VALUE, ignore malformed
+                         * number and leave ret unchanged. */
+                    }
+                }
+            }
+        }
+
+        return ret;
+    }
+
+    /**
+     * Check if a public key meets the size constraints specified in a
+     * security property.
+     *
+     * Extracts the key size based on key type (RSA, EC, DSA) and compares
+     * against minimum size constraints from the security property.
+     *
+     * @param key PublicKey to check
+     * @param propertyName Security property name to check constraints from
+     *                     (e.g., "jdk.certpath.disabledAlgorithms")
+     *
+     * @return true if key is allowed (meets size requirements), false if
+     *         key size is too small or key type is unsupported
+     */
+    public static boolean isKeyAllowed(PublicKey key, String propertyName) {
+
+        int keySize = 0;
+        int minSize = 0;
+        String algorithm = null;
+
+        if (key == null) {
+            return false;
+        }
+
+        if (propertyName == null || propertyName.isEmpty()) {
+            /* No property set, allow key */
+            return true;
+        }
+
+        algorithm = key.getAlgorithm();
+
+        /* Extract key size based on key type */
+        if (key instanceof RSAPublicKey) {
+            RSAPublicKey rsaKey = (RSAPublicKey)key;
+            keySize = rsaKey.getModulus().bitLength();
+            minSize = getDisabledAlgorithmsKeySizeLimit("RSA", propertyName);
+        }
+        else if (key instanceof ECPublicKey) {
+            ECPublicKey ecKey = (ECPublicKey)key;
+            ECParameterSpec params = ecKey.getParams();
+            if (params != null) {
+                /* EC key size is the order bit length */
+                keySize = params.getOrder().bitLength();
+            }
+            minSize = getDisabledAlgorithmsKeySizeLimit("EC", propertyName);
+        }
+        else if (key instanceof DSAPublicKey) {
+            DSAPublicKey dsaKey = (DSAPublicKey)key;
+            if (dsaKey.getParams() != null) {
+                keySize = dsaKey.getParams().getP().bitLength();
+            }
+            minSize = getDisabledAlgorithmsKeySizeLimit("DSA", propertyName);
+        }
+        else {
+            /* Unsupported key type, check if algorithm itself is disabled */
+            return !isAlgorithmDisabled(algorithm, propertyName);
+        }
+
+        /* If minimum size constraint exists and key is smaller, reject */
+        if (minSize > 0 && keySize < minSize) {
+            return false;
+        }
+
+        /* Check if algorithm name is disabled */
+        if (isAlgorithmDisabled(algorithm, propertyName)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get parsed list of disabled algorithms from security property.
+     *
+     * @param propertyName Security property name to parse
+     *                     (e.g., "jdk.certpath.disabledAlgorithms")
+     *
+     * @return List of disabled algorithm strings, or empty list if property
+     *         not set
+     */
+    public static List<String> getDisabledAlgorithmsList(String propertyName) {
+
+        String disabledAlgos = null;
+
+        if (propertyName == null || propertyName.isEmpty()) {
+            return new ArrayList<String>();
+        }
+
+        disabledAlgos = Security.getProperty(propertyName);
+        if (disabledAlgos == null || disabledAlgos.isEmpty()) {
+            return new ArrayList<String>();
+        }
+
+        /* Remove spaces after commas, split into List */
+        disabledAlgos = disabledAlgos.replaceAll(", ", ",");
+        return Arrays.asList(disabledAlgos.split(","));
+    }
 }
+

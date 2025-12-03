@@ -138,10 +138,30 @@ public class WolfCrypt extends WolfObject {
      * chain. Checking only leaf certificate is the default behavior.
      */
     public static int WOLFSSL_CRL_CHECKALL = 1;
+
     /**
      * CRL option, will enable CRL checking on leaf certificate.
      */
     public static int WOLFSSL_CRL_CHECK    = 2;
+
+    /**
+     * OCSP option, will use override URL for OCSP requests.
+     * Must match native WOLFSSL_OCSP_URL_OVERRIDE value in ssl.h.
+     */
+    public static int WOLFSSL_OCSP_URL_OVERRIDE = 1;
+
+    /**
+     * OCSP option, will not send nonce in OCSP requests.
+     * Must match native WOLFSSL_OCSP_NO_NONCE value in ssl.h.
+     */
+    public static int WOLFSSL_OCSP_NO_NONCE = 2;
+
+    /**
+     * OCSP option, will perform OCSP checking on each certificate in the
+     * chain. Checking only leaf certificate is the default behavior.
+     * Must match native WOLFSSL_OCSP_CHECKALL value in ssl.h.
+     */
+    public static int WOLFSSL_OCSP_CHECKALL = 4;
 
     /**
      * Tests if CRL (HAVE_CRL) has been enabled in native wolfCrypt.
@@ -149,6 +169,13 @@ public class WolfCrypt extends WolfObject {
      * @return true if enabled, otherwise false if not compiled in
      */
     public static native boolean CrlEnabled();
+
+    /**
+     * Tests if OCSP (HAVE_OCSP) has been enabled in native wolfCrypt.
+     *
+     * @return true if enabled, otherwise false if not compiled in
+     */
+    public static native boolean OcspEnabled();
 
     /**
      * Constant time byte array comparison.
