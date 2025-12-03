@@ -71,6 +71,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/WolfCryptState.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfObject.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfSSLCertManager.java \
+    src/main/java/com/wolfssl/wolfcrypt/WolfSSLCertManagerVerifyCallback.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptAesParameters.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptASN1Util.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptCipher.java \
@@ -101,6 +102,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha512.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPBEKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPKIXCertPathValidator.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptPKIXRevocationChecker.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptProvider.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPssParameters.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptRandom.java \

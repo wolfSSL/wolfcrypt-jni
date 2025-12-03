@@ -79,6 +79,62 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerLoadCRLBuffer
   (JNIEnv *, jclass, jlong, jbyteArray, jlong, jint);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerEnableOCSP
+ * Signature: (JI)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerEnableOCSP
+  (JNIEnv *, jclass, jlong, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerDisableOCSP
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerDisableOCSP
+  (JNIEnv *, jclass, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerSetOCSPOverrideURL
+ * Signature: (JLjava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerSetOCSPOverrideURL
+  (JNIEnv *, jclass, jlong, jstring);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerCheckOCSP
+ * Signature: (J[BI)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerCheckOCSP
+  (JNIEnv *, jclass, jlong, jbyteArray, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerCheckOCSPResponse
+ * Signature: (J[BI[BI)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerCheckOCSPResponse
+  (JNIEnv *, jclass, jlong, jbyteArray, jint, jbyteArray, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerSetVerify
+ * Signature: (JLjava/lang/Object;)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerSetVerify
+  (JNIEnv *, jclass, jlong, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerClearVerify
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerClearVerify
+  (JNIEnv *, jclass, jlong);
+
 #ifdef __cplusplus
 }
 #endif

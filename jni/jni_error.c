@@ -25,13 +25,17 @@
     #include <wolfssl/options.h>
 #endif
 
+#include <wolfssl/ssl.h>
 #include <com_wolfssl_wolfcrypt_WolfCryptError.h>
 #include <wolfcrypt_jni_error.h>
 
 JNIEXPORT jstring JNICALL Java_com_wolfssl_wolfcrypt_WolfCryptError_wc_1GetErrorString
   (JNIEnv* env, jclass obj, jint error)
 {
-    return (*env)->NewStringUTF(env, wc_GetErrorString(error));
+    /* wolfSSL_ERR_reason_error_string handles wolfCrypt and wolfSSL layer
+     * error codes, using here instead of wc_GetErrorString() */
+    return (*env)->NewStringUTF(env,
+        wolfSSL_ERR_reason_error_string((unsigned long)error));
 }
 
 void throwWolfCryptExceptionFromError(JNIEnv* env, int code)
@@ -74,6 +78,7 @@ void throwWolfCryptExceptionFromError(JNIEnv* env, int code)
         }
     }
 
-    throwWolfCryptException(env, wc_GetErrorString(code));
+    throwWolfCryptException(env,
+        wolfSSL_ERR_reason_error_string((unsigned long)code));
 }
 

@@ -205,7 +205,7 @@ The JCE provider currently supports the following algorithms:
         DH (aliases: DiffieHellman, 1.2.840.113549.1.3.1)
 
     CertPathValidator Class
-        PKIX
+        PKIX (with PKIXRevocationChecker via getRevocationChecker())
 
     SecretKeyFactory
         PBKDF2WithHmacSHA1
@@ -497,6 +497,40 @@ $ cd wolfcrypt-jni-X.X.X
 $ cp ./lib/signed/release/wolfcrypt-jni.jar ./lib
 $ ant test
 
+### CertPathValidator (PKIX) Implementation Notes
+---------
+
+wolfJCE provides a PKIX CertPathValidator implementation that supports
+certificate path validation with revocation checking via OCSP and CRL.
+
+#### Date Override with PKIXParameters.setDate()
+
+The `PKIXParameters.setDate()` method allows applications to validate
+certificate paths as if the current date were the specified date. This is
+useful for testing or validating certificates at a specific point in time.
+
+wolfJCE supports `PKIXParameters.setDate()` for **certificate validity
+checking**. When a date override is set, certificates will be validated
+against that date rather than the current system time.
+
+**Note:** The date override only applies to certificate validity checking,
+not to OCSP response validation. OCSP responses are always validated against
+the current system time by wolfSSL. This means that preloaded OCSP responses
+(via `PKIXRevocationChecker.setOcspResponses()`) must have current/valid
+thisUpdate and nextUpdate dates. Historical OCSP responses with expired dates
+cannot be used, even with a date override.
+
+#### TrustAnchor Name Constraints
+
+Name constraints specified directly on a TrustAnchor (via the
+`TrustAnchor(X509Certificate, byte[])` constructor) are not supported.
+wolfJCE throws `InvalidAlgorithmParameterException` if any TrustAnchor in
+PKIXParameters has name constraints set. This matches SunJCE behavior.
+
+Applications should use TrustAnchors without explicit name constraints; if
+name constraint enforcement is needed, the constraints should be embedded in
+the trust anchor certificate itself.
+
 ### Behavior Discrepancies with SunJCE
 ---------
 
@@ -522,6 +556,60 @@ This descrepancy should not be an issue, since `doFinal()` returns the
 actual number of bytes written to the output buffer, so applications can use
 that to know the true output size in the output buffer returned.
 
+#### PKIXRevocationChecker `PREFER_CRLS` Check Order
+
+When using `PKIXRevocationChecker` with the `PREFER_CRLS` option and fallback
+enabled (i.e., `NO_FALLBACK` is not set), the SunJCE implementation checks
+CRL first, then falls back to OCSP if CRL checking fails.
+
+wolfJCE cannot replicate this exact order due to how native wolfSSL handles
+CRL checking. The wolfSSL CertManager does not expose a separate API to
+explicitly check CRLs - instead, CRL checking happens automatically during
+certificate chain verification (`wolfSSL_CertManagerVerifyBuffer()`). This
+verification occurs after the `PKIXRevocationChecker.check()` method returns.
+
+As a result, when `PREFER_CRLS` is set with fallback enabled:
+- **SunJCE**: CRL first, then OCSP fallback
+- **wolfJCE**: OCSP runs in `check()`, CRL runs during cert verification
+
+Both revocation methods are still checked when fallback is enabled, but the
+order differs. In practice, if either method determines the certificate is
+revoked, validation will fail. The difference only affects behavior when one
+method succeeds and the other would have failed (e.g., OCSP unreachable but
+CRL available).
+
+#### Indirect CRL Not Supported
+
+Native wolfSSL does not support indirect CRLs. An indirect CRL is a CRL signed
+by a different entity than the certificate issuer, identified by the Issuing
+Distribution Point (IDP) extension with the `indirectCRL` flag set to TRUE.
+
+wolfSSL matches CRLs to certificates by comparing the CRL issuer hash with the
+certificate's issuer hash. For indirect CRLs, these hashes are different (the
+certificate was issued by one CA, but the CRL is signed by a separate CRL
+issuer entity), so wolfSSL will not find a matching CRL for the certificate.
+
+As a result, certificates that should be detected as revoked via an indirect
+CRL will pass validation in wolfJCE. The certificate chain verification
+succeeds because no matching CRL is found (from wolfSSL's perspective, there
+is simply no CRL available for that certificate).
+
+If this behavior is needed, please submit a feature request to
+support@wolfssl.com.
+
+#### Name Constraints with RegisteredID Not Supported
+
+Native wolfSSL validates Name Constraints for email (rfc822Name), DNS, and
+directory name types, but does not enforce name constraints for registeredID
+(RID) types. If a CA certificate contains a Name Constraint that excludes or
+permits specific registeredID values, certificates with subjectAltName entries
+of type registeredID will not be validated against these constraints.
+
+As a result, certificates that should be rejected due to a registeredID name
+constraint violation will pass validation in wolfJCE.
+
+If this behavior is needed, please submit a feature request to
+support@wolfssl.com.
 
 ### Support
 ---------

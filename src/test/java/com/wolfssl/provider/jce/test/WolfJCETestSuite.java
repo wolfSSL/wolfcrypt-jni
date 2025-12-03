@@ -48,6 +48,7 @@ import org.junit.runners.Suite.SuiteClasses;
     WolfCryptDHKeyFactoryTest.class,
     WolfCryptRSAKeyFactoryTest.class,
     WolfCryptPKIXCertPathValidatorTest.class,
+    WolfCryptPKIXRevocationCheckerTest.class,
     WolfCryptAlgorithmParametersTest.class,
     WolfCryptAlgorithmParameterGeneratorTest.class,
     WolfCryptASN1UtilTest.class,
