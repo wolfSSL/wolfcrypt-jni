@@ -953,6 +953,31 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             }
         }
 
+        /* Zero-length cert paths are valid per RFC 5280. This occurs when
+         * CertPathBuilder determines the trust anchor itself is the target
+         * (no intermediate certificates needed). Return success with the
+         * trust anchor's public key. No need to create CertManager. */
+        if (certPath.getCertificates().isEmpty()) {
+            Set<TrustAnchor> anchors = pkixParams.getTrustAnchors();
+            if (anchors == null || anchors.isEmpty()) {
+                throw new CertPathValidatorException(
+                    "No TrustAnchors in PKIXParameters");
+            }
+
+            /* Return first trust anchor for zero-length path */
+            TrustAnchor anchor = anchors.iterator().next();
+            X509Certificate anchorCert = anchor.getTrustedCert();
+            if (anchorCert == null) {
+                throw new CertPathValidatorException(
+                    "TrustAnchor has no certificate for zero-length path");
+            }
+            log("Zero-length cert path, returning trust anchor: " +
+                anchorCert.getSubjectX500Principal().getName());
+
+            return new PKIXCertPathValidatorResult(anchor, null,
+                anchorCert.getPublicKey());
+        }
+
         /* Use wolfSSL CertManager to do chain verification */
         try {
             cm = new WolfSSLCertManager();
@@ -971,10 +996,6 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 if (cert instanceof X509Certificate) {
                     certs.add((X509Certificate) cert);
                 }
-            }
-            if (certs.size() == 0) {
-                throw new CertPathValidatorException(
-                    "No Certificate objects in CertPath");
             }
 
             /* Register verify callback to override date validation if

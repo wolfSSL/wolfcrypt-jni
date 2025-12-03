@@ -1674,5 +1674,108 @@ public class WolfCryptPKIXCertPathValidatorTest {
             }
         }
     }
+
+    /**
+     * Test that zero-length cert paths are valid per RFC 5280. This occurs
+     * when CertPathBuilder determines the trust anchor itself is the target.
+     */
+    @Test
+    public void testZeroLengthCertPath()
+        throws CertificateException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException {
+
+        FileInputStream fis = null;
+        X509Certificate caCert = null;
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+
+        /* Use CA cert from examples as trust anchor */
+        try {
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+        } catch (Exception e) {
+            fail("Failed to load CA cert: " + e.getMessage());
+        }
+
+        /* Create trust anchor from CA cert */
+        TrustAnchor anchor = new TrustAnchor(caCert, null);
+        Set<TrustAnchor> anchors = new HashSet<>();
+        anchors.add(anchor);
+
+        /* Create empty cert path (zero-length) */
+        List<Certificate> emptyCertList = new ArrayList<>();
+        CertPath emptyPath = cf.generateCertPath(emptyCertList);
+        assertEquals(0, emptyPath.getCertificates().size());
+
+        /* Create PKIXParameters with the trust anchor */
+        PKIXParameters params = new PKIXParameters(anchors);
+        params.setRevocationEnabled(false);
+
+        /* Validate zero-length path - should succeed */
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+        PKIXCertPathValidatorResult result =
+            (PKIXCertPathValidatorResult)cpv.validate(emptyPath, params);
+
+        /* Verify result contains trust anchor and its public key */
+        assertNotNull(result);
+        assertNotNull(result.getTrustAnchor());
+        assertEquals(anchor.getTrustedCert(),
+            result.getTrustAnchor().getTrustedCert());
+        assertNotNull(result.getPublicKey());
+        assertEquals(caCert.getPublicKey(), result.getPublicKey());
+    }
+
+    /**
+     * Test that zero-length cert path with TrustAnchor that has no
+     * certificate throws CertPathValidatorException.
+     */
+    @Test
+    public void testZeroLengthCertPathAnchorNoCertificate()
+        throws CertificateException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException, NoSuchProviderException {
+
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+
+        /* Create empty cert path (zero-length) */
+        List<Certificate> emptyCertList = new ArrayList<>();
+        CertPath emptyPath = cf.generateCertPath(emptyCertList);
+
+        /* Load CA cert to get its name and public key */
+        FileInputStream fis = null;
+        X509Certificate caCert = null;
+        try {
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+        } catch (Exception e) {
+            fail("Failed to load CA cert: " + e.getMessage());
+        }
+
+        /* Create TrustAnchor without certificate (using CA name and key).
+         * This is valid for normal cert paths but not for zero-length
+         * paths where we need to return the anchor's certificate. */
+        TrustAnchor anchorWithoutCert = new TrustAnchor(
+            caCert.getSubjectX500Principal(), caCert.getPublicKey(), null);
+        Set<TrustAnchor> anchors = new HashSet<>();
+        anchors.add(anchorWithoutCert);
+
+        PKIXParameters params = new PKIXParameters(anchors);
+        params.setRevocationEnabled(false);
+
+        /* Validate zero-length path with anchor that has no cert */
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(emptyPath, params);
+            fail("Expected CertPathValidatorException for zero-length " +
+                 "path with TrustAnchor that has no certificate");
+        } catch (CertPathValidatorException e) {
+            assertTrue("Exception message should mention no certificate",
+                e.getMessage().contains("no certificate"));
+        }
+    }
 }
 
