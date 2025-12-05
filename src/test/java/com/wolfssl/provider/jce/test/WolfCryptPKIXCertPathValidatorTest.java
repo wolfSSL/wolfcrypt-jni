@@ -1676,6 +1676,146 @@ public class WolfCryptPKIXCertPathValidatorTest {
     }
 
     /**
+     * Test that revocation checking fails with UNDETERMINED_REVOCATION_STATUS
+     * when revocation is enabled but no CRLs are available and no
+     * PKIXRevocationChecker is registered for OCSP.
+     */
+    @Test
+    public void testRevocationEnabledNoCRLsFailsWithUndeterminedStatus()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, NoSuchProviderException,
+               Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate serverCert = null;
+        List<Certificate> certList = new ArrayList<>();
+
+        if (!WolfCrypt.CrlEnabled()) {
+            /* Native CRL not enabled, skip test */
+            System.out.println("CertPathValidator revocation status test " +
+                "skipped, CRL not compiled in");
+            return;
+        }
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Import server-cert.der into Certificate object */
+        fis = new FileInputStream(serverCertDer);
+        serverCert = certFactory.generateCertificate(fis);
+        certList.add(serverCert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Enable revocation checking but DO NOT add any CRLs or
+         * PKIXRevocationChecker. This should cause validation to fail
+         * with UNDETERMINED_REVOCATION_STATUS. */
+        params.setRevocationEnabled(true);
+        params.setCertStores(null);
+
+        /* Validate cert chain, should fail */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("Expected CertPathValidatorException with " +
+                 "UNDETERMINED_REVOCATION_STATUS when revocation is enabled " +
+                 "but no CRLs or OCSP checker is available");
+
+        } catch (CertPathValidatorException e) {
+            /* Expected - verify reason is UNDETERMINED_REVOCATION_STATUS */
+            assertEquals("Expected BasicReason.UNDETERMINED_REVOCATION_STATUS",
+                BasicReason.UNDETERMINED_REVOCATION_STATUS, e.getReason());
+        }
+    }
+
+    /**
+     * Test that revocation checking fails with UNDETERMINED_REVOCATION_STATUS
+     * when revocation is enabled and CertStores exist but contain no CRLs.
+     */
+    @Test
+    public void testRevocationEnabledEmptyCertStoreFailsWithUndeterminedStatus()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, NoSuchProviderException,
+               Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate serverCert = null;
+        List<Certificate> certList = new ArrayList<>();
+        CertStore emptyCertStore = null;
+        List<CertStore> certStores = null;
+
+        if (!WolfCrypt.CrlEnabled()) {
+            /* Native CRL not enabled, skip test */
+            System.out.println("CertPathValidator revocation status test " +
+                "skipped, CRL not compiled in");
+            return;
+        }
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Import server-cert.der into Certificate object */
+        fis = new FileInputStream(serverCertDer);
+        serverCert = certFactory.generateCertificate(fis);
+        certList.add(serverCert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Enable revocation checking with empty CertStore (no CRLs).
+         * This should cause validation to fail with
+         * UNDETERMINED_REVOCATION_STATUS. */
+        params.setRevocationEnabled(true);
+
+        /* Create empty CertStore */
+        Collection<CRL> emptyCrls = new HashSet<>();
+        emptyCertStore = CertStore.getInstance("Collection",
+            new CollectionCertStoreParameters(emptyCrls));
+        certStores = new ArrayList<>();
+        certStores.add(emptyCertStore);
+        params.setCertStores(certStores);
+
+        /* Validate cert chain, should fail */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("Expected CertPathValidatorException with " +
+                 "UNDETERMINED_REVOCATION_STATUS when revocation is enabled " +
+                 "but CertStore contains no CRLs");
+
+        } catch (CertPathValidatorException e) {
+            /* Expected - verify reason is UNDETERMINED_REVOCATION_STATUS */
+            assertEquals("Expected BasicReason.UNDETERMINED_REVOCATION_STATUS",
+                BasicReason.UNDETERMINED_REVOCATION_STATUS, e.getReason());
+        }
+    }
+
+    /**
      * Test that zero-length cert paths are valid per RFC 5280. This occurs
      * when CertPathBuilder determines the trust anchor itself is the target.
      */

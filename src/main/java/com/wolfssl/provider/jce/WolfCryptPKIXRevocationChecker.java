@@ -545,11 +545,16 @@ public class WolfCryptPKIXRevocationChecker extends PKIXRevocationChecker {
     /**
      * Get pre-loaded OCSP responses.
      *
+     * Returns the internal mutable map, not an unmodifiable copy.
+     * JDK sun.security.validator.PKIXValidator.addResponses() expects
+     * to be able to add OCSP responses to this map when using the internal
+     * Validator API.
+     *
      * @return Map of certificates to OCSP response bytes
      */
     @Override
     public Map<X509Certificate, byte[]> getOcspResponses() {
-        return Collections.unmodifiableMap(this.ocspResponses);
+        return this.ocspResponses;
     }
 
     /**
