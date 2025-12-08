@@ -67,6 +67,7 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import com.wolfssl.provider.jce.WolfSSLKeyStore;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class WolfSSLKeyStoreTest {
@@ -2370,6 +2371,82 @@ public class WolfSSLKeyStoreTest {
         Certificate[] chain = store.getCertificateChain("initialKey");
         assertNotNull(chain);
         assertTrue(chain.length > 0);
+    }
+
+    /**
+     * Test that engineProbe() correctly identifies WKS format by checking
+     * the magic number at the beginning of the stream.
+     */
+    @Test
+    public void testEngineProbeIdentifiesWKS()
+        throws KeyStoreException, IOException, NoSuchProviderException,
+               NoSuchAlgorithmException, CertificateException {
+
+        /* Create a WKS keystore and store it to a byte array */
+        KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+        store.load(null, storePass.toCharArray());
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        store.store(baos, storePass.toCharArray());
+        byte[] wksBytes = baos.toByteArray();
+
+        /* Get the WolfSSLKeyStore SPI instance via reflection to call
+         * engineProbe directly (since KeyStore doesn't expose it) */
+        try {
+            WolfSSLKeyStore wksSpi = new WolfSSLKeyStore();
+
+            /* Test that valid WKS data returns true */
+            ByteArrayInputStream bais = new ByteArrayInputStream(wksBytes);
+            boolean result = wksSpi.engineProbe(bais);
+            assertTrue("engineProbe should return true for valid WKS", result);
+
+            /* Verify stream position is preserved after engineProbe().
+             * Per KeyStoreSpi spec, probe should leave stream at original
+             * position so other implementations can try. */
+            assertEquals("Stream should be at beginning after engineProbe()",
+                wksBytes[0] & 0xFF, bais.read());
+
+            /* Test that invalid data (non-WKS) returns false */
+            byte[] invalidData = new byte[] {
+                0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07
+            };
+            bais = new ByteArrayInputStream(invalidData);
+            result = wksSpi.engineProbe(bais);
+            assertFalse("engineProbe should return false for non-WKS", result);
+
+            /* Test that JKS magic number returns false
+             * JKS magic is 0xFEEDFEED */
+            byte[] jksMagic = new byte[] {
+                (byte)0xFE, (byte)0xED, (byte)0xFE, (byte)0xED
+            };
+            bais = new ByteArrayInputStream(jksMagic);
+            result = wksSpi.engineProbe(bais);
+            assertFalse("engineProbe should return false for JKS", result);
+
+            /* Test that empty stream returns false */
+            bais = new ByteArrayInputStream(new byte[0]);
+            result = wksSpi.engineProbe(bais);
+            assertFalse("engineProbe should return false for empty stream",
+                result);
+
+            /* Test that stream shorter than 4 bytes returns false */
+            bais = new ByteArrayInputStream(new byte[] {0x00, 0x00, 0x00});
+            result = wksSpi.engineProbe(bais);
+            assertFalse("engineProbe should return false for short stream",
+                result);
+
+        } catch (Exception e) {
+            fail("engineProbe test threw exception: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Test that engineProbe() throws NullPointerException for null stream.
+     */
+    @Test(expected = NullPointerException.class)
+    public void testEngineProbeNullStream() throws IOException {
+        WolfSSLKeyStore wksSpi = new WolfSSLKeyStore();
+        wksSpi.engineProbe(null);
     }
 }
 

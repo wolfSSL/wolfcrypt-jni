@@ -734,19 +734,47 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
     }
 
     /**
+     * Throw CertPathValidatorException for undetermined revocation status.
+     *
+     * Used when revocation checking is enabled but no CRLs are available
+     * and no PKIXRevocationChecker is configured to handle OCSP.
+     *
+     * @param message error message describing the revocation failure
+     * @param certPath the CertPath being validated (for exception reporting)
+     * @param certs list of certificates from certPath
+     *
+     * @throws CertPathValidatorException always thrown with
+     *         UNDETERMINED_REVOCATION_STATUS reason
+     */
+    private void throwUndeterminedRevocationStatus(String message,
+        CertPath certPath, List<X509Certificate> certs)
+        throws CertPathValidatorException {
+
+        /* Report index of last cert in path (closest to trust anchor)
+         * to match SunJCE behavior. */
+        int failIndex = 0;
+        if (certs != null && certs.size() > 1) {
+            failIndex = certs.size() - 1;
+        }
+        throw new CertPathValidatorException(message, null, certPath,
+            failIndex, BasicReason.UNDETERMINED_REVOCATION_STATUS);
+    }
+
+    /**
      * Check if revocation has been enabled in PKIXParameters, and if so
      * find and load any CRLs in params.getCertStores().
      *
      * When a PKIXRevocationChecker has been registered via
      * addCertPathChecker(), that checker handles revocation checking. CRL
      * checking in the native CertManager is only enabled if:
-     *   - No PKIXRevocationChecker is present (default CRL behavior), OR
+     *   - No PKIXRevocationChecker is present (default CRL behavior), or
      *   - PKIXRevocationChecker has PREFER_CRLS option set
      *
      * @param params parameters used to check if revocation is enabled
-     *        and if so load any CRLs available
+     *        and, if so load any CRLs available
      * @param cm WolfSSLCertManager to load CRLs into
-     * @param targetCert peer/leaf cert used to find matching CRL
+     * @param certPath the CertPath being validated (for exception reporting)
+     * @param certs list of certificates from certPath
      * @param pathCheckers list of registered CertPathCheckers
      *
      * @throws CertPathValidatorException if error is encountered during
@@ -754,7 +782,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
      */
     private void checkRevocationEnabledAndLoadCRLs(
         PKIXParameters params, WolfSSLCertManager cm,
-        X509Certificate targetCert,
+        CertPath certPath, List<X509Certificate> certs,
         List<PKIXCertPathChecker> pathCheckers)
         throws CertPathValidatorException {
 
@@ -810,12 +838,22 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
 
             /* Enable CRL in native WolfSSLCertManager */
             cm.CertManagerEnableCRL(WolfCrypt.WOLFSSL_CRL_CHECK);
-
             log("CRL support enabled in native WolfSSLCertManager");
 
             stores = params.getCertStores();
             if (stores == null || stores.isEmpty()) {
                 log("no CertStores in PKIXParameters to load CRLs");
+
+                /* If revocation is enabled but no CRLs and no
+                 * PKIXRevocationChecker to handle OCSP, we cannot determine
+                 * revocation status. Per RFC 5280, this should fail. */
+                if (!hasRevocationChecker) {
+                    throwUndeterminedRevocationStatus(
+                        "Revocation checking enabled but no CRLs available " +
+                        "and no PKIXRevocationChecker configured for OCSP",
+                        certPath, certs);
+                }
+
                 return;
             }
 
@@ -850,7 +888,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
 
             /* Create CRL selector to help match target X509Certificate */
             X509CRLSelector selector = new X509CRLSelector();
-            selector.setCertificateChecking(targetCert);
+            selector.setCertificateChecking(certs.get(0));
 
             try {
                 /* Find and load any matching CRLs */
@@ -868,6 +906,16 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             }
 
             log("loaded " + loadedCount + " CRLs into WolfSSLCertManager");
+
+            /* If no CRLs were loaded and no PKIXRevocationChecker is handling
+             * OCSP, we cannot determine revocation status. */
+            if (loadedCount == 0 && !hasRevocationChecker) {
+                throwUndeterminedRevocationStatus(
+                    "Revocation checking enabled but no CRLs found in " +
+                    "CertStores and no PKIXRevocationChecker configured " +
+                    "for OCSP",
+                    certPath, certs);
+            }
         }
         else {
             log("revocation not enabled in PKIXParameters");
@@ -953,6 +1001,31 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             }
         }
 
+        /* Zero-length cert paths are valid per RFC 5280. This occurs when
+         * CertPathBuilder determines the trust anchor itself is the target
+         * (no intermediate certificates needed). Return success with the
+         * trust anchor's public key. No need to create CertManager. */
+        if (certPath.getCertificates().isEmpty()) {
+            Set<TrustAnchor> anchors = pkixParams.getTrustAnchors();
+            if (anchors == null || anchors.isEmpty()) {
+                throw new CertPathValidatorException(
+                    "No TrustAnchors in PKIXParameters");
+            }
+
+            /* Return first trust anchor for zero-length path */
+            TrustAnchor anchor = anchors.iterator().next();
+            X509Certificate anchorCert = anchor.getTrustedCert();
+            if (anchorCert == null) {
+                throw new CertPathValidatorException(
+                    "TrustAnchor has no certificate for zero-length path");
+            }
+            log("Zero-length cert path, returning trust anchor: " +
+                anchorCert.getSubjectX500Principal().getName());
+
+            return new PKIXCertPathValidatorResult(anchor, null,
+                anchorCert.getPublicKey());
+        }
+
         /* Use wolfSSL CertManager to do chain verification */
         try {
             cm = new WolfSSLCertManager();
@@ -971,10 +1044,6 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 if (cert instanceof X509Certificate) {
                     certs.add((X509Certificate) cert);
                 }
-            }
-            if (certs.size() == 0) {
-                throw new CertPathValidatorException(
-                    "No Certificate objects in CertPath");
             }
 
             /* Register verify callback to override date validation if
@@ -1019,7 +1088,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
              * will try to find/verify CRL against trusted roots on load.
              * Pass pathCheckers so we can skip CRL setup when a
              * PKIXRevocationChecker is handling revocation via OCSP. */
-            checkRevocationEnabledAndLoadCRLs(pkixParams, cm, certs.get(0),
+            checkRevocationEnabledAndLoadCRLs(pkixParams, cm, certPath, certs,
                 pathCheckers);
 
             /* Verify cert chain */
