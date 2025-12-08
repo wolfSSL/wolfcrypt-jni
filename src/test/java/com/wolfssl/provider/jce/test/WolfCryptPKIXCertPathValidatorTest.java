@@ -1674,5 +1674,248 @@ public class WolfCryptPKIXCertPathValidatorTest {
             }
         }
     }
+
+    /**
+     * Test that revocation checking fails with UNDETERMINED_REVOCATION_STATUS
+     * when revocation is enabled but no CRLs are available and no
+     * PKIXRevocationChecker is registered for OCSP.
+     */
+    @Test
+    public void testRevocationEnabledNoCRLsFailsWithUndeterminedStatus()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, NoSuchProviderException,
+               Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate serverCert = null;
+        List<Certificate> certList = new ArrayList<>();
+
+        if (!WolfCrypt.CrlEnabled()) {
+            /* Native CRL not enabled, skip test */
+            System.out.println("CertPathValidator revocation status test " +
+                "skipped, CRL not compiled in");
+            return;
+        }
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Import server-cert.der into Certificate object */
+        fis = new FileInputStream(serverCertDer);
+        serverCert = certFactory.generateCertificate(fis);
+        certList.add(serverCert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Enable revocation checking but DO NOT add any CRLs or
+         * PKIXRevocationChecker. This should cause validation to fail
+         * with UNDETERMINED_REVOCATION_STATUS. */
+        params.setRevocationEnabled(true);
+        params.setCertStores(null);
+
+        /* Validate cert chain, should fail */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("Expected CertPathValidatorException with " +
+                 "UNDETERMINED_REVOCATION_STATUS when revocation is enabled " +
+                 "but no CRLs or OCSP checker is available");
+
+        } catch (CertPathValidatorException e) {
+            /* Expected - verify reason is UNDETERMINED_REVOCATION_STATUS */
+            assertEquals("Expected BasicReason.UNDETERMINED_REVOCATION_STATUS",
+                BasicReason.UNDETERMINED_REVOCATION_STATUS, e.getReason());
+        }
+    }
+
+    /**
+     * Test that revocation checking fails with UNDETERMINED_REVOCATION_STATUS
+     * when revocation is enabled and CertStores exist but contain no CRLs.
+     */
+    @Test
+    public void testRevocationEnabledEmptyCertStoreFailsWithUndeterminedStatus()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, NoSuchProviderException,
+               Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate serverCert = null;
+        List<Certificate> certList = new ArrayList<>();
+        CertStore emptyCertStore = null;
+        List<CertStore> certStores = null;
+
+        if (!WolfCrypt.CrlEnabled()) {
+            /* Native CRL not enabled, skip test */
+            System.out.println("CertPathValidator revocation status test " +
+                "skipped, CRL not compiled in");
+            return;
+        }
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Import server-cert.der into Certificate object */
+        fis = new FileInputStream(serverCertDer);
+        serverCert = certFactory.generateCertificate(fis);
+        certList.add(serverCert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Enable revocation checking with empty CertStore (no CRLs).
+         * This should cause validation to fail with
+         * UNDETERMINED_REVOCATION_STATUS. */
+        params.setRevocationEnabled(true);
+
+        /* Create empty CertStore */
+        Collection<CRL> emptyCrls = new HashSet<>();
+        emptyCertStore = CertStore.getInstance("Collection",
+            new CollectionCertStoreParameters(emptyCrls));
+        certStores = new ArrayList<>();
+        certStores.add(emptyCertStore);
+        params.setCertStores(certStores);
+
+        /* Validate cert chain, should fail */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("Expected CertPathValidatorException with " +
+                 "UNDETERMINED_REVOCATION_STATUS when revocation is enabled " +
+                 "but CertStore contains no CRLs");
+
+        } catch (CertPathValidatorException e) {
+            /* Expected - verify reason is UNDETERMINED_REVOCATION_STATUS */
+            assertEquals("Expected BasicReason.UNDETERMINED_REVOCATION_STATUS",
+                BasicReason.UNDETERMINED_REVOCATION_STATUS, e.getReason());
+        }
+    }
+
+    /**
+     * Test that zero-length cert paths are valid per RFC 5280. This occurs
+     * when CertPathBuilder determines the trust anchor itself is the target.
+     */
+    @Test
+    public void testZeroLengthCertPath()
+        throws CertificateException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException {
+
+        FileInputStream fis = null;
+        X509Certificate caCert = null;
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+
+        /* Use CA cert from examples as trust anchor */
+        try {
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+        } catch (Exception e) {
+            fail("Failed to load CA cert: " + e.getMessage());
+        }
+
+        /* Create trust anchor from CA cert */
+        TrustAnchor anchor = new TrustAnchor(caCert, null);
+        Set<TrustAnchor> anchors = new HashSet<>();
+        anchors.add(anchor);
+
+        /* Create empty cert path (zero-length) */
+        List<Certificate> emptyCertList = new ArrayList<>();
+        CertPath emptyPath = cf.generateCertPath(emptyCertList);
+        assertEquals(0, emptyPath.getCertificates().size());
+
+        /* Create PKIXParameters with the trust anchor */
+        PKIXParameters params = new PKIXParameters(anchors);
+        params.setRevocationEnabled(false);
+
+        /* Validate zero-length path - should succeed */
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+        PKIXCertPathValidatorResult result =
+            (PKIXCertPathValidatorResult)cpv.validate(emptyPath, params);
+
+        /* Verify result contains trust anchor and its public key */
+        assertNotNull(result);
+        assertNotNull(result.getTrustAnchor());
+        assertEquals(anchor.getTrustedCert(),
+            result.getTrustAnchor().getTrustedCert());
+        assertNotNull(result.getPublicKey());
+        assertEquals(caCert.getPublicKey(), result.getPublicKey());
+    }
+
+    /**
+     * Test that zero-length cert path with TrustAnchor that has no
+     * certificate throws CertPathValidatorException.
+     */
+    @Test
+    public void testZeroLengthCertPathAnchorNoCertificate()
+        throws CertificateException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException, NoSuchProviderException {
+
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+
+        /* Create empty cert path (zero-length) */
+        List<Certificate> emptyCertList = new ArrayList<>();
+        CertPath emptyPath = cf.generateCertPath(emptyCertList);
+
+        /* Load CA cert to get its name and public key */
+        FileInputStream fis = null;
+        X509Certificate caCert = null;
+        try {
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+        } catch (Exception e) {
+            fail("Failed to load CA cert: " + e.getMessage());
+        }
+
+        /* Create TrustAnchor without certificate (using CA name and key).
+         * This is valid for normal cert paths but not for zero-length
+         * paths where we need to return the anchor's certificate. */
+        TrustAnchor anchorWithoutCert = new TrustAnchor(
+            caCert.getSubjectX500Principal(), caCert.getPublicKey(), null);
+        Set<TrustAnchor> anchors = new HashSet<>();
+        anchors.add(anchorWithoutCert);
+
+        PKIXParameters params = new PKIXParameters(anchors);
+        params.setRevocationEnabled(false);
+
+        /* Validate zero-length path with anchor that has no cert */
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(emptyPath, params);
+            fail("Expected CertPathValidatorException for zero-length " +
+                 "path with TrustAnchor that has no certificate");
+        } catch (CertPathValidatorException e) {
+            assertTrue("Exception message should mention no certificate",
+                e.getMessage().contains("no certificate"));
+        }
+    }
 }
 

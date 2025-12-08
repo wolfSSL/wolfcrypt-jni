@@ -319,13 +319,12 @@ public class WolfCryptPKIXRevocationCheckerTest {
         assertEquals(1, responses.size());
         assertTrue(responses.containsKey(testCert));
 
-        /* Returned map should be unmodifiable */
-        try {
-            responses.put(testCert, new byte[] {0x04});
-            fail("Expected UnsupportedOperationException");
-        } catch (UnsupportedOperationException e) {
-            /* expected */
-        }
+        /* Returned map must be mutable for compatibility with JDK
+         * sun.security.validator.PKIXValidator.addResponses() which adds
+         * OCSP responses directly to the map returned by getOcspResponses(). */
+        responses.put(testCert, new byte[] {0x04});
+        assertEquals(1, responses.size());
+        assertArrayEquals(new byte[] {0x04}, responses.get(testCert));
 
         /* Set null should clear to empty map */
         checker.setOcspResponses(null);
