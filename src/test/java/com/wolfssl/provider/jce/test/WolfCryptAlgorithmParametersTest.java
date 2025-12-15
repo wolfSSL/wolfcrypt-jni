@@ -1165,5 +1165,195 @@ public class WolfCryptAlgorithmParametersTest {
             /* expected */
         }
     }
+
+    /**
+     * Test that PSS parameters can be decoded when the hash
+     * AlgorithmIdentifier has absent parameters (no NULL).
+     *
+     * Per RFC 4055 Section 2.1, hash AlgorithmIdentifiers can have either:
+     * - Absent parameters (SHOULD per RFC)
+     * - NULL parameters (for backwards compatibility)
+     *
+     * This test verifies we correctly handle the absent parameters case
+     * which is the preferred encoding per RFC 4055.
+     */
+    @Test
+    public void testRSAPSSParametersDecodingWithAbsentHashParams()
+        throws Exception {
+
+        /*
+         * Manually constructed DER encoding of PSS parameters with SHA-256
+         * hash AlgorithmIdentifier that has ABSENT parameters (no NULL).
+         *
+         * RSASSA-PSS-params ::= SEQUENCE {
+         *     hashAlgorithm      [0] HashAlgorithm DEFAULT sha1,
+         *     maskGenAlgorithm   [1] MaskGenAlgorithm DEFAULT mgf1SHA1,
+         *     saltLength         [2] INTEGER DEFAULT 20,
+         *     trailerField       [3] INTEGER DEFAULT 1
+         * }
+         *
+         * HashAlgorithm ::= AlgorithmIdentifier
+         * AlgorithmIdentifier ::= SEQUENCE {
+         *     algorithm   OBJECT IDENTIFIER,
+         *     parameters  ANY DEFINED BY algorithm OPTIONAL
+         * }
+         *
+         * This encoding has:
+         * - [0] hashAlgorithm: SHA-256 with ABSENT parameters
+         * - [1] maskGenAlgorithm: MGF1 with SHA-256 (also with absent params)
+         * - [2] saltLength: 32
+         *
+         * Structure breakdown:
+         * 30 30                      ; SEQUENCE (48 bytes)
+         *   A0 0D                    ; [0] context tag (13 bytes)
+         *     30 0B                  ; SEQUENCE (11 bytes) - AlgId
+         *       06 09                ; OID (9 bytes)
+         *         60 86 48 01 65 03 04 02 01  ; SHA-256 OID
+         *       -- NOTE: no NULL here (absent parameters)
+         *   A1 1A                    ; [1] context tag (26 bytes)
+         *     30 18                  ; SEQUENCE (24 bytes) - MGF1 AlgId
+         *       06 09                ; OID (9 bytes)
+         *         2A 86 48 86 F7 0D 01 01 08  ; MGF1 OID
+         *       30 0B                ; SEQUENCE (11 bytes) - Hash AlgId
+         *         06 09              ; OID (9 bytes)
+         *           60 86 48 01 65 03 04 02 01  ; SHA-256 OID
+         *         -- NOTE: no NULL here (absent parameters)
+         *   A2 03                    ; [2] context tag (3 bytes)
+         *     02 01 20               ; INTEGER 32 (salt length)
+         */
+        byte[] pssParamsAbsentHashParams = new byte[] {
+            0x30, 0x30,        /* SEQUENCE 48 */
+            (byte)0xA0, 0x0D,  /* [0] 13 */
+            0x30, 0x0B,        /* SEQUENCE 11 */
+            0x06, 0x09,        /* OID 9 */
+            0x60, (byte)0x86, 0x48, 0x01, 0x65,
+            0x03, 0x04, 0x02, 0x01, /* SHA-256 */
+            /* NO NULL - absent parameters */
+            (byte)0xA1, 0x1A,  /* [1] 26 */
+            0x30, 0x18,        /* SEQUENCE 24 */
+            0x06, 0x09,        /* OID 9 */
+            0x2A, (byte)0x86, 0x48, (byte)0x86,
+            (byte)0xF7, 0x0D, 0x01, 0x01, 0x08, /* MGF1 */
+            0x30, 0x0B,        /* SEQUENCE 11 */
+            0x06, 0x09,        /* OID 9 */
+            0x60, (byte)0x86, 0x48, 0x01,
+            0x65, 0x03, 0x04, 0x02, 0x01, /* SHA-256 */
+            /* NO NULL - absent parameters */
+            (byte)0xA2, 0x03,  /* [2] 3 */
+            0x02, 0x01, 0x20   /* INTEGER 32 */
+        };
+
+        /* Should not throw an exception, absent params are valid */
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        params.init(pssParamsAbsentHashParams);
+
+        /* Verify parameters were decoded correctly */
+        PSSParameterSpec spec =
+            params.getParameterSpec(PSSParameterSpec.class);
+        assertNotNull(spec);
+        assertEquals("SHA-256", spec.getDigestAlgorithm());
+        assertEquals("MGF1", spec.getMGFAlgorithm());
+        assertEquals(32, spec.getSaltLength());
+        assertEquals(1, spec.getTrailerField());
+
+        /* Verify MGF1 hash algorithm */
+        assertTrue(
+            spec.getMGFParameters() instanceof MGF1ParameterSpec);
+        MGF1ParameterSpec mgf1Spec =
+            (MGF1ParameterSpec) spec.getMGFParameters();
+        assertEquals("SHA-256", mgf1Spec.getDigestAlgorithm());
+    }
+
+    /**
+     * Test that PSS parameters with both absent and NULL parameters
+     * produce equivalent results.
+     */
+    @Test
+    public void testRSAPSSParametersAbsentVsNullParams()
+        throws Exception {
+
+        /*
+         * PSS params with SHA-256 and NULL parameters in AlgorithmIdentifier.
+         */
+        byte[] pssParamsWithNull = new byte[] {
+            0x30, 0x34,        /* SEQUENCE 52 */
+            (byte)0xA0, 0x0F,  /* [0] 15 */
+            0x30, 0x0D,        /* SEQUENCE 13 */
+            0x06, 0x09,        /* OID 9 */
+            0x60, (byte)0x86, 0x48, 0x01, 0x65,
+            0x03, 0x04, 0x02, 0x01, /* SHA-256 */
+            0x05, 0x00,        /* NULL */
+            (byte)0xA1, 0x1C,  /* [1] 28 */
+            0x30, 0x1A,        /* SEQUENCE 26 */
+            0x06, 0x09,        /* OID 9 */
+            0x2A, (byte)0x86, 0x48, (byte)0x86,
+            (byte)0xF7, 0x0D, 0x01, 0x01, 0x08, /* MGF1 */
+            0x30, 0x0D,        /* SEQUENCE 13 */
+            0x06, 0x09,        /* OID 9 */
+            0x60, (byte)0x86, 0x48, 0x01,
+            0x65, 0x03, 0x04, 0x02, 0x01, /* SHA-256 */
+            0x05, 0x00,        /* NULL */
+            (byte)0xA2, 0x03,  /* [2] 3 */
+            0x02, 0x01, 0x20   /* INTEGER 32 */
+        };
+
+        /*
+         * PSS params with SHA-256 and ABSENT parameters in AlgorithmIdentifier.
+         */
+        byte[] pssParamsAbsent = new byte[] {
+            0x30, 0x30,        /* SEQUENCE 48 */
+            (byte)0xA0, 0x0D,  /* [0] 13 */
+            0x30, 0x0B,        /* SEQUENCE 11 */
+            0x06, 0x09,        /* OID 9 */
+            0x60, (byte)0x86, 0x48, 0x01, 0x65,
+            0x03, 0x04, 0x02, 0x01, /* SHA-256 */
+            /* NO NULL - absent parameters */
+            (byte)0xA1, 0x1A,  /* [1] 26 */
+            0x30, 0x18,        /* SEQUENCE 24 */
+            0x06, 0x09,        /* OID 9 */
+            0x2A, (byte)0x86, 0x48, (byte)0x86,
+            (byte)0xF7, 0x0D, 0x01, 0x01, 0x08, /* MGF1 */
+            0x30, 0x0B,        /* SEQUENCE 11 */
+            0x06, 0x09,        /* OID 9 */
+            0x60, (byte)0x86, 0x48, 0x01,
+            0x65, 0x03, 0x04, 0x02, 0x01, /* SHA-256 */
+            /* NO NULL - absent parameters */
+            (byte)0xA2, 0x03,  /* [2] 3 */
+            0x02, 0x01, 0x20   /* INTEGER 32 */
+        };
+
+        /* Decode both encodings */
+        AlgorithmParameters paramsWithNull =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        paramsWithNull.init(pssParamsWithNull);
+
+        AlgorithmParameters paramsAbsent =
+            AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+        paramsAbsent.init(pssParamsAbsent);
+
+        /* Get specs from both */
+        PSSParameterSpec specWithNull =
+            paramsWithNull.getParameterSpec(PSSParameterSpec.class);
+        PSSParameterSpec specAbsent =
+            paramsAbsent.getParameterSpec(PSSParameterSpec.class);
+
+        /* Both should decode to equivalent parameters */
+        assertEquals(specWithNull.getDigestAlgorithm(),
+            specAbsent.getDigestAlgorithm());
+        assertEquals(specWithNull.getMGFAlgorithm(),
+            specAbsent.getMGFAlgorithm());
+        assertEquals(specWithNull.getSaltLength(),
+            specAbsent.getSaltLength());
+        assertEquals(specWithNull.getTrailerField(),
+            specAbsent.getTrailerField());
+
+        MGF1ParameterSpec mgf1WithNull =
+            (MGF1ParameterSpec) specWithNull.getMGFParameters();
+        MGF1ParameterSpec mgf1Absent =
+            (MGF1ParameterSpec) specAbsent.getMGFParameters();
+        assertEquals(mgf1WithNull.getDigestAlgorithm(),
+            mgf1Absent.getDigestAlgorithm());
+    }
 }
 
