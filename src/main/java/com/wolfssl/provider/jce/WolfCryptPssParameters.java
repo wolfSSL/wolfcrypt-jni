@@ -473,17 +473,16 @@ public class WolfCryptPssParameters extends AlgorithmParametersSpi {
         System.arraycopy(data, idx, oid, 0, oidLen);
         idx += oidLen;
 
-        /* Verify NULL parameters follow OID (per RFC 4055).
-         * Hash AlgorithmIdentifiers have NULL parameters. */
-        if (idx + 2 > data.length) {
-            throw new IOException(
-                "Invalid AlgorithmIdentifier: missing parameters");
-        }
-
-        if (data[idx] != WolfCryptASN1Util.ASN1_NULL ||
-            data[idx + 1] != 0x00) {
-            throw new IOException(
-                "Invalid AlgorithmIdentifier: expected NULL parameters");
+        /* Verify parameters follow OID (per RFC 4055), can be either
+         * NULL or absent */
+        if (idx < data.length) {
+            /* Parameters are present, verify they are NULL */
+            if ((idx + 2 > data.length) ||
+                (data[idx] != WolfCryptASN1Util.ASN1_NULL) ||
+                (data[idx + 1] != 0x00)) {
+                throw new IOException(
+                    "Invalid AlgorithmIdentifier: expected NULL parameters");
+            }
         }
 
         /* Map OID to hash algorithm name */
