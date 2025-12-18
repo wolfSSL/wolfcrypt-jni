@@ -53,6 +53,14 @@ jobs:
               continue
             fi
 
+            # Skip shell scripts in examples/ directory
+            # These often contain long command lines that are better kept on
+            # single lines for readability
+            if [[ "$file" =~ ^examples/.*\.sh$ ]]; then
+              echo "Skipping $file (shell script in examples)"
+              continue
+            fi
+
             echo "Checking: $file"
 
             # Get added lines with actual file line numbers and check their length

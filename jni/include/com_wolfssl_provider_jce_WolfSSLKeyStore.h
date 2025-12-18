@@ -31,6 +31,8 @@ extern "C" {
 #define com_wolfssl_provider_jce_WolfSSLKeyStore_WKS_ENTRY_ID_CERTIFICATE 2L
 #undef com_wolfssl_provider_jce_WolfSSLKeyStore_WKS_ENTRY_ID_SECRET_KEY
 #define com_wolfssl_provider_jce_WolfSSLKeyStore_WKS_ENTRY_ID_SECRET_KEY 3L
+#undef com_wolfssl_provider_jce_WolfSSLKeyStore_KEK_CACHE_DEFAULT_TTL_MS
+#define com_wolfssl_provider_jce_WolfSSLKeyStore_KEK_CACHE_DEFAULT_TTL_MS 300000LL
 /*
  * Class:     com_wolfssl_provider_jce_WolfSSLKeyStore
  * Method:    X509CheckPrivateKey

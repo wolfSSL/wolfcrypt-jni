@@ -51,7 +51,11 @@ import java.security.cert.X509Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateEncodingException;
+import java.security.MessageDigest;
 import java.util.concurrent.ConcurrentHashMap;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.StandardCharsets;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.Mac;
@@ -161,6 +165,25 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
  * That HMAC is loaded together with the entry and verified against the
  * provided password when the entry is retrieved by the user. This is
  * independent of the entire KeyStore integrity HMAC verification.
+ *
+ * KEK Caching for Performance
+ *
+ * Repeated calls to {@code getKey()} can be slow due to PBKDF2 key derivation.
+ * This design is on purpose for security of private keys. An optional KEK
+ * (Key Encryption Key) cache can be enabled to improve performance by caching
+ * derived keys in memory.
+ *
+ * Security properties controlling KEK caching:
+ *
+ * {@code wolfjce.keystore.kekCacheEnabled} - Set to "true" to enable
+ * caching (default: false/disabled)
+ *
+ * {@code wolfjce.keystore.kekCacheTtlSec} - Cache TTL in seconds
+ * (default: 300 = 5 minutes)
+ *
+ * Security Note: Enabling the cache keeps derived keys in memory for the TTL
+ * duration. Only enable in trusted environments where the performance benefit
+ * outweighs the increased memory exposure window.
  */
 public class WolfSSLKeyStore extends KeyStoreSpi {
 
@@ -209,6 +232,17 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
     private static final int WKS_ENTRY_ID_CERTIFICATE = 2;
     private static final int WKS_ENTRY_ID_SECRET_KEY  = 3;
 
+    /* Security property name to enable KEK cache (disabled by default) */
+    private static final String KEK_CACHE_ENABLED_PROPERTY =
+        "wolfjce.keystore.kekCacheEnabled";
+
+    /* Security property name for KEK cache TTL in seconds */
+    private static final String KEK_CACHE_TTL_PROPERTY =
+        "wolfjce.keystore.kekCacheTtlSec";
+
+    /* Default TTL: 5 minutes in milliseconds */
+    private static final long KEK_CACHE_DEFAULT_TTL_MS = 300000;
+
     /**
      * KeyStore entries as ConcurrentHashMap.
      * Entry values are objects of one of the following types:
@@ -223,6 +257,83 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         CERTIFICATE,    /* WKSCertificate */
         SECRET_KEY      /* WKSSecretKey */
     };
+
+    /**
+     * Cache for derived KEK keys, keyed by SHA-256(passwordHash + kdfSalt +
+     * kdfIterations). Used to avoid repeated PBKDF2 derivations for the same
+     * password/salt combination if enabled via Security property.
+     */
+    private final Map<ByteArrayWrapper, KekCacheEntry> kekCache =
+        new ConcurrentHashMap<>();
+
+    /* Lock for cache operations */
+    private final Object cacheLock = new Object();
+
+    /**
+     * KEK cache entry holding derived KEK key and metadata.
+     */
+    private static class KekCacheEntry {
+
+        byte[] derivedKey; /* cached KEK + HMAC key */
+        byte[] passHash;   /* SHA-256 hash of password */
+        long expiryTime;   /* System.currentTimeMillis() when entry expires */
+
+        KekCacheEntry(byte[] derivedKey, byte[] passHash, long expiryTime) {
+            this.derivedKey = derivedKey.clone();
+            this.passHash = passHash.clone();
+            this.expiryTime = expiryTime;
+        }
+
+        synchronized void wipe() {
+            if (derivedKey != null) {
+                Arrays.fill(derivedKey, (byte)0);
+                derivedKey = null;
+            }
+            if (passHash != null) {
+                Arrays.fill(passHash, (byte)0);
+                passHash = null;
+            }
+            expiryTime = 0;
+        }
+    }
+
+    /**
+     * Wrapper for byte arrays to use as kekCache map keys.
+     */
+    private static class ByteArrayWrapper {
+
+        private final byte[] data;
+
+        ByteArrayWrapper(byte[] data) {
+            this.data = data.clone();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+
+            if (this == obj) {
+                return true;
+            }
+            if ((obj == null) || (getClass() != obj.getClass())) {
+                return false;
+            }
+
+            ByteArrayWrapper that = (ByteArrayWrapper)obj;
+            return Arrays.equals(data, that.data);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(data);
+        }
+
+        void wipe() {
+            if (data != null) {
+                Arrays.fill(data, (byte)0);
+            }
+        }
+    }
+
 
     static {
         int iCount = WKS_PBKDF2_DEFAULT_ITERATIONS;
@@ -286,6 +397,39 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
     }
 
     /**
+     * Clear all KEK cache entries.
+     *
+     * This method removes all cached derived keys. Should be called when:
+     *   - KeyStore instance is no longer needed
+     *   - Want to ensure cached keys are removed from memory
+     *   - Security policy requires explicit cache clearing
+     *
+     * The cache will also be cleared automatically when this KeyStore is
+     * garbage collected. But calling this method explicitly provides
+     * deterministic cleanup.
+     *
+     * This method is safe to call multiple times and has no effect
+     * if the cache is already empty.
+     */
+    public void clearCache() {
+        clearKekCache();
+    }
+
+    /**
+     * Cleanup method to wipe KEK cache when KeyStore is garbage collected.
+     */
+    @SuppressWarnings("deprecation")
+    @Override
+    protected void finalize() throws Throwable {
+        try {
+            /* Ensure KEK cache is cleared */
+            clearCache();
+        } finally {
+            super.finalize();
+        }
+    }
+
+    /**
      * Native JNI method that calls wolfSSL_X509_check_private_key()
      * to confirm that the provided X.509 certificate matches the given
      * private key.
@@ -299,6 +443,354 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      */
     private native boolean X509CheckPrivateKey(
         byte[] derCert, byte[] pkcs8PrivKey) throws WolfCryptException;
+
+    /**
+     * Check if KEK caching is enabled via Security property.
+     *
+     * @return true if cache is enabled, false otherwise
+     */
+    private boolean isKekCacheEnabled() {
+
+        String enabled = Security.getProperty(KEK_CACHE_ENABLED_PROPERTY);
+
+        if (enabled != null && enabled.equalsIgnoreCase("true")) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get KEK cache TTL from Security property, convert to ms and return.
+     *
+     * @return TTL in milliseconds
+     */
+    private long getKekCacheTtlMs() {
+
+        long ttlSec;
+        String ttlStr = Security.getProperty(KEK_CACHE_TTL_PROPERTY);
+
+        if (ttlStr != null) {
+            try {
+                ttlSec = Long.parseLong(ttlStr.trim());
+                if (ttlSec > 0) {
+                    /* Convert from sec to ms, checking for overflow */
+                    if (ttlSec > Long.MAX_VALUE / 1000) {
+                        /* Overflow would occur, return Long.MAX_VALUE */
+                        return Long.MAX_VALUE;
+                    }
+                    return ttlSec * 1000;
+                }
+            } catch (NumberFormatException e) {
+                log("error parsing " + KEK_CACHE_TTL_PROPERTY +
+                    " property, using default TTL instead");
+            }
+        }
+
+        return KEK_CACHE_DEFAULT_TTL_MS;
+    }
+
+    /**
+     * Hash password using SHA-256.
+     *
+     * Converts char[] to byte[] without creating an intermediate String.
+     *
+     * @param password password to hash
+     *
+     * @return SHA-256 hash of password
+     *
+     * @throws NoSuchAlgorithmException if SHA-256 not available
+     */
+    private byte[] hashPassword(char[] password)
+        throws NoSuchAlgorithmException {
+
+        byte[] passBytes = null;
+        ByteBuffer byteBuffer = null;
+        CharBuffer charBuffer = null;
+        MessageDigest md = null;
+
+        try {
+            /* Convert char[] to byte[] */
+            charBuffer = CharBuffer.wrap(password);
+            byteBuffer = StandardCharsets.UTF_8.encode(charBuffer);
+
+            passBytes = new byte[byteBuffer.remaining()];
+            byteBuffer.get(passBytes);
+
+            md = MessageDigest.getInstance("SHA-256");
+            return md.digest(passBytes);
+
+        } finally {
+            if (passBytes != null) {
+                Arrays.fill(passBytes, (byte)0);
+            }
+            if (byteBuffer != null && byteBuffer.hasArray()) {
+                Arrays.fill(byteBuffer.array(), (byte)0);
+            }
+        }
+    }
+
+    /**
+     * Generate cache key by hashing: password hash, salt, and iteration count.
+     *
+     * Including iteration count ensures entries with different PBKDF2
+     * iterations have different cache keys, even if they share the same
+     * password and salt.
+     *
+     * @param passwordHash SHA-256 hash of password
+     * @param kdfSalt PBKDF2 salt from the entry
+     * @param kdfIterations PBKDF2 iteration count from the entry
+     *
+     * @return SHA-256 hash to use as cache key
+     *
+     * @throws NoSuchAlgorithmException if SHA-256 not available
+     */
+    private byte[] generateCacheKey(byte[] passwordHash, byte[] kdfSalt,
+        int kdfIterations) throws NoSuchAlgorithmException {
+
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+
+        md.update(passwordHash);
+        md.update(kdfSalt);
+        /* Include iteration count as 4 bytes (big-endian) */
+        md.update((byte)(kdfIterations >> 24));
+        md.update((byte)(kdfIterations >> 16));
+        md.update((byte)(kdfIterations >> 8));
+        md.update((byte)(kdfIterations));
+
+        return md.digest();
+    }
+
+    /**
+     * Retrieve cached derived key for given password, salt, and iterations.
+     *
+     * @param password password used for key derivation
+     * @param kdfSalt PBKDF2 salt from the entry
+     * @param kdfIterations PBKDF2 iteration count from the entry
+     *
+     * @return cached derived key if found and valid, null otherwise
+     */
+    private byte[] getCachedDerivedKey(char[] password, byte[] kdfSalt,
+        int kdfIterations) {
+
+        long now;
+        byte[] passHash = null;
+        byte[] cacheKeyBytes = null;
+        ByteArrayWrapper lookupKey = null;
+        KekCacheEntry entryValue = null;
+
+        /* Return null if caching is disabled */
+        if (!isKekCacheEnabled()) {
+            return null;
+        }
+
+        try {
+            /* Compute password hash and cache key */
+            passHash = hashPassword(password);
+            cacheKeyBytes = generateCacheKey(passHash, kdfSalt, kdfIterations);
+            lookupKey = new ByteArrayWrapper(cacheKeyBytes);
+
+            synchronized (cacheLock) {
+
+                entryValue = kekCache.get(lookupKey);
+                if (entryValue != null) {
+                    /* If cache entry expired, remove and return null */
+                    now = System.currentTimeMillis();
+                    if (now >= entryValue.expiryTime) {
+
+                        /* Wipe both key and value, then remove from cache */
+                        kekCache.computeIfPresent(lookupKey, (key, value) -> {
+                            value.wipe();
+                            key.wipe();
+                            return null; /* Remove entry */
+                        });
+
+                        log("Cache entry expired, removed from cache");
+                        return null;
+                    }
+
+                    /* Verify password hash matches */
+                    if (!MessageDigest.isEqual(passHash, entryValue.passHash)) {
+                        /* Password mismatch - don't use cache */
+                        return null;
+                    }
+
+                    /* Cache hit - return copy of derived key */
+                    log("Using cached PBKDF2 derived key");
+                    return entryValue.derivedKey.clone();
+                }
+            }
+
+            return null;
+
+        } catch (NoSuchAlgorithmException e) {
+            /* If MessageDigest SHA-256 is not available, return null */
+            return null;
+
+        } finally {
+            if (passHash != null) {
+                Arrays.fill(passHash, (byte)0);
+            }
+            if (cacheKeyBytes != null) {
+                Arrays.fill(cacheKeyBytes, (byte)0);
+            }
+            if (lookupKey != null) {
+                lookupKey.wipe();
+            }
+        }
+    }
+
+    /**
+     * Store derived KEK key in cache.
+     *
+     * @param password password used for key derivation
+     * @param kdfSalt PBKDF2 salt from the entry
+     * @param kdfIterations PBKDF2 iteration count from the entry
+     * @param derivedKey derived key to cache (KEK + HMAC key)
+     */
+    private void cacheDerivedKey(char[] password, byte[] kdfSalt,
+        int kdfIterations, byte[] derivedKey) {
+
+        long expiryTime, now, ttl;
+        byte[] passHash = null;
+        byte[] cacheKeyBytes = null;
+        KekCacheEntry entry = null;
+        KekCacheEntry oldEntry = null;
+        ByteArrayWrapper mapKey = null;
+
+        /* Return if cache is disabled */
+        if (!isKekCacheEnabled()) {
+            return;
+        }
+
+        try {
+            /* Compute password hash and cache key */
+            passHash = hashPassword(password);
+            cacheKeyBytes = generateCacheKey(passHash, kdfSalt, kdfIterations);
+
+            /* Calculate expiry time, checking for overflow */
+            now = System.currentTimeMillis();
+            ttl = getKekCacheTtlMs();
+            if (ttl > Long.MAX_VALUE - now) {
+                /* Overflow would occur - set to Long.MAX_VALUE */
+                expiryTime = Long.MAX_VALUE;
+            } else {
+                expiryTime = now + ttl;
+            }
+            entry = new KekCacheEntry(derivedKey, passHash, expiryTime);
+            mapKey = new ByteArrayWrapper(cacheKeyBytes);
+
+            synchronized (cacheLock) {
+                /* Check for old entry, remove/wipe if found */
+                oldEntry = kekCache.get(mapKey);
+                if (oldEntry != null) {
+                    /* Find and wipe old key, then remove entry */
+                    for (Map.Entry<ByteArrayWrapper, KekCacheEntry> mapEntry :
+                        kekCache.entrySet()) {
+                        if (mapEntry.getKey().equals(mapKey)) {
+                            ByteArrayWrapper oldKey = mapEntry.getKey();
+                            kekCache.remove(oldKey);
+                            oldEntry.wipe();
+                            oldKey.wipe();
+                            break;
+                        }
+                    }
+                }
+                /* Insert new entry */
+                kekCache.put(mapKey, entry);
+            }
+
+            log("Cached PBKDF2 derived key");
+
+        } catch (NoSuchAlgorithmException e) {
+            log("Error caching derived key: SHA-256 not available");
+
+        } finally {
+            if (passHash != null) {
+                Arrays.fill(passHash, (byte)0);
+            }
+            if (cacheKeyBytes != null) {
+                Arrays.fill(cacheKeyBytes, (byte)0);
+            }
+        }
+    }
+
+    /**
+     * Remove specific cache entry on HMAC verification failure.
+     *
+     * @param password password used for key derivation
+     * @param kdfSalt PBKDF2 salt from the entry
+     * @param kdfIterations PBKDF2 iteration count from the entry
+     */
+    private void invalidateCacheEntry(char[] password, byte[] kdfSalt,
+        int kdfIterations) {
+
+        byte[] passHash = null;
+        byte[] cacheKeyBytes = null;
+        ByteArrayWrapper lookupKey = null;
+        KekCacheEntry entryValue = null;
+
+        /* Do nothing if caching is disabled */
+        if (!isKekCacheEnabled()) {
+            return;
+        }
+
+        try {
+            /* Compute password hash and cache key */
+            passHash = hashPassword(password);
+            cacheKeyBytes = generateCacheKey(passHash, kdfSalt, kdfIterations);
+            lookupKey = new ByteArrayWrapper(cacheKeyBytes);
+
+            synchronized (cacheLock) {
+                entryValue = kekCache.get(lookupKey);
+
+                if (entryValue != null) {
+                    /* Wipe both key and value, then remove from cache */
+                    kekCache.computeIfPresent(lookupKey, (key, value) -> {
+                        value.wipe();
+                        key.wipe();
+                        return null; /* Remove entry */
+                    });
+
+                    log("Invalidated cache entry due to HMAC failure");
+                }
+            }
+
+        } catch (NoSuchAlgorithmException e) {
+            log("Error invalidating cache entry: SHA-256 not available");
+
+        } finally {
+            if (passHash != null) {
+                Arrays.fill(passHash, (byte)0);
+            }
+            if (cacheKeyBytes != null) {
+                Arrays.fill(cacheKeyBytes, (byte)0);
+            }
+            if (lookupKey != null) {
+                lookupKey.wipe();
+            }
+        }
+    }
+
+    /**
+     * Clear all entries from the KEK cache.
+     */
+    private void clearKekCache() {
+
+        synchronized (cacheLock) {
+            int count = kekCache.size();
+            for (Map.Entry<ByteArrayWrapper, KekCacheEntry> entry :
+                kekCache.entrySet()) {
+                entry.getValue().wipe();
+                entry.getKey().wipe();
+            }
+            kekCache.clear();
+
+            if (count > 0) {
+                log("Cleared KEK cache (" + count + " entries wiped)");
+            }
+        }
+    }
 
     /**
      * Return entry from internal map that matches alias and type.
@@ -650,7 +1142,8 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
         try {
             if (entry instanceof WKSPrivateKey) {
-                plainKey = ((WKSPrivateKey)entry).getDecryptedKey(password);
+                plainKey = ((WKSPrivateKey)entry).getDecryptedKey(
+                    password, this);
 
                 p8Spec = new PKCS8EncodedKeySpec(plainKey);
 
@@ -686,7 +1179,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             else if (entry instanceof WKSSecretKey) {
                 WKSSecretKey sk = (WKSSecretKey)entry;
 
-                plainKey = sk.getDecryptedKey(password);
+                plainKey = sk.getDecryptedKey(password, this);
 
                 sKey = new SecretKeySpec(plainKey, sk.keyAlgo);
             }
@@ -1005,6 +1498,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         byte[] encodedKey = null;
         WKSPrivateKey privKey = null;
         WKSSecretKey secretKey = null;
+        Object existingEntry = null;
 
         if (alias == null) {
             throw new KeyStoreException("Alias cannot be null");
@@ -1019,6 +1513,15 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         }
 
         checkKeyIsSupported(key);
+
+        /* Clear old KEK cache entry if we will overwrite one */
+        existingEntry = entries.get(alias);
+        if (existingEntry != null) {
+            if (existingEntry instanceof WKSPrivateKey ||
+                existingEntry instanceof WKSSecretKey) {
+                clearKekCache();
+            }
+        }
 
         /* PKCS#8 private key (PrivateKey) or raw key bytes (SecretKey) */
         encodedKey = key.getEncoded();
@@ -1135,7 +1638,17 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
     public synchronized void engineDeleteEntry(String alias)
         throws KeyStoreException {
 
+        Object entry = null;
+
         log("deleting entry at alias: " + alias);
+
+        entry = entries.get(alias);
+        if (entry != null) {
+            if (entry instanceof WKSPrivateKey ||
+                entry instanceof WKSSecretKey) {
+                clearKekCache();
+            }
+        }
 
         entries.remove(alias);
     }
@@ -1647,6 +2160,9 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         WKSCertificate certEntry = null;
 
         log("loading KeyStore from InputStream");
+
+        /* Clear any cached KEK entries from previous keystore */
+        clearKekCache();
 
         if (password == null || password.length == 0) {
             havePass = false;
@@ -2264,9 +2780,10 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
          * be stored in this object.
          *
          * @param password password to use for decryption
+         * @param keyStore outer KeyStore instance for cache operations
          */
-        protected synchronized byte[] getDecryptedKey(char[] password)
-            throws UnrecoverableKeyException {
+        protected synchronized byte[] getDecryptedKey(char[] password,
+            WolfSSLKeyStore keyStore) throws UnrecoverableKeyException {
 
             byte[] plain = null;
             byte[] derivedKey = null;
@@ -2274,6 +2791,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             byte[] kek = new byte[WKS_ENC_KEY_LENGTH];
             byte[] hmacKey = new byte[WKS_HMAC_KEY_LENGTH];
             byte[] encoded = null;
+            boolean fromCache = false;
 
             if (password == null || password.length == 0) {
                 throw new UnrecoverableKeyException(
@@ -2281,24 +2799,31 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             }
 
             try {
-                /* Derive key encryption key from password using
-                 * PBKDF2-HMAC-SHA512. Generate a 96 byte key in total, to
-                 * split between 32-byte AES-CBC-256 key and 64-byte
-                 * HMAC-SHA512 key. */
-                derivedKey = deriveKeyFromPassword(password, this.kdfSalt,
-                    this.kdfIterations,
-                    WKS_ENC_KEY_LENGTH + WKS_HMAC_KEY_LENGTH);
+                /* Try to get derived key from cache */
+                derivedKey = keyStore.getCachedDerivedKey(password,
+                    this.kdfSalt, this.kdfIterations);
 
-                if (derivedKey == null) {
-                    throw new KeyStoreException(
-                        "Error deriving key decryption key, got null key");
+                if (derivedKey != null) {
+                    fromCache = true;
+                } else {
+                    /* Cache miss, derive encryption key from password using
+                     * PBKDF2-HMAC-SHA512. Generate a 96 byte key in total,
+                     * to split between 32-byte AES-CBC-256 key and 64-byte
+                     * HMAC-SHA512 key. */
+                    derivedKey = deriveKeyFromPassword(password, this.kdfSalt,
+                        this.kdfIterations,
+                        WKS_ENC_KEY_LENGTH + WKS_HMAC_KEY_LENGTH);
+
+                    if (derivedKey == null) {
+                        throw new KeyStoreException(
+                            "Error deriving key decryption key, got null key");
+                    }
                 }
 
-                /* Split key into decrypt + HMAC keys, erase derivedKey */
+                /* Split key into decrypt + HMAC keys */
                 System.arraycopy(derivedKey, 0, kek, 0, kek.length);
                 System.arraycopy(derivedKey, kek.length, hmacKey, 0,
                     hmacKey.length);
-                Arrays.fill(derivedKey, (byte)0);
 
                 /* Get encoded byte[] of object class variables without HMAC */
                 encoded = getEncoded(false);
@@ -2315,12 +2840,24 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                 }
 
                 /* Verify HMAC first before decrypting key */
-                if(!WolfCrypt.ConstantCompare(hmac, this.hmacSha512)) {
+                if (!WolfCrypt.ConstantCompare(hmac, this.hmacSha512)) {
+                    /* HMAC verification failed */
+                    if (fromCache) {
+                        /* Invalidate the cache entry that gave us wrong key */
+                        keyStore.invalidateCacheEntry(password, this.kdfSalt,
+                            this.kdfIterations);
+                    }
                     throw new KeyStoreException(
                         "HMAC verification failed on WKSPrivateKey, entry " +
-                        "corrupted");
+                        "corrupted or wrong password");
                 } else {
                     log("HMAC verification successful on WKSPrivateKey");
+                }
+
+                /* HMAC verified, cache the derived key */
+                if (!fromCache) {
+                    keyStore.cacheDerivedKey(password, this.kdfSalt,
+                        this.kdfIterations, derivedKey);
                 }
 
                 /* Decrypt encrypted key with KEK */
@@ -2340,6 +2877,9 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             } finally {
                 Arrays.fill(kek, (byte)0);
                 Arrays.fill(hmacKey, (byte)0);
+                if (derivedKey != null) {
+                    Arrays.fill(derivedKey, (byte)0);
+                }
                 if (hmac != null) {
                     Arrays.fill(hmac, (byte)0);
                 }
@@ -2808,9 +3348,10 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
          * be stored in this object.
          *
          * @param password password to use for decryption
+         * @param keyStore outer KeyStore instance for cache operations
          */
-        protected synchronized byte[] getDecryptedKey(char[] password)
-            throws UnrecoverableKeyException {
+        protected synchronized byte[] getDecryptedKey(char[] password,
+            WolfSSLKeyStore keyStore) throws UnrecoverableKeyException {
 
             byte[] plain = null;
             byte[] derivedKey = null;
@@ -2818,6 +3359,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             byte[] kek = new byte[WKS_ENC_KEY_LENGTH];
             byte[] hmacKey = new byte[WKS_HMAC_KEY_LENGTH];
             byte[] encoded = null;
+            boolean fromCache = false;
 
             if (password == null || password.length == 0) {
                 throw new UnrecoverableKeyException(
@@ -2825,23 +3367,31 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             }
 
             try {
-                /* Derive key encryption key from password using
-                 * PBKDF2-HMAC-SHA512. Generate a 96 byte key in total, split
-                 * between 32-byte AES-CBC-256 and 64-byte HMAC-SHA512 key */
-                derivedKey = deriveKeyFromPassword(password, this.kdfSalt,
-                    this.kdfIterations,
-                    WKS_ENC_KEY_LENGTH + WKS_HMAC_KEY_LENGTH);
+                /* Try to get derived key from cache */
+                derivedKey = keyStore.getCachedDerivedKey(password,
+                    this.kdfSalt, this.kdfIterations);
 
-                if (derivedKey == null) {
-                    throw new KeyStoreException(
-                        "Error deriving key decryption key, got null key");
+                if (derivedKey != null) {
+                    fromCache = true;
+                } else {
+                    /* Cache miss, derive encryption key from password using
+                     * PBKDF2-HMAC-SHA512. Generate a 96 byte key in total,
+                     * split between 32-byte AES-CBC-256 and 64-byte
+                     * HMAC-SHA512 key. */
+                    derivedKey = deriveKeyFromPassword(password, this.kdfSalt,
+                        this.kdfIterations,
+                        WKS_ENC_KEY_LENGTH + WKS_HMAC_KEY_LENGTH);
+
+                    if (derivedKey == null) {
+                        throw new KeyStoreException(
+                            "Error deriving key decryption key, got null key");
+                    }
                 }
 
-                /* Split key into decrypt + HMAC keys, erase derivedKey */
+                /* Split key into decrypt + HMAC keys */
                 System.arraycopy(derivedKey, 0, kek, 0, kek.length);
                 System.arraycopy(derivedKey, kek.length, hmacKey, 0,
                     hmacKey.length);
-                Arrays.fill(derivedKey, (byte)0);
 
                 /* Get encoded byte[] of object class variables without HMAC */
                 encoded = getEncoded(false);
@@ -2859,11 +3409,22 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
                 /* Verify HMAC first before decrypting key */
                 if (!WolfCrypt.ConstantCompare(hmac, this.hmacSha512)) {
+                    if (fromCache) {
+                        /* Invalidate the cache entry that gave us wrong key */
+                        keyStore.invalidateCacheEntry(password, this.kdfSalt,
+                            this.kdfIterations);
+                    }
                     throw new KeyStoreException(
                         "HMAC verification failed on WKSSecretKey, entry " +
-                        "corrupted");
+                        "corrupted or wrong password");
                 } else {
                     log("HMAC verification successful on WKSSecretKey");
+                }
+
+                /* HMAC verified - now safe to cache the derived key */
+                if (!fromCache) {
+                    keyStore.cacheDerivedKey(password, this.kdfSalt,
+                        this.kdfIterations, derivedKey);
                 }
 
                 /* Decrypt encrypted key with KEK */
@@ -2883,6 +3444,9 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             } finally {
                 Arrays.fill(kek, (byte)0);
                 Arrays.fill(hmacKey, (byte)0);
+                if (derivedKey != null) {
+                    Arrays.fill(derivedKey, (byte)0);
+                }
                 if (hmac != null) {
                     Arrays.fill(hmac, (byte)0);
                 }
