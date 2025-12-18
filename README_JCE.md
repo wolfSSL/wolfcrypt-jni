@@ -36,6 +36,8 @@ file for JCE provider customization:
 | --- | --- | --- | --- |
 | wolfjce.wks.iterationCount | 210,000 | Numeric | PBKDF2 iteration count (10,000 minimum) |
 | wolfjce.wks.maxCertChainLength | 100 | Integer | Max cert chain length |
+| wolfjce.keystore.kekCacheEnabled | false | true | Enable KEK caching in WKS KeyStore for performance |
+| wolfjce.keystore.kekCacheTtlSec | 300 | Integer | KEK cache TTL in seconds (1 second minimum) |
 | wolfjce.mapJKStoWKS | UNSET | true | Register fake JKS KeyStore service mapped to WKS |
 | wolfjce.mapPKCS12toWKS | UNSET | true | Register fake PKCS12 KeyStore service mapped to WKS |
 
@@ -70,6 +72,32 @@ will need to be refreshed / reloaded, by doing:
 WolfCryptProvider prov = (WolfCryptProvider)Security.getProvider("wolfJCE");
 prov.refreshServices();
 ```
+
+**wolfjce.keystore.kekCacheEnabled** - this Security property enables KEK (Key
+Encryption Key) caching in the WKS KeyStore to improve performance when making
+repeated `getKey()` calls. When disabled (default), each `getKey()` call
+performs full PBKDF2 key derivation. When enabled, derived keys are cached in
+memory with configurable TTL. The cache is automatically cleared on entry
+deletion, overwrite, KeyStore reload, and TTL expiration. For manual cleanup,
+call `clearCache()` on the KeyStore instance:
+
+```
+/* Enable KEK caching with 10 minute TTL */
+Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
+Security.setProperty("wolfjce.keystore.kekCacheTtlSec", "600");
+
+KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+/* ... use KeyStore ... */
+
+/* Explicitly clear cached keys when done (optional) */
+if (store instanceof com.wolfssl.provider.jce.WolfSSLKeyStore) {
+    ((com.wolfssl.provider.jce.WolfSSLKeyStore) store).clearCache();
+}
+```
+
+Security Considerations: Cached derived keys remain in memory for the TTL
+duration. Only enable in trusted environments where performance benefits
+outweigh increased memory exposure.
 
 #### System Property Support
 
