@@ -99,9 +99,14 @@ public class WolfSSLKeyStoreTest {
      * Example private key files:
      *   server-keyPkcs8.der, matches to server-cert.der
      *   ecc-keyPkcs8.der, matches to server-ecc.der
+     *   rsapss/server-rsapss-priv.der, matches to rsapss/server-rsapss.der
      */
     protected static String serverPkcs8Der   = null;
     protected static String eccPkcs8Der      = null;
+    protected static String rsaPssPkcs8Der   = null;
+
+    /* RSA-PSS certificate file */
+    protected static String serverRsaPssDer  = null;
 
     /* RSA-based cert chain with intermediates:
      * server/peer: server-int-cert.der
@@ -124,8 +129,12 @@ public class WolfSSLKeyStoreTest {
     /* Java PrivateKey / Certificate objects containing example key/certs */
     private static PrivateKey serverKeyRsa = null;    /* server-keyPkcs8.der */
     private static PrivateKey serverKeyEcc = null;    /* ecc-keyPkcs8.der */
+    /* server-rsapss-priv.der */
+    private static PrivateKey serverKeyRsaPss = null;
     private static Certificate serverCertRsa = null;  /* server-cert.der */
     private static Certificate serverCertEcc = null;  /* server-ecc.der */
+    /* server-rsapss.der */
+    private static Certificate serverCertRsaPss = null;
     private static Certificate clientCertRsa = null;  /* client-cert.der */
     private static Certificate clientCertEcc = null;  /* client-ecc-cert.der */
     private static Certificate[] rsaServerChain = null; /* RSA chain */
@@ -282,6 +291,14 @@ public class WolfSSLKeyStoreTest {
         serverKeyEcc = derFileToPrivateKey(eccPkcs8Der, "EC");
         assertNotNull(serverKeyEcc);
 
+        /* Create PrivateKey from server RSA-PSS private key DER,
+         * may be null if RSASSA-PSS not supported or file not present */
+        try {
+            serverKeyRsaPss = derFileToPrivateKey(rsaPssPkcs8Der, "RSASSA-PSS");
+        } catch (Exception e) {
+            serverKeyRsaPss = null;
+        }
+
         /* Create Certificate from server RSA cert */
         serverCertRsa = certFileToCertificate(serverCertDer);
         assertNotNull(serverCertRsa);
@@ -289,6 +306,14 @@ public class WolfSSLKeyStoreTest {
         /* Create Certificate from server ECC cert */
         serverCertEcc = certFileToCertificate(serverEccDer);
         assertNotNull(serverCertEcc);
+
+        /* Create Certificate from server RSA-PSS cert,
+         * may be null if cert file not present */
+        try {
+            serverCertRsaPss = certFileToCertificate(serverRsaPssDer);
+        } catch (FileNotFoundException e) {
+            serverCertRsaPss = null;
+        }
 
         /* Create Certificate from client RSA cert */
         clientCertRsa = certFileToCertificate(clientCertDer);
@@ -364,6 +389,10 @@ public class WolfSSLKeyStoreTest {
             certPre.concat("examples/certs/server-keyPkcs8.der");
         eccPkcs8Der =
             certPre.concat("examples/certs/ecc-keyPkcs8.der");
+        rsaPssPkcs8Der =
+            certPre.concat("examples/certs/rsapss/server-rsapss-priv.der");
+        serverRsaPssDer =
+            certPre.concat("examples/certs/rsapss/server-rsapss.der");
 
         intRsaServerCertDer =
             certPre.concat("examples/certs/intermediate/server-int-cert.pem");
@@ -373,7 +402,8 @@ public class WolfSSLKeyStoreTest {
             certPre.concat("examples/certs/intermediate/ca-int2-cert.pem");
 
         intEccServerCertDer =
-            certPre.concat("examples/certs/intermediate/server-int-ecc-cert.der");
+            certPre.concat(
+                "examples/certs/intermediate/server-int-ecc-cert.der");
         intEccInt1CertDer =
             certPre.concat("examples/certs/intermediate/ca-int-ecc-cert.der");
         intEccInt2CertDer =
@@ -2844,6 +2874,62 @@ public class WolfSSLKeyStoreTest {
                     "false");
             }
         }
+    }
+
+    /**
+     * Test that RSASSA-PSS private keys can be stored and retrieved from
+     * a WKS KeyStore.
+     */
+    @Test
+    public void testRsaPssKeyStoreAndRetrieve()
+        throws Exception {
+
+        KeyStore store = null;
+        PrivateKey keyOut = null;
+
+        /* Skip if RSA-PSS key/cert not loaded (not available) */
+        Assume.assumeTrue("RSA-PSS key not available",
+            serverKeyRsaPss != null);
+        Assume.assumeTrue("RSA-PSS cert not available",
+            serverCertRsaPss != null);
+
+        /* Verify key algorithm is RSASSA-PSS */
+        assertEquals("RSASSA-PSS", serverKeyRsaPss.getAlgorithm());
+
+        /* Store PSS key and cert in keystore */
+        store = KeyStore.getInstance(storeType, storeProvider);
+        store.load(null, storePass.toCharArray());
+        store.setKeyEntry("pssKey", serverKeyRsaPss,
+            storePass.toCharArray(),
+            new Certificate[] { serverCertRsaPss });
+        assertEquals(1, store.size());
+
+        /* Save keystore to byte array */
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        store.store(baos, storePass.toCharArray());
+        byte[] storeBytes = baos.toByteArray();
+        assertTrue("Stored keystore should have content",
+            storeBytes.length > 0);
+
+        /* Reload keystore from byte array */
+        store = KeyStore.getInstance(storeType, storeProvider);
+        store.load(new ByteArrayInputStream(storeBytes),
+            storePass.toCharArray());
+        assertEquals(1, store.size());
+
+        /* Retrieve the PSS private key */
+        keyOut = (PrivateKey)store.getKey("pssKey", storePass.toCharArray());
+        assertNotNull("Retrieved PSS key should not be null", keyOut);
+        assertEquals("Retrieved key algorithm should be RSASSA-PSS",
+            "RSASSA-PSS", keyOut.getAlgorithm());
+
+        /* Verify the retrieved key matches the original */
+        assertArrayEquals("Retrieved key encoding should match original",
+            serverKeyRsaPss.getEncoded(), keyOut.getEncoded());
+
+        /* Verify the certificate can also be retrieved */
+        Certificate certOut = store.getCertificate("pssKey");
+        assertNotNull("Retrieved PSS cert should not be null", certOut);
     }
 }
 
