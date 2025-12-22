@@ -70,6 +70,8 @@ certList=(
     "intermediate/server-int-cert.der"
     "intermediate/server-int-ecc-cert.pem"
     "intermediate/server-int-ecc-cert.der"
+    "rsapss/server-rsapss.der"
+    "rsapss/server-rsapss-priv.der"
 )
 
 for i in ${!certList[@]};

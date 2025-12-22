@@ -1156,12 +1156,14 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
                 if (algoId == Asn.RSAk) {
                     keyFact = KeyFactory.getInstance("RSA");
+                } else if (algoId == Asn.RSAPSSk) {
+                    keyFact = KeyFactory.getInstance("RSASSA-PSS");
                 } else if (algoId == Asn.ECDSAk) {
                     keyFact = KeyFactory.getInstance("EC");
                 } else {
                     throw new NoSuchAlgorithmException(
-                        "Only RSA and EC private key encoding " +
-                        "supported: " + algoId);
+                        "Only RSA, RSASSA-PSS, and EC private key " +
+                        "encoding supported: " + algoId);
                 }
 
                 try {
