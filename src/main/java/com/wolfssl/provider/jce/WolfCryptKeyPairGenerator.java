@@ -53,6 +53,7 @@ import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Rng;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 
 /**
@@ -426,6 +427,10 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         KeySpec privSpec = null;
         KeySpec pubSpec  = null;
 
+        final int MAX_KEYGEN_RETRIES = 5;
+        int retryCount = 0;
+        WolfCryptException lastPrimeGenException = null;
+
 
         switch (this.type) {
 
@@ -440,58 +445,92 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 RSAPrivateKey rsaPriv = null;
                 RSAPublicKey  rsaPub  = null;
 
-                Rsa rsa = new Rsa();
+                /* Retry loop for RSA key generation. Native wolfCrypt may
+                 * return PRIME_GEN_E (-251) if it fails to find a suitable
+                 * prime after the NIST FIPS 186-4 mandated number of attempts.
+                 * We retry a few times in that error case before giving up. */
+                while (retryCount < MAX_KEYGEN_RETRIES) {
+                    Rsa rsa = new Rsa();
 
-                try {
-                    synchronized (rngLock) {
-                        rsa.makeKey(this.keysize, this.publicExponent,
-                            this.rng);
+                    try {
+                        synchronized (rngLock) {
+                            rsa.makeKey(this.keysize, this.publicExponent,
+                                this.rng);
+                        }
+
+                        /* private key */
+                        privDer = rsa.privateKeyEncodePKCS8();
+                        if (privDer == null) {
+                            throw new RuntimeException(
+                                "Unable to get RSA private key DER");
+                        }
+                        privSpec = new PKCS8EncodedKeySpec(privDer);
+
+                        /* public key */
+                        pubDer = rsa.exportPublicDer();
+                        if (pubDer == null) {
+                            throw new RuntimeException(
+                                "Unable to get RSA public key DER");
+                        }
+                        pubSpec = new X509EncodedKeySpec(pubDer);
+
+                        KeyFactory kf = KeyFactory.getInstance("RSA");
+                        rsaPriv = (RSAPrivateKey)kf.generatePrivate(privSpec);
+                        rsaPub  = (RSAPublicKey)kf.generatePublic(pubSpec);
+
+                        if (this.type == KeyType.WC_RSA_PSS) {
+                            /* Get key specs to generate PSS keys */
+                            RSAPrivateCrtKeySpec privCrtSpec =
+                                kf.getKeySpec(rsaPriv,
+                                    RSAPrivateCrtKeySpec.class);
+                            RSAPublicKeySpec pubKeySpec =
+                                kf.getKeySpec(rsaPub, RSAPublicKeySpec.class);
+
+                            /* Use RSASSA-PSS KeyFactory */
+                            KeyFactory pssKf =
+                                KeyFactory.getInstance("RSASSA-PSS");
+                            rsaPriv = (RSAPrivateKey)pssKf
+                                .generatePrivate(privCrtSpec);
+                            rsaPub  = (RSAPublicKey)pssKf
+                                .generatePublic(pubKeySpec);
+                        }
+
+                        pair = new KeyPair(rsaPub, rsaPriv);
+
+                        /* Success, exit retry loop */
+                        break;
+
+                    } catch (WolfCryptException e) {
+                        /* Only retry on PRIME_GEN_E error */
+                        if (e.getError() == WolfCryptError.PRIME_GEN_E) {
+                            lastPrimeGenException = e;
+                            retryCount++;
+                            log("RSA key generation failed to find prime, " +
+                                "retry " + retryCount + "/" +
+                                MAX_KEYGEN_RETRIES);
+                        }
+                        else {
+                            throw new RuntimeException(e);
+                        }
+
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+
+                    } finally {
+                        /* Always clean up */
+                        zeroArray(privDer);
+                        zeroArray(pubDer);
+                        rsa.releaseNativeStruct();
                     }
+                }
 
-                    /* private key */
-                    privDer = rsa.privateKeyEncodePKCS8();
-                    if (privDer == null) {
-                        throw new RuntimeException(
-                            "Unable to get RSA private key DER");
-                    }
-                    privSpec = new PKCS8EncodedKeySpec(privDer);
-
-                    /* public key */
-                    pubDer = rsa.exportPublicDer();
-                    if (pubDer == null) {
-                        throw new RuntimeException(
-                            "Unable to get RSA public key DER");
-                    }
-                    pubSpec = new X509EncodedKeySpec(pubDer);
-
-                    zeroArray(privDer);
-                    zeroArray(pubDer);
-                    rsa.releaseNativeStruct();
-
-                    KeyFactory kf = KeyFactory.getInstance("RSA");
-                    rsaPriv = (RSAPrivateKey)kf.generatePrivate(privSpec);
-                    rsaPub  = (RSAPublicKey)kf.generatePublic(pubSpec);
-
-                    if (this.type == KeyType.WC_RSA_PSS) {
-                        /* Get key specs to generate PSS keys */
-                        RSAPrivateCrtKeySpec privCrtSpec =
-                            kf.getKeySpec(rsaPriv, RSAPrivateCrtKeySpec.class);
-                        RSAPublicKeySpec pubKeySpec =
-                            kf.getKeySpec(rsaPub, RSAPublicKeySpec.class);
-
-                        /* Use RSASSA-PSS KeyFactory */
-                        KeyFactory pssKf =
-                            KeyFactory.getInstance("RSASSA-PSS");
-                        rsaPriv = (RSAPrivateKey)pssKf
-                            .generatePrivate(privCrtSpec);
-                        rsaPub  = (RSAPublicKey)pssKf
-                            .generatePublic(pubKeySpec);
-                    }
-
-                    pair = new KeyPair(rsaPub, rsaPriv);
-
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+                /* Check if we exhausted all retries */
+                if (pair == null) {
+                    throw new RuntimeException(
+                        "RSA key generation failed after " +
+                        MAX_KEYGEN_RETRIES +
+                        " attempts due to prime generation failure",
+                        lastPrimeGenException);
                 }
 
                 log("generated " +
