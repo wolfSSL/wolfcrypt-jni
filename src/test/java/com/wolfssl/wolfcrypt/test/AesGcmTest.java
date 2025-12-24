@@ -247,6 +247,7 @@ public class AesGcmTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void deprecatedConstructorThrows() {
         try {
             new AesGcm(new byte[] {0x0});

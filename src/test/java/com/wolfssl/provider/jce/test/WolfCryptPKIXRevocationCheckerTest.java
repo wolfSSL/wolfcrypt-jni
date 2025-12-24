@@ -143,8 +143,7 @@ public class WolfCryptPKIXRevocationCheckerTest {
         assertNotNull(checker);
 
         /* Clone the checker */
-        PKIXRevocationChecker cloned = (PKIXRevocationChecker)
-            checker.clone();
+        PKIXRevocationChecker cloned = checker.clone();
         assertNotNull(cloned);
         assertTrue(cloned instanceof WolfCryptPKIXRevocationChecker);
 
@@ -599,8 +598,7 @@ public class WolfCryptPKIXRevocationCheckerTest {
         checker.setOcspResponder(responder);
 
         /* Clone */
-        PKIXRevocationChecker cloned = (PKIXRevocationChecker)
-            checker.clone();
+        PKIXRevocationChecker cloned = checker.clone();
 
         /* Verify cloned has same options */
         Set<Option> clonedOptions = cloned.getOptions();

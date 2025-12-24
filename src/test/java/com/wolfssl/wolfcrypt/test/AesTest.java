@@ -75,6 +75,7 @@ public class AesTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void deprecatedConstructorThrows() {
         try {
             new Aes(null, null, Aes.ENCRYPT_MODE);

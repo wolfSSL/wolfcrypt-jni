@@ -85,6 +85,7 @@ public class RsaTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void deprecatedConstructorThrows() {
         try {
             new Rsa( new byte[] {0x00} );
