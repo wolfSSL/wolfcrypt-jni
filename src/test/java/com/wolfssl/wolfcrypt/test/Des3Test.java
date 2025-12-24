@@ -71,6 +71,7 @@ public class Des3Test {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void deprecatedConstructorThrows() {
         try {
             new Des3(null, null, Des3.ENCRYPT_MODE);

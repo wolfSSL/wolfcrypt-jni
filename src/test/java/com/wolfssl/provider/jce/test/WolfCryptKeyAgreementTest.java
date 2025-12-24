@@ -222,7 +222,7 @@ public class WolfCryptKeyAgreementTest {
         }
 
         DHParameterSpec dhParams =
-            (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
+            params.getParameterSpec(DHParameterSpec.class);
 
         /* initialize key pair generator */
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
@@ -295,7 +295,7 @@ public class WolfCryptKeyAgreementTest {
         }
 
         DHParameterSpec dhParams =
-            (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
+            params.getParameterSpec(DHParameterSpec.class);
 
         /* initialize key pair generator */
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
@@ -373,7 +373,7 @@ public class WolfCryptKeyAgreementTest {
         }
 
         DHParameterSpec dhParams =
-            (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
+            params.getParameterSpec(DHParameterSpec.class);
 
         /* initialize key pair generator */
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
@@ -690,8 +690,7 @@ public class WolfCryptKeyAgreementTest {
                         /* Set up KeyPairGenerator */
                         if (currentAlgo.equals("DH")) {
                             DHParameterSpec dhParams =
-                                (DHParameterSpec)params.getParameterSpec(
-                                    DHParameterSpec.class);
+                                params.getParameterSpec(DHParameterSpec.class);
 
                             keyGen = KeyPairGenerator.getInstance(
                                 "DH", "wolfJCE");
@@ -814,7 +813,7 @@ public class WolfCryptKeyAgreementTest {
         }
 
         DHParameterSpec dhParams =
-            (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
+            params.getParameterSpec(DHParameterSpec.class);
 
         /* initialize key pair generator */
         KeyPairGenerator keyGen =
@@ -1043,7 +1042,7 @@ public class WolfCryptKeyAgreementTest {
 
         AlgorithmParameters params = paramGen.generateParameters();
         DHParameterSpec dhParams =
-            (DHParameterSpec)params.getParameterSpec(DHParameterSpec.class);
+            params.getParameterSpec(DHParameterSpec.class);
 
         /* Prime length should be 256 bytes for 2048-bit DH */
         int primeLen = dhParams.getP().toByteArray().length;
@@ -1185,6 +1184,7 @@ public class WolfCryptKeyAgreementTest {
     /**
      * Deserialize a key from byte array
      */
+    @SuppressWarnings("unchecked")
     private <T> T deserializeKey(byte[] bytes)
         throws IOException, ClassNotFoundException {
 
