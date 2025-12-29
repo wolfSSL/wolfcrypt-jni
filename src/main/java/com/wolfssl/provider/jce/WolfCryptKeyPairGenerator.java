@@ -29,6 +29,7 @@ import java.security.InvalidParameterException;
 import java.security.InvalidAlgorithmParameterException;
 
 import java.security.SecureRandom;
+import java.security.NoSuchAlgorithmException;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.KeyFactory;
 import java.security.spec.KeySpec;
@@ -479,20 +480,29 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                         rsaPub  = (RSAPublicKey)kf.generatePublic(pubSpec);
 
                         if (this.type == KeyType.WC_RSA_PSS) {
-                            /* Get key specs to generate PSS keys */
-                            RSAPrivateCrtKeySpec privCrtSpec =
-                                kf.getKeySpec(rsaPriv,
-                                    RSAPrivateCrtKeySpec.class);
-                            RSAPublicKeySpec pubKeySpec =
-                                kf.getKeySpec(rsaPub, RSAPublicKeySpec.class);
+                            /* Try to use RSASSA-PSS KeyFactory if available.
+                             * Not all platforms support it (e.g. Android). */
+                            try {
+                                /* Get key specs to generate PSS keys */
+                                RSAPrivateCrtKeySpec privCrtSpec =
+                                    kf.getKeySpec(rsaPriv,
+                                        RSAPrivateCrtKeySpec.class);
+                                RSAPublicKeySpec pubKeySpec =
+                                    kf.getKeySpec(rsaPub,
+                                        RSAPublicKeySpec.class);
 
-                            /* Use RSASSA-PSS KeyFactory */
-                            KeyFactory pssKf =
-                                KeyFactory.getInstance("RSASSA-PSS");
-                            rsaPriv = (RSAPrivateKey)pssKf
-                                .generatePrivate(privCrtSpec);
-                            rsaPub  = (RSAPublicKey)pssKf
-                                .generatePublic(pubKeySpec);
+                                /* Use RSASSA-PSS KeyFactory */
+                                KeyFactory pssKf =
+                                    KeyFactory.getInstance("RSASSA-PSS");
+                                rsaPriv = (RSAPrivateKey)pssKf
+                                    .generatePrivate(privCrtSpec);
+                                rsaPub  = (RSAPublicKey)pssKf
+                                    .generatePublic(pubKeySpec);
+                            } catch (NoSuchAlgorithmException e) {
+                                /* RSASSA-PSS KeyFactory not available on this
+                                 * platform, use regular RSA keys which are
+                                 * still valid for PSS operations */
+                            }
                         }
 
                         pair = new KeyPair(rsaPub, rsaPriv);

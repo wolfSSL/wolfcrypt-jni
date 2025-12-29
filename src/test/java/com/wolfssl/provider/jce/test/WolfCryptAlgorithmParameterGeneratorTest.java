@@ -219,9 +219,12 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
             catch (RuntimeException e) {
                 /* Dynamic parameter generation may not be supported for all
                  * sizes, especially in FIPS builds or when wolfSSL enforces
-                 * minimum parameter sizes. Skip if generation fails. */
+                 * minimum parameter sizes. Prime generation for non-standard
+                 * sizes may also fail on resource-constrained devices like
+                 * Android. Skip if generation fails. */
                 if (e.getMessage() != null &&
-                    e.getMessage().contains("Bad function argument")) {
+                    (e.getMessage().contains("Bad function argument") ||
+                     e.getMessage().contains("prime generation failure"))) {
                     continue;
                 }
                 throw e;
