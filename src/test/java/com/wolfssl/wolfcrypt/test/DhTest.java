@@ -75,6 +75,9 @@ public class DhTest {
 
     @Test
     public void sharedSecretShouldMatch() {
+        /* This test uses 1024-bit DH parameters. Some platforms (eg Android)
+         * may have wolfSSL compiled with minimum key size requirements that
+         * don't allow 1024-bit DH keys. Skip test if key size not supported. */
         byte[] p = Util.h2b("E6969D3D495BE32C7CF180C3BDD4798E91B7818251BB055E"
                 + "2A2064904A79A770FA15A259CBD523A6A6EF09C43048D5A22F971F3C20"
                 + "129B48000E6EDD061CBC053E371D794E5327DF611EBBBE1BAC9B5C6044"
@@ -91,9 +94,18 @@ public class DhTest {
         assertNull(alice.getPublicKey());
         assertNull(bob.getPublicKey());
 
-        synchronized (rngLock) {
-            alice.makeKey(rng);
-            bob.makeKey(rng);
+        try {
+            synchronized (rngLock) {
+                alice.makeKey(rng);
+                bob.makeKey(rng);
+            }
+        } catch (WolfCryptException e) {
+            if (e.getMessage() != null &&
+                e.getMessage().contains("Key size error")) {
+                /* Key size not supported on this platform, skip test */
+                Assume.assumeTrue("DH key size not supported", false);
+            }
+            throw e;
         }
 
         assertNotNull(alice.getPublicKey());
@@ -129,8 +141,17 @@ public class DhTest {
 
         /* Create Alice with full-size DH group */
         Dh alice = new Dh(p, g);
-        synchronized (rngLock) {
-            alice.makeKey(rng);
+        try {
+            synchronized (rngLock) {
+                alice.makeKey(rng);
+            }
+        } catch (WolfCryptException e) {
+            if (e.getMessage() != null &&
+                e.getMessage().contains("Key size error")) {
+                /* Key size not supported on this platform, skip test */
+                Assume.assumeTrue("DH key size not supported", false);
+            }
+            throw e;
         }
 
         /* Create a deliberately small public key (127 bytes). This simulates
@@ -160,6 +181,34 @@ public class DhTest {
     @Test
     public void threadedDhSharedSecretTest() throws InterruptedException {
 
+        final byte[] p = Util.h2b(
+                "E6969D3D495BE32C7CF180C3BDD4798E91B7818251BB055E"
+              + "2A2064904A79A770FA15A259CBD523A6A6EF09C43048D5A22F971F3C20"
+              + "129B48000E6EDD061CBC053E371D794E5327DF611EBBBE1BAC9B5C6044"
+              + "CF023D76E05EEA9BAD991B13A63C974E9EF1839EB5DB125136F7262E56"
+              + "A8871538DFD823C6505085E21F0DD5C86B");
+        final byte[] g = Util.h2b("02");
+
+        /* Test if this key size is supported before starting threads.
+         * Some platforms (eg Android) may have minimum key size requirements
+         * that don't allow 1024-bit DH keys. */
+        Dh testDh = new Dh(p, g);
+        try {
+            synchronized (rngLock) {
+                testDh.makeKey(rng);
+            }
+        } catch (WolfCryptException e) {
+            if (e.getMessage() != null &&
+                e.getMessage().contains("Key size error")) {
+                /* Key size not supported on this platform, skip test */
+                testDh.releaseNativeStruct();
+                Assume.assumeTrue("DH key size not supported", false);
+            }
+            testDh.releaseNativeStruct();
+            throw e;
+        }
+        testDh.releaseNativeStruct();
+
         int numThreads = 10;
         ExecutorService service = Executors.newFixedThreadPool(numThreads);
         final CountDownLatch latch = new CountDownLatch(numThreads);
@@ -173,14 +222,6 @@ public class DhTest {
         final AtomicIntegerArray success = new AtomicIntegerArray(1);
         failures.set(0, 0);
         success.set(0, 0);
-
-        final byte[] p = Util.h2b(
-                "E6969D3D495BE32C7CF180C3BDD4798E91B7818251BB055E"
-              + "2A2064904A79A770FA15A259CBD523A6A6EF09C43048D5A22F971F3C20"
-              + "129B48000E6EDD061CBC053E371D794E5327DF611EBBBE1BAC9B5C6044"
-              + "CF023D76E05EEA9BAD991B13A63C974E9EF1839EB5DB125136F7262E56"
-              + "A8871538DFD823C6505085E21F0DD5C86B");
-        final byte[] g = Util.h2b("02");
 
         /* make sure alice and bob shared secret generation matches when done
          * in parallel over numThreads threads */
