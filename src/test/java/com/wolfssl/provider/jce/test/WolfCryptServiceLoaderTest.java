@@ -22,6 +22,7 @@
 package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -55,12 +56,25 @@ public class WolfCryptServiceLoaderTest {
     }
 
     /**
+     * Check if we are running on Android.
+     * ServiceLoader mechanism does not work on Android.
+     */
+    private static boolean isAndroid() {
+        if (System.getProperty("java.runtime.name").contains("Android")) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Test that WolfCryptProvider can be discovered via ServiceLoader.
      * This verifies that the META-INF/services/java.security.Provider
      * file exists in the JAR and contains the correct provider class name.
      */
     @Test
     public void testProviderDiscoverableViaServiceLoader() {
+        Assume.assumeFalse("Skipping on Android", isAndroid());
+
         ServiceLoader<Provider> serviceLoader =
             ServiceLoader.load(Provider.class);
 
@@ -100,6 +114,8 @@ public class WolfCryptServiceLoaderTest {
      */
     @Test
     public void testServiceLoaderProviderIsFunctional() throws Exception {
+        Assume.assumeFalse("Skipping on Android", isAndroid());
+
         ServiceLoader<Provider> serviceLoader =
             ServiceLoader.load(Provider.class);
 
@@ -140,6 +156,8 @@ public class WolfCryptServiceLoaderTest {
      */
     @Test
     public void testServiceLoaderProviderMatchesDirectInstance() {
+        Assume.assumeFalse("Skipping on Android", isAndroid());
+
         ServiceLoader<Provider> serviceLoader =
             ServiceLoader.load(Provider.class);
 

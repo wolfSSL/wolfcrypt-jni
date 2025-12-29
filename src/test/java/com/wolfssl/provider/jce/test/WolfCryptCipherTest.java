@@ -166,10 +166,22 @@ public class WolfCryptCipherTest {
         expectedBlockSizes.put("RSA/ECB/PKCS1Padding", 0);
 
         /* try to set up interop provider, if available */
-        /* NOTE: add other platform providers here if needed */
         p = Security.getProvider("SunJCE");
         if (p != null) {
             interopProvider = "SunJCE";
+        }
+        else {
+            /* Try Android providers if SunJCE not available */
+            p = Security.getProvider("AndroidOpenSSL");
+            if (p != null) {
+                interopProvider = "AndroidOpenSSL";
+            }
+            else {
+                p = Security.getProvider("BC");
+                if (p != null) {
+                    interopProvider = "BC";
+                }
+            }
         }
 
         /* Generate RSA key pair once up front to reduce test execution time. */
@@ -2345,6 +2357,12 @@ public class WolfCryptCipherTest {
             byte[] vIn  = aesGcmVectors[i].getInput();
             byte[] vKey = aesGcmVectors[i].getKey();
             byte[] vIV  = aesGcmVectors[i].getIV();
+
+            /* Android's Conscrypt provider only supports 12-byte IVs for
+             * AES-GCM. Skip vectors with non-standard IV lengths. */
+            if (interopProvider.equals("AndroidOpenSSL") && vIV.length != 12) {
+                continue;
+            }
             byte[] vTag = aesGcmVectors[i].getTag();
             byte[] vAAD = aesGcmVectors[i].getAAD();
 
@@ -4522,8 +4540,21 @@ public class WolfCryptCipherTest {
             return;
         }
 
+        if (interopProvider == null) {
+            /* no interop provider available, skip test */
+            return;
+        }
+
         Cipher ciphA = Cipher.getInstance(algo, jceProvider);
-        Cipher ciphB = Cipher.getInstance(algo, interopProvider);
+        Cipher ciphB = null;
+
+        try {
+            ciphB = Cipher.getInstance(algo, interopProvider);
+        } catch (NoSuchAlgorithmException e) {
+            /* interopProvider does not support this algorithm (eg RSA on
+             * AndroidOpenSSL), skip interop test */
+            return;
+        }
 
         Provider prov = ciphB.getProvider();
         if (prov.equals("wolfJCE")) {
