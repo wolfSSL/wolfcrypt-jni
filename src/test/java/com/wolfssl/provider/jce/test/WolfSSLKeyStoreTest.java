@@ -445,14 +445,11 @@ public class WolfSSLKeyStoreTest {
         caServerEcc256WKS =
             certPre.concat("examples/certs/ca-server-ecc-256.wks");
 
-        /* Test if file exists, if not might be running on Android */
+        /* Test if file exists. Skip tests gracefully if cert files not
+         * available (eg running on Android). */
         File f = new File(serverCertDer);
-        if (!f.exists()) {
-            /* No known file paths, throw exception */
-            System.out.println("Could not find example cert file " +
-                f.getAbsolutePath());
-            throw new Exception("Unable to find example cert files for test");
-        }
+        Assume.assumeTrue("Test cert files not available: " + serverCertDer,
+            f.exists());
 
         /* Create PrivateKey / Certificate objects from files */
         createTestObjects();

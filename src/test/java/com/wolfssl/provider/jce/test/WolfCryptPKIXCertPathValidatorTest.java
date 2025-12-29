@@ -22,6 +22,7 @@
 package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
@@ -188,14 +189,11 @@ public class WolfCryptPKIXCertPathValidatorTest {
         crlDer =
             certPre.concat("examples/certs/crl/crl.der");
 
-        /* Test if file exists, if not might be running on Android */
+        /* Test if file exists, if not might be running on Android.
+         * Skip tests gracefully if cert files not available. */
         File f = new File(jksCaServerRSA2048);
-        if (!f.exists()) {
-            /* No known file paths, throw exception */
-            System.out.println("Could not find example JKS file " +
-                f.getAbsolutePath());
-            throw new Exception("Unable to find example JKS files for test");
-        }
+        Assume.assumeTrue("Test cert files not available: " + jksCaServerRSA2048,
+            f.exists());
     }
 
     /**

@@ -101,13 +101,11 @@ public class WolfCryptPKIXRevocationCheckerTest {
         serverCertDer =
             certPre.concat("examples/certs/server-cert.der");
 
-        /* Test if file exists */
+        /* Test if file exists. Skip tests gracefully if cert files not
+         * available (eg running on Android). */
         File f = new File(caCertDer);
-        if (!f.exists()) {
-            System.out.println("Could not find example cert file " +
-                f.getAbsolutePath());
-            throw new Exception("Unable to find example cert files for test");
-        }
+        Assume.assumeTrue("Test cert files not available: " + caCertDer,
+            f.exists());
     }
 
     @BeforeClass
