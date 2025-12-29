@@ -85,13 +85,10 @@ public class WolfSSLCertManagerOCSPTest {
         serverEccDer =
             certPre.concat("examples/certs/server-ecc.der");
 
-        /* Test if file exists */
+        /* Test if file exists, skip test if not available (eg: Android) */
         File f = new File(caCertDer);
-        if (!f.exists()) {
-            System.out.println("Could not find example cert file " +
-                f.getAbsolutePath());
-            throw new Exception("Unable to find example cert files for test");
-        }
+        Assume.assumeTrue("Test cert files not available: " + caCertDer,
+            f.exists());
     }
 
     @BeforeClass
