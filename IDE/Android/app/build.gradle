@@ -12,6 +12,7 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments notClass: 'com.wolfssl.wolfcrypt.test.WolfCryptTestSuite,com.wolfssl.provider.jce.test.WolfJCETestSuite,com.wolfssl.wolfcrypt.test.fips.WolfCryptFipsTestSuite'
         externalNativeBuild {
             cmake {
                 cppFlags ""
