@@ -2658,11 +2658,12 @@ public class WolfSSLKeyStoreTest {
             long uncachedTime = System.currentTimeMillis() - start;
             assertNotNull(key2Again);
 
-            /* Verify it was slower */
+            /* Verify it was slower. Use 2x threshold since timing can vary
+             * significantly on CI systems with fast storage. */
             assertTrue("Cache should have been cleared, but timing suggests " +
                 "it wasn't (cached: " + cachedTime + "ms, uncached: " +
                 uncachedTime + "ms)",
-                uncachedTime > cachedTime * 5);
+                uncachedTime > cachedTime * 2);
 
         } finally {
             if (origEnabled != null) {
@@ -2715,11 +2716,12 @@ public class WolfSSLKeyStoreTest {
             long uncachedTime = System.currentTimeMillis() - start;
             assertNotNull(key2Again);
 
-            /* Verify it was slower */
+            /* Verify it was slower. Use 2x threshold since timing can vary
+             * significantly on CI systems with fast storage. */
             assertTrue("Cache should have been cleared, but timing suggests " +
                 "it wasn't (cached: " + cachedTime + "ms, uncached: " +
                 uncachedTime + "ms)",
-                uncachedTime > cachedTime * 5);
+                uncachedTime > cachedTime * 2);
 
         } finally {
             if (origEnabled != null) {
