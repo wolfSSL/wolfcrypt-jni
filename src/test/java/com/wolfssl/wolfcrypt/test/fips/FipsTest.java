@@ -23,12 +23,34 @@ package com.wolfssl.wolfcrypt.test.fips;
 
 import org.junit.Assume;
 import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.runners.model.Statement;
+import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Fips;
 
 public class FipsTest {
+
+    /* Rule to check if FIPS is enabled, skips tests if not.
+     * Inherited by all FIPS test classes that extend FipsTest. */
+    @Rule(order = Integer.MIN_VALUE + 2)
+    public TestRule fipsEnabledRule = new TestRule() {
+        @Override
+        public Statement apply(final Statement base,
+                               Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    Assume.assumeTrue("FIPS not enabled", Fips.enabled);
+                    base.evaluate();
+                }
+            };
+        }
+    };
+
     @BeforeClass
     public static void checkAvailability() {
-        Assume.assumeTrue(Fips.enabled);
+        System.out.println("JNI FIPS Tests");
     }
 }

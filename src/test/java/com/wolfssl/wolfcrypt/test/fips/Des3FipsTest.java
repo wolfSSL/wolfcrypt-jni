@@ -32,6 +32,7 @@ import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.WolfCrypt;
@@ -53,28 +54,34 @@ public class Des3FipsTest extends FipsTest {
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
+    /* Rule to check if DES3 FIPS is available, skips tests if not.
+     * Checks FIPS version (3DES not in 140-3) and if DES3 is compiled in. */
+    @Rule(order = Integer.MIN_VALUE + 3)
+    public TestRule des3FipsAvailable = new TestRule() {
+        @Override
+        public Statement apply(final Statement base,
+                               Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    /* 3DES not included in FIPS boundary for 140-3 */
+                    Assume.assumeTrue("3DES not in FIPS 140-3",
+                        Fips.fipsVersion < 5);
+                    try {
+                        new Des3();
+                    } catch (WolfCryptException e) {
+                        Assume.assumeTrue("DES3 not compiled in: " +
+                            e.getError(), false);
+                    }
+                    base.evaluate();
+                }
+            };
+        }
+    };
+
     @BeforeClass
     public static void checkAvailability() {
-
-        /* Most test classes pick this up from FipsTest checkAvailability(),
-         * but not when method is overridden here */
-        Assume.assumeTrue(Fips.enabled);
-
-        /* 3DES not included in FIPS boundary for 140-3 */
-        if (Fips.fipsVersion < 5) {
-            System.out.println("Des3 test skipped for 140-3");
-        }
-        Assume.assumeTrue(Fips.fipsVersion < 5);
-
-        try {
-            new Des3();
-            System.out.println("JNI FIPS 3DES Tests");
-        } catch (WolfCryptException e) {
-            if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
-                System.out.println("Des3 test skipped: " + e.getError());
-            }
-            Assume.assumeNoException(e);
-        }
+        System.out.println("JNI FIPS 3DES Tests");
     }
 
     @Test

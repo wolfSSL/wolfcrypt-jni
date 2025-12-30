@@ -92,7 +92,7 @@ public class WolfCryptPKIXRevocationCheckerTest {
 
         if (isAndroid()) {
             /* On Android, example certs are on SD card */
-            certPre = "/sdcard/";
+            certPre = "/data/local/tmp/";
         }
 
         /* Set paths to example certs */
