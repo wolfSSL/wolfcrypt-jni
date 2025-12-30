@@ -34,6 +34,7 @@ import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
 import com.wolfssl.wolfcrypt.AesEcb;
 import com.wolfssl.wolfcrypt.NativeStruct;
@@ -69,16 +70,32 @@ public class AesEcbTest {
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
+    /* Rule to check if AES-ECB is available, skips tests if not.
+     * AesEcb() constructor does not allocate native memory, so no need
+     * to release if it throws. */
+    @Rule(order = Integer.MIN_VALUE + 1)
+    public TestRule aesEcbAvailable = new TestRule() {
+        @Override
+        public Statement apply(final Statement base,
+                               Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    try {
+                        new AesEcb();
+                    } catch (WolfCryptException e) {
+                        Assume.assumeTrue("AES-ECB not compiled in: " +
+                            e.getError(), false);
+                    }
+                    base.evaluate();
+                }
+            };
+        }
+    };
+
     @BeforeClass
     public static void checkAvailability() {
-        try {
-            new AesEcb();
-            System.out.println("JNI AesEcb Class");
-        } catch (WolfCryptException e) {
-            if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
-                System.out.println("AesEcb test skipped: " + e.getError());
-            Assume.assumeNoException(e);
-        }
+        System.out.println("JNI AesEcb Class");
     }
 
     @Test

@@ -367,7 +367,7 @@ public class WolfSSLKeyStoreTest {
 
         if (isAndroid()) {
             /* On Android, example certs/keys/KeyStores are on SD card */
-            certPre = "/sdcard/";
+            certPre = "/data/local/tmp/";
         }
 
         /* Set paths to example certs/keys */
@@ -1461,6 +1461,9 @@ public class WolfSSLKeyStoreTest {
                NoSuchProviderException, NoSuchAlgorithmException,
                CertificateException, InvalidKeySpecException,
                UnrecoverableKeyException {
+
+        /* Skip on Android, JKS KeyStore type not available */
+        Assume.assumeTrue(!isAndroid());
 
         WolfCryptProvider prov = null;
         KeyStore store = null;

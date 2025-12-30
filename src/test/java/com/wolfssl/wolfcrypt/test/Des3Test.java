@@ -41,6 +41,7 @@ import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.NativeStruct;
@@ -53,16 +54,32 @@ public class Des3Test {
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
+    /* Rule to check if DES3 is available, skips tests if not.
+     * Des3() constructor does not allocate native memory, so no need
+     * to release if it throws. */
+    @Rule(order = Integer.MIN_VALUE + 1)
+    public TestRule des3Available = new TestRule() {
+        @Override
+        public Statement apply(final Statement base,
+                               Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    try {
+                        new Des3();
+                    } catch (WolfCryptException e) {
+                        Assume.assumeTrue("DES3 not compiled in: " +
+                            e.getError(), false);
+                    }
+                    base.evaluate();
+                }
+            };
+        }
+    };
+
     @BeforeClass
     public static void checkAvailability() {
-        try {
-            new Des3();
-            System.out.println("JNI Des3 Class");
-        } catch (WolfCryptException e) {
-            if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
-                System.out.println("Des3 test skipped: " + e.getError());
-            Assume.assumeNoException(e);
-        }
+        System.out.println("JNI Des3 Class");
     }
 
     @Test
