@@ -12,6 +12,7 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments notClass: 'com.wolfssl.wolfcrypt.test.WolfCryptTestSuite,com.wolfssl.provider.jce.test.WolfJCETestSuite,com.wolfssl.wolfcrypt.test.fips.WolfCryptFipsTestSuite'
         externalNativeBuild {
             cmake {
                 cppFlags ""
@@ -35,7 +36,6 @@ android {
     }
     sourceSets {
         main.java.srcDirs += '../../../src/main/java'
-        test.java.srcDirs += '../../../src/main/test'
     }
     namespace 'com.example.wolfssl'
 }
@@ -45,6 +45,7 @@ dependencies {
     implementation 'com.android.support:appcompat-v7:28.0.0'
     implementation 'com.android.support.constraint:constraint-layout:2.0.4'
     testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 }

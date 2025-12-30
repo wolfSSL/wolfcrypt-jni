@@ -631,8 +631,8 @@ public class WolfCryptMessageDigestSha3Test {
                 /* Skip test if SUN SHA3-256 provider name mismatch */
                 return;
             }
-        } catch (NoSuchAlgorithmException e) {
-            /* Skip test if SUN SHA3-256 provider available */
+        } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
+            /* Skip test if SUN SHA3-256 provider not available */
             return;
         }
 

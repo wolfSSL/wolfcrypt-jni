@@ -34,6 +34,7 @@ import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
 import com.wolfssl.wolfcrypt.AesOfb;
 import com.wolfssl.wolfcrypt.NativeStruct;
@@ -83,16 +84,32 @@ public class AesOfbTest {
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
+    /* Rule to check if AES-OFB is available, skips tests if not.
+     * AesOfb() constructor does not allocate native memory, so no need
+     * to release if it throws. */
+    @Rule(order = Integer.MIN_VALUE + 1)
+    public TestRule aesOfbAvailable = new TestRule() {
+        @Override
+        public Statement apply(final Statement base,
+                               Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    try {
+                        new AesOfb();
+                    } catch (WolfCryptException e) {
+                        Assume.assumeTrue("AES-OFB not compiled in: " +
+                            e.getError(), false);
+                    }
+                    base.evaluate();
+                }
+            };
+        }
+    };
+
     @BeforeClass
     public static void checkAvailability() {
-        try {
-            new AesOfb();
-            System.out.println("JNI AesOfb Class");
-        } catch (WolfCryptException e) {
-            if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
-                System.out.println("AesOfb test skipped: " + e.getError());
-            Assume.assumeNoException(e);
-        }
+        System.out.println("JNI AesOfb Class");
     }
 
     @Test

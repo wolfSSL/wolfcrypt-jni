@@ -22,10 +22,12 @@
 package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
@@ -127,6 +129,24 @@ public class WolfCryptPKIXCertPathValidatorTest {
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
+    /* Rule to check if cert files are available, skips tests if not. */
+    @Rule(order = Integer.MIN_VALUE + 1)
+    public TestRule certFilesAvailable = new TestRule() {
+        @Override
+        public Statement apply(final Statement base,
+                               Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    File f = new File(jksCaServerRSA2048);
+                    Assume.assumeTrue("Test cert files not available: " +
+                        jksCaServerRSA2048, f.exists());
+                    base.evaluate();
+                }
+            };
+        }
+    };
+
     @BeforeClass
     public static void testSetupAndProviderInstallation()
         throws Exception, NoSuchProviderException {
@@ -144,7 +164,7 @@ public class WolfCryptPKIXCertPathValidatorTest {
 
         if (isAndroid()) {
             /* On Android, example certs/keys/KeyStores are on SD card */
-            certPre = "/sdcard/";
+            certPre = "/data/local/tmp/";
 
             /* On Android, KeyStore files are .bks and type is BKS */
             jksExt = ".bks";
@@ -187,15 +207,6 @@ public class WolfCryptPKIXCertPathValidatorTest {
 
         crlDer =
             certPre.concat("examples/certs/crl/crl.der");
-
-        /* Test if file exists, if not might be running on Android */
-        File f = new File(jksCaServerRSA2048);
-        if (!f.exists()) {
-            /* No known file paths, throw exception */
-            System.out.println("Could not find example JKS file " +
-                f.getAbsolutePath());
-            throw new Exception("Unable to find example JKS files for test");
-        }
     }
 
     /**

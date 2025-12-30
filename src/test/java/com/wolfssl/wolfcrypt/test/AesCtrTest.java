@@ -34,6 +34,7 @@ import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
 import com.wolfssl.wolfcrypt.AesCtr;
 import com.wolfssl.wolfcrypt.NativeStruct;
@@ -73,16 +74,32 @@ public class AesCtrTest {
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
+    /* Rule to check if AES-CTR is available, skips tests if not.
+     * AesCtr() constructor does not allocate native memory, so no need
+     * to release if it throws. */
+    @Rule(order = Integer.MIN_VALUE + 1)
+    public TestRule aesCtrAvailable = new TestRule() {
+        @Override
+        public Statement apply(final Statement base,
+                               Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    try {
+                        new AesCtr();
+                    } catch (WolfCryptException e) {
+                        Assume.assumeTrue("AES-CTR not compiled in: " +
+                            e.getError(), false);
+                    }
+                    base.evaluate();
+                }
+            };
+        }
+    };
+
     @BeforeClass
     public static void checkAvailability() {
-        try {
-            new AesCtr();
-            System.out.println("JNI AesCtr Class");
-        } catch (WolfCryptException e) {
-            if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
-                System.out.println("AesCtr test skipped: " + e.getError());
-            Assume.assumeNoException(e);
-        }
+        System.out.println("JNI AesCtr Class");
     }
 
     @Test

@@ -22,6 +22,7 @@
 package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
@@ -900,9 +901,23 @@ public class WolfCryptKeyPairGeneratorTest {
         }
     }
 
+    /**
+     * Check if we are running on Android.
+     * RSASSA-PSS KeyFactory is not available on Android.
+     */
+    private static boolean isAndroid() {
+        if (System.getProperty("java.runtime.name").contains("Android")) {
+            return true;
+        }
+        return false;
+    }
+
     @Test
     public void testRsassaPssKeyIdentificationAndSunCompatibility()
         throws Exception {
+
+        /* RSASSA-PSS KeyFactory and Sun provider not available on Android */
+        Assume.assumeFalse("Skipping on Android", isAndroid());
 
         if (testedRSAKeySizes.isEmpty()) {
             return;

@@ -75,7 +75,35 @@ del wolfssl
 mklink /D wolfssl ..\..\..\..\..\..\..\src\java\com\wolfssl\
 ```
 
-## 3. Import and Build the Example Project with Android Studio
+## 3. Push Certificate and KeyStore Files to Android Device
+
+Several JUnit tests require access to certificate and KeyStore files. These
+files are located in the `examples/certs` directory and must be pushed to
+the Android device or emulator before running tests.
+
+Start the emulator or connect your device, then use `adb push` from the root
+wolfcrypt-jni directory. This step can be done after starting Android Studio
+and compiling the project, but must be done before running the test cases.
+
+```
+adb shell mkdir -p /data/local/tmp/examples/certs/intermediate
+adb shell mkdir -p /data/local/tmp/examples/certs/rsapss
+adb shell mkdir -p /data/local/tmp/examples/certs/crl
+adb push ./examples/certs/ /data/local/tmp/examples/
+```
+
+This will push all certificate files, KeyStore files (.jks, .wks, .p12),
+and subdirectories (intermediate, rsapss, crl) needed by the JUnit tests.
+
+If this step is skipped, tests in the following classes will be skipped due
+to missing certificate files:
+
+- `WolfSSLKeyStoreTest`
+- `WolfCryptPKIXCertPathValidatorTest`
+- `WolfCryptPKIXRevocationCheckerTest`
+- `WolfSSLCertManagerOCSPTest`
+
+## 4. Import and Build the Example Project with Android Studio
 
 1) Open the Android Studio project by double clicking on the `Android` folder
 in wolfcrypt-jni/IDE/. Or, from inside Android Studio, open the `Android`

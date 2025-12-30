@@ -28,6 +28,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
+import org.junit.runners.model.Statement;
+import org.junit.runner.Description;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -54,6 +56,49 @@ public class WolfSSLCertManagerOCSPTest {
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
+    /* Rule to check if cert files are available, skips tests if not. */
+    @Rule(order = Integer.MIN_VALUE + 1)
+    public TestRule certFilesAvailable = new TestRule() {
+        @Override
+        public Statement apply(final Statement base,
+                               Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    File f = new File(caCertDer);
+                    Assume.assumeTrue("Test cert files not available: " +
+                        caCertDer, f.exists());
+                    base.evaluate();
+                }
+            };
+        }
+    };
+
+    /* Rule to check if OCSP/WolfSSLCertManager is available. */
+    @Rule(order = Integer.MIN_VALUE + 2)
+    public TestRule ocspAvailable = new TestRule() {
+        @Override
+        public Statement apply(final Statement base,
+                               Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    try {
+                        new WolfSSLCertManager();
+                    } catch (WolfCryptException e) {
+                        if (!WolfCrypt.OcspEnabled()) {
+                            Assume.assumeTrue(
+                                "WolfSSLCertManager OCSP test skipped: " +
+                                "OCSP not compiled in", false);
+                        }
+                        Assume.assumeNoException(e);
+                    }
+                    base.evaluate();
+                }
+            };
+        }
+    };
+
     /**
      * Test if this environment is Android.
      * @return true if Android, otherwise false
@@ -72,7 +117,7 @@ public class WolfSSLCertManagerOCSPTest {
 
         if (isAndroid()) {
             /* On Android, example certs/keys are on SD card */
-            certPre = "/sdcard/";
+            certPre = "/data/local/tmp/";
         }
 
         /* Set paths to example certs */
@@ -84,29 +129,11 @@ public class WolfSSLCertManagerOCSPTest {
             certPre.concat("examples/certs/ca-ecc-cert.der");
         serverEccDer =
             certPre.concat("examples/certs/server-ecc.der");
-
-        /* Test if file exists */
-        File f = new File(caCertDer);
-        if (!f.exists()) {
-            System.out.println("Could not find example cert file " +
-                f.getAbsolutePath());
-            throw new Exception("Unable to find example cert files for test");
-        }
     }
 
     @BeforeClass
     public static void checkAvailability() {
-        try {
-            new WolfSSLCertManager();
-            System.out.println("JNI WolfSSLCertManager OCSP Test");
-        } catch (WolfCryptException e) {
-            if (!WolfCrypt.OcspEnabled()) {
-                System.out.println(
-                    "WolfSSLCertManager OCSP test skipped: " +
-                    "OCSP not compiled in");
-            }
-            Assume.assumeNoException(e);
-        }
+        System.out.println("JNI WolfSSLCertManager OCSP Test");
     }
 
     @Test

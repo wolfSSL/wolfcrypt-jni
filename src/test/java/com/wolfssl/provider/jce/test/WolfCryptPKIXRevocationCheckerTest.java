@@ -92,7 +92,7 @@ public class WolfCryptPKIXRevocationCheckerTest {
 
         if (isAndroid()) {
             /* On Android, example certs are on SD card */
-            certPre = "/sdcard/";
+            certPre = "/data/local/tmp/";
         }
 
         /* Set paths to example certs */
@@ -101,13 +101,11 @@ public class WolfCryptPKIXRevocationCheckerTest {
         serverCertDer =
             certPre.concat("examples/certs/server-cert.der");
 
-        /* Test if file exists */
+        /* Test if file exists. Skip tests gracefully if cert files not
+         * available (eg running on Android). */
         File f = new File(caCertDer);
-        if (!f.exists()) {
-            System.out.println("Could not find example cert file " +
-                f.getAbsolutePath());
-            throw new Exception("Unable to find example cert files for test");
-        }
+        Assume.assumeTrue("Test cert files not available: " + caCertDer,
+            f.exists());
     }
 
     @BeforeClass
@@ -143,8 +141,7 @@ public class WolfCryptPKIXRevocationCheckerTest {
         assertNotNull(checker);
 
         /* Clone the checker */
-        PKIXRevocationChecker cloned = (PKIXRevocationChecker)
-            checker.clone();
+        PKIXRevocationChecker cloned = checker.clone();
         assertNotNull(cloned);
         assertTrue(cloned instanceof WolfCryptPKIXRevocationChecker);
 
@@ -599,8 +596,7 @@ public class WolfCryptPKIXRevocationCheckerTest {
         checker.setOcspResponder(responder);
 
         /* Clone */
-        PKIXRevocationChecker cloned = (PKIXRevocationChecker)
-            checker.clone();
+        PKIXRevocationChecker cloned = checker.clone();
 
         /* Verify cloned has same options */
         Set<Option> clonedOptions = cloned.getOptions();

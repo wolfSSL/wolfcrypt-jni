@@ -516,17 +516,6 @@ public class WolfCryptSignatureTest {
                 return;
             }
 
-            /* Set parameters for generic RSASSA-PSS */
-            if (enabledAlgos.get(i).equals("RSASSA-PSS")) {
-                java.security.spec.PSSParameterSpec pssSpec =
-                    new java.security.spec.PSSParameterSpec(
-                        "SHA-256", "MGF1",
-                        java.security.spec.MGF1ParameterSpec.SHA256,
-                        32, 1);
-                signer.setParameter(pssSpec);
-                verifier.setParameter(pssSpec);
-            }
-
             /* Select appropriate key pair based on algorithm type */
             KeyPair pair = null;
             if (enabledAlgos.get(i).contains("RSA")) {
@@ -541,11 +530,35 @@ public class WolfCryptSignatureTest {
 
             /* generate signature */
             signer.initSign(priv);
+
+            /* Set parameters for generic RSASSA-PSS after initSign/initVerify.
+             * Some providers (eg Android) require parameters to be set after
+             * initialization, not before. */
+            if (enabledAlgos.get(i).equals("RSASSA-PSS")) {
+                java.security.spec.PSSParameterSpec pssSpec =
+                    new java.security.spec.PSSParameterSpec(
+                        "SHA-256", "MGF1",
+                        java.security.spec.MGF1ParameterSpec.SHA256,
+                        32, 1);
+                signer.setParameter(pssSpec);
+            }
+
             signer.update(toSignBuf, 0, toSignBuf.length);
             signature = signer.sign();
 
             /* verify signature */
             verifier.initVerify(pub);
+
+            /* Set verifier parameters after initVerify for RSASSA-PSS */
+            if (enabledAlgos.get(i).equals("RSASSA-PSS")) {
+                java.security.spec.PSSParameterSpec pssSpec =
+                    new java.security.spec.PSSParameterSpec(
+                        "SHA-256", "MGF1",
+                        java.security.spec.MGF1ParameterSpec.SHA256,
+                        32, 1);
+                verifier.setParameter(pssSpec);
+            }
+
             verifier.update(toSignBuf, 0, toSignBuf.length);
             boolean verified = verifier.verify(signature);
 
