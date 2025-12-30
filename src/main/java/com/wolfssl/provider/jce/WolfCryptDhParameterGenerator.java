@@ -33,6 +33,7 @@ import javax.crypto.spec.DHParameterSpec;
 
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Rng;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 
 /**
@@ -94,6 +95,13 @@ public class WolfCryptDhParameterGenerator
         BigInteger p = null;
         BigInteger g = null;
 
+        /* Max retries for prime generation. FIPS 186-4 allows reattempting
+         * with a new seed on failure; 5 is a conservative bound to prevent
+         * infinite loops while allowing recovery from transient failures. */
+        final int MAX_PARAM_GEN_RETRIES = 5;
+        int retryCount = 0;
+        WolfCryptException lastPrimeGenException = null;
+
         try {
             /* Check if this is a standard FFDHE size */
             int namedGroup = -1;
@@ -131,22 +139,49 @@ public class WolfCryptDhParameterGenerator
             }
             else {
                 /* For non-standard sizes, try dynamic parameter generation
-                 * using wc_DhGenerateParams(). */
-                Rng rng = null;
-                try {
-                    /* Create and initialize RNG. */
-                    rng = new Rng();
-                    rng.init();
+                 * using wc_DhGenerateParams(). Retry loop since native
+                 * wolfCrypt may return PRIME_GEN_E (-251) if it fails to
+                 * find a suitable prime after the NIST FIPS 186-4 mandated
+                 * number of attempts. */
+                while (retryCount < MAX_PARAM_GEN_RETRIES) {
+                    Rng rng = null;
+                    try {
+                        /* Create and initialize RNG. */
+                        rng = new Rng();
+                        rng.init();
 
-                    /* Generate DH parameters, may throw exception with
-                     * bad function arg if size not supported natively. */
-                    params = Dh.generateDhParams(rng, size);
-                }
-                finally {
-                    if (rng != null) {
-                        rng.free();
-                        rng.releaseNativeStruct();
+                        /* Generate DH parameters, may throw exception with
+                         * bad function arg if size not supported natively. */
+                        params = Dh.generateDhParams(rng, size);
+
+                        /* Success, exit retry loop */
+                        break;
+
+                    } catch (WolfCryptException e) {
+                        /* Only retry on PRIME_GEN_E error */
+                        if (e.getError() == WolfCryptError.PRIME_GEN_E) {
+                            lastPrimeGenException = e;
+                            retryCount++;
+                        }
+                        else {
+                            throw e;
+                        }
                     }
+                    finally {
+                        if (rng != null) {
+                            rng.free();
+                            rng.releaseNativeStruct();
+                        }
+                    }
+                }
+
+                /* Check if we exhausted all retries */
+                if (params == null && lastPrimeGenException != null) {
+                    throw new RuntimeException(
+                        "DH parameter generation failed after " +
+                        MAX_PARAM_GEN_RETRIES +
+                        " attempts due to prime generation failure",
+                        lastPrimeGenException);
                 }
             }
 

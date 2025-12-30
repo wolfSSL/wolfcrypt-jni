@@ -22,6 +22,7 @@
 package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -114,6 +115,16 @@ public class WolfCryptUtilTest {
         } else {
             Security.setProperty("wolfjce.wks.iterationCount", "");
         }
+    }
+
+    /**
+     * Helper method to skip test if required test file doesn't exist.
+     * Test certificate files are not available on Android.
+     * @param path Path to test file
+     */
+    private void assumeTestFileExists(String path) {
+        File file = new File(path);
+        Assume.assumeTrue("Test file not available: " + path, file.exists());
     }
 
     /**
@@ -217,6 +228,8 @@ public class WolfCryptUtilTest {
      */
     @Test
     public void testConvertJksToWksWithoutMapping() throws Exception {
+        assumeTestFileExists(TEST_JKS_PATH);
+
         /* Store original property value */
         String origValue = Security.getProperty("wolfjce.mapJKStoWKS");
 
@@ -259,6 +272,8 @@ public class WolfCryptUtilTest {
      */
     @Test
     public void testConvertJksToWksWithMapping() throws Exception {
+        assumeTestFileExists(TEST_JKS_PATH);
+
         /* Store original property value */
         String origValue = Security.getProperty("wolfjce.mapJKStoWKS");
 
@@ -302,6 +317,8 @@ public class WolfCryptUtilTest {
      */
     @Test
     public void testConvertP12ToWksWithoutMapping() throws Exception {
+        assumeTestFileExists(TEST_P12_PATH);
+
         /* Store original property value */
         String origValue = Security.getProperty("wolfjce.mapPKCS12toWKS");
 
@@ -357,6 +374,8 @@ public class WolfCryptUtilTest {
      */
     @Test
     public void testConvertP12ToWksWithMapping() throws Exception {
+        assumeTestFileExists(TEST_P12_PATH);
+
         /* Store original property value */
         String origValue = Security.getProperty("wolfjce.mapPKCS12toWKS");
 
@@ -412,6 +431,8 @@ public class WolfCryptUtilTest {
      */
     @Test
     public void testConvertWksToWks() throws Exception {
+        assumeTestFileExists(TEST_WKS_PATH);
+
         /* Load test WKS KeyStore */
         ByteArrayInputStream wksStream = loadKeyStoreFile(TEST_WKS_PATH);
 

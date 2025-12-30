@@ -85,6 +85,7 @@ public class RsaTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void deprecatedConstructorThrows() {
         try {
             new Rsa( new byte[] {0x00} );
@@ -499,6 +500,7 @@ public class RsaTest {
 
                     Rsa priv = null;
                     Rsa pub = null;
+                    Rng threadRng = null;
 
                     byte[] n_out = new byte[256];
                     byte[] e_out = new byte[3];
@@ -508,15 +510,19 @@ public class RsaTest {
                     e_len[0] = e_out.length;
 
                     try {
+                        /* Each thread needs its own RNG for FIPS */
+                        threadRng = new Rng();
+                        threadRng.init();
+
                         priv = new Rsa();
                         priv.decodePrivateKey(prvKey);
                         priv.exportRawPublicKey(n_out, n_len, e_out, e_len);
-                        priv.setRng(rng);
+                        priv.setRng(threadRng);
 
                         pub = new Rsa();
                         pub.decodeRawPublicKey(n_out, e_out);
 
-                        byte[] ciphertext = pub.encrypt(plaintext, rng);
+                        byte[] ciphertext = pub.encrypt(plaintext, threadRng);
 
                         if (!Arrays.equals(plaintext,
                                 priv.decrypt(ciphertext))) {
@@ -524,7 +530,7 @@ public class RsaTest {
                         }
 
                         if (failed == 0) {
-                            byte[] signature = priv.sign(plaintext, rng);
+                            byte[] signature = priv.sign(plaintext, threadRng);
 
                             if (!Arrays.equals(plaintext,
                                     pub.verify(signature))) {
@@ -537,6 +543,10 @@ public class RsaTest {
                         failed = 1;
 
                     } finally {
+                        if (threadRng != null) {
+                            threadRng.free();
+                            threadRng.releaseNativeStruct();
+                        }
                         priv.releaseNativeStruct();
                         pub.releaseNativeStruct();
                         latch.countDown();

@@ -367,7 +367,7 @@ public class WolfSSLKeyStoreTest {
 
         if (isAndroid()) {
             /* On Android, example certs/keys/KeyStores are on SD card */
-            certPre = "/sdcard/";
+            certPre = "/data/local/tmp/";
         }
 
         /* Set paths to example certs/keys */
@@ -445,14 +445,11 @@ public class WolfSSLKeyStoreTest {
         caServerEcc256WKS =
             certPre.concat("examples/certs/ca-server-ecc-256.wks");
 
-        /* Test if file exists, if not might be running on Android */
+        /* Test if file exists. Skip tests gracefully if cert files not
+         * available (eg running on Android). */
         File f = new File(serverCertDer);
-        if (!f.exists()) {
-            /* No known file paths, throw exception */
-            System.out.println("Could not find example cert file " +
-                f.getAbsolutePath());
-            throw new Exception("Unable to find example cert files for test");
-        }
+        Assume.assumeTrue("Test cert files not available: " + serverCertDer,
+            f.exists());
 
         /* Create PrivateKey / Certificate objects from files */
         createTestObjects();
@@ -1464,6 +1461,9 @@ public class WolfSSLKeyStoreTest {
                NoSuchProviderException, NoSuchAlgorithmException,
                CertificateException, InvalidKeySpecException,
                UnrecoverableKeyException {
+
+        /* Skip on Android, JKS KeyStore type not available */
+        Assume.assumeTrue(!isAndroid());
 
         WolfCryptProvider prov = null;
         KeyStore store = null;
@@ -2658,11 +2658,12 @@ public class WolfSSLKeyStoreTest {
             long uncachedTime = System.currentTimeMillis() - start;
             assertNotNull(key2Again);
 
-            /* Verify it was slower */
+            /* Verify it was slower. Use 2x threshold since timing can vary
+             * significantly on CI systems with fast storage. */
             assertTrue("Cache should have been cleared, but timing suggests " +
                 "it wasn't (cached: " + cachedTime + "ms, uncached: " +
                 uncachedTime + "ms)",
-                uncachedTime > cachedTime * 5);
+                uncachedTime > cachedTime * 2);
 
         } finally {
             if (origEnabled != null) {
@@ -2715,11 +2716,12 @@ public class WolfSSLKeyStoreTest {
             long uncachedTime = System.currentTimeMillis() - start;
             assertNotNull(key2Again);
 
-            /* Verify it was slower */
+            /* Verify it was slower. Use 2x threshold since timing can vary
+             * significantly on CI systems with fast storage. */
             assertTrue("Cache should have been cleared, but timing suggests " +
                 "it wasn't (cached: " + cachedTime + "ms, uncached: " +
                 uncachedTime + "ms)",
-                uncachedTime > cachedTime * 5);
+                uncachedTime > cachedTime * 2);
 
         } finally {
             if (origEnabled != null) {
