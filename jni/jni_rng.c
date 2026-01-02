@@ -171,8 +171,9 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
     buffer = getByteArray(env, buffer_buffer);
     bufferSz = getByteArrayLength(env, buffer_buffer);
 
-    if (rng == NULL || buffer == NULL || (offset + length) > bufferSz ||
-        offset < 0 || length < 0) {
+    if (rng == NULL || buffer == NULL ||
+        offset < 0 || length < 0 ||
+        ((word32)(offset + length) > bufferSz)) {
         ret = BAD_FUNC_ARG;
     }
 
