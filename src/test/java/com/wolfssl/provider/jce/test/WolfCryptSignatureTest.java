@@ -47,6 +47,7 @@ import java.security.PrivateKey;
 import java.security.AlgorithmParameters;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.PSSParameterSpec;
+import java.security.spec.MGF1ParameterSpec;
 import java.security.interfaces.RSAKey;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
@@ -59,6 +60,7 @@ import java.security.InvalidAlgorithmParameterException;
 
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
@@ -2115,27 +2117,42 @@ public class WolfCryptSignatureTest {
                                      "SHA-384", "SHA-512"};
 
         for (String digestAlg : digestAlgorithms) {
-            /* Create PSS parameters */
-            int digestLen;
-            java.security.spec.MGF1ParameterSpec mgfSpec;
+            /* Create PSS parameters, skip if digest not compiled in */
+            int digestLen = 0;
+            MGF1ParameterSpec mgfSpec;
             switch (digestAlg) {
                 case "SHA-1":
+                    if (!FeatureDetect.ShaEnabled()) {
+                        continue;
+                    }
                     digestLen = 20;
                     mgfSpec = java.security.spec.MGF1ParameterSpec.SHA1;
                     break;
                 case "SHA-224":
+                    if (!FeatureDetect.Sha224Enabled()) {
+                        continue;
+                    }
                     digestLen = 28;
                     mgfSpec = java.security.spec.MGF1ParameterSpec.SHA224;
                     break;
                 case "SHA-256":
+                    if (!FeatureDetect.Sha256Enabled()) {
+                        continue;
+                    }
                     digestLen = 32;
                     mgfSpec = java.security.spec.MGF1ParameterSpec.SHA256;
                     break;
                 case "SHA-384":
+                    if (!FeatureDetect.Sha384Enabled()) {
+                        continue;
+                    }
                     digestLen = 48;
                     mgfSpec = java.security.spec.MGF1ParameterSpec.SHA384;
                     break;
                 case "SHA-512":
+                    if (!FeatureDetect.Sha512Enabled()) {
+                        continue;
+                    }
                     digestLen = 64;
                     mgfSpec = java.security.spec.MGF1ParameterSpec.SHA512;
                     break;
@@ -2147,7 +2164,8 @@ public class WolfCryptSignatureTest {
             int keySize = ((RSAKey)pub).getModulus().bitLength();
             int saltLength = keySize/8 - digestLen - 2;
             if (saltLength < 0) {
-                continue; /* Skip if salt length would be negative */
+                /* Should never happen, but left here for caution */
+                continue;
             }
 
             PSSParameterSpec pssSpec = new PSSParameterSpec(digestAlg, "MGF1",
