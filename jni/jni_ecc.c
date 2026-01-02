@@ -164,7 +164,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1make_1key_1ex
     int ret = 0;
     ecc_key* ecc = NULL;
     RNG* rng = NULL;
-    const char* name;
+    const char* name = NULL;
     (void)size;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
