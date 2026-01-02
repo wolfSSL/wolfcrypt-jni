@@ -1,3 +1,114 @@
+### wolfCrypt JNI Release 1.9.0 (12/31/2025)
+
+Release 1.9.0 of wolfCrypt JNI and JCE has bug fixes and new features including:
+
+**New JCE Functionality:**
+- Add KeyGenerator implementation (AES, HmacSHA1, HmacSHA256, HmacSHA384, HmacSHA512) (PR 98)
+- Add SHA-224 support to MessageDigest, Mac, Signature, KeyGenerator (PR 104)
+- Add SHA-3 support to MessageDigest, Mac, Signature (PR 103)
+- Add utility method to convert JKS/PKCS12 KeyStore to WKS type (PR 108)
+- Add more AES mode support to Cipher class (PR 129, 163, 173):
+    - AES/CCM/NoPadding
+    - AES/CTR/NoPadding
+    - AES/ECB/NoPadding
+    - AES/ECB/PKCS5Padding
+    - AES/OFB/NoPadding
+    - AES/CTS/NoPadding
+- Add AESCMAC (AES-CMAC), AESGMAC (AES-GMAC) to Mac class (PR 129)
+- Add RSA-PSS support to Signature class (PR 131):
+    - RSASSA-PSS
+    - SHA224withRSA/PSS
+    - SHA256withRSA/PSS
+    - SHA384withRSA/PSS
+    - SHA512withRSA/PSS
+- Add `Cipher.engineGetParameters()` support (PR 140)
+- Add Cipher generic `AES` type support (PR 142)
+- Add AES and GCM support to AlgorithmParameters class (PR 144)
+- Add HmacSHA3 support to KeyGenerator class (PR 150):
+    - HmacSHA3-224
+    - HmacSHA3-256
+    - HmacSHA3-384
+    - HmacSHA3-512
+- Add `toString()` to WolfCryptRandom, used when printing SecureRandom object (PR 154)
+- Add additional ECC algorithm OIDs to Signature and KeyPairGenerator classes (PR 158)
+- Add EC KeyFactory support (PR 159)
+- Add P1363 ECDSA signature formats to Signature class (PR 160)
+- Add DH support to AlgorithmParameter, AlgorithmParameterGenerator, and KeyFactory classes (PR 161)
+- Add AES and 3DES support to SecretKeyFactory and SecretKey classes (PR 164)
+- Add additional AES and Hmac algorithm aliases to Cipher and Mac classes (PR 166)
+- Add Java ServiceLoader support for wolfJCE provider for Java Module System (JPMS) compatibility (PR 167)
+- Add RSA KeyFactory support (PR 169)
+- Add MessageDigest OID alias values for SHA-224/256/384/512 (PR 170)
+- Add PSS parameter encoding support in WolfCryptPSSParameters class (PR 175)
+- Add `engineProbe()` implementation to WolfSSLKeyStore (PR 178)
+- Add optional KEK caching to WolfSSLKeyStore for performance (PR 176)
+- Add RSASSA-PSS key support to WolfSSLKeyStore (PR 180)
+
+**JNI and JCE Changes:**
+- Fix `Cipher.getOutputSize()` for AES/GCM/NoPadding in DECRYPT mode (PR 107)
+- Dynamically get algorithm and key ASN enum values from wolfSSL (PR 111)
+- Dynamically get hash OID sums from wolfSSL (PR 124)
+- Fix max secret size in DH agreement (PR 123)
+- Fix potential JNI-level ECC issues (PR 117)
+- Fix build issues with older wolfSSL and FIPS build variants (PR 133)
+- Fix AES-CTR IV consistency across state resets (PR 136)
+- Fix for using buffered data in `Cipher.engineGetOutputSize()` (PR 138)
+- Throw `AEADBadTagException` on AES-GCM decrypt failure (PR 139)
+- Fix `Cipher.engineInit()` with null parameters (PR 141)
+- Throw correct `InvalidAlgorithmParameterException` from `Cipher.init()` on unsupported mode (PR 143)
+- Fix for PKCS#7 pad/unpad operations in Cipher (PR 146)
+- Fix expected output size for Cipher decrypt related to pad size (PR 147)
+- Fix AES-GCM Cipher edge case to allow for null input or output arrays (PR 145)
+- Improve Cipher input validation, output buffer sizing, update behavior (PR 148)
+- Fix MessageDigest parameter validation (PR 149)
+- Fix `ArrayIndexOutOfBoundsException` in Cipher AES-GCM/CCM with zero-length plaintext (PR 151)
+- Throw exception if RSA `PrivateKey` does not include CRT parameters (PR 153)
+- Throw `IllegalArgumentException` from `WolfCryptRandom.engineGenerateSeed()` on bad input values (PR 152)
+- Set default key and parameter sizes in `KeyPairGenerator` if not explicitly set (PR 155)
+- Fix ECC `KeyPairGenerator` bits to bytes conversion (PR 157)
+- Check RSA key size used against min allowed in KeyPairGenerator (PR 162)
+- Fix SecretKey decryption to use stored PBKDF2 iteration count in WKS (PR 168)
+- Remove synchronization on some WolfSSLKeyStore methods (PR 165)
+- Validate EC key sizes in `KeyPairGenerator.initialize()` (PR 174)
+- Improvements to PKIXCertPathValidator with OCSP revocation checking, disabled algorithm validation, and more (PR 177, 178)
+
+**Debugging Changes:**
+- Switch to use Java logging (`java.util.logging`) framework for debug logs (PR 110)
+- Refresh debug flags when WolfCryptProvider is loaded (PR 135)
+- Switch debug log timestamp to use Java `Instant.ofEpochMilli()`, remove dependency on `java.sql.Timestamp` (PR 137)
+
+**Example Changes:**
+- Add RSA key generation to wolfJCE benchmark app (PR 95)
+- Add ECC and ECDH to wolfJCE benchmark app (PR 99, 116)
+- Add HMAC benchmark to wolfJCE benchmark app (PR 100)
+- Add DH benchmarks to wolfJCE benchmark app (PR 102)
+- Add PBKDF2 benchmark to wolfJCE benchmark app (PR 105)
+- Add MessageDigest benchmark to wolfJCE benchmark app (PR 106)
+- Add Signature benchmark to wolfJCE benchmark app (PR 109)
+- Add SHA-3 ciphers to HMAC benchmark in wolfJCE benchmark app (PR 113)
+- Add KeyGenerator benchmark to wolfJCE benchmark app (PR 115)
+- Add SecureRandom benchmark to wolfJCE benchmark app (PR 120)
+- Add KeyStore benchmark example app for WKS/JKS/PKCS12 (PR 118)
+- Add individual algorithm category options to wolfJCE benchmark app (PR 121)
+
+**Testing Changes:**
+- Add GitHub Actions PRB test for AddressSanitizer (`-fsanitize=address`) builds (PR 119)
+- Add GitHub Actions PRB tests for coding style (line length, comment style) (PR 126, 127)
+- Add GitHub Actions PRB test for Clang scan-build static analysis (PR 128)
+- Add GitHub Actions PRB test for Visual Studio builds on Windows (PR 130)
+- Add GitHub Actions PRB test to build against last 5 stable wolfSSL releases (PR 181)
+- Add GitHub Actions PRB test to run unit tests on Android emulator (PR 183)
+- Output time taken in ms per JUnit test when ant test is run (PR 171)
+- JUnit test performance improvements (PR 172)
+
+**Misc Changes:**
+- Clean up IDE warnings in Cursor and VSCode (PR 101)
+- Add `CLAUDE.md` for consumption by Claude Code (PR 122)
+
+The wolfCrypt JNI/JCE Manual is available at:
+https://www.wolfssl.com/documentation/manuals/wolfcryptjni/. For build
+instructions and more details comments, please check the manual.
+
 ### wolfCrypt JNI Release 1.8.0 (01/23/2025)
 
 Release 1.8.0 of wolfCrypt JNI and JCE has bug fixes and new features including:
