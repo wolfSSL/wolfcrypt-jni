@@ -302,6 +302,9 @@ public class WolfCryptRandomTest {
 
         } catch (IllegalArgumentException e) {
             /* Expected exception */
+        } catch (NegativeArraySizeException e) {
+            /* Thrown by some Java versions before reaching the provider,
+             * shows up on Windows */
         }
     }
 
