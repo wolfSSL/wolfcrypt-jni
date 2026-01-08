@@ -143,6 +143,30 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1S
 
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    wcKeyPemToDer
+ * Signature: ([BLjava/lang/String;)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
+  (JNIEnv *, jclass, jbyteArray, jstring);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    wcCertPemToDer
+ * Signature: ([B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcCertPemToDer
+  (JNIEnv *, jclass, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    wcPubKeyPemToDer
+ * Signature: ([B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcPubKeyPemToDer
+  (JNIEnv *, jclass, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
  * Method:    CrlEnabled
  * Signature: ()Z
  */

@@ -51,6 +51,7 @@ import org.junit.runners.Suite.SuiteClasses;
     RsaTest.class,
     DhTest.class,
     EccTest.class,
+    WolfCryptTest.class,
     WolfSSLCertManagerOCSPTest.class
 })
 public class WolfCryptTestSuite {
