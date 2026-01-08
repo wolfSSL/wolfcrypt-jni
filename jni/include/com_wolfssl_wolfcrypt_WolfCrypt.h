@@ -159,6 +159,30 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcBase16Decode
 
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    wcKeyPemToDer
+ * Signature: ([BLjava/lang/String;)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
+  (JNIEnv *, jclass, jbyteArray, jstring);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    wcCertPemToDer
+ * Signature: ([B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcCertPemToDer
+  (JNIEnv *, jclass, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    wcPubKeyPemToDer
+ * Signature: ([B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcPubKeyPemToDer
+  (JNIEnv *, jclass, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
  * Method:    CrlEnabled
  * Signature: ()Z
  */
