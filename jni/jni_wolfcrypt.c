@@ -30,6 +30,7 @@
 #include <wolfssl/wolfcrypt/types.h>
 #include <wolfssl/wolfcrypt/asn.h>
 #include <wolfssl/wolfcrypt/coding.h>
+#include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 #include <com_wolfssl_wolfcrypt_WolfCrypt.h>
 #include <wolfcrypt_jni_error.h>
@@ -348,5 +349,266 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcBase16Decode
     throwNotCompiledInException(env);
     return NULL;
 #endif /* WOLFSSL_BASE16 */
+}
+
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
+    (JNIEnv* env, jclass jcl, jbyteArray pemArr, jstring passwordStr)
+{
+#if !defined(NO_ASN) && !defined(WOLFSSL_NO_PEM) && !defined(NO_CODING)
+    int ret = 0;
+    int derSz = 0;
+    jint pemSz = 0;
+    byte* pem = NULL;
+    byte* der = NULL;
+    const char* password = NULL;
+    jbyteArray derArr = NULL;
+    (void)jcl;
+
+    if (env == NULL) {
+        return NULL;
+    }
+
+    if (pemArr == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        pem = (byte*)(*env)->GetByteArrayElements(env, pemArr, NULL);
+        pemSz = (*env)->GetArrayLength(env, pemArr);
+        if (pem == NULL || pemSz <= 0) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    /* Get password if provided */
+    if (ret == 0) {
+        if (passwordStr != NULL) {
+            password = (*env)->GetStringUTFChars(env, passwordStr, NULL);
+            if (password == NULL) {
+                ret = MEMORY_E;
+            }
+        }
+    }
+
+    /* Allocate buffer for DER output, PEM is always larger than DER */
+    if (ret == 0) {
+        der = (byte*)XMALLOC(pemSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (der == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(der, 0, pemSz);
+        ret = wc_KeyPemToDer(pem, pemSz, der, pemSz, password);
+        if (ret > 0) {
+            derSz = ret;
+            ret = 0;
+        }
+    }
+
+    /* Create result byte array with exact DER size */
+    if (ret == 0) {
+        derArr = (*env)->NewByteArray(env, derSz);
+        if (derArr == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        (*env)->SetByteArrayRegion(env, derArr, 0, derSz, (jbyte*)der);
+        if ((*env)->ExceptionOccurred(env)) {
+            (*env)->DeleteLocalRef(env, derArr);
+            derArr = NULL;
+        }
+    }
+
+    if (pem != NULL) {
+        (*env)->ReleaseByteArrayElements(env, pemArr, (jbyte*)pem, JNI_ABORT);
+    }
+    if (password != NULL) {
+        (*env)->ReleaseStringUTFChars(env, passwordStr, password);
+    }
+    if (der != NULL) {
+        XFREE(der, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    return derArr;
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)pemArr;
+    (void)passwordStr;
+    throwNotCompiledInException(env);
+    return NULL;
+#endif /* !NO_ASN && !WOLFSSL_NO_PEM && !NO_CODING) */
+}
+
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcCertPemToDer
+    (JNIEnv* env, jclass jcl, jbyteArray pemArr)
+{
+#if !defined(NO_ASN) && !defined(WOLFSSL_NO_PEM) && !defined(NO_CODING)
+    int ret = 0;
+    int derSz = 0;
+    jint pemSz = 0;
+    byte* pem = NULL;
+    byte* der = NULL;
+    jbyteArray derArr = NULL;
+    (void)jcl;
+
+    if (env == NULL) {
+        return NULL;
+    }
+
+    if (pemArr == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        pem = (byte*)(*env)->GetByteArrayElements(env, pemArr, NULL);
+        pemSz = (*env)->GetArrayLength(env, pemArr);
+        if (pem == NULL || pemSz <= 0) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    /* Allocate buffer for DER output, PEM is always larger than DER */
+    if (ret == 0) {
+        der = (byte*)XMALLOC(pemSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (der == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(der, 0, pemSz);
+        ret = wc_CertPemToDer(pem, pemSz, der, pemSz, CERT_TYPE);
+        if (ret > 0) {
+            derSz = ret;
+            ret = 0;
+        }
+    }
+
+    /* Create result byte array with exact DER size */
+    if (ret == 0) {
+        derArr = (*env)->NewByteArray(env, derSz);
+        if (derArr == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        (*env)->SetByteArrayRegion(env, derArr, 0, derSz, (jbyte*)der);
+        if ((*env)->ExceptionOccurred(env)) {
+            (*env)->DeleteLocalRef(env, derArr);
+            derArr = NULL;
+        }
+    }
+
+    if (pem != NULL) {
+        (*env)->ReleaseByteArrayElements(env, pemArr, (jbyte*)pem, JNI_ABORT);
+    }
+    if (der != NULL) {
+        XFREE(der, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    return derArr;
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)pemArr;
+    throwNotCompiledInException(env);
+    return NULL;
+#endif /* !NO_ASN && !WOLFSSL_NO_PEM && !NO_CODING) */
+}
+
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcPubKeyPemToDer
+    (JNIEnv* env, jclass jcl, jbyteArray pemArr)
+{
+#if !defined(NO_ASN) && !defined(WOLFSSL_NO_PEM) && !defined(NO_CODING)
+    int ret = 0;
+    int derSz = 0;
+    jint pemSz = 0;
+    byte* pem = NULL;
+    byte* der = NULL;
+    jbyteArray derArr = NULL;
+    (void)jcl;
+
+    if (env == NULL) {
+        return NULL;
+    }
+
+    if (pemArr == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        pem = (byte*)(*env)->GetByteArrayElements(env, pemArr, NULL);
+        pemSz = (*env)->GetArrayLength(env, pemArr);
+        if (pem == NULL || pemSz <= 0) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    /* Allocate buffer for DER output, PEM is always larger than DER */
+    if (ret == 0) {
+        der = (byte*)XMALLOC(pemSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (der == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(der, 0, pemSz);
+        ret = wc_PubKeyPemToDer(pem, pemSz, der, pemSz);
+        if (ret > 0) {
+            derSz = ret;
+            ret = 0;
+        }
+    }
+
+    /* Create result byte array with exact DER size */
+    if (ret == 0) {
+        derArr = (*env)->NewByteArray(env, derSz);
+        if (derArr == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        (*env)->SetByteArrayRegion(env, derArr, 0, derSz, (jbyte*)der);
+        if ((*env)->ExceptionOccurred(env)) {
+            (*env)->DeleteLocalRef(env, derArr);
+            derArr = NULL;
+        }
+    }
+
+    if (pem != NULL) {
+        (*env)->ReleaseByteArrayElements(env, pemArr, (jbyte*)pem, JNI_ABORT);
+    }
+    if (der != NULL) {
+        XFREE(der, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    return derArr;
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)pemArr;
+    throwNotCompiledInException(env);
+    return NULL;
+#endif /* !NO_ASN && !WOLFSSL_NO_PEM && !NO_CODING) */
 }
 
