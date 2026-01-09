@@ -21,6 +21,8 @@
 
 package com.wolfssl.wolfcrypt;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * Main wrapper for the native WolfCrypt implementation
  */
@@ -126,6 +128,8 @@ public class WolfCrypt extends WolfObject {
     private static native int getWC_HASH_TYPE_SHA3_256();
     private static native int getWC_HASH_TYPE_SHA3_384();
     private static native int getWC_HASH_TYPE_SHA3_512();
+    private static native byte[] wcBase16Encode(byte[] input);
+    private static native byte[] wcBase16Decode(byte[] input);
 
     /* Public mappings of some SSL/TLS level enums/defines */
     /** wolfSSL file type: PEM */
@@ -178,6 +182,13 @@ public class WolfCrypt extends WolfObject {
     public static native boolean OcspEnabled();
 
     /**
+     * Tests if Base16 (WOLFSSL_BASE16) has been enabled in native wolfCrypt.
+     *
+     * @return true if enabled, otherwise false if not compiled in
+     */
+    public static native boolean Base16Enabled();
+
+    /**
      * Constant time byte array comparison.
      *
      * If arrays are of different lengths, return false right away. Apart
@@ -205,6 +216,75 @@ public class WolfCrypt extends WolfObject {
         return (compareSum == 0);
     }
 
+    /**
+     * Convert byte array to hexadecimal string representation.
+     *
+     * Wraps native Base16_Encode() function. Output uses uppercase hex
+     * characters (0-9, A-F), which matches native wolfSSL behavior.
+     *
+     * @param data byte array to encode as hex string
+     *
+     * @return hexadecimal string representation of input bytes
+     *
+     * @throws WolfCryptException if encoding fails, input is null,
+     *         or native Base16 support is not compiled in
+     */
+    public static String toHexString(byte[] data) throws WolfCryptException {
+
+        byte[] hexBytes = null;
+
+        if (data == null) {
+            throw new WolfCryptException("Input data is null");
+        }
+
+        if (data.length == 0) {
+            return "";
+        }
+
+        hexBytes = wcBase16Encode(data);
+
+        if (hexBytes == null) {
+            throw new WolfCryptException("Base16 encoding failed");
+        }
+
+        return new String(hexBytes, StandardCharsets.US_ASCII);
+    }
+
+    /**
+     * Convert hexadecimal string to byte array.
+     *
+     * Wraps native Base16_Decode() function. Accepts both uppercase (A-F)
+     * and lowercase (a-f) hex characters.
+     *
+     * @param hexStr hexadecimal string to decode
+     *
+     * @return decoded byte array
+     *
+     * @throws WolfCryptException if decoding fails, input is null,
+     *         input has odd length, contains invalid hex characters, or
+     *         native Base16 support is not compiled in
+     */
+    public static byte[] hexStringToByteArray(String hexStr)
+        throws WolfCryptException {
+
+        if (hexStr == null) {
+            throw new WolfCryptException("Input hex string is null");
+        }
+
+        if (hexStr.length() == 0) {
+            return new byte[0];
+        }
+
+        if (hexStr.length() % 2 != 0) {
+            throw new WolfCryptException(
+                "Hex string must have even length");
+        }
+
+        return wcBase16Decode(
+            hexStr.getBytes(StandardCharsets.US_ASCII));
+    }
+
     private WolfCrypt() {
     }
 }
+
