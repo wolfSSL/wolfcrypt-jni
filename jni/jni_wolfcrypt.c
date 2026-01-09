@@ -29,6 +29,8 @@
 
 #include <wolfssl/wolfcrypt/types.h>
 #include <wolfssl/wolfcrypt/asn.h>
+#include <wolfssl/wolfcrypt/coding.h>
+#include <wolfssl/wolfcrypt/error-crypt.h>
 #include <com_wolfssl_wolfcrypt_WolfCrypt.h>
 #include <wolfcrypt_jni_error.h>
 
@@ -143,5 +145,208 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_OcspEnabled
 #else
     return JNI_FALSE;
 #endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_Base16Enabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+
+#ifdef WOLFSSL_BASE16
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcBase16Encode
+    (JNIEnv* env, jclass jcl, jbyteArray inputArr)
+{
+#ifdef WOLFSSL_BASE16
+    int ret = 0;
+    jint inputSz = 0;
+    word32 outLen = 0;
+    byte* input = NULL;
+    byte* output = NULL;
+    jbyteArray outputArr = NULL;
+    (void)jcl;
+
+    if (env == NULL) {
+        return NULL;
+    }
+
+    if (inputArr == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        inputSz = (*env)->GetArrayLength(env, inputArr);
+        if (inputSz == 0) {
+            /* Return empty array for empty input */
+            return (*env)->NewByteArray(env, 0);
+        }
+    }
+
+    /* Check for integer overflow: inputSz * 2 must fit in word32 */
+    if (ret == 0) {
+        if (inputSz < 0 || (word32)inputSz > (0xFFFFFFFFU / 2)) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
+        input = (byte*)(*env)->GetByteArrayElements(env, inputArr, NULL);
+        if (input == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        /* Output size is 2x input size */
+        outLen = (word32)(inputSz * 2);
+        output = (byte*)XMALLOC(outLen, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(output, 0, outLen);
+        ret = Base16_Encode(input, (word32)inputSz, output, &outLen);
+    }
+
+    if (ret == 0) {
+        outputArr = (*env)->NewByteArray(env, (jint)outLen);
+        if (outputArr == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        (*env)->SetByteArrayRegion(env, outputArr, 0, (jint)outLen,
+            (jbyte*)output);
+        if ((*env)->ExceptionOccurred(env)) {
+            (*env)->DeleteLocalRef(env, outputArr);
+            outputArr = NULL;
+        }
+    }
+
+    /* Cleanup */
+    if (input != NULL) {
+        (*env)->ReleaseByteArrayElements(env, inputArr, (jbyte*)input,
+            JNI_ABORT);
+    }
+    if (output != NULL) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    return outputArr;
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)inputArr;
+    throwNotCompiledInException(env);
+    return NULL;
+#endif /* WOLFSSL_BASE16 */
+}
+
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcBase16Decode
+    (JNIEnv* env, jclass jcl, jbyteArray inputArr)
+{
+#ifdef WOLFSSL_BASE16
+    int ret = 0;
+    jint inputSz = 0;
+    word32 outLen = 0;
+    byte* input = NULL;
+    byte* output = NULL;
+    jbyteArray outputArr = NULL;
+    (void)jcl;
+
+    if (env == NULL) {
+        return NULL;
+    }
+
+    if (inputArr == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        inputSz = (*env)->GetArrayLength(env, inputArr);
+        if (inputSz == 0) {
+            /* Return empty array for empty input */
+            return (*env)->NewByteArray(env, 0);
+        }
+    }
+
+    /* Hex string must have even length */
+    if (ret == 0) {
+        if (inputSz < 0 || inputSz % 2 != 0) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
+        input = (byte*)(*env)->GetByteArrayElements(env, inputArr, NULL);
+        if (input == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        /* Output size is half of input size */
+        outLen = (word32)(inputSz / 2);
+        output = (byte*)XMALLOC(outLen, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(output, 0, outLen);
+        ret = Base16_Decode(input, (word32)inputSz, output, &outLen);
+    }
+
+    if (ret == 0) {
+        outputArr = (*env)->NewByteArray(env, (jint)outLen);
+        if (outputArr == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        (*env)->SetByteArrayRegion(env, outputArr, 0, (jint)outLen,
+            (jbyte*)output);
+        if ((*env)->ExceptionOccurred(env)) {
+            (*env)->DeleteLocalRef(env, outputArr);
+            outputArr = NULL;
+        }
+    }
+
+    /* Cleanup */
+    if (input != NULL) {
+        (*env)->ReleaseByteArrayElements(env, inputArr, (jbyte*)input,
+            JNI_ABORT);
+    }
+    if (output != NULL) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    return outputArr;
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)inputArr;
+    throwNotCompiledInException(env);
+    return NULL;
+#endif /* WOLFSSL_BASE16 */
 }
 
