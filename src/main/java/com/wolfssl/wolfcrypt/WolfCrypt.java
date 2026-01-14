@@ -114,6 +114,7 @@ public class WolfCrypt extends WolfObject {
     public static int WC_HASH_TYPE_SHA3_512 =
         WolfCrypt.getWC_HASH_TYPE_SHA3_512();
 
+    /** Native JNI function bindings */
     private static native int getWC_HASH_TYPE_NONE();
     private static native int getWC_HASH_TYPE_MD2();
     private static native int getWC_HASH_TYPE_MD4();
@@ -130,6 +131,9 @@ public class WolfCrypt extends WolfObject {
     private static native int getWC_HASH_TYPE_SHA3_512();
     private static native byte[] wcBase16Encode(byte[] input);
     private static native byte[] wcBase16Decode(byte[] input);
+    private static native byte[] wcKeyPemToDer(byte[] pem, String password);
+    private static native byte[] wcCertPemToDer(byte[] pem);
+    private static native byte[] wcPubKeyPemToDer(byte[] pem);
 
     /* Public mappings of some SSL/TLS level enums/defines */
     /** wolfSSL file type: PEM */
@@ -284,7 +288,76 @@ public class WolfCrypt extends WolfObject {
             hexStr.getBytes(StandardCharsets.US_ASCII));
     }
 
+    /**
+     * Convert private key from PEM to DER format.
+     *
+     * Wraps native wc_KeyPemToDer() function.
+     *
+     * @param pem PEM-encoded private key as byte array
+     * @param password password for encrypted PEM, or null if unencrypted
+     *
+     * @return DER-encoded private key as byte array
+     *
+     * @throws WolfCryptException if conversion fails, native operation
+     *         encounters an error, or native ASN/PEM support is not
+     *         compiled in (NO_ASN or WOLFSSL_NO_PEM defined)
+     */
+    public static byte[] keyPemToDer(byte[] pem, String password)
+        throws WolfCryptException {
+
+        if (pem == null || pem.length == 0) {
+            throw new WolfCryptException("PEM input is null or empty");
+        }
+
+        return wcKeyPemToDer(pem, password);
+    }
+
+    /**
+     * Convert X.509 certificate from PEM to DER format.
+     *
+     * Wraps native wc_CertPemToDer() function.
+     *
+     * @param pem PEM-encoded certificate as byte array
+     *
+     * @return DER-encoded certificate as byte array
+     *
+     * @throws WolfCryptException if conversion fails, native operation
+     *         encounters an error, or native ASN/PEM support is not
+     *         compiled in (NO_ASN or WOLFSSL_NO_PEM defined)
+     */
+    public static byte[] certPemToDer(byte[] pem) throws WolfCryptException {
+
+        if (pem == null || pem.length == 0) {
+            throw new WolfCryptException("PEM input is null or empty");
+        }
+
+        return wcCertPemToDer(pem);
+    }
+
+    /**
+     * Convert public key from PEM to DER format.
+     *
+     * Wraps native wc_PubKeyPemToDer() function.
+     *
+     * @param pem PEM-encoded public key as byte array
+     *
+     * @return DER-encoded public key as byte array
+     *
+     * @throws WolfCryptException if conversion fails, native operation
+     *         encounters an error, or native ASN/PEM support is not
+     *         compiled in (NO_ASN or WOLFSSL_NO_PEM defined)
+     */
+    public static byte[] pubKeyPemToDer(byte[] pem) throws WolfCryptException {
+
+        if (pem == null || pem.length == 0) {
+            throw new WolfCryptException("PEM input is null or empty");
+        }
+
+        return wcPubKeyPemToDer(pem);
+    }
+
     private WolfCrypt() {
     }
+
 }
 

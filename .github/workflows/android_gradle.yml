@@ -17,6 +17,16 @@ jobs:
       - name: Clone wolfcrypt-jni
         uses: actions/checkout@v4
 
+      # Free up disk space to prevent emulator from failing
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android/sdk/ndk
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h
+
       # Clone native wolfSSL
       - name: Clone native wolfSSL
         uses: actions/checkout@v4
