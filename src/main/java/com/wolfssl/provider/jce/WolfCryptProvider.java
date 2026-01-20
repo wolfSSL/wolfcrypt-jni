@@ -422,6 +422,15 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcRSAECBPKCS1Padding");
             put("Cipher.RSA/ECB/PKCS1Padding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcRSAECBPKCS1Padding");
+
+            if (FeatureDetect.Sha256Enabled() &&
+                FeatureDetect.RsaOaepEnabled()) {
+                put("Cipher.RSA/ECB/OAEPWithSHA-256AndMGF1Padding",
+                    "com.wolfssl.provider.jce.WolfCryptCipher$" +
+                    "wcRSAECBOAEPSHA256Padding");
+                put("Alg.Alias.Cipher.RSA/ECB/OAEPWithSHA256AndMGF1Padding",
+                    "RSA/ECB/OAEPWithSHA-256AndMGF1Padding");
+            }
         }
 
         /* KeyAgreement */

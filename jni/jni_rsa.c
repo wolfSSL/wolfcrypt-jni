@@ -1032,6 +1032,184 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
 }
 
 JNIEXPORT jbyteArray JNICALL
+Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt_1ex(
+    JNIEnv* env, jobject this, jbyteArray plaintext_object,
+    jobject rng_object, jint hashType, jint mgf)
+{
+    jbyteArray result = NULL;
+
+#if !defined(NO_RSA) && !defined(WC_NO_RSA_OAEP)
+    int ret = 0;
+    RsaKey* key = NULL;
+    RNG*    rng = NULL;
+    byte* plaintext = NULL;
+    byte* output = NULL;
+    word32 size = 0, outputSz = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    if (plaintext_object == NULL || key == NULL || rng == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        plaintext = getByteArray(env, plaintext_object);
+        size = getByteArrayLength(env, plaintext_object);
+        if (plaintext == NULL) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
+        outputSz = wc_RsaEncryptSize(key);
+        if (outputSz < 0) {
+            ret = outputSz;
+        }
+    }
+
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(output, 0, outputSz);
+
+        ret = wc_RsaPublicEncrypt_ex(plaintext, size, output, outputSz,
+            key, rng, WC_RSA_OAEP_PAD, (enum wc_HashType)hashType, mgf,
+            NULL, 0);
+        if (ret > 0) {
+            outputSz = ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, outputSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                                       (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env,
+                "Failed to create OAEP ciphertext array");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_RsaPublicEncrypt_ex(OAEP) = %d\n", ret);
+    LogStr("output[%u]: [%p]\n", outputSz, output);
+    LogHex((byte*) output, 0, outputSz);
+
+    if (output != NULL) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    releaseByteArray(env, plaintext_object, plaintext, JNI_ABORT);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt_1ex(
+    JNIEnv* env, jobject this, jbyteArray ciphertext_object,
+    jint hashType, jint mgf)
+{
+    jbyteArray result = NULL;
+
+#if !defined(NO_RSA) && !defined(WC_NO_RSA_OAEP)
+    int ret = 0;
+    RsaKey* key = NULL;
+    byte* ciphertext = NULL;
+    byte* output = NULL;
+    word32 size = 0, outputSz = 0;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    if (ciphertext_object == NULL || key == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        ciphertext = getByteArray(env, ciphertext_object);
+        size = getByteArrayLength(env, ciphertext_object);
+        if (ciphertext == NULL) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
+        outputSz = wc_RsaEncryptSize(key);
+        if (outputSz < 0) {
+            ret = outputSz;
+        }
+    }
+
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(output, 0, outputSz);
+
+        ret = wc_RsaPrivateDecrypt_ex(ciphertext, size, output, outputSz,
+            key, WC_RSA_OAEP_PAD, (enum wc_HashType)hashType, mgf, NULL, 0);
+        if (ret > 0) {
+            outputSz = ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, outputSz);
+
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                                       (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env,
+                "Failed to create OAEP plaintext array");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_RsaPrivateDecrypt_ex(OAEP) = %d\n", ret);
+
+    if (output != NULL) {
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    releaseByteArray(env, ciphertext_object, ciphertext, JNI_ABORT);
+#else
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
+JNIEXPORT jbyteArray JNICALL
 Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Sign(
     JNIEnv* env, jobject this, jbyteArray data_object, jobject rng_object)
 {
