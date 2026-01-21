@@ -24,10 +24,33 @@ package com.wolfssl.wolfcrypt;
 /**
  * Loader for the native WolfCrypt implementation.
  * All classes in this package must inherit from it.
+ *
+ * Native library loading can be skipped by setting the System property
+ * "wolfssl.skipLibraryLoad" to "true". This is useful for applications
+ * that bundle native libraries inside JAR files and load them using
+ * System.load() with absolute paths before any wolfSSL classes are
+ * accessed. When this property is set, the application is responsible
+ * for loading the native libraries before using any wolfSSL/wolfCrypt
+ * functionality.
  */
 public class WolfObject {
 
     private static native int init();
+
+    /* Track if library loading was skipped via system property */
+    private static boolean libraryLoadSkipped = false;
+
+    /**
+     * Check if native library loading was skipped.
+     *
+     * Library loading is skipped when the System property
+     * "wolfssl.skipLibraryLoad" is set to "true".
+     *
+     * @return true if library loading was skipped, false otherwise
+     */
+    public static boolean isLibraryLoadSkipped() {
+        return libraryLoadSkipped;
+    }
 
     /**
      * Loads JNI library.
@@ -38,31 +61,43 @@ public class WolfObject {
      * "wolfcryptjni" links against the wolfSSL native C library ("wolfssl"),
      * and for Windows compatibility "wolfssl" needs to be explicitly loaded
      * first here.
+     *
+     * Library loading can be skipped by setting the System property
+     * "wolfssl.skipLibraryLoad" to "true". This allows applications to
+     * load native libraries manually using System.load() before accessing
+     * any wolfSSL classes.
      */
     static {
         int fipsLoaded = 0;
 
-        String osName = System.getProperty("os.name");
-        if (osName != null && osName.toLowerCase().contains("win")) {
-            try {
-                /* Default wolfCrypt FIPS library on Windows is compiled
-                 * as "wolfssl-fips" by Visual Studio solution */
-                System.loadLibrary("wolfssl-fips");
-                fipsLoaded = 1;
-            } catch (UnsatisfiedLinkError e) {
-                /* wolfCrypt FIPS not available */
+        String skipLoad = System.getProperty("wolfssl.skipLibraryLoad");
+        if (skipLoad != null && skipLoad.equalsIgnoreCase("true")) {
+            /* User indicated they will load native libraries manually */
+            libraryLoadSkipped = true;
+        }
+        else {
+            String osName = System.getProperty("os.name");
+            if (osName != null && osName.toLowerCase().contains("win")) {
+                try {
+                    /* Default wolfCrypt FIPS library on Windows is compiled
+                     * as "wolfssl-fips" by Visual Studio solution */
+                    System.loadLibrary("wolfssl-fips");
+                    fipsLoaded = 1;
+                } catch (UnsatisfiedLinkError e) {
+                    /* wolfCrypt FIPS not available */
+                }
+
+                if (fipsLoaded == 0) {
+                    /* FIPS library not loaded, try normal libwolfssl */
+                    System.loadLibrary("wolfssl");
+                }
             }
 
-            if (fipsLoaded == 0) {
-                /* FIPS library not loaded, try normal libwolfssl */
-                System.loadLibrary("wolfssl");
-            }
+            /* Load wolfcryptjni library */
+            System.loadLibrary("wolfcryptjni");
         }
 
-        /* Load wolfcryptjni library */
-        System.loadLibrary("wolfcryptjni");
-
-        /* initialize native wolfCrypt library */
+        /* Initialize native wolfCrypt library */
         init();
 
         /* Run FIPS CAST if we are in FIPS mode. Will only forcefully

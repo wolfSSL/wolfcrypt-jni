@@ -384,29 +384,40 @@ public class FeatureDetect {
      * "wolfcryptjni" links against the wolfSSL native C library ("wolfssl"),
      * and for Windows compatibility "wolfssl" needs to be explicitly loaded
      * first here.
+     *
+     * Library loading can be skipped by setting the System property
+     * "wolfssl.skipLibraryLoad" to "true". This allows applications to
+     * load native libraries manually using System.load() before accessing
+     * any wolfSSL classes.
      */
     static {
         int fipsLoaded = 0;
 
-        String osName = System.getProperty("os.name");
-        if (osName != null && osName.toLowerCase().contains("win")) {
-            try {
-                /* Default wolfCrypt FIPS library on Windows is compiled
-                 * as "wolfssl-fips" by Visual Studio solution */
-                System.loadLibrary("wolfssl-fips");
-                fipsLoaded = 1;
-            } catch (UnsatisfiedLinkError e) {
-                /* wolfCrypt FIPS not available */
-            }
-
-            if (fipsLoaded == 0) {
-                /* FIPS library not loaded, try normal libwolfssl */
-                System.loadLibrary("wolfssl");
-            }
+        String skipLoad = System.getProperty("wolfssl.skipLibraryLoad");
+        if (skipLoad != null && skipLoad.equalsIgnoreCase("true")) {
+            /* User indicated they will load native libraries manually */
         }
+        else {
+            String osName = System.getProperty("os.name");
+            if (osName != null && osName.toLowerCase().contains("win")) {
+                try {
+                    /* Default wolfCrypt FIPS library on Windows is compiled
+                     * as "wolfssl-fips" by Visual Studio solution */
+                    System.loadLibrary("wolfssl-fips");
+                    fipsLoaded = 1;
+                } catch (UnsatisfiedLinkError e) {
+                    /* wolfCrypt FIPS not available */
+                }
 
-        /* Load wolfcryptjni library */
-        System.loadLibrary("wolfcryptjni");
+                if (fipsLoaded == 0) {
+                    /* FIPS library not loaded, try normal libwolfssl */
+                    System.loadLibrary("wolfssl");
+                }
+            }
+
+            /* Load wolfcryptjni library */
+            System.loadLibrary("wolfcryptjni");
+        }
     }
 
     /** Default FeatureDetect constructor */
