@@ -241,6 +241,55 @@ they are not built for JNI-only builds (`ant build-jni-debug/release`).
 
 For more details, see the [README_JCE.md](./README_JCE.md).
 
+### Custom Native Library Loading
+---------
+
+By default, wolfCrypt JNI/JCE loads the native `wolfcryptjni` library using
+`System.loadLibrary()`. This requires the native libraries to be located on
+the system library search path.
+
+For applications that need custom library loading behavior, such as bundling
+native libraries inside a JAR file and extracting them at runtime, wolfCrypt
+JNI/JCE supports skipping the automatic library loading via a System property.
+
+**System Property: `wolfssl.skipLibraryLoad`**
+
+When set to `"true"`, wolfCrypt JNI/JCE will skip calling `System.loadLibrary()`
+for the native libraries. The application is then responsible for loading the
+native libraries before any wolfCrypt classes are accessed.
+
+This property must be set before any wolfCrypt JNI/JCE classes are loaded by the
+JVM, as the native library loading occurs in static initializer blocks.
+
+**Usage Example:**
+
+```java
+/* Option 1: Set via command line */
+/* java -Dwolfssl.skipLibraryLoad=true -jar myapp.jar */
+
+/* Option 2: Load libraries manually with absolute paths, then set property.
+ * This must happen at application startup, BEFORE any wolfCrypt classes
+ * are accessed or loaded by the JVM. */
+System.load("/path/to/libwolfssl.so");
+System.load("/path/to/libwolfcryptjni.so");
+System.setProperty("wolfssl.skipLibraryLoad", "true");
+
+/* Now wolfCrypt classes can be used normally */
+```
+
+**Programmatic Check:**
+
+Applications can check if library loading was skipped using the
+`WolfObject.isLibraryLoadSkipped()` method:
+
+```java
+import com.wolfssl.wolfcrypt.WolfObject;
+
+if (WolfObject.isLibraryLoadSkipped()) {
+    System.out.println("Native library loading was skipped");
+}
+```
+
 ### JAR Code Signing
 ---------
 
