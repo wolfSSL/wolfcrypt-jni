@@ -169,6 +169,12 @@ public class Rsa extends NativeStruct {
     private native boolean wc_RsaPSS_CheckPadding(byte[] pssData, byte[] digest,
             int hashType, int mgf, int saltLen) throws WolfCryptException;
 
+    /* RSA-OAEP functions */
+    private native byte[] wc_RsaPublicEncrypt_ex(byte[] data, Rng rng,
+            int hashType, int mgf) throws WolfCryptException;
+    private native byte[] wc_RsaPrivateDecrypt_ex(byte[] data,
+            int hashType, int mgf) throws WolfCryptException;
+
     /**
      * Create new Rsa object.
      *
@@ -962,6 +968,93 @@ public class Rsa extends NativeStruct {
         synchronized (pointerLock) {
             return wc_RsaPSS_CheckPadding(pssData, digest, hashType,
                 mgf, saltLen);
+        }
+    }
+
+    /**
+     * Encrypt data with RSA-OAEP using public key.
+     *
+     * @param plain input data to be encrypted
+     * @param rng initialized Rng object
+     * @param hashType hash type for OAEP (WC_HASH_TYPE_*)
+     * @param mgf mask generation function (ex: WC_MGF1SHA256 for MGF1
+     *            with SHA-256)
+     *
+     * @return encrypted data as byte array
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if public key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
+     * @throws IllegalArgumentException if plain is null, rng is null, or
+     *         hashType/mgf values are invalid
+     */
+    public synchronized byte[] encryptOaep(byte[] plain, Rng rng,
+        int hashType, int mgf) throws WolfCryptException {
+
+        if (plain == null) {
+            throw new IllegalArgumentException(
+                "Input plaintext data cannot be null");
+        }
+        if (rng == null) {
+            throw new IllegalArgumentException(
+                "Rng object cannot be null for OAEP encryption");
+        }
+        if (hashType < 0) {
+            throw new IllegalArgumentException(
+                "Invalid hashType value: " + hashType);
+        }
+        if (mgf < 0) {
+            throw new IllegalArgumentException(
+                "Invalid mgf value: " + mgf);
+        }
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded(false);
+
+        synchronized (pointerLock) {
+            return wc_RsaPublicEncrypt_ex(plain, rng, hashType, mgf);
+        }
+    }
+
+    /**
+     * Decrypt data with RSA-OAEP using private key.
+     *
+     * @param ciphertext encrypted data to decrypt
+     * @param hashType hash type for OAEP (WC_HASH_TYPE_*)
+     * @param mgf mask generation function (ex: WC_MGF1SHA256 for MGF1
+     *            with SHA-256)
+     *
+     * @return decrypted data as byte array
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if private key has not been set, if object
+     *         fails to initialize, or if releaseNativeStruct() has been
+     *         called and object has been released.
+     * @throws IllegalArgumentException if ciphertext is null or
+     *         hashType/mgf values are invalid
+     */
+    public synchronized byte[] decryptOaep(byte[] ciphertext,
+        int hashType, int mgf) throws WolfCryptException {
+
+        if (ciphertext == null) {
+            throw new IllegalArgumentException(
+                "Input ciphertext data cannot be null");
+        }
+        if (hashType < 0) {
+            throw new IllegalArgumentException(
+                "Invalid hashType value: " + hashType);
+        }
+        if (mgf < 0) {
+            throw new IllegalArgumentException(
+                "Invalid mgf value: " + mgf);
+        }
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded(true);
+
+        synchronized (pointerLock) {
+            return wc_RsaPrivateDecrypt_ex(ciphertext, hashType, mgf);
         }
     }
 }

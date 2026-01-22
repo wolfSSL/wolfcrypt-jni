@@ -34,8 +34,11 @@ import javax.crypto.AEADBadTagException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.OAEPParameterSpec;
+import javax.crypto.spec.PSource;
 
 import java.security.SecureRandom;
+import java.security.spec.MGF1ParameterSpec;
 import java.security.AlgorithmParameters;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.InvalidParameterSpecException;
@@ -58,6 +61,7 @@ import com.wolfssl.wolfcrypt.AesCts;
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Rng;
+import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 
@@ -85,7 +89,8 @@ public class WolfCryptCipher extends CipherSpi {
     enum PaddingType {
         WC_NONE,
         WC_PKCS1,
-        WC_PKCS5
+        WC_PKCS5,
+        WC_OAEP_SHA256
     }
 
     enum OpMode {
@@ -116,6 +121,10 @@ public class WolfCryptCipher extends CipherSpi {
     private Des3 des3     = null;
     private Rsa  rsa      = null;
     private Rng  rng      = null;
+
+    /* RSA-OAEP parameters */
+    private int oaepHashType = 0;
+    private int oaepMgf = 0;
 
     /* for debug logging */
     private String algString;
@@ -148,6 +157,11 @@ public class WolfCryptCipher extends CipherSpi {
         this.cipherMode = mode;
         this.paddingType = pad;
 
+        /* Initialize OAEP parameters if using OAEP padding */
+        if (pad == PaddingType.WC_OAEP_SHA256) {
+            initOaepParams();
+        }
+
         this.rng = new Rng();
         this.rng.init();
 
@@ -168,6 +182,149 @@ public class WolfCryptCipher extends CipherSpi {
             algString = typeToString(cipherType);
             algMode = modeToString(cipherMode);
         }
+    }
+
+    /**
+     * Initialize OAEP parameters for RSA-OAEP padding.
+     * Uses SHA-256 for OAEP hash and SHA-1 for MGF1 hash to match
+     * JCE default behavior for OAEPWithSHA-256AndMGF1Padding.
+     */
+    private void initOaepParams() {
+        this.oaepHashType = WolfCrypt.WC_HASH_TYPE_SHA256;
+        this.oaepMgf = Rsa.WC_MGF1SHA1;
+    }
+
+    /**
+     * Convert JCE hash algorithm name to wolfCrypt hash type constant.
+     *
+     * @param hashAlgo JCE hash algorithm name (e.g., "SHA-256", "SHA-1")
+     * @return wolfCrypt hash type constant
+     * @throws InvalidAlgorithmParameterException if hash algorithm is not
+     *         supported
+     */
+    private int hashNameToWolfCryptType(String hashAlgo)
+        throws InvalidAlgorithmParameterException {
+
+        if (hashAlgo == null) {
+            throw new InvalidAlgorithmParameterException(
+                "Hash algorithm name cannot be null");
+        }
+
+        switch (hashAlgo.toUpperCase()) {
+            case "SHA-1":
+            case "SHA1":
+                return WolfCrypt.WC_HASH_TYPE_SHA;
+            case "SHA-224":
+            case "SHA224":
+                return WolfCrypt.WC_HASH_TYPE_SHA224;
+            case "SHA-256":
+            case "SHA256":
+                return WolfCrypt.WC_HASH_TYPE_SHA256;
+            case "SHA-384":
+            case "SHA384":
+                return WolfCrypt.WC_HASH_TYPE_SHA384;
+            case "SHA-512":
+            case "SHA512":
+                return WolfCrypt.WC_HASH_TYPE_SHA512;
+            default:
+                throw new InvalidAlgorithmParameterException(
+                    "Unsupported OAEP hash algorithm: " + hashAlgo);
+        }
+    }
+
+    /**
+     * Convert MGF1ParameterSpec to wolfCrypt MGF type constant.
+     *
+     * @param mgfSpec MGF1ParameterSpec containing the hash algorithm
+     * @return wolfCrypt MGF type constant
+     * @throws InvalidAlgorithmParameterException if MGF hash algorithm is not
+     *         supported
+     */
+    private int mgf1SpecToWolfCryptMgf(MGF1ParameterSpec mgfSpec)
+        throws InvalidAlgorithmParameterException {
+
+        if (mgfSpec == null) {
+            throw new InvalidAlgorithmParameterException(
+                "MGF1ParameterSpec cannot be null");
+        }
+
+        String hashAlgo = mgfSpec.getDigestAlgorithm();
+
+        switch (hashAlgo.toUpperCase()) {
+            case "SHA-1":
+            case "SHA1":
+                return Rsa.WC_MGF1SHA1;
+            case "SHA-224":
+            case "SHA224":
+                return Rsa.WC_MGF1SHA224;
+            case "SHA-256":
+            case "SHA256":
+                return Rsa.WC_MGF1SHA256;
+            case "SHA-384":
+            case "SHA384":
+                return Rsa.WC_MGF1SHA384;
+            case "SHA-512":
+            case "SHA512":
+                return Rsa.WC_MGF1SHA512;
+            default:
+                throw new InvalidAlgorithmParameterException(
+                    "Unsupported MGF1 hash algorithm: " + hashAlgo);
+        }
+    }
+
+    /**
+     * Set OAEP parameters from OAEPParameterSpec.
+     *
+     * @param spec OAEPParameterSpec containing OAEP parameters
+     * @throws InvalidAlgorithmParameterException if parameters are invalid
+     */
+    private void setOaepParams(OAEPParameterSpec spec)
+        throws InvalidAlgorithmParameterException {
+
+        AlgorithmParameterSpec mgfParams = null;
+        PSource pSource = null;
+
+        if (spec == null) {
+            throw new InvalidAlgorithmParameterException(
+                "OAEPParameterSpec cannot be null");
+        }
+
+        /* Validate MGF algorithm is MGF1 */
+        if (!spec.getMGFAlgorithm().equals("MGF1") &&
+            !spec.getMGFAlgorithm().equals(OAEPParameterSpec.DEFAULT.
+                getMGFAlgorithm())) {
+            throw new InvalidAlgorithmParameterException(
+                "Only MGF1 is supported for OAEP, got: " +
+                spec.getMGFAlgorithm());
+        }
+
+        /* Get MGF parameters */
+        mgfParams = spec.getMGFParameters();
+        if (!(mgfParams instanceof MGF1ParameterSpec)) {
+            throw new InvalidAlgorithmParameterException(
+                "MGF parameters must be MGF1ParameterSpec");
+        }
+
+        /* Validate PSource is PSpecified with empty label (default) */
+        pSource = spec.getPSource();
+        if (pSource != null && pSource instanceof PSource.PSpecified) {
+            byte[] label = ((PSource.PSpecified) pSource).getValue();
+            if (label != null && label.length > 0) {
+                throw new InvalidAlgorithmParameterException(
+                    "OAEP label (PSource) must be empty, custom labels " +
+                    "are not supported");
+            }
+        }
+
+        /* Set OAEP hash type */
+        this.oaepHashType = hashNameToWolfCryptType(spec.getDigestAlgorithm());
+
+        /* Set MGF type */
+        this.oaepMgf = mgf1SpecToWolfCryptMgf((MGF1ParameterSpec) mgfParams);
+
+        log("set OAEP params: hash=" + spec.getDigestAlgorithm() +
+            ", mgf1Hash=" + ((MGF1ParameterSpec) mgfParams).
+            getDigestAlgorithm());
     }
 
     /**
@@ -368,6 +525,17 @@ public class WolfCryptCipher extends CipherSpi {
                 supported = 1;
 
                 log("set padding to PKCS5Padding");
+            }
+
+        } else if (padding.equals("OAEPWithSHA-256AndMGF1Padding") ||
+                   padding.equals("OAEPWithSHA256AndMGF1Padding")) {
+
+            if (cipherType == CipherType.WC_RSA) {
+                paddingType = PaddingType.WC_OAEP_SHA256;
+                initOaepParams();
+                supported = 1;
+
+                log("set padding to OAEPWithSHA-256AndMGF1Padding");
             }
         }
 
@@ -576,10 +744,28 @@ public class WolfCryptCipher extends CipherSpi {
         /* store AlgorithmParameterSpec for class reset */
         this.storedSpec = spec;
 
-        /* RSA and AES-ECB don't need an IV */
-        if (this.cipherType == CipherType.WC_RSA ||
-            (this.cipherType == CipherType.WC_AES &&
-             this.cipherMode == CipherMode.WC_ECB))
+        /* Handle RSA OAEP parameters if provided */
+        if (this.cipherType == CipherType.WC_RSA) {
+            if (spec != null) {
+                if (spec instanceof OAEPParameterSpec) {
+                    if (this.paddingType != PaddingType.WC_OAEP_SHA256) {
+                        throw new InvalidAlgorithmParameterException(
+                            "OAEPParameterSpec can only be used with " +
+                            "OAEPWithSHA-256AndMGF1Padding");
+                    }
+                    setOaepParams((OAEPParameterSpec) spec);
+                } else {
+                    throw new InvalidAlgorithmParameterException(
+                        "AlgorithmParameterSpec for RSA OAEP must be of " +
+                        "type OAEPParameterSpec");
+                }
+            }
+            return;
+        }
+
+        /* AES-ECB doesn't need an IV */
+        if (this.cipherType == CipherType.WC_AES &&
+            this.cipherMode == CipherMode.WC_ECB)
             return;
 
         /* store IV, or generate random IV if not available */
@@ -853,7 +1039,11 @@ public class WolfCryptCipher extends CipherSpi {
         try {
 
             if (params != null) {
-                if (this.cipherMode == CipherMode.WC_GCM ||
+                if (this.cipherType == CipherType.WC_RSA &&
+                    this.paddingType == PaddingType.WC_OAEP_SHA256) {
+                    spec = params.getParameterSpec(OAEPParameterSpec.class);
+                }
+                else if (this.cipherMode == CipherMode.WC_GCM ||
                     this.cipherMode == CipherMode.WC_CCM) {
                     spec = params.getParameterSpec(GCMParameterSpec.class);
                 }
@@ -1246,20 +1436,51 @@ public class WolfCryptCipher extends CipherSpi {
 
             case WC_RSA:
 
-                if (this.direction == OpMode.WC_ENCRYPT) {
+                if (this.paddingType == PaddingType.WC_OAEP_SHA256) {
+                    /* OAEP only supports public key encrypt, private decrypt */
+                    if (this.direction == OpMode.WC_ENCRYPT) {
+                        if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
+                            throw new IllegalStateException(
+                                "OAEP padding requires public key for " +
+                                "encryption");
+                        }
 
-                    if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
-                        tmpOut = this.rsa.sign(tmpIn, this.rng);
+                        tmpOut = this.rsa.encryptOaep(tmpIn, this.rng,
+                            this.oaepHashType, this.oaepMgf);
 
                     } else {
-                        tmpOut = this.rsa.encrypt(tmpIn, this.rng);
+                        if (this.rsaKeyType == RsaKeyType.WC_RSA_PUBLIC) {
+                            throw new IllegalStateException(
+                                "OAEP padding requires private key for " +
+                                "decryption");
+                        }
+
+                        try {
+                            tmpOut = this.rsa.decryptOaep(tmpIn,
+                                this.oaepHashType, this.oaepMgf);
+
+                        } catch (WolfCryptException e) {
+                            throw new BadPaddingException(
+                                "OAEP decryption failed: " + e.getMessage());
+                        }
                     }
-
                 } else {
-                    if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
-                        tmpOut = this.rsa.decrypt(tmpIn);
+                    /* PKCS#1 v1.5 padding */
+                    if (this.direction == OpMode.WC_ENCRYPT) {
+
+                        if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
+                            tmpOut = this.rsa.sign(tmpIn, this.rng);
+
+                        } else {
+                            tmpOut = this.rsa.encrypt(tmpIn, this.rng);
+                        }
+
                     } else {
-                        tmpOut = this.rsa.verify(tmpIn);
+                        if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
+                            tmpOut = this.rsa.decrypt(tmpIn);
+                        } else {
+                            tmpOut = this.rsa.verify(tmpIn);
+                        }
                     }
                 }
                 break;
@@ -1806,6 +2027,20 @@ public class WolfCryptCipher extends CipherSpi {
          */
         public wcRSAECBPKCS1Padding() {
             super(CipherType.WC_RSA, CipherMode.WC_ECB, PaddingType.WC_PKCS1);
+        }
+    }
+
+    /**
+     * Class for RSA-ECB with OAEP SHA-256 padding
+     */
+    public static final class wcRSAECBOAEPSHA256Padding
+        extends WolfCryptCipher {
+        /**
+         * Create new wcRSAECBOAEPSHA256Padding object
+         */
+        public wcRSAECBOAEPSHA256Padding() {
+            super(CipherType.WC_RSA, CipherMode.WC_ECB,
+                  PaddingType.WC_OAEP_SHA256);
         }
     }
 }

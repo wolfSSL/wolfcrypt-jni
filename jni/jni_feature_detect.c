@@ -521,6 +521,18 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_RsaPssEnable
 #endif
 }
 
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_RsaOaepEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_RSA) && !defined(WC_NO_RSA_OAEP)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_DhEnabled
   (JNIEnv* env, jclass jcl)
 {

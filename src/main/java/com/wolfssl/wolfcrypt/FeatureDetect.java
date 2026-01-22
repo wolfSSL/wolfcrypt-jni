@@ -326,6 +326,13 @@ public class FeatureDetect {
     public static native boolean RsaPssEnabled();
 
     /**
+     * Tests if RSA-OAEP is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean RsaOaepEnabled();
+
+    /**
      * Tests if DH is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.
