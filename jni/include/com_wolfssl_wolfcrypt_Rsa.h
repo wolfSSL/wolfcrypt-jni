@@ -255,6 +255,22 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1CheckPaddi
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaPublicEncrypt_ex
+ * Signature: ([BLcom/wolfssl/wolfcrypt/Rng;II)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt_1ex
+  (JNIEnv *, jobject, jbyteArray, jobject, jint, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaPrivateDecrypt_ex
+ * Signature: ([BII)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt_1ex
+  (JNIEnv *, jobject, jbyteArray, jint, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
  * Method:    getDefaultRsaExponent
  * Signature: ()J
  */
