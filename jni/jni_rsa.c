@@ -2117,6 +2117,15 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaImportCrtKey(
     if (ret == 0) {
         key->type = RSA_PRIVATE;
     }
+#else
+    (void)nSz;
+    (void)eSz;
+    (void)dSz;
+    (void)pSz;
+    (void)qSz;
+    (void)dPSz;
+    (void)dQSz;
+    (void)uSz;
 #endif /* WOLFSSL_PUBLIC_MP */
 
     if (ret != 0) {
