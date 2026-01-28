@@ -237,6 +237,9 @@ The JCE provider currently supports the following algorithms:
     CertPathValidator Class
         PKIX (with PKIXRevocationChecker via getRevocationChecker())
 
+    CertPathBuilder Class
+        PKIX
+
     SecretKeyFactory
         PBKDF2WithHmacSHA1
         PBKDF2WithHmacSHA224
@@ -560,6 +563,77 @@ PKIXParameters has name constraints set. This matches SunJCE behavior.
 Applications should use TrustAnchors without explicit name constraints; if
 name constraint enforcement is needed, the constraints should be embedded in
 the trust anchor certificate itself.
+
+### CertPathBuilder (PKIX) Implementation Notes
+---------
+
+wolfJCE provides a PKIX CertPathBuilder implementation that builds and
+validates certificate chains using native wolfSSL's
+`wolfSSL_X509_verify_cert()` function.
+
+#### Native Chain Building with Backtracking
+
+The CertPathBuilder uses native wolfSSL `X509_STORE` APIs for certificate chain
+building. This provides automatic backtracking when a candidate issuer fails
+verification. wolfSSL will try alternative issuers until a valid path is found
+or all possibilities are exhausted.
+
+#### Usage Example
+
+```java
+/* Load certificates */
+X509Certificate targetCert = ...;
+X509Certificate intermediateCert = ...;
+X509Certificate rootCACert = ...;
+
+/* Set up trust anchors */
+Set<TrustAnchor> anchors = new HashSet<>();
+anchors.add(new TrustAnchor(rootCACert, null));
+
+/* Set up CertStore with available certificates */
+Collection<Certificate> certs = new ArrayList<>();
+certs.add(targetCert);
+certs.add(intermediateCert);
+CertStore certStore = CertStore.getInstance("Collection",
+    new CollectionCertStoreParameters(certs));
+
+/* Configure parameters */
+X509CertSelector selector = new X509CertSelector();
+selector.setCertificate(targetCert);
+PKIXBuilderParameters params = new PKIXBuilderParameters(anchors, selector);
+params.setRevocationEnabled(false);
+params.addCertStore(certStore);
+
+/* Build certificate path */
+CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", "wolfJCE");
+PKIXCertPathBuilderResult result = (PKIXCertPathBuilderResult) cpb.build(params);
+
+CertPath certPath = result.getCertPath();
+TrustAnchor trustAnchor = result.getTrustAnchor();
+```
+
+#### Supported Features
+
+- RSA and ECC certificate chains
+- Multiple intermediate certificates
+- Multiple trust anchors (correct one selected automatically)
+- Multiple CertStores
+- `maxPathLength` constraint enforcement
+- Target certificate selection by certificate or subject name
+- Target certificate as trust anchor (returns empty path)
+
+#### Limitations
+
+- **Date Override**: `PKIXBuilderParameters.setDate()` is not passed to native
+  wolfSSL verification. Certificates are validated against current system time.
+- **TrustAnchor Name Constraints**: Name constraints on TrustAnchors are not
+  supported. An `InvalidAlgorithmParameterException` is thrown if any
+  TrustAnchor has name constraints set.
+- **Policy Processing**: Certificate policy processing is not supported.
+  `PKIXCertPathBuilderResult.getPolicyTree()` returns null.
+- **Revocation Checking**: Revocation checking during path building is not
+  currently integrated. Use `CertPathValidator` with `PKIXRevocationChecker`
+  for revocation checking after path building.
 
 ### Behavior Discrepancies with SunJCE
 ---------

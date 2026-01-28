@@ -104,6 +104,7 @@
     <ClCompile Include="..\..\jni\jni_wolfcrypt.c" />
     <ClCompile Include="..\..\jni\jni_wolfobject.c" />
     <ClCompile Include="..\..\jni\jni_wolfssl_cert_manager.c" />
+    <ClCompile Include="..\..\jni\jni_wolfssl_x509_store_ctx.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
