@@ -154,6 +154,8 @@ The JCE provider currently supports the following algorithms:
         RSA/ECB/PKCS1Padding
         RSA/ECB/OAEPWithSHA-256AndMGF1Padding
             Alias: RSA/ECB/OAEPWithSHA256AndMGF1Padding
+        RSA/ECB/OAEPWithSHA-1AndMGF1Padding
+            Alias: RSA/ECB/OAEPWithSHA1AndMGF1Padding
 
     Mac Class
         AESCMAC (aliased also as: AES-CMAC)
