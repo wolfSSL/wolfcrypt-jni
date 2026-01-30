@@ -25,6 +25,7 @@ import java.security.Provider;
 import java.security.Security;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.WolfSSLX509StoreCtx;
 
 /**
  * wolfCrypt JCE Provider implementation
@@ -532,6 +533,12 @@ public final class WolfCryptProvider extends Provider {
         /* CertPathValidator */
         put("CertPathValidator.PKIX",
                 "com.wolfssl.provider.jce.WolfCryptPKIXCertPathValidator");
+
+        /* CertPathBuilder requires wolfSSL 5.8.0 or later */
+        if (WolfSSLX509StoreCtx.isSupported()) {
+            put("CertPathBuilder.PKIX",
+                    "com.wolfssl.provider.jce.WolfCryptPKIXCertPathBuilder");
+        }
 
         /* SecretKeyFactory */
         if (FeatureDetect.Pbkdf2Enabled()) {

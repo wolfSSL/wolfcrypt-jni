@@ -373,6 +373,7 @@ add_library(wolfcryptjni SHARED
         ${wolfcryptjni_DIR}/jni/jni_wolfcrypt.c
         ${wolfcryptjni_DIR}/jni/jni_wolfobject.c
         ${wolfcryptjni_DIR}/jni/jni_wolfssl_cert_manager.c
+        ${wolfcryptjni_DIR}/jni/jni_wolfssl_x509_store_ctx.c
 )
 
 # set_target_properties(wolfcryptjni PROPERTIES LIBRARY_OUTPUT_DIRECTORY

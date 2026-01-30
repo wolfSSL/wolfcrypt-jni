@@ -108,13 +108,6 @@ public class WolfCryptPKIXRevocationCheckerTest {
             f.exists());
     }
 
-    @BeforeClass
-    public static void checkAvailability() {
-        /* RevocationChecker can be created even without OCSP support,
-         * it will fail during init() if OCSP is not compiled in */
-        System.out.println("JCE WolfCryptPKIXRevocationChecker Test");
-    }
-
     @Test
     public void testGetRevocationChecker() throws Exception {
 
