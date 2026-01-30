@@ -90,6 +90,7 @@ public class WolfCryptCipher extends CipherSpi {
         WC_NONE,
         WC_PKCS1,
         WC_PKCS5,
+        WC_OAEP_SHA1,
         WC_OAEP_SHA256
     }
 
@@ -160,6 +161,8 @@ public class WolfCryptCipher extends CipherSpi {
         /* Initialize OAEP parameters if using OAEP padding */
         if (pad == PaddingType.WC_OAEP_SHA256) {
             initOaepParams();
+        } else if (pad == PaddingType.WC_OAEP_SHA1) {
+            initOaepParamsSha1();
         }
 
         this.rng = new Rng();
@@ -191,6 +194,16 @@ public class WolfCryptCipher extends CipherSpi {
      */
     private void initOaepParams() {
         this.oaepHashType = WolfCrypt.WC_HASH_TYPE_SHA256;
+        this.oaepMgf = Rsa.WC_MGF1SHA1;
+    }
+
+    /**
+     * Initialize OAEP parameters for RSA-OAEP padding with SHA-1.
+     * Uses SHA-1 for OAEP hash and SHA-1 for MGF1 hash to match
+     * JCE default behavior for OAEPWithSHA-1AndMGF1Padding.
+     */
+    private void initOaepParamsSha1() {
+        this.oaepHashType = WolfCrypt.WC_HASH_TYPE_SHA;
         this.oaepMgf = Rsa.WC_MGF1SHA1;
     }
 
@@ -537,6 +550,17 @@ public class WolfCryptCipher extends CipherSpi {
 
                 log("set padding to OAEPWithSHA-256AndMGF1Padding");
             }
+
+        } else if (padding.equals("OAEPWithSHA-1AndMGF1Padding") ||
+                   padding.equals("OAEPWithSHA1AndMGF1Padding")) {
+
+            if (cipherType == CipherType.WC_RSA) {
+                paddingType = PaddingType.WC_OAEP_SHA1;
+                initOaepParamsSha1();
+                supported = 1;
+
+                log("set padding to OAEPWithSHA-1AndMGF1Padding");
+            }
         }
 
         if (supported == 0) {
@@ -748,10 +772,11 @@ public class WolfCryptCipher extends CipherSpi {
         if (this.cipherType == CipherType.WC_RSA) {
             if (spec != null) {
                 if (spec instanceof OAEPParameterSpec) {
-                    if (this.paddingType != PaddingType.WC_OAEP_SHA256) {
+                    if (this.paddingType != PaddingType.WC_OAEP_SHA256 &&
+                        this.paddingType != PaddingType.WC_OAEP_SHA1) {
                         throw new InvalidAlgorithmParameterException(
                             "OAEPParameterSpec can only be used with " +
-                            "OAEPWithSHA-256AndMGF1Padding");
+                            "OAEP padding modes");
                     }
                     setOaepParams((OAEPParameterSpec) spec);
                 } else {
@@ -1040,7 +1065,8 @@ public class WolfCryptCipher extends CipherSpi {
 
             if (params != null) {
                 if (this.cipherType == CipherType.WC_RSA &&
-                    this.paddingType == PaddingType.WC_OAEP_SHA256) {
+                    (this.paddingType == PaddingType.WC_OAEP_SHA256 ||
+                     this.paddingType == PaddingType.WC_OAEP_SHA1)) {
                     spec = params.getParameterSpec(OAEPParameterSpec.class);
                 }
                 else if (this.cipherMode == CipherMode.WC_GCM ||
@@ -1436,7 +1462,8 @@ public class WolfCryptCipher extends CipherSpi {
 
             case WC_RSA:
 
-                if (this.paddingType == PaddingType.WC_OAEP_SHA256) {
+                if (this.paddingType == PaddingType.WC_OAEP_SHA256 ||
+                    this.paddingType == PaddingType.WC_OAEP_SHA1) {
                     /* OAEP only supports public key encrypt, private decrypt */
                     if (this.direction == OpMode.WC_ENCRYPT) {
                         if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
@@ -2041,6 +2068,20 @@ public class WolfCryptCipher extends CipherSpi {
         public wcRSAECBOAEPSHA256Padding() {
             super(CipherType.WC_RSA, CipherMode.WC_ECB,
                   PaddingType.WC_OAEP_SHA256);
+        }
+    }
+
+    /**
+     * Class for RSA-ECB with OAEP SHA-1 padding
+     */
+    public static final class wcRSAECBOAEPSHA1Padding
+        extends WolfCryptCipher {
+        /**
+         * Create new wcRSAECBOAEPSHA1Padding object
+         */
+        public wcRSAECBOAEPSHA1Padding() {
+            super(CipherType.WC_RSA, CipherMode.WC_ECB,
+                  PaddingType.WC_OAEP_SHA1);
         }
     }
 }
