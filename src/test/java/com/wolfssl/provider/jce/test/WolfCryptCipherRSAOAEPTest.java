@@ -68,6 +68,8 @@ public class WolfCryptCipherRSAOAEPTest {
 
     private static final String OAEP_ALGO =
         "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
+    private static final String OAEP_SHA1_ALGO =
+        "RSA/ECB/OAEPWithSHA-1AndMGF1Padding";
     private static final String jceProvider = "wolfJCE";
 
     /* Interop provider for cross-provider testing */
@@ -79,8 +81,11 @@ public class WolfCryptCipherRSAOAEPTest {
     /* Pre-generated RSA key pair */
     private static KeyPair rsaPair = null;
 
-    /* Flag indicating if OAEP is available */
+    /* Flag indicating if OAEP SHA-256 is available */
     private static boolean oaepAvailable = false;
+
+    /* Flag indicating if OAEP SHA-1 is available */
+    private static boolean oaepSha1Available = false;
 
     /* Generated RSA-OAEP Test Vectors:
      * Algorithm: RSA/ECB/OAEPWithSHA-256AndMGF1Padding
@@ -166,7 +171,7 @@ public class WolfCryptCipherRSAOAEPTest {
         Provider p = Security.getProvider(jceProvider);
         assertNotNull(p);
 
-        /* Check if RSA OAEP is available */
+        /* Check if RSA OAEP SHA-256 is available */
         try {
             Cipher.getInstance(OAEP_ALGO, jceProvider);
             oaepAvailable = true;
@@ -175,6 +180,17 @@ public class WolfCryptCipherRSAOAEPTest {
             oaepAvailable = false;
         } catch (NoSuchPaddingException e) {
             oaepAvailable = false;
+        }
+
+        /* Check if RSA OAEP SHA-1 is available */
+        try {
+            Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+            oaepSha1Available = true;
+        } catch (NoSuchAlgorithmException e) {
+            /* OAEP SHA-1 not compiled in */
+            oaepSha1Available = false;
+        } catch (NoSuchPaddingException e) {
+            oaepSha1Available = false;
         }
 
         /* Try to set up interop provider. Only use SunJCE for OAEP interop
@@ -1013,6 +1029,469 @@ public class WolfCryptCipherRSAOAEPTest {
 
         Cipher cipher = Cipher.getInstance(OAEP_ALGO, jceProvider);
         cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic(), oaepSpec);
+    }
+
+    @Test
+    public void testOAEPSHA1BasicEncryptDecrypt()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        byte[] plaintext = "Hello wolfSSL OAEP SHA-1!".getBytes();
+
+        Cipher encCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        encCipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        byte[] ciphertext = encCipher.doFinal(plaintext);
+
+        assertNotNull(ciphertext);
+        assertTrue(ciphertext.length > 0);
+        /* Ciphertext should be RSA modulus size (256 bytes for 2048-bit) */
+        assertEquals(256, ciphertext.length);
+
+        Cipher decCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        decCipher.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate());
+        byte[] decrypted = decCipher.doFinal(ciphertext);
+
+        assertArrayEquals(plaintext, decrypted);
+    }
+
+    @Test
+    public void testOAEPSHA1NonDeterministic()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        byte[] plaintext = "Test OAEP SHA-1 randomness".getBytes();
+
+        Cipher cipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        byte[] ciphertext1 = cipher.doFinal(plaintext);
+
+        cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        byte[] ciphertext2 = cipher.doFinal(plaintext);
+
+        /* OAEP is randomized, same plaintext should produce different
+         * ciphertext each time */
+        assertFalse("OAEP SHA-1 ciphertext should be non-deterministic",
+            Arrays.equals(ciphertext1, ciphertext2));
+    }
+
+    @Test
+    public void testOAEPSHA1MaxPlaintextSize()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        /* Max plaintext for 2048-bit RSA with SHA-1 OAEP:
+         * 256 - 2*20 - 2 = 214 bytes */
+        byte[] maxPlaintext = new byte[214];
+        secureRandom.nextBytes(maxPlaintext);
+
+        Cipher encCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        encCipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        byte[] ciphertext = encCipher.doFinal(maxPlaintext);
+
+        Cipher decCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        decCipher.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate());
+        byte[] decrypted = decCipher.doFinal(ciphertext);
+
+        assertArrayEquals(maxPlaintext, decrypted);
+    }
+
+    @Test
+    public void testOAEPSHA1TooBigData()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        /* Too big for 2048-bit RSA with SHA-1 OAEP (max is 214 bytes) */
+        byte[] tooBigPlaintext = new byte[215];
+        secureRandom.nextBytes(tooBigPlaintext);
+
+        Cipher cipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+
+        try {
+            cipher.doFinal(tooBigPlaintext);
+            fail("Should throw exception for data too big for OAEP SHA-1");
+        } catch (IllegalBlockSizeException e) {
+            /* Expected */
+        } catch (BadPaddingException e) {
+            /* Also acceptable from native layer */
+        } catch (RuntimeException e) {
+            /* WolfCryptException wrapped in RuntimeException is also valid */
+        }
+    }
+
+    @Test
+    public void testOAEPSHA1FinalResetsState()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        byte[] plaintext1 = "First message SHA-1".getBytes();
+        byte[] plaintext2 = "Second message SHA-1".getBytes();
+
+        Cipher cipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+
+        /* First encryption */
+        byte[] ciphertext1 = cipher.doFinal(plaintext1);
+
+        /* After doFinal, cipher should be reset and usable without re-init */
+        byte[] ciphertext2 = cipher.doFinal(plaintext2);
+
+        /* Both should decrypt correctly */
+        Cipher decCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        decCipher.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate());
+
+        byte[] decrypted1 = decCipher.doFinal(ciphertext1);
+        byte[] decrypted2 = decCipher.doFinal(ciphertext2);
+
+        assertArrayEquals(plaintext1, decrypted1);
+        assertArrayEquals(plaintext2, decrypted2);
+    }
+
+    @Test
+    public void testOAEPSHA1InteropWithSunJCE()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+        Assume.assumeNotNull(interopProvider);
+
+        byte[] plaintext = "Interop test message SHA-1".getBytes();
+
+        /* Encrypt with wolfJCE */
+        Cipher wolfEncrypt = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        wolfEncrypt.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        byte[] wolfCiphertext = wolfEncrypt.doFinal(plaintext);
+
+        /* Decrypt with interop provider */
+        Cipher interopDecrypt =
+            Cipher.getInstance(OAEP_SHA1_ALGO, interopProvider);
+        interopDecrypt.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate());
+        byte[] interopDecrypted = interopDecrypt.doFinal(wolfCiphertext);
+
+        assertArrayEquals(plaintext, interopDecrypted);
+
+        /* Encrypt with interop provider */
+        Cipher interopEncrypt =
+            Cipher.getInstance(OAEP_SHA1_ALGO, interopProvider);
+        interopEncrypt.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        byte[] interopCiphertext = interopEncrypt.doFinal(plaintext);
+
+        /* Decrypt with wolfJCE */
+        Cipher wolfDecrypt = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        wolfDecrypt.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate());
+        byte[] wolfDecrypted = wolfDecrypt.doFinal(interopCiphertext);
+
+        assertArrayEquals(plaintext, wolfDecrypted);
+    }
+
+    @Test
+    public void testOAEPSHA1PrivateKeyEncryptFails()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        byte[] plaintext = "Test data".getBytes();
+
+        Cipher cipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPrivate());
+
+        try {
+            cipher.doFinal(plaintext);
+            fail("OAEP SHA-1 encryption with private key should fail");
+        } catch (IllegalStateException e) {
+            /* Expected - OAEP requires public key for encryption */
+        }
+    }
+
+    @Test
+    public void testOAEPSHA1PublicKeyDecryptFails()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        /* First encrypt normally */
+        byte[] plaintext = "Test data".getBytes();
+        Cipher encCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        encCipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        byte[] ciphertext = encCipher.doFinal(plaintext);
+
+        /* Try to decrypt with public key */
+        Cipher decCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        decCipher.init(Cipher.DECRYPT_MODE, rsaPair.getPublic());
+
+        try {
+            decCipher.doFinal(ciphertext);
+            fail("OAEP SHA-1 decryption with public key should fail");
+        } catch (IllegalStateException e) {
+            /* Expected - OAEP requires private key for decryption */
+        }
+    }
+
+    @Test
+    public void testOAEPSHA1WrongKeyDecryptFails()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        /* Generate a different key pair */
+        KeyPair otherPair = null;
+        try {
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+            keyGen.initialize(2048, secureRandom);
+            otherPair = keyGen.generateKeyPair();
+        } catch (Exception e) {
+            Assume.assumeNoException("Failed to generate second key pair", e);
+        }
+        Assume.assumeNotNull(otherPair);
+
+        byte[] plaintext = "Test data".getBytes();
+
+        /* Encrypt with first key */
+        Cipher encCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        encCipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        byte[] ciphertext = encCipher.doFinal(plaintext);
+
+        /* Try to decrypt with wrong key */
+        Cipher decCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        decCipher.init(Cipher.DECRYPT_MODE, otherPair.getPrivate());
+
+        try {
+            decCipher.doFinal(ciphertext);
+            fail("OAEP SHA-1 decryption with wrong key should fail");
+        } catch (BadPaddingException e) {
+            /* Expected */
+        } catch (RuntimeException e) {
+            /* WolfCryptException wrapped is also valid */
+        }
+    }
+
+    @Test
+    public void testOAEPSHA1MultipleKeySizes()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+
+        int[] keySizes = {2048, 3072, 4096};
+        byte[] plaintext = "Testing various key sizes with SHA-1".getBytes();
+
+        for (int keySize : keySizes) {
+            KeyPair keyPair = null;
+            try {
+                KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+                keyGen.initialize(keySize, secureRandom);
+                keyPair = keyGen.generateKeyPair();
+            } catch (Exception e) {
+                /* Skip this key size if generation fails */
+                continue;
+            }
+
+            Cipher encCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+            encCipher.init(Cipher.ENCRYPT_MODE, keyPair.getPublic());
+            byte[] ciphertext = encCipher.doFinal(plaintext);
+
+            /* Ciphertext should be key size / 8 bytes */
+            assertEquals("Ciphertext size for " + keySize + "-bit key",
+                keySize / 8, ciphertext.length);
+
+            Cipher decCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+            decCipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
+            byte[] decrypted = decCipher.doFinal(ciphertext);
+
+            assertArrayEquals("Round trip for " + keySize + "-bit key",
+                plaintext, decrypted);
+        }
+    }
+
+    @Test
+    public void testOAEPSHA1AliasName()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        /* Test with alternate alias (without hyphen in SHA1) */
+        String aliasAlgo = "RSA/ECB/OAEPWithSHA1AndMGF1Padding";
+
+        byte[] plaintext = "Alias test SHA-1".getBytes();
+
+        Cipher encCipher = Cipher.getInstance(aliasAlgo, jceProvider);
+        encCipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        byte[] ciphertext = encCipher.doFinal(plaintext);
+
+        Cipher decCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        decCipher.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate());
+        byte[] decrypted = decCipher.doFinal(ciphertext);
+
+        assertArrayEquals(plaintext, decrypted);
+    }
+
+    /**
+     * Test OAEP SHA-1 with explicit OAEPParameterSpec using default JCE
+     * parameters (SHA-1 for OAEP hash, SHA-1 for MGF1).
+     */
+    @Test
+    public void testOAEPSHA1WithExplicitDefaultParams()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        byte[] plaintext = "Test with explicit SHA-1 OAEP params".getBytes();
+
+        /* Create OAEPParameterSpec with default JCE parameters for SHA-1:
+         * SHA-1 for OAEP hash, SHA-1 for MGF1 */
+        OAEPParameterSpec oaepSpec = new OAEPParameterSpec(
+            "SHA-1",
+            "MGF1",
+            MGF1ParameterSpec.SHA1,
+            PSource.PSpecified.DEFAULT
+        );
+
+        /* Encrypt with explicit params */
+        Cipher encCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        encCipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic(), oaepSpec);
+        byte[] ciphertext = encCipher.doFinal(plaintext);
+
+        /* Decrypt with explicit params */
+        Cipher decCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        decCipher.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate(), oaepSpec);
+        byte[] decrypted = decCipher.doFinal(ciphertext);
+
+        assertArrayEquals(plaintext, decrypted);
+    }
+
+    /**
+     * Test that interop between explicit params and default cipher works
+     * when parameters match for SHA-1 OAEP.
+     */
+    @Test
+    public void testOAEPSHA1ExplicitParamsInteropWithDefault()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        byte[] plaintext = "Test explicit params interop SHA-1".getBytes();
+
+        /* Encrypt with explicit params matching defaults (SHA-1/SHA-1) */
+        OAEPParameterSpec oaepSpec = new OAEPParameterSpec(
+            "SHA-1",
+            "MGF1",
+            MGF1ParameterSpec.SHA1,
+            PSource.PSpecified.DEFAULT
+        );
+
+        Cipher encCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        encCipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic(), oaepSpec);
+        byte[] ciphertext = encCipher.doFinal(plaintext);
+
+        /* Decrypt without explicit params (uses defaults) */
+        Cipher decCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        decCipher.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate());
+        byte[] decrypted = decCipher.doFinal(ciphertext);
+
+        assertArrayEquals(plaintext, decrypted);
+
+        /* Also test reverse: encrypt with defaults, decrypt with explicit */
+        Cipher encCipher2 = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        encCipher2.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        byte[] ciphertext2 = encCipher2.doFinal(plaintext);
+
+        Cipher decCipher2 = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        decCipher2.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate(), oaepSpec);
+        byte[] decrypted2 = decCipher2.doFinal(ciphertext2);
+
+        assertArrayEquals(plaintext, decrypted2);
+    }
+
+    /**
+     * Test that encryption with SHA-1 OAEP and decryption with
+     * mismatched MGF1 parameters fails.
+     */
+    @Test
+    public void testOAEPSHA1ParamMismatchFails()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        byte[] plaintext = "Test param mismatch SHA-1".getBytes();
+
+        /* Encrypt with SHA-1/SHA-1 */
+        OAEPParameterSpec encSpec = new OAEPParameterSpec(
+            "SHA-1",
+            "MGF1",
+            MGF1ParameterSpec.SHA1,
+            PSource.PSpecified.DEFAULT
+        );
+
+        Cipher encCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        encCipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic(), encSpec);
+        byte[] ciphertext = encCipher.doFinal(plaintext);
+
+        /* Try to decrypt with SHA-1/SHA-256 (should fail) */
+        OAEPParameterSpec decSpec = new OAEPParameterSpec(
+            "SHA-1",
+            "MGF1",
+            MGF1ParameterSpec.SHA256,
+            PSource.PSpecified.DEFAULT
+        );
+
+        Cipher decCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        decCipher.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate(), decSpec);
+
+        try {
+            decCipher.doFinal(ciphertext);
+            fail("Decryption with mismatched OAEP parameters should fail");
+        } catch (BadPaddingException e) {
+            /* Expected - OAEP padding check failed */
+        } catch (RuntimeException e) {
+            /* WolfCryptException wrapped in RuntimeException is also valid */
+        }
     }
 }
 
