@@ -624,10 +624,29 @@ TrustAnchor trustAnchor = result.getTrustAnchor();
 - Target certificate selection by certificate or subject name
 - Target certificate as trust anchor (returns empty path)
 
+#### Date Override with PKIXBuilderParameters.setDate()
+
+The `PKIXBuilderParameters.setDate()` method allows applications to validate
+certificate paths as if the current date were the specified date. This is
+useful for testing with expired certificates or validating certificates at a
+specific point in time.
+
+wolfJCE supports `PKIXBuilderParameters.setDate()` for certificate validity
+checking during chain verification. When a date override is set:
+
+1. Date validation is skipped when adding certificates to the internal store
+2. The custom date is used during chain verification via wolfSSL's
+   `wolfSSL_X509_verify_cert()` function
+
+This allows testing with expired certificates by specifying a date when the
+certificates were valid.
+
+**Note:** See "CertPathBuilder Certificate Date Validation Timing" in the
+"Behavior Discrepancies with SunJCE" section for details on how this differs
+from SunJCE behavior.
+
 #### Limitations
 
-- **Date Override**: `PKIXBuilderParameters.setDate()` is not passed to native
-  wolfSSL verification. Certificates are validated against current system time.
 - **TrustAnchor Name Constraints**: Name constraints on TrustAnchors are not
   supported. An `InvalidAlgorithmParameterException` is thrown if any
   TrustAnchor has name constraints set.
@@ -716,6 +735,38 @@ constraint violation will pass validation in wolfJCE.
 
 If this behavior is needed, please submit a feature request to
 support@wolfssl.com.
+
+#### CertPathBuilder Certificate Date Validation Timing
+
+When building certificate paths, SunJCE and wolfJCE differ in **when**
+certificate date validation occurs:
+
+**SunJCE behavior:**
+- Trust anchors are loaded without date validation
+- Date validation occurs only during path verification
+- The date from `PKIXBuilderParameters.getDate()` (or current time if not set)
+  is used for all date checks
+
+**wolfJCE behavior:**
+- Native wolfSSL validates certificate dates when certificates are added to
+  the internal `X509_STORE` via `wolfSSL_X509_STORE_add_cert()`
+- This validation uses the current system time, not a custom date
+- If no custom date is specified via `PKIXBuilderParameters.setDate()`,
+  certificates are validated against the current system time at both add time
+  and verification time
+- If a custom date is specified, wolfJCE skips date validation at add time
+  and performs date validation during chain verification using the custom date
+
+**Practical impact:**
+- Without a date override: Expired certificates will be rejected when added
+  to the store (stricter than SunJCE)
+- With a date override: Behavior matches SunJCE - expired certificates can be
+  added and will be validated against the custom date during verification
+
+This difference exists because wolfSSL's `wolfSSL_X509_STORE_add_cert()`
+function validates certificate dates at addition time and does not support
+passing a custom validation date. The wolfJCE implementation works around
+this by skipping add-time validation when a custom date is specified.
 
 ### Support
 ---------

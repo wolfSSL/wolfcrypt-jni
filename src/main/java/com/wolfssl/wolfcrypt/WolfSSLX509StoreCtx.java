@@ -37,14 +37,34 @@ public class WolfSSLX509StoreCtx implements AutoCloseable {
     /* Lock around native pointer use */
     private final Object storeLock = new Object();
 
+    /* Cached result of runtime WOLFSSL_X509_STORE check_time support detection.
+     * Result does not change during process lifetime since it depends on the
+     * linked wolfSSL library version. */
+    private static volatile Boolean storeCheckTimeSupported = null;
+
+    /**
+     * Flag to skip date/time validation when adding certificates to store.
+     * This allows expired certificates to be added for testing or when
+     * date validation will be performed separately with a custom time.
+     */
+    public static final long WOLFSSL_NO_CHECK_TIME = 0x200000L;
+
+    /** Flag to use a custom time for date validation instead of system time. */
+    public static final long WOLFSSL_USE_CHECK_TIME = 0x2L;
+
     private static native long wolfSSL_X509_STORE_new();
     private static native void wolfSSL_X509_STORE_free(long store);
+    private static native int wolfSSL_X509_STORE_set_flags(long store,
+        long flags);
+    private static native int wolfSSL_X509_STORE_set_time(long store,
+        long epochSeconds);
     private static native int wolfSSL_X509_STORE_add_cert(long store,
         byte[] certDer);
     private static native byte[][] wolfSSL_X509_verify_cert_and_get_chain(
         long store, byte[] targetCertDer, byte[][] intermediateCertsDer,
         int maxPathLength) throws WolfCryptException;
     private static native int isCertPathBuilderSupported();
+    private static native int isNativeStoreCheckTimeSupported();
 
     /**
      * Check if CertPathBuilder functionality is supported.
@@ -60,6 +80,40 @@ public class WolfSSLX509StoreCtx implements AutoCloseable {
         } catch (UnsatisfiedLinkError e) {
             return false;
         }
+    }
+
+    /**
+     * Check if WOLFSSL_X509_STORE custom verification time (check_time) is
+     * supported by linked version of native wolfSSL.
+     *
+     * Custom verification time support requires a wolfSSL version that
+     * propagates check_time and NO_CHECK_TIME flags from WOLFSSL_X509_STORE
+     * to WOLFSSL_X509_STORE_CTX during initialization. This feature is needed
+     * for PKIXBuilderParameters.setDate() to work correctly with
+     * expired or not-yet-valid certificates.
+     *
+     * @return true if store check_time is supported, false otherwise
+     */
+    public static boolean isStoreCheckTimeSupported() {
+
+        Boolean cached = null;
+        boolean supported = false;
+
+        cached = storeCheckTimeSupported;
+        if (cached != null) {
+            return cached.booleanValue();
+        }
+
+        try {
+            supported = (isNativeStoreCheckTimeSupported() == 1);
+
+        } catch (UnsatisfiedLinkError e) {
+            supported = false;
+        }
+
+        storeCheckTimeSupported = Boolean.valueOf(supported);
+
+        return supported;
     }
 
     /**
@@ -93,6 +147,66 @@ public class WolfSSLX509StoreCtx implements AutoCloseable {
             if (!this.active || this.storePtr == 0) {
                 throw new IllegalStateException(
                     "WolfSSLX509StoreCtx object has been freed or is invalid");
+            }
+        }
+    }
+
+    /**
+     * Set flags on the X509 store.
+     *
+     * Available flags:
+     * - WOLFSSL_NO_CHECK_TIME: Skip date validation when adding certificates.
+     * - WOLFSSL_USE_CHECK_TIME: Use a custom time for date validation.
+     *
+     * @param flags flags to set on the store (can OR together)
+     *
+     * @throws IllegalStateException if object has been freed
+     * @throws WolfCryptException if unable to set flags
+     */
+    public void setFlags(long flags)
+        throws IllegalStateException, WolfCryptException {
+
+        int ret;
+
+        confirmObjectIsActive();
+
+        synchronized (storeLock) {
+            ret = wolfSSL_X509_STORE_set_flags(this.storePtr, flags);
+            if (ret != WolfCrypt.SUCCESS) {
+                throw new WolfCryptException(
+                    "Failed to set store flags: " + ret);
+            }
+        }
+    }
+
+    /**
+     * Set a custom verification time for certificate date validation.
+     *
+     * When set, chain verification will validate certificate dates against
+     * this time instead of the current system time. This is useful for:
+     *
+     * - Testing with expired certificates
+     * - Verifying certificates were valid at a specific point in time
+     * - Reproducing validation results from a specific date
+     *
+     * @param epochSeconds the verification time as seconds since Unix epoch
+     *                     (January 1, 1970 00:00:00 UTC)
+     *
+     * @throws IllegalStateException if object has been freed
+     * @throws WolfCryptException if unable to set verification time
+     */
+    public void setVerificationTime(long epochSeconds)
+        throws IllegalStateException, WolfCryptException {
+
+        int ret;
+
+        confirmObjectIsActive();
+
+        synchronized (storeLock) {
+            ret = wolfSSL_X509_STORE_set_time(this.storePtr, epochSeconds);
+            if (ret != WolfCrypt.SUCCESS) {
+                throw new WolfCryptException(
+                    "Failed to set verification time: " + ret);
             }
         }
     }

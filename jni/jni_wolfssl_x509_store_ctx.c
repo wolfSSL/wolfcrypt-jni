@@ -67,6 +67,66 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_isCertPath
     return 0;
 }
 
+/* Check if wolfSSL supports custom verification time (check_time)
+ * in WOLFSSL_X509_STORE. This was added in wolfSSL after 5.8.4 and is
+ * needed for PKIXBuilderParameters.setDate() support.
+ *
+ * To detect support, we set check_time on a WOLFSSL_X509_STORE, init a
+ * WOLFSSL_X509_STORE_CTX from it, and verify that check_time was propagated
+ * to the context. Older wolfSSL versions do not propagate. */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_isNativeStoreCheckTimeSupported
+  (JNIEnv* env, jclass jcl)
+{
+#ifdef OPENSSL_EXTRA
+    WOLFSSL_X509_STORE* store = NULL;
+    WOLFSSL_X509_STORE_CTX* ctx = NULL;
+    int supported = 0;
+
+    (void)env;
+    (void)jcl;
+
+    if (!isCertPathBuilderAvailable()) {
+        return 0;
+    }
+
+    store = wolfSSL_X509_STORE_new();
+    if (store == NULL) {
+        return 0;
+    }
+
+    ctx = wolfSSL_X509_STORE_CTX_new();
+    if (ctx == NULL) {
+        wolfSSL_X509_STORE_free(store);
+        return 0;
+    }
+
+    /* Set a test check_time on the store, using 1000000 just to test */
+    if (store->param != NULL) {
+        store->param->check_time = (time_t)1000000;
+        store->param->flags |= WOLFSSL_USE_CHECK_TIME;
+    }
+
+    /* Init ctx with the store and check if check_time
+     * was propagated from store->param to ctx->param */
+    if (wolfSSL_X509_STORE_CTX_init(ctx, store, NULL, NULL) ==
+        WOLFSSL_SUCCESS) {
+        if (ctx->param != NULL &&
+            ctx->param->check_time == (time_t)1000000) {
+            supported = 1;
+        }
+    }
+
+    wolfSSL_X509_STORE_CTX_free(ctx);
+    wolfSSL_X509_STORE_free(store);
+
+    return supported;
+#else
+    (void)env;
+    (void)jcl;
+    return 0;
+#endif
+}
+
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wolfSSL_1X509_1STORE_1new
   (JNIEnv* env, jclass jcl)
 {
@@ -88,6 +148,71 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wolfSSL_1
 #endif
 
     return (jlong)(uintptr_t)store;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wolfSSL_1X509_1STORE_1set_1flags
+  (JNIEnv* env, jclass jcl, jlong storePtr, jlong flags)
+{
+    int ret = 0;
+#ifdef OPENSSL_EXTRA
+    WOLFSSL_X509_STORE* store = (WOLFSSL_X509_STORE*)(uintptr_t)storePtr;
+
+    (void)env;
+    (void)jcl;
+
+    if (store == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
+    if (store->param == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
+    /* Set flags directly on store->param->flags for NO_CHECK_TIME */
+    store->param->flags |= (unsigned long)flags;
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)storePtr;
+    (void)flags;
+    ret = NOT_COMPILED_IN;
+#endif
+
+    return ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wolfSSL_1X509_1STORE_1set_1time
+  (JNIEnv* env, jclass jcl, jlong storePtr, jlong epochSeconds)
+{
+    int ret = 0;
+#ifdef OPENSSL_EXTRA
+    WOLFSSL_X509_STORE* store = (WOLFSSL_X509_STORE*)(uintptr_t)storePtr;
+
+    (void)env;
+    (void)jcl;
+
+    if (store == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
+    if (store->param == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
+    /* Set custom check time and enable the flag */
+    store->param->check_time = (time_t)epochSeconds;
+    store->param->flags |= WOLFSSL_USE_CHECK_TIME;
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)storePtr;
+    (void)epochSeconds;
+    ret = NOT_COMPILED_IN;
+#endif
+
+    return ret;
 }
 
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wolfSSL_1X509_1STORE_1free
