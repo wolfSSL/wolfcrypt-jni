@@ -65,6 +65,7 @@ import java.security.cert.X509CertSelector;
 import java.security.cert.CertStore;
 import java.security.cert.CollectionCertStoreParameters;
 import java.lang.IllegalArgumentException;
+import java.util.Date;
 
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfSSLX509StoreCtx;
@@ -110,6 +111,85 @@ public class WolfCryptPKIXCertPathBuilderTest {
     protected static String intEccServerCertDer = null;
     protected static String intEccInt2CertDer   = null;
     protected static String intEccInt1CertDer   = null;
+
+    /* Test certificates created with expired validity period.
+     * These certificates were created with validity from May 1, 2014 to
+     * April 30, 2016. They are used to test custom date validation with
+     * PKIXBuilderParameters.setDate(). Not put in files or tied into
+     * update script since these are expected to be expired. */
+
+    /* Root CA cert (self-signed, expired April 30, 2016)
+     * Subject: CN=wolfSSL Test Expired Root CA */
+    private static final String EXPIRED_ROOT_PEM =
+        "-----BEGIN CERTIFICATE-----\n" +
+        "MIIDCzCCAfOgAwIBAgIBATANBgkqhkiG9w0BAQsFADAnMSUwIwYDVQQDDBx3b2xm\n" +
+        "U1NMIFRlc3QgRXhwaXJlZCBSb290IENBMB4XDTE0MDUwMTEyMDAwMFoXDTE2MDQz\n" +
+        "MDEyMDAwMFowJzElMCMGA1UEAwwcd29sZlNTTCBUZXN0IEV4cGlyZWQgUm9vdCBD\n" +
+        "QTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMjoTxkI4HNEftkfVAUZ\n" +
+        "KV6puIcQmKmgbEki/5dgmVyBgBMBxohIgsFROUw2USWYX/JAwRKEO54ayCINsdQJ\n" +
+        "uC3rsm1jxduhmzp0XcaxTDJqWLNzXKWpFQklwE1xpgIIKde5c9qtky2fTIVO5gNK\n" +
+        "E7VDFrebuB7qXyfmxDl/A4ACFNbcvmgadKswJZ69ik3iIoqresZe1yr36Febah0/\n" +
+        "ztpqjepJWfxg8tGUv/6ibreqLpikfRADbv1b5bb/SSGWpog/MxHM90uzwrBhou6c\n" +
+        "5doJ7DiobKQ0fR3gGnyPgoSuFHgwzn38u6U/TmyEYQsmSEYzsoo3RBG5kxdsO7tU\n" +
+        "JDsCAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwHQYD\n" +
+        "VR0OBBYEFB3hLk4AObSAXGouW4CTPbRiXBv7MA0GCSqGSIb3DQEBCwUAA4IBAQC1\n" +
+        "1L9+sMOecn2engXaVI0Tq/+EX3IRkR/gC0AH7Wo4RvgN5JYNdjtAaFfCJy5CesB8\n" +
+        "J34rJetE0HNNWzHE/MlOg9IKBu7lJ67tLvJOsAy2ksqR67d2uBXW9Tmab0hHeCZj\n" +
+        "sDuky8dVwf4PVxzcPS9mKaihVBUSBIf/0AsDQuLahdqHek1f0Kb2OgFd4eAWTJUz\n" +
+        "SMtuwsnKNg2KJ3mSbo3Boa/PJfnpbAw/FBR7zPf3Fl6874dFDfQj5cRZEGaJ40yR\n" +
+        "O/8ygpr0vnjHs53LOcXwZeNTeSkoKFRCw4mrSN3k8PLN4wRiCEDMsckL9ySfbix5\n" +
+        "RRK1n0IV3OspJlzZyxy/\n" +
+        "-----END CERTIFICATE-----\n";
+
+    /* Intermediate CA cert (signed by Root, expired April 30, 2016)
+     * Subject: CN=wolfSSL Test Expired Intermediate CA
+     * Issuer: CN=wolfSSL Test Expired Root CA */
+    private static final String EXPIRED_INTERMEDIATE_PEM =
+        "-----BEGIN CERTIFICATE-----\n" +
+        "MIIDNDCCAhygAwIBAgIBAjANBgkqhkiG9w0BAQsFADAnMSUwIwYDVQQDDBx3b2xm\n" +
+        "U1NMIFRlc3QgRXhwaXJlZCBSb290IENBMB4XDTE0MDUwMTEyMDAwMFoXDTE2MDQz\n" +
+        "MDEyMDAwMFowLzEtMCsGA1UEAwwkd29sZlNTTCBUZXN0IEV4cGlyZWQgSW50ZXJt\n" +
+        "ZWRpYXRlIENBMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2IZfL2Hj\n" +
+        "fMrcKk+ep0Ryl8wGQkDF8WROjrtM1h9l93H2LGVAxT9E6fVNCE3bEMZ+Ilvh764N\n" +
+        "hxw66xqBxcqkx/eSzkbqei4aQmIpzFXnYI+s2GbaJEZiTUTPqAewWnZuo8t91RTd\n" +
+        "C+HgSLfDr1CFRsPWI0m0k5f3b4sW8n9IffPhUTtmYPv0H1di2QFLXs18fx5XvUAH\n" +
+        "3m6vrbxBUXaEYYSOHuWuS3cM7wPvJhYCVPQDQ/iJrPDG7V/+dOMk2qTq9jtp2DYi\n" +
+        "+UeUR2LbtvGdWLAQeOg4GKJtrPnr++rlSaHrOguXsUKy5lVvC9T+EonbJc8Dwycf\n" +
+        "f3blt6DRAnPFKQIDAQABo2MwYTAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQE\n" +
+        "AwIBBjAdBgNVHQ4EFgQUIUpdgKnOEVk0edt5Y6dEcNJ5alIwHwYDVR0jBBgwFoAU\n" +
+        "HeEuTgA5tIBcai5bgJM9tGJcG/swDQYJKoZIhvcNAQELBQADggEBADy1UJPoDgk8\n" +
+        "Nrmbk/pvGV8iXaQxzAQOe1LcDKZzIuD+eM/mD8F6+inwNob1UNVj3vLtztYDmhUu\n" +
+        "dlu3s6M565MysXoBXe9gEiZ4PJsmXoeV6G3+F3iIQbIBPfE6gyb0nWvjTQtfLfdJ\n" +
+        "l+bYTeULopKd4FBAGqVFlGYrB9rMHu3XUJjx+D5Qxa9KKpnq5RAfE5DI8ND4qzN2\n" +
+        "t5FrtUr0eqeO6GvAS0ALsNBRP7UPae0FGBf41m4dku8g4PNOJv1GpBiqX/neNDNE\n" +
+        "Yt7LkwDOMrxzloy3Kn7gGbXpiUQf1PJr6cnvj3A63odt1YVI7vDhictKR/8b7k47\n" +
+        "YogNNm7pLSI=\n" +
+        "-----END CERTIFICATE-----\n";
+
+    /* End-entity/user cert (signed by Intermediate, expired April 30, 2016)
+     * Subject: CN=wolfSSL Test Expired User
+     * Issuer: CN=wolfSSL Test Expired Intermediate CA */
+    private static final String EXPIRED_USER_PEM =
+        "-----BEGIN CERTIFICATE-----\n" +
+        "MIIDQzCCAiugAwIBAgIBAzANBgkqhkiG9w0BAQsFADAvMS0wKwYDVQQDDCR3b2xm\n" +
+        "U1NMIFRlc3QgRXhwaXJlZCBJbnRlcm1lZGlhdGUgQ0EwHhcNMTQwNTAxMTIwMDAw\n" +
+        "WhcNMTYwNDMwMTIwMDAwWjAkMSIwIAYDVQQDDBl3b2xmU1NMIFRlc3QgRXhwaXJl\n" +
+        "ZCBVc2VyMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlzq/KCZKOvcQ\n" +
+        "xyykcD4HPJ/vrdrN0oDvsQVhKarCfgLLKss1LDHuZcj3lXS+oVZaluSRpGdssYxw\n" +
+        "hy7BGiL7/CLZJ4G7B97qZMVl4Jp/MZVfkckatJamuUM0uojWglbeK3te683qmkVv\n" +
+        "6jMOXJmqXwo2syJbHyN6dp2g0lTukQCY8TU5fBR8U34g9iLN+rIfYLWkyt188m/J\n" +
+        "q/noBunNPF/WMD+DfdzDzWbtBN1M3303e5ZRS5izZrJoif1ZluDlg8sna2C9zEcj\n" +
+        "x0+aqP3WJghwsBq3elzJiG8SE9a+Ay8ZBBUhpk8lOmTIjvM1NiNV6CXfVOTl7sTV\n" +
+        "O1nIlYm/ywIDAQABo3UwczAMBgNVHRMBAf8EAjAAMA4GA1UdDwEB/wQEAwIHgDAT\n" +
+        "BgNVHSUEDDAKBggrBgEFBQcDAjAdBgNVHQ4EFgQUAPlQn5MAfVyBqtst44nhebkU\n" +
+        "EtkwHwYDVR0jBBgwFoAUIUpdgKnOEVk0edt5Y6dEcNJ5alIwDQYJKoZIhvcNAQEL\n" +
+        "BQADggEBAElZB/FraMTHb6f0CZGVTU/20RHMZMlbjP+OKSJO/LKr08s648glQrqu\n" +
+        "K4ROxJxt5dnxy/Q2mp5kAkbarSiwjqsfbImexOqiiQXVEGOW2G45a8BQQEHrhaYo\n" +
+        "BMWxC/3X5peKZ7nQiSoL1kDU38ZpINLyB7eTBjpKNXkvvQnPOaPHg5HZYWaDFunq\n" +
+        "OS07L9LSGW4AGOMZW6KG4lTjzGuBhEVycXSbupjePkDDjqHPFtSapW3niqH5iL7y\n" +
+        "QJbpKjSJimpKTHyciclWAvF1ZYBKoFHcLQkoRiVwvyO4eDekzRmfJ7bsTm1EBZZa\n" +
+        "cBdF0KRyJbeBYow7CUSMWYeODNLm+4A=\n" +
+        "-----END CERTIFICATE-----\n";
 
     /**
      * Test if this environment is Android.
@@ -3356,6 +3436,150 @@ public class WolfCryptPKIXCertPathBuilderTest {
 
         PKIXCertPathBuilderResult pResult = (PKIXCertPathBuilderResult) result;
         assertEquals("X.509", pResult.getCertPath().getType());
+    }
+
+    /**
+     * Helper to load X509Certificate from PEM string.
+     */
+    private X509Certificate loadCertFromPEM(String pem)
+        throws CertificateException {
+
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        ByteArrayInputStream bis =
+            new ByteArrayInputStream(pem.getBytes());
+        return (X509Certificate) cf.generateCertificate(bis);
+    }
+
+    /**
+     * Test building a cert path with expired certificates using
+     * a custom validation date set via PKIXBuilderParameters.setDate().
+     *
+     * This test uses certificates that expired in 2016 and sets a validation
+     * date of March 15, 2015 (when the certificates were valid). This
+     * verifies that wolfJCE properly supports custom date validation for
+     * certificate chain building.
+     *
+     * This test would fail without proper date override support, as the
+     * certificates would be rejected as expired when added to the store.
+     */
+    @Test
+    public void testExpiredCertsWithCustomValidationDate()
+        throws CertificateException, InvalidAlgorithmParameterException,
+               CertPathBuilderException, NoSuchAlgorithmException,
+               NoSuchProviderException {
+
+        Assume.assumeTrue(
+            "X509_STORE check_time support not available in " +
+            "this wolfSSL version",
+            WolfSSLX509StoreCtx.isStoreCheckTimeSupported());
+
+        /* Load expired test certificates */
+        X509Certificate rootCert = loadCertFromPEM(EXPIRED_ROOT_PEM);
+        X509Certificate intermediateCert =
+            loadCertFromPEM(EXPIRED_INTERMEDIATE_PEM);
+        X509Certificate userCert = loadCertFromPEM(EXPIRED_USER_PEM);
+
+        /* Set up trust anchors with the expired root */
+        Set<TrustAnchor> anchors = new HashSet<>();
+        anchors.add(new TrustAnchor(rootCert, null));
+
+        /* Set up CertStore with intermediate and target certs */
+        Collection<Certificate> certs = new ArrayList<>();
+        certs.add(userCert);
+        certs.add(intermediateCert);
+        CertStore certStore = CertStore.getInstance("Collection",
+            new CollectionCertStoreParameters(certs));
+
+        /* Create target selector for user cert */
+        X509CertSelector selector = new X509CertSelector();
+        selector.setCertificate(userCert);
+
+        /* Create PKIXBuilderParameters with custom validation date.
+         * Date is March 15, 2015 (within cert validity period 2014-2016).
+         * Epoch time 1426399200000L = Sun Mar 15 2015 06:00:00 GMT */
+        PKIXBuilderParameters params =
+            new PKIXBuilderParameters(anchors, selector);
+        params.setRevocationEnabled(false);
+        params.addCertStore(certStore);
+        params.setDate(new Date(1426399200000L));
+
+        /* Build cert path - should succeed with custom date */
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+        CertPathBuilderResult result = cpb.build(params);
+
+        /* Verify result */
+        assertNotNull("CertPathBuilderResult should not be null", result);
+        PKIXCertPathBuilderResult pResult = (PKIXCertPathBuilderResult) result;
+
+        /* Verify trust anchor is the root cert */
+        assertEquals("Trust anchor should be the root cert",
+            rootCert, pResult.getTrustAnchor().getTrustedCert());
+
+        /* Verify path contains user and intermediate certs
+         * (root/trust anchor is not included in the path) */
+        CertPath path = pResult.getCertPath();
+        assertNotNull("CertPath should not be null", path);
+        assertEquals("Path should contain 2 certificates",
+            2, path.getCertificates().size());
+
+        /* Verify path order: user -> intermediate */
+        assertEquals("First cert in path should be user cert",
+            userCert, path.getCertificates().get(0));
+        assertEquals("Second cert in path should be intermediate cert",
+            intermediateCert, path.getCertificates().get(1));
+    }
+
+    /**
+     * Test that expired certs fail validation when no custom date
+     * is set (using current system time).
+     *
+     * This test verifies that wolfJCE properly rejects expired certificates
+     * when validating against the current system time.
+     */
+    @Test
+    public void testExpiredCertsFailWithoutCustomDate()
+        throws CertificateException, InvalidAlgorithmParameterException,
+               NoSuchAlgorithmException, NoSuchProviderException {
+
+        /* Load expired test certificates */
+        X509Certificate rootCert = loadCertFromPEM(EXPIRED_ROOT_PEM);
+        X509Certificate intermediateCert =
+            loadCertFromPEM(EXPIRED_INTERMEDIATE_PEM);
+        X509Certificate userCert = loadCertFromPEM(EXPIRED_USER_PEM);
+
+        /* Set up trust anchors with the expired root */
+        Set<TrustAnchor> anchors = new HashSet<>();
+        anchors.add(new TrustAnchor(rootCert, null));
+
+        /* Set up CertStore with intermediate and target certs */
+        Collection<Certificate> certs = new ArrayList<>();
+        certs.add(userCert);
+        certs.add(intermediateCert);
+        CertStore certStore = CertStore.getInstance("Collection",
+            new CollectionCertStoreParameters(certs));
+
+        /* Create target selector for user cert */
+        X509CertSelector selector = new X509CertSelector();
+        selector.setCertificate(userCert);
+
+        /* Create PKIXBuilderParameters WITHOUT custom date.
+         * This will use current system time for validation. */
+        PKIXBuilderParameters params =
+            new PKIXBuilderParameters(anchors, selector);
+        params.setRevocationEnabled(false);
+        params.addCertStore(certStore);
+        /* Note: NOT calling params.setDate() - uses current time */
+
+        /* Build cert path - should FAIL because certs are expired */
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+        try {
+            cpb.build(params);
+            fail("Expected CertPathBuilderException for expired certificates");
+        } catch (CertPathBuilderException e) {
+            /* Expected - certificates are expired */
+            assertTrue("Exception message should indicate certificate issue",
+                e.getMessage() != null);
+        }
     }
 }
 
