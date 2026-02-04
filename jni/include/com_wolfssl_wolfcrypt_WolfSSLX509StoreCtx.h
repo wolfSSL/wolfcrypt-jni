@@ -7,6 +7,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#undef com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_WOLFSSL_NO_CHECK_TIME
+#define com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_WOLFSSL_NO_CHECK_TIME 2097152LL
+#undef com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_WOLFSSL_USE_CHECK_TIME
+#define com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_WOLFSSL_USE_CHECK_TIME 2LL
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx
  * Method:    wolfSSL_X509_STORE_new
@@ -22,6 +26,22 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wolfSSL_1
  */
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wolfSSL_1X509_1STORE_1free
   (JNIEnv *, jclass, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx
+ * Method:    wolfSSL_X509_STORE_set_flags
+ * Signature: (JJ)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wolfSSL_1X509_1STORE_1set_1flags
+  (JNIEnv *, jclass, jlong, jlong);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx
+ * Method:    wolfSSL_X509_STORE_set_time
+ * Signature: (JJ)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wolfSSL_1X509_1STORE_1set_1time
+  (JNIEnv *, jclass, jlong, jlong);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx
@@ -45,6 +65,14 @@ JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wo
  * Signature: ()I
  */
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_isCertPathBuilderSupported
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx
+ * Method:    isNativeStoreCheckTimeSupported
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_isNativeStoreCheckTimeSupported
   (JNIEnv *, jclass);
 
 #ifdef __cplusplus

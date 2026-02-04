@@ -689,9 +689,10 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
         Set<TrustAnchor> anchors = null;
         List<CertStore> certStores = null;
         int maxPathLength = 0;
+        Date validationDate = null;
+        WolfSSLX509StoreCtx storeCtx = null;
 
-        log("building and verifying path using native wolfSSL X509_STORE");
-
+        log("building and verifying path using native WOLFSSL_X509_STORE");
 
         if (targetCert == null || params == null) {
             throw new CertPathBuilderException(
@@ -701,10 +702,35 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
         anchors = params.getTrustAnchors();
         certStores = params.getCertStores();
         maxPathLength = params.getMaxPathLength();
+        validationDate = params.getDate();
 
-        WolfSSLX509StoreCtx storeCtx = null;
         try {
             storeCtx = new WolfSSLX509StoreCtx();
+
+            /* If a custom validation date is specified, we skip date
+             * validation when adding certificates, then set the custom
+             * verification time for chain verification.
+             *
+             * This allows for testing/use of expired certs if desired,
+             * or validating against a specific date.
+             *
+             * SunJCE only validates expiration dates on chain verification,
+             * not cert loading, so our default behavior already does some
+             * extra validation here in the case when a custom date is not
+             * set. */
+            if (validationDate != null) {
+                if (!WolfSSLX509StoreCtx.isStoreCheckTimeSupported()) {
+                    throw new CertPathBuilderException(
+                        "PKIXBuilderParameters.setDate() requires " +
+                        "a wolfSSL version that supports X509_STORE " +
+                        "check_time propagation (> 5.8.4)");
+                }
+                log("using custom validation date: " + validationDate);
+                storeCtx.setFlags(
+                    WolfSSLX509StoreCtx.WOLFSSL_NO_CHECK_TIME);
+                storeCtx.setVerificationTime(
+                    validationDate.getTime() / 1000);
+            }
 
             /* Add trust anchors to the store */
             for (TrustAnchor anchor : anchors) {
