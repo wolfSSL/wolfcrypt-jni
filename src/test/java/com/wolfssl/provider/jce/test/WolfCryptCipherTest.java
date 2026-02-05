@@ -51,6 +51,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.ShortBufferException;
 import javax.crypto.AEADBadTagException;
 
+import java.security.Key;
 import java.security.Security;
 import java.security.Provider;
 import java.security.SecureRandom;
@@ -4637,6 +4638,420 @@ public class WolfCryptCipherTest {
 
         testRSAInterop("RSA");
         testRSAInterop("RSA/ECB/PKCS1Padding");
+    }
+
+    @Test
+    public void testRSAWrapUnwrapSecretKey()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        /* Generate an AES-128 secret key to wrap */
+        byte[] rawKey = new byte[Aes.KEY_SIZE_128];
+        secureRandom.nextBytes(rawKey);
+        SecretKeySpec originalKey = new SecretKeySpec(rawKey, "AES");
+
+        /* Wrap key using RSA public key */
+        Cipher wrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey = wrapCipher.wrap(originalKey);
+
+        assertNotNull("Wrapped key should not be null", wrappedKey);
+        assertTrue("Wrapped key should be non-empty",
+            wrappedKey.length > 0);
+
+        /* Unwrap key using RSA private key */
+        Cipher unwrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key unwrappedKey = unwrapCipher.unwrap(wrappedKey, "AES",
+            Cipher.SECRET_KEY);
+
+        assertNotNull("Unwrapped key should not be null", unwrappedKey);
+        assertEquals("Unwrapped key algorithm should be AES", "AES",
+            unwrappedKey.getAlgorithm());
+        assertArrayEquals("Unwrapped key should match original",
+            originalKey.getEncoded(), unwrappedKey.getEncoded());
+    }
+
+    @Test
+    public void testRSAWrapUnwrapMultipleKeySizes()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        int[] keySizes = {
+            Aes.KEY_SIZE_128,
+            Aes.KEY_SIZE_192,
+            Aes.KEY_SIZE_256
+        };
+
+        for (int keySize : keySizes) {
+            byte[] rawKey = new byte[keySize];
+            secureRandom.nextBytes(rawKey);
+            SecretKeySpec originalKey = new SecretKeySpec(rawKey, "AES");
+
+            Cipher wrapCipher = Cipher.getInstance(
+                "RSA/ECB/PKCS1Padding", jceProvider);
+            wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+            byte[] wrappedKey = wrapCipher.wrap(originalKey);
+
+            Cipher unwrapCipher = Cipher.getInstance(
+                "RSA/ECB/PKCS1Padding", jceProvider);
+            unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+            Key unwrappedKey = unwrapCipher.unwrap(wrappedKey, "AES",
+                Cipher.SECRET_KEY);
+
+            assertArrayEquals(
+                "Unwrapped AES-" + (keySize * 8) + " key should match original",
+                originalKey.getEncoded(), unwrappedKey.getEncoded());
+        }
+    }
+
+    @Test
+    public void testRSAWrapUnwrapResetsState()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        Cipher wrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+
+        Cipher unwrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+
+        /* Perform wrap/unwrap multiple times on same cipher
+         * instances to verify state reset */
+        for (int i = 0; i < 3; i++) {
+            byte[] rawKey = new byte[16];
+            secureRandom.nextBytes(rawKey);
+            SecretKeySpec originalKey = new SecretKeySpec(rawKey, "AES");
+
+            byte[] wrappedKey = wrapCipher.wrap(originalKey);
+            Key unwrappedKey = unwrapCipher.unwrap(wrappedKey, "AES",
+                Cipher.SECRET_KEY);
+
+            assertArrayEquals("Wrap/unwrap iteration " + i + " should match",
+                originalKey.getEncoded(), unwrappedKey.getEncoded());
+        }
+    }
+
+    @Test
+    public void testRSAWrapUnwrapNullKeyThrows()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        Cipher wrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+
+        try {
+            wrapCipher.wrap(null);
+            fail("wrap(null) should throw InvalidKeyException");
+
+        } catch (InvalidKeyException e) {
+            /* Expected */
+        }
+    }
+
+    @Test
+    public void testRSAWrapUnwrapInterop()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        if (interopProvider == null) {
+            /* no interop provider available, skip test */
+            return;
+        }
+
+        Cipher interopCipher = null;
+        try {
+            interopCipher = Cipher.getInstance(
+                "RSA/ECB/PKCS1Padding", interopProvider);
+        } catch (NoSuchAlgorithmException e) {
+            /* interop provider does not support RSA, skip */
+            return;
+        }
+
+        byte[] rawKey = new byte[Aes.KEY_SIZE_128];
+        secureRandom.nextBytes(rawKey);
+        SecretKeySpec originalKey = new SecretKeySpec(rawKey, "AES");
+
+        /* wolfJCE wrap -> interop unwrap */
+        Cipher wrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey = wrapCipher.wrap(originalKey);
+
+        interopCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key unwrappedKey = interopCipher.unwrap(wrappedKey, "AES",
+            Cipher.SECRET_KEY);
+
+        assertArrayEquals("wolfJCE wrap -> interop unwrap should match",
+            originalKey.getEncoded(), unwrappedKey.getEncoded());
+
+        /* interop wrap -> wolfJCE unwrap */
+        byte[] rawKey2 = new byte[Aes.KEY_SIZE_128];
+        secureRandom.nextBytes(rawKey2);
+        SecretKeySpec originalKey2 = new SecretKeySpec(rawKey2, "AES");
+
+        interopCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", interopProvider);
+        interopCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey2 = interopCipher.wrap(originalKey2);
+
+        Cipher unwrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key unwrappedKey2 = unwrapCipher.unwrap(wrappedKey2, "AES",
+            Cipher.SECRET_KEY);
+
+        assertArrayEquals("interop wrap -> wolfJCE unwrap should match",
+            originalKey2.getEncoded(), unwrappedKey2.getEncoded());
+    }
+
+    @Test
+    public void testRSAWrapUnwrapWrongKeyFails()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        /* Generate a second RSA key pair */
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048, secureRandom);
+        KeyPair wrongPair = keyGen.generateKeyPair();
+
+        byte[] rawKey = new byte[Aes.KEY_SIZE_128];
+        secureRandom.nextBytes(rawKey);
+        SecretKeySpec originalKey = new SecretKeySpec(rawKey, "AES");
+
+        /* Wrap with rsaPair public key */
+        Cipher wrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey = wrapCipher.wrap(originalKey);
+
+        /* Unwrap with wrong private key */
+        Cipher unwrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, wrongPair.getPrivate());
+
+        try {
+            unwrapCipher.unwrap(wrappedKey, "AES", Cipher.SECRET_KEY);
+            fail("Unwrap with wrong key should fail");
+        } catch (InvalidKeyException e) {
+            /* Expected */
+        } catch (RuntimeException e) {
+            /* WolfCryptException wrapped in RuntimeException also valid */
+        }
+    }
+
+    @Test
+    public void testRSAWrapUnwrapCorruptedDataFails()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        byte[] rawKey = new byte[Aes.KEY_SIZE_128];
+        secureRandom.nextBytes(rawKey);
+        SecretKeySpec originalKey = new SecretKeySpec(rawKey, "AES");
+
+        /* Wrap key */
+        Cipher wrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey = wrapCipher.wrap(originalKey);
+
+        /* Corrupt the wrapped key data */
+        byte[] corruptedKey = wrappedKey.clone();
+        corruptedKey[0] ^= (byte)0xFF;
+        corruptedKey[1] ^= (byte)0xFF;
+        corruptedKey[wrappedKey.length - 1] ^= (byte)0xFF;
+
+        /* Unwrap corrupted data should fail */
+        Cipher unwrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+
+        try {
+            unwrapCipher.unwrap(corruptedKey, "AES", Cipher.SECRET_KEY);
+            fail("Unwrap corrupted data should fail");
+        } catch (InvalidKeyException e) {
+            /* Expected */
+        } catch (RuntimeException e) {
+            /* WolfCryptException wrapped in RuntimeException also valid */
+        }
+    }
+
+    @Test
+    public void testRSAWrapUnwrapPublicKey()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        /* Generate EC key pair whose public key to wrap. EC P-256 public key
+         * X.509 encoding (~91 bytes) fits within RSA-2048 PKCS1 max
+         * plaintext (245 bytes). */
+        KeyPair ecPair;
+        try {
+            KeyPairGenerator ecKeyGen = KeyPairGenerator.getInstance("EC");
+            ecKeyGen.initialize(256);
+            ecPair = ecKeyGen.generateKeyPair();
+        } catch (NoSuchAlgorithmException e) {
+            /* EC not available, skip test */
+            return;
+        }
+
+        PublicKey originalPubKey = ecPair.getPublic();
+
+        /* Wrap public key */
+        Cipher wrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey = wrapCipher.wrap(originalPubKey);
+
+        /* Unwrap as PUBLIC_KEY */
+        Cipher unwrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key unwrappedKey = unwrapCipher.unwrap(wrappedKey, "EC",
+            Cipher.PUBLIC_KEY);
+
+        assertNotNull("Unwrapped public key should not be null", unwrappedKey);
+        assertEquals("Algorithm should be EC", "EC",
+            unwrappedKey.getAlgorithm());
+        assertArrayEquals("Unwrapped public key should match original",
+            originalPubKey.getEncoded(), unwrappedKey.getEncoded());
+    }
+
+    @Test
+    public void testRSAWrapUnwrapPrivateKey()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        /* Generate EC key pair to wrap private key. EC P-256 private key
+         * PKCS#8 encoding (~138 bytes) fits within RSA-2048 PKCS1 max
+         * plaintext (245 bytes) */
+        KeyPair ecPair;
+        try {
+            KeyPairGenerator ecKeyGen = KeyPairGenerator.getInstance("EC");
+            ecKeyGen.initialize(256);
+            ecPair = ecKeyGen.generateKeyPair();
+        } catch (NoSuchAlgorithmException e) {
+            /* EC not available, skip test */
+            return;
+        }
+
+        PrivateKey originalPrivKey = ecPair.getPrivate();
+
+        /* Wrap private key */
+        Cipher wrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey = wrapCipher.wrap(originalPrivKey);
+
+        /* Unwrap as PRIVATE_KEY */
+        Cipher unwrapCipher = Cipher.getInstance(
+            "RSA/ECB/PKCS1Padding", jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key unwrappedKey = unwrapCipher.unwrap(wrappedKey, "EC",
+            Cipher.PRIVATE_KEY);
+
+        assertNotNull("Unwrapped private key should not be null", unwrappedKey);
+        assertEquals("Algorithm should be EC", "EC",
+            unwrappedKey.getAlgorithm());
+        assertArrayEquals("Unwrapped private key should match original",
+            originalPrivKey.getEncoded(), unwrappedKey.getEncoded());
+    }
+
+    @Test
+    public void testRSAWrapUnwrapBareAlgo()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("RSA")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        byte[] rawKey = new byte[Aes.KEY_SIZE_128];
+        secureRandom.nextBytes(rawKey);
+        SecretKeySpec originalKey = new SecretKeySpec(rawKey, "AES");
+
+        /* Use "RSA" algorithm string */
+        Cipher wrapCipher = Cipher.getInstance("RSA", jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey = wrapCipher.wrap(originalKey);
+
+        Cipher unwrapCipher = Cipher.getInstance("RSA", jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key unwrappedKey = unwrapCipher.unwrap(wrappedKey, "AES",
+            Cipher.SECRET_KEY);
+
+        assertArrayEquals("Bare RSA wrap/unwrap should match",
+            originalKey.getEncoded(), unwrappedKey.getEncoded());
     }
 
     @Test

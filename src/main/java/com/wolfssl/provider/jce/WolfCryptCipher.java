@@ -36,12 +36,17 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.OAEPParameterSpec;
 import javax.crypto.spec.PSource;
+import javax.crypto.spec.SecretKeySpec;
 
 import java.security.SecureRandom;
+import java.security.KeyFactory;
 import java.security.spec.MGF1ParameterSpec;
 import java.security.AlgorithmParameters;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.InvalidParameterSpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.security.spec.InvalidKeySpecException;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.InvalidAlgorithmParameterException;
@@ -109,6 +114,10 @@ public class WolfCryptCipher extends CipherSpi {
     private PaddingType paddingType = null;
     private OpMode direction        = null;
     private RsaKeyType rsaKeyType   = null;
+
+    /* Store original opmode (ENCRYPT, DECRYPT, WRAP, UNWRAP), used by
+     * post-doFinal reset to restore correct mode */
+    private int storedOpMode = 0;
 
     private int blockSize = 0;
 
@@ -745,8 +754,8 @@ public class WolfCryptCipher extends CipherSpi {
     private void wolfCryptSetDirection(int opmode)
         throws InvalidKeyException {
 
-        /* we don't currently support AES key wrap in JCE yet,
-         * so don't allow WRAP_MODE or UNWRAP_MODE */
+        this.storedOpMode = opmode;
+
         switch (opmode) {
             case Cipher.ENCRYPT_MODE:
                 this.direction = OpMode.WC_ENCRYPT;
@@ -756,9 +765,18 @@ public class WolfCryptCipher extends CipherSpi {
                 this.direction = OpMode.WC_DECRYPT;
                 break;
 
+            case Cipher.WRAP_MODE:
+                this.direction = OpMode.WC_ENCRYPT;
+                break;
+
+            case Cipher.UNWRAP_MODE:
+                this.direction = OpMode.WC_DECRYPT;
+                break;
+
             default:
                 throw new InvalidParameterException(
-                    "Cipher opmode must be ENCRYPT_MODE or DECRYPT_MODE");
+                    "Cipher opmode must be ENCRYPT_MODE, " +
+                    "DECRYPT_MODE, WRAP_MODE, or UNWRAP_MODE");
         }
     }
 
@@ -1520,11 +1538,7 @@ public class WolfCryptCipher extends CipherSpi {
         try {
             buffered = new byte[0];
 
-            if (this.direction == OpMode.WC_ENCRYPT) {
-                wolfCryptSetDirection(Cipher.ENCRYPT_MODE);
-            } else {
-                wolfCryptSetDirection(Cipher.DECRYPT_MODE);
-            }
+            wolfCryptSetDirection(this.storedOpMode);
 
             InitializeNativeStructs();
 
@@ -1835,6 +1849,90 @@ public class WolfCryptCipher extends CipherSpi {
             /* restore state of ByteBuffer on state error before returning */
             src.position(originalPos);
             throw e;
+        }
+    }
+
+    @Override
+    protected byte[] engineWrap(Key key)
+        throws IllegalBlockSizeException, InvalidKeyException {
+
+        byte[] encodedKey = null;
+
+        if (key == null) {
+            throw new InvalidKeyException(
+                "Key to be wrapped must not be null");
+        }
+
+        encodedKey = key.getEncoded();
+        if (encodedKey == null) {
+            throw new InvalidKeyException(
+                "Key does not support encoding, cannot wrap");
+        }
+
+        try {
+            return wolfCryptFinal(encodedKey, 0, encodedKey.length);
+
+        } catch (BadPaddingException e) {
+            throw new InvalidKeyException("Failed to wrap key: " +
+                e.getMessage(), e);
+        }
+    }
+
+    @Override
+    protected Key engineUnwrap(byte[] wrappedKey, String wrappedKeyAlgo,
+        int wrappedKeyType) throws InvalidKeyException,
+            NoSuchAlgorithmException {
+
+        byte[] unwrappedKey;
+
+        if (wrappedKey == null || wrappedKey.length == 0) {
+            throw new InvalidKeyException(
+                "Wrapped key bytes must not be null or empty");
+        }
+
+        try {
+            unwrappedKey = wolfCryptFinal(wrappedKey, 0, wrappedKey.length);
+
+        } catch (BadPaddingException e) {
+            throw new InvalidKeyException("Failed to unwrap key: " +
+                e.getMessage(), e);
+
+        } catch (IllegalBlockSizeException e) {
+            throw new InvalidKeyException("Failed to unwrap key: " +
+                e.getMessage(), e);
+        }
+
+        switch (wrappedKeyType) {
+            case Cipher.SECRET_KEY:
+                return new SecretKeySpec(unwrappedKey, wrappedKeyAlgo);
+
+            case Cipher.PUBLIC_KEY:
+                try {
+                    KeyFactory kf = KeyFactory.getInstance(wrappedKeyAlgo);
+                    return kf.generatePublic(
+                        new X509EncodedKeySpec(unwrappedKey));
+
+                } catch (InvalidKeySpecException e) {
+                    throw new InvalidKeyException(
+                        "Failed to reconstruct public key: " +
+                        e.getMessage(), e);
+                }
+
+            case Cipher.PRIVATE_KEY:
+                try {
+                    KeyFactory kf = KeyFactory.getInstance(wrappedKeyAlgo);
+                    return kf.generatePrivate(
+                        new PKCS8EncodedKeySpec(unwrappedKey));
+
+                } catch (InvalidKeySpecException e) {
+                    throw new InvalidKeyException(
+                        "Failed to reconstruct private key: " +
+                        e.getMessage(), e);
+                }
+
+            default:
+                throw new InvalidKeyException("Invalid wrappedKeyType: " +
+                    wrappedKeyType);
         }
     }
 
