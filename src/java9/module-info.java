@@ -39,6 +39,11 @@ module com.wolfssl.wolfcrypt {
     exports com.wolfssl.wolfcrypt;
     exports com.wolfssl.provider.jce;
 
+    /* Declare service usage for ServiceLoader.load(Provider.class).
+     * Required for WolfCryptServiceLoaderTest which verifies the provider
+     * can be discovered via ServiceLoader. */
+    uses java.security.Provider;
+
     /* Register wolfJCE as a security provider */
     provides java.security.Provider
         with com.wolfssl.provider.jce.WolfCryptProvider;
