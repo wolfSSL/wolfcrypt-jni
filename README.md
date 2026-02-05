@@ -225,6 +225,51 @@ on the current release):
 ```
 
 
+### Java 9+ Module Support (JPMS)
+---------
+
+wolfCrypt JNI/JCE supports the Java Platform Module System (JPMS) introduced
+in Java 9. This enables use with `jlink` for creating custom, minimal Java
+runtimes.
+
+**Module Information:**
+
+- Module name: `com.wolfssl.wolfcrypt`
+- Exported packages: `com.wolfssl.wolfcrypt`, `com.wolfssl.provider.jce`
+- Service provider: `java.security.Provider` (WolfCryptProvider)
+
+**Conditional Compilation:**
+
+The `module-info.java` is conditionally compiled based on the JDK version used
+to build:
+
+| JDK Used to Build | Resulting JAR |
+|-------------------|---------------|
+| Java 8 | Standard JAR (no module-info.class) |
+| Java 9+ | Modular JAR (includes module-info.class) |
+
+When building with Java 8, the `module-info.java` is automatically excluded
+from compilation, and the resulting JAR works as a standard classpath JAR.
+
+**Using with jlink:**
+
+When built with Java 9+, the wolfCrypt JNI/JCE JAR can be used with `jlink` to
+create a custom Java runtime that includes the wolfCrypt module:
+
+```
+$ jlink \
+    --module-path lib/wolfcrypt-jni.jar:$JAVA_HOME/jmods \
+    --add-modules com.wolfssl.wolfcrypt \
+    --output custom-runtime \
+    --no-header-files \
+    --no-man-pages
+
+$ ./custom-runtime/bin/java --list-modules
+```
+
+**Note:** The native wolfCrypt JNI shared library (`libwolfcryptjni.so/dylib`)
+must still be available on the native library path at runtime.
+
 ### Example / Test Code
 ---------
 
