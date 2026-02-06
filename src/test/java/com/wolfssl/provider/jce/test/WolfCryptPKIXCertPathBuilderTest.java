@@ -3451,6 +3451,52 @@ public class WolfCryptPKIXCertPathBuilderTest {
     }
 
     /**
+     * Helper to create PKIXBuilderParameters for expired cert tests.
+     *
+     * Loads expired test certificates (valid May 2014 - April 2016)
+     * and sets up trust anchors, CertStore, and target selector.
+     *
+     * @param dateMillis custom validation date in epoch millis,
+     *                   or -1 to use current system time
+     *
+     * @return configured PKIXBuilderParameters
+     */
+    private PKIXBuilderParameters createExpiredCertParams(long dateMillis)
+        throws CertificateException, InvalidAlgorithmParameterException,
+               NoSuchAlgorithmException {
+
+        X509Certificate rootCert =
+            loadCertFromPEM(EXPIRED_ROOT_PEM);
+        X509Certificate intermediateCert =
+            loadCertFromPEM(EXPIRED_INTERMEDIATE_PEM);
+        X509Certificate userCert =
+            loadCertFromPEM(EXPIRED_USER_PEM);
+
+        Set<TrustAnchor> anchors = new HashSet<>();
+        anchors.add(new TrustAnchor(rootCert, null));
+
+        Collection<Certificate> certs = new ArrayList<>();
+        certs.add(userCert);
+        certs.add(intermediateCert);
+        CertStore certStore = CertStore.getInstance("Collection",
+            new CollectionCertStoreParameters(certs));
+
+        X509CertSelector selector = new X509CertSelector();
+        selector.setCertificate(userCert);
+
+        PKIXBuilderParameters params =
+            new PKIXBuilderParameters(anchors, selector);
+        params.setRevocationEnabled(false);
+        params.addCertStore(certStore);
+
+        if (dateMillis >= 0) {
+            params.setDate(new Date(dateMillis));
+        }
+
+        return params;
+    }
+
+    /**
      * Test building a cert path with expired certificates using
      * a custom validation date set via PKIXBuilderParameters.setDate().
      *
@@ -3473,47 +3519,34 @@ public class WolfCryptPKIXCertPathBuilderTest {
             "this wolfSSL version",
             WolfSSLX509StoreCtx.isStoreCheckTimeSupported());
 
-        /* Load expired test certificates */
-        X509Certificate rootCert = loadCertFromPEM(EXPIRED_ROOT_PEM);
+        /* Load certs separately for result assertions below */
+        X509Certificate rootCert =
+            loadCertFromPEM(EXPIRED_ROOT_PEM);
         X509Certificate intermediateCert =
             loadCertFromPEM(EXPIRED_INTERMEDIATE_PEM);
-        X509Certificate userCert = loadCertFromPEM(EXPIRED_USER_PEM);
+        X509Certificate userCert =
+            loadCertFromPEM(EXPIRED_USER_PEM);
 
-        /* Set up trust anchors with the expired root */
-        Set<TrustAnchor> anchors = new HashSet<>();
-        anchors.add(new TrustAnchor(rootCert, null));
-
-        /* Set up CertStore with intermediate and target certs */
-        Collection<Certificate> certs = new ArrayList<>();
-        certs.add(userCert);
-        certs.add(intermediateCert);
-        CertStore certStore = CertStore.getInstance("Collection",
-            new CollectionCertStoreParameters(certs));
-
-        /* Create target selector for user cert */
-        X509CertSelector selector = new X509CertSelector();
-        selector.setCertificate(userCert);
-
-        /* Create PKIXBuilderParameters with custom validation date.
-         * Date is March 15, 2015 (within cert validity period 2014-2016).
-         * Epoch time 1426399200000L = Sun Mar 15 2015 06:00:00 GMT */
+        /* Date is March 15, 2015 (within cert validity 2014-2016).
+         * Epoch time 1426399200000L = Sun Mar 15 2015 06:00:00 */
         PKIXBuilderParameters params =
-            new PKIXBuilderParameters(anchors, selector);
-        params.setRevocationEnabled(false);
-        params.addCertStore(certStore);
-        params.setDate(new Date(1426399200000L));
+            createExpiredCertParams(1426399200000L);
 
         /* Build cert path - should succeed with custom date */
-        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+        CertPathBuilder cpb =
+            CertPathBuilder.getInstance("PKIX", provider);
         CertPathBuilderResult result = cpb.build(params);
 
         /* Verify result */
-        assertNotNull("CertPathBuilderResult should not be null", result);
-        PKIXCertPathBuilderResult pResult = (PKIXCertPathBuilderResult) result;
+        assertNotNull(
+            "CertPathBuilderResult should not be null", result);
+        PKIXCertPathBuilderResult pResult =
+            (PKIXCertPathBuilderResult) result;
 
         /* Verify trust anchor is the root cert */
         assertEquals("Trust anchor should be the root cert",
-            rootCert, pResult.getTrustAnchor().getTrustedCert());
+            rootCert,
+            pResult.getTrustAnchor().getTrustedCert());
 
         /* Verify path contains user and intermediate certs
          * (root/trust anchor is not included in the path) */
@@ -3525,8 +3558,83 @@ public class WolfCryptPKIXCertPathBuilderTest {
         /* Verify path order: user -> intermediate */
         assertEquals("First cert in path should be user cert",
             userCert, path.getCertificates().get(0));
-        assertEquals("Second cert in path should be intermediate cert",
+        assertEquals(
+            "Second cert in path should be intermediate cert",
             intermediateCert, path.getCertificates().get(1));
+    }
+
+    /**
+     * Test that setDate() with a date after cert expiry still fails.
+     *
+     * Uses expired certificates (valid 2014-2016) and sets a validation
+     * date of March 15, 2017 (after the certificates expired). This
+     * verifies that setDate() properly validates against the custom date.
+     */
+    @Test
+    public void testExpiredCertsFailWithDateAfterExpiry()
+        throws CertificateException, InvalidAlgorithmParameterException,
+               NoSuchAlgorithmException, NoSuchProviderException {
+
+        Assume.assumeTrue("X509_STORE check_time support not available in " +
+            "this wolfSSL version",
+            WolfSSLX509StoreCtx.isStoreCheckTimeSupported());
+
+        /* Date is March 15, 2017 (certs expired April 30, 2016).
+         * Epoch time 1489561200000L = Wed Mar 15 2017 06:00:00 */
+        PKIXBuilderParameters params = createExpiredCertParams(1489561200000L);
+
+        /* Build cert path, should fail because custom date after cert expiry */
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+        try {
+            cpb.build(params);
+            fail("Expected CertPathBuilderException when custom " +
+                 "date is after cert expiry");
+        } catch (CertPathBuilderException e) {
+            /* Expected, date is after cert validity */
+            assertNotNull("Exception message should not be null",
+                e.getMessage());
+            assertTrue("Exception should indicate cert expired, got: " +
+                e.getMessage(), e.getMessage().contains("expired"));
+        }
+    }
+
+    /**
+     * Test that setDate() with a date before cert validity still fails.
+     *
+     * Uses expired certificates (valid May 1, 2014 - April 30, 2016)
+     * and sets a validation date of January 1, 2014 (before notBefore).
+     * This verifies that setDate() also checks the notBefore boundary.
+     */
+    @Test
+    public void testExpiredCertsFailWithDateBeforeValidity()
+        throws CertificateException, InvalidAlgorithmParameterException,
+               NoSuchAlgorithmException, NoSuchProviderException {
+
+        Assume.assumeTrue(
+            "X509_STORE check_time support not available in " +
+            "this wolfSSL version",
+            WolfSSLX509StoreCtx.isStoreCheckTimeSupported());
+
+        /* Date is January 1, 2014 (certs valid from May 1, 2014).
+         * Epoch time 1388534400000L = Wed Jan 01 2014 00:00:00 */
+        PKIXBuilderParameters params =
+            createExpiredCertParams(1388534400000L);
+
+        /* Build cert path - should FAIL because custom date is
+         * before cert notBefore */
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+        try {
+            cpb.build(params);
+            fail("Expected CertPathBuilderException when custom " +
+                 "date is before cert notBefore");
+        } catch (CertPathBuilderException e) {
+            /* Expected, date is before cert validity */
+            assertNotNull("Exception message should not be null",
+                e.getMessage());
+            assertTrue("Exception should indicate cert not yet valid" +
+                ", got: " + e.getMessage(),
+                e.getMessage().contains("not yet valid"));
+        }
     }
 
     /**
@@ -3541,44 +3649,27 @@ public class WolfCryptPKIXCertPathBuilderTest {
         throws CertificateException, InvalidAlgorithmParameterException,
                NoSuchAlgorithmException, NoSuchProviderException {
 
-        /* Load expired test certificates */
-        X509Certificate rootCert = loadCertFromPEM(EXPIRED_ROOT_PEM);
-        X509Certificate intermediateCert =
-            loadCertFromPEM(EXPIRED_INTERMEDIATE_PEM);
-        X509Certificate userCert = loadCertFromPEM(EXPIRED_USER_PEM);
-
-        /* Set up trust anchors with the expired root */
-        Set<TrustAnchor> anchors = new HashSet<>();
-        anchors.add(new TrustAnchor(rootCert, null));
-
-        /* Set up CertStore with intermediate and target certs */
-        Collection<Certificate> certs = new ArrayList<>();
-        certs.add(userCert);
-        certs.add(intermediateCert);
-        CertStore certStore = CertStore.getInstance("Collection",
-            new CollectionCertStoreParameters(certs));
-
-        /* Create target selector for user cert */
-        X509CertSelector selector = new X509CertSelector();
-        selector.setCertificate(userCert);
-
-        /* Create PKIXBuilderParameters WITHOUT custom date.
-         * This will use current system time for validation. */
-        PKIXBuilderParameters params =
-            new PKIXBuilderParameters(anchors, selector);
-        params.setRevocationEnabled(false);
-        params.addCertStore(certStore);
-        /* Note: NOT calling params.setDate() - uses current time */
+        /* No custom date (-1), uses current system time */
+        PKIXBuilderParameters params = createExpiredCertParams(-1);
 
         /* Build cert path - should FAIL because certs are expired */
         CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
         try {
             cpb.build(params);
-            fail("Expected CertPathBuilderException for expired certificates");
+            fail("Expected CertPathBuilderException for " +
+                 "expired certificates");
         } catch (CertPathBuilderException e) {
-            /* Expected - certificates are expired */
-            assertTrue("Exception message should indicate certificate issue",
-                e.getMessage() != null);
+            /* Expected, certificates are expired. May fail
+             * during store addition ("Failed to add certificate")
+             * or during verification ("expired"), depending on
+             * wolfSSL version and configuration. */
+            assertNotNull("Exception message should not be null",
+                e.getMessage());
+            assertTrue("Exception should indicate cert date issue" +
+                ", got: " + e.getMessage(),
+                e.getMessage().contains("expired") ||
+                e.getMessage().contains(
+                    "Failed to add certificate"));
         }
     }
 }
