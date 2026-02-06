@@ -1,0 +1,50 @@
+/* module-info.java
+ *
+ * Copyright (C) 2006-2025 wolfSSL Inc.
+ *
+ * This file is part of wolfSSL.
+ *
+ * wolfSSL is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * wolfSSL is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
+ */
+
+/**
+ * wolfCrypt JNI/JCE Module
+ *
+ * This module provides:
+ * - JNI bindings to the native wolfCrypt cryptography library
+ *   (com.wolfssl.wolfcrypt)
+ * - A JCE provider implementation (com.wolfssl.provider.jce)
+ *
+ * Note: This module-info.java is only compiled when building with Java 9+.
+ * When building with Java 8, this file is excluded and the resulting JAR
+ * will be a standard (non-modular) JAR that works on the classpath.
+ */
+module com.wolfssl.wolfcrypt {
+    /* Required modules */
+    requires java.logging;
+
+    /* Export public API packages */
+    exports com.wolfssl.wolfcrypt;
+    exports com.wolfssl.provider.jce;
+
+    /* Declare service usage for ServiceLoader.load(Provider.class).
+     * Required for WolfCryptServiceLoaderTest which verifies the provider
+     * can be discovered via ServiceLoader. */
+    uses java.security.Provider;
+
+    /* Register wolfJCE as a security provider */
+    provides java.security.Provider
+        with com.wolfssl.provider.jce.WolfCryptProvider;
+}
