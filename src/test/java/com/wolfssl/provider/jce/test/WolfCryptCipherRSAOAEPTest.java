@@ -31,12 +31,17 @@ import org.junit.BeforeClass;
 import java.util.Arrays;
 
 import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.BadPaddingException;
 import javax.crypto.spec.OAEPParameterSpec;
 import javax.crypto.spec.PSource;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
+import java.security.Key;
 import java.security.Security;
 import java.security.spec.MGF1ParameterSpec;
 import java.security.Provider;
@@ -56,6 +61,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
@@ -1492,6 +1498,300 @@ public class WolfCryptCipherRSAOAEPTest {
         } catch (RuntimeException e) {
             /* WolfCryptException wrapped in RuntimeException is also valid */
         }
+    }
+
+    /**
+     * Test OAEP wrap/unwrap of a secret key.
+     */
+    @Test
+    public void testOAEPWrapUnwrapSecretKey()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               InvalidAlgorithmParameterException {
+
+        Assume.assumeTrue(oaepAvailable);
+        Assume.assumeNotNull(rsaPair);
+
+        /* Generate an AES-256 secret key to wrap */
+        byte[] rawKey = new byte[Aes.KEY_SIZE_256];
+        secureRandom.nextBytes(rawKey);
+        SecretKeySpec originalKey = new SecretKeySpec(rawKey, "AES");
+
+        /* Wrap key using RSA-OAEP */
+        Cipher wrapCipher = Cipher.getInstance(OAEP_ALGO, jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey = wrapCipher.wrap(originalKey);
+
+        assertNotNull("Wrapped key should not be null", wrappedKey);
+        assertTrue("Wrapped key should be non-empty",
+            wrappedKey.length > 0);
+
+        /* Unwrap key using RSA-OAEP */
+        Cipher unwrapCipher = Cipher.getInstance(OAEP_ALGO, jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key unwrappedKey = unwrapCipher.unwrap(wrappedKey, "AES",
+            Cipher.SECRET_KEY);
+
+        assertNotNull("Unwrapped key should not be null", unwrappedKey);
+        assertEquals("Unwrapped key algorithm should be AES",
+            "AES", unwrappedKey.getAlgorithm());
+        assertArrayEquals("Unwrapped key should match original",
+            originalKey.getEncoded(), unwrappedKey.getEncoded());
+    }
+
+    /**
+     * Test OAEP wrap/unwrap interop with SunJCE.
+     * Wrap with wolfJCE, unwrap with SunJCE and vice versa.
+     */
+    @Test
+    public void testOAEPWrapUnwrapInterop()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        Assume.assumeTrue(oaepAvailable);
+        Assume.assumeNotNull(rsaPair);
+        Assume.assumeNotNull(interopProvider);
+
+        byte[] rawKey = new byte[Aes.KEY_SIZE_128];
+        secureRandom.nextBytes(rawKey);
+        SecretKeySpec originalKey = new SecretKeySpec(rawKey, "AES");
+
+        /* Wrap with wolfJCE, unwrap with SunJCE */
+        Cipher wrapCipher = Cipher.getInstance(OAEP_ALGO, jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey = wrapCipher.wrap(originalKey);
+
+        Cipher unwrapCipher = Cipher.getInstance(OAEP_ALGO, interopProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key unwrappedKey = unwrapCipher.unwrap(
+            wrappedKey, "AES", Cipher.SECRET_KEY);
+
+        assertArrayEquals("wolfJCE wrap -> SunJCE unwrap should match",
+            originalKey.getEncoded(), unwrappedKey.getEncoded());
+
+        /* Wrap with SunJCE, unwrap with wolfJCE */
+        byte[] rawKey2 = new byte[Aes.KEY_SIZE_128];
+        secureRandom.nextBytes(rawKey2);
+        SecretKeySpec originalKey2 = new SecretKeySpec(rawKey2, "AES");
+
+        Cipher wrapCipher2 = Cipher.getInstance(OAEP_ALGO, interopProvider);
+        wrapCipher2.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey2 = wrapCipher2.wrap(originalKey2);
+
+        Cipher unwrapCipher2 = Cipher.getInstance(OAEP_ALGO, jceProvider);
+        unwrapCipher2.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key unwrappedKey2 = unwrapCipher2.unwrap(wrappedKey2, "AES",
+            Cipher.SECRET_KEY);
+
+        assertArrayEquals("SunJCE wrap -> wolfJCE unwrap should match",
+            originalKey2.getEncoded(), unwrappedKey2.getEncoded());
+    }
+
+    /**
+     * Test OAEP SHA-1 variant wrap/unwrap of a secret key.
+     */
+    @Test
+    public void testOAEPSHA1WrapUnwrapSecretKey()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        byte[] rawKey = new byte[Aes.KEY_SIZE_256];
+        secureRandom.nextBytes(rawKey);
+        SecretKeySpec originalKey = new SecretKeySpec(rawKey, "AES");
+
+        /* Wrap with OAEP SHA-1 */
+        Cipher wrapCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey = wrapCipher.wrap(originalKey);
+
+        assertNotNull("Wrapped key should not be null", wrappedKey);
+
+        /* Unwrap with OAEP SHA-1 */
+        Cipher unwrapCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key unwrappedKey = unwrapCipher.unwrap(wrappedKey, "AES",
+            Cipher.SECRET_KEY);
+
+        assertArrayEquals("OAEP SHA-1 unwrapped key should match",
+            originalKey.getEncoded(), unwrappedKey.getEncoded());
+    }
+
+    /**
+     * Test OAEP wrap/unwrap resets state for cipher reuse.
+     */
+    @Test
+    public void testOAEPWrapUnwrapResetsState()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        Assume.assumeTrue(oaepAvailable);
+        Assume.assumeNotNull(rsaPair);
+
+        Cipher wrapCipher = Cipher.getInstance(OAEP_ALGO, jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+
+        Cipher unwrapCipher = Cipher.getInstance(OAEP_ALGO, jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+
+        /* Perform multiple wrap/unwrap on same instances */
+        for (int i = 0; i < 3; i++) {
+            byte[] rawKey = new byte[Aes.KEY_SIZE_128];
+            secureRandom.nextBytes(rawKey);
+            SecretKeySpec originalKey = new SecretKeySpec(rawKey, "AES");
+
+            byte[] wrappedKey = wrapCipher.wrap(originalKey);
+            Key unwrappedKey = unwrapCipher.unwrap(wrappedKey, "AES",
+                Cipher.SECRET_KEY);
+
+            assertArrayEquals("OAEP wrap/unwrap iteration " + i +
+                " should match", originalKey.getEncoded(),
+                unwrappedKey.getEncoded());
+        }
+    }
+
+    /**
+     * Test OAEP wrap with null key throws InvalidKeyException.
+     */
+    @Test
+    public void testOAEPWrapUnwrapNullKeyThrows()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        Assume.assumeTrue(oaepAvailable);
+        Assume.assumeNotNull(rsaPair);
+
+        Cipher wrapCipher = Cipher.getInstance(OAEP_ALGO, jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+
+        try {
+            wrapCipher.wrap(null);
+            fail("wrap(null) should throw InvalidKeyException");
+
+        } catch (InvalidKeyException e) {
+            /* Expected */
+        }
+    }
+
+    /**
+     * Test OAEP unwrap with wrong key fails.
+     */
+    @Test
+    public void testOAEPWrapUnwrapWrongKeyFails()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        Assume.assumeTrue(oaepAvailable);
+        Assume.assumeNotNull(rsaPair);
+
+        /* Generate a second RSA key pair */
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048, secureRandom);
+        KeyPair wrongPair = keyGen.generateKeyPair();
+
+        byte[] rawKey = new byte[Aes.KEY_SIZE_128];
+        secureRandom.nextBytes(rawKey);
+        SecretKeySpec originalKey = new SecretKeySpec(rawKey, "AES");
+
+        /* Wrap with rsaPair */
+        Cipher wrapCipher = Cipher.getInstance(OAEP_ALGO, jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedKey = wrapCipher.wrap(originalKey);
+
+        /* Unwrap with wrong key pair */
+        Cipher unwrapCipher = Cipher.getInstance(OAEP_ALGO, jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, wrongPair.getPrivate());
+
+        try {
+            unwrapCipher.unwrap(wrappedKey, "AES", Cipher.SECRET_KEY);
+            fail("Unwrap with wrong key should fail");
+
+        } catch (InvalidKeyException e) {
+            /* Expected */
+        } catch (RuntimeException e) {
+            /* WolfCryptException wrapped in RuntimeException also valid */
+        }
+    }
+
+    /**
+     * SAML key-transport test, similar use case to Apache xmlsec. SAML flow:
+     *   Sender:
+     *     1. Generate AES-256 session key
+     *     2. Encrypt assertion with AES-256-GCM
+     *     3. Wrap session key with RSA-OAEP-SHA1 (Cipher.WRAP_MODE)
+     *
+     *   Receiver:
+     *     4. Unwrap session key with RSA-OAEP-SHA1 (Cipher.UNWRAP_MODE)
+     *     5. Decrypt assertion with recovered AES key
+     *     6. Verify plaintext matches
+     */
+    @Test
+    public void testOAEPSHA1KeyTransportForSAMLDecryption()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException, BadPaddingException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        Assume.assumeTrue(oaepSha1Available);
+        Assume.assumeNotNull(rsaPair);
+
+        try {
+            /* Verify AES/GCM is available */
+            Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        } catch (NoSuchAlgorithmException e) {
+            /* AES-GCM not compiled in, skip */
+            return;
+        }
+
+        /* Simulated SAML assertion plaintext */
+        byte[] samlAssertion =
+            ("<saml:Assertion>" +
+             "<saml:Subject>user@example.com</saml:Subject>" +
+             "</saml:Assertion>").getBytes();
+
+        /* Sender side - generate AES-256 session key */
+        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+        keyGen.init(Aes.KEY_SIZE_256 * 8, secureRandom);
+        SecretKey sessionKey = keyGen.generateKey();
+
+        /* Encrypt assertion with AES-256-GCM */
+        byte[] gcmIv = new byte[12];
+        secureRandom.nextBytes(gcmIv);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, gcmIv);
+
+        Cipher aesCipher = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        aesCipher.init(Cipher.ENCRYPT_MODE, sessionKey, gcmSpec);
+        byte[] encryptedAssertion = aesCipher.doFinal(samlAssertion);
+
+        /* Wrap session key with RSA-OAEP-SHA1 */
+        Cipher wrapCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        wrapCipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrappedSessionKey = wrapCipher.wrap(sessionKey);
+
+        /* Receiver side - Unwrap session key */
+        Cipher unwrapCipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+        unwrapCipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key recoveredKey = unwrapCipher.unwrap(wrappedSessionKey, "AES",
+            Cipher.SECRET_KEY);
+
+        assertNotNull("Recovered session key must not be null", recoveredKey);
+        assertEquals("AES", recoveredKey.getAlgorithm());
+
+        /* Decrypt assertion with recovered key */
+        Cipher decCipher = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        decCipher.init(Cipher.DECRYPT_MODE, recoveredKey, gcmSpec);
+        byte[] decryptedAssertion = decCipher.doFinal(encryptedAssertion);
+
+        /* Verify plaintext matches */
+        assertArrayEquals("Decrypted SAML assertion must match original",
+            samlAssertion, decryptedAssertion);
     }
 }
 
