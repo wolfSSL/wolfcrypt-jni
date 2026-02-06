@@ -447,6 +447,16 @@ JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wo
         return NULL;
     }
 
+    /* When USE_CHECK_TIME is set (custom verification date), clear
+     * NO_CHECK_TIME from ctx->param so X509StoreVerifyCertDate()
+     * validates cert dates against check_time. NO_CHECK_TIME is still set on
+     * store->param so X509StoreAddCa() can still accept expired certs
+     * into the store. */
+    if (ctx->param != NULL &&
+        (ctx->param->flags & WOLFSSL_USE_CHECK_TIME) != 0) {
+        ctx->param->flags &= (unsigned long)(~WOLFSSL_NO_CHECK_TIME);
+    }
+
     /* Set max path length if specified.
      * Depth = max intermediates + 1 for root CA.
      * Check for overflow when adding 1 to maxPathLength. */
