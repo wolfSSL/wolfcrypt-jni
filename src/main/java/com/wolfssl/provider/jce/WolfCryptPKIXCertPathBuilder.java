@@ -59,7 +59,6 @@ import javax.security.auth.x500.X500Principal;
 
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.WolfCrypt;
-import com.wolfssl.wolfcrypt.WolfSSLCertManager;
 import com.wolfssl.wolfcrypt.WolfSSLX509StoreCtx;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 
@@ -522,77 +521,6 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
         }
 
         return anchor;
-    }
-
-    /**
-     * Validate the built certificate path.
-     *
-     * @param path the certificate path to validate
-     * @param params the PKIX builder parameters
-     * @param anchor the trust anchor
-     *
-     * @throws CertPathBuilderException if validation fails
-     */
-    private void validatePath(List<X509Certificate> path,
-        PKIXBuilderParameters params, TrustAnchor anchor)
-        throws CertPathBuilderException {
-
-        WolfSSLCertManager cm = null;
-
-        log("validating built path (" + path.size() + " certificates)");
-
-        if (path == null || anchor == null) {
-            throw new CertPathBuilderException(
-                "Path or TrustAnchor is null");
-        }
-
-        try {
-            cm = new WolfSSLCertManager();
-
-            /* Load trust anchor as CA */
-            X509Certificate anchorCert = anchor.getTrustedCert();
-            if (anchorCert != null) {
-                cm.CertManagerLoadCA(anchorCert);
-                log("loaded trust anchor: " +
-                    anchorCert.getSubjectX500Principal().getName());
-            }
-
-            /* Verify certificates from top (closest to anchor) to target */
-            for (int i = path.size() - 1; i >= 0; i--) {
-                X509Certificate cert = path.get(i);
-
-                try {
-                    cm.CertManagerVerify(cert);
-                    log("verified: " +
-                        cert.getSubjectX500Principal().getName());
-
-                } catch (WolfCryptException e) {
-                    throw new CertPathBuilderException(
-                        "Certificate verification failed: " +
-                        cert.getSubjectX500Principal().getName(), e);
-                }
-
-                /* Load verified cert as CA for next verification */
-                if (i > 0 && cert.getBasicConstraints() >= 0) {
-                    try {
-                        cm.CertManagerLoadCA(cert);
-
-                    } catch (WolfCryptException e) {
-                        /* continue */
-                        log("Warning: failed to load verified cert as CA");
-                    }
-                }
-            }
-
-        } catch (WolfCryptException e) {
-            throw new CertPathBuilderException(
-                "Failed to create or use WolfSSLCertManager", e);
-
-        } finally {
-            if (cm != null) {
-                cm.free();
-            }
-        }
     }
 
     /**
