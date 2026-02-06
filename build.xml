@@ -23,6 +23,7 @@
 
     <!-- set properties for this build -->
     <property name="src.dir" value="src/main/java/" />
+    <property name="src.java9.dir" value="src/java9/" />
     <property name="jni.dir" value="jni/include/" />
     <property name="lib.dir" value="lib/" />
     <property name="build.dir" value="build" />
@@ -47,6 +48,18 @@
     <property file="codeSigning.properties" />
 
     <property environment="env" />
+
+    <!-- Detect Java 9+ for module-info.java compilation -->
+    <condition property="isJava9Plus">
+        <not>
+            <or>
+                <equals arg1="${ant.java.version}" arg2="1.5"/>
+                <equals arg1="${ant.java.version}" arg2="1.6"/>
+                <equals arg1="${ant.java.version}" arg2="1.7"/>
+                <equals arg1="${ant.java.version}" arg2="1.8"/>
+            </or>
+        </not>
+    </condition>
 
     <!-- Detect if running on Windows host -->
     <condition property="isWindows">
@@ -161,8 +174,24 @@
         </copy>
     </target>
 
+    <!-- Compile module-info.java for Java 9+ module support.
+         Only runs when building with Java 9 or later. When building with
+         Java 8 or earlier, this target is skipped and the resulting JAR
+         will be a standard (non-modular) JAR file. -->
+    <target name="compile-module-info" if="isJava9Plus"
+            description="Compile module-info.java for Java 9+ (skipped on Java 8)">
+        <javac srcdir="${src.java9.dir}"
+               destdir="${build.dir}"
+               release="9"
+               modulepath="${build.dir}"
+               includeantruntime="false">
+            <include name="module-info.java"/>
+        </javac>
+        <echo message="Compiled module-info.java for Java 9+ module support"/>
+    </target>
+
     <!-- create JAR with ONLY JNI classes, not to be used with JCE -->
-    <target name="jar-jni" depends="compile-nativeheaderdir, compile-javah">
+    <target name="jar-jni" depends="compile-nativeheaderdir, compile-javah, compile-module-info">
         <jar jarfile="${lib.dir}/wolfcrypt-jni.jar">
             <manifest>
                 <attribute name="Implementation-Title"
@@ -174,12 +203,13 @@
             </manifest>
             <fileset dir="${build.dir}">
                 <include name="com/wolfssl/wolfcrypt/*.class"/>
+                <include name="module-info.class"/>
             </fileset>
         </jar>
     </target>
 
     <!-- create JAR with JNI and JCE classes, use this when wanting JCE -->
-    <target name="jar-jce" depends="compile-nativeheaderdir, compile-javah">
+    <target name="jar-jce" depends="compile-nativeheaderdir, compile-javah, compile-module-info">
         <jar jarfile="${lib.dir}/wolfcrypt-jni.jar" basedir="${build.dir}">
             <manifest>
                 <attribute name="Implementation-Title"
