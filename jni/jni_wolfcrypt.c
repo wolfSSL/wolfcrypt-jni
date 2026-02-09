@@ -32,6 +32,8 @@
 #include <wolfssl/wolfcrypt/coding.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/ssl.h>
+#include <wolfssl/wolfio.h>
 #include <com_wolfssl_wolfcrypt_WolfCrypt.h>
 #include <wolfcrypt_jni_error.h>
 
@@ -610,5 +612,32 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcPubKeyPemToD
     throwNotCompiledInException(env);
     return NULL;
 #endif /* !NO_ASN && !WOLFSSL_NO_PEM && !NO_CODING) */
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_IoTimeoutEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+
+#ifdef HAVE_IO_TIMEOUT
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_nativeSetIOTimeout
+  (JNIEnv* env, jclass jcl, jint timeoutSec)
+{
+    (void)jcl;
+
+#ifdef HAVE_IO_TIMEOUT
+    wolfIO_SetTimeout(timeoutSec);
+    (void)env;
+#else
+    (void)timeoutSec;
+    throwNotCompiledInException(env);
+#endif
 }
 

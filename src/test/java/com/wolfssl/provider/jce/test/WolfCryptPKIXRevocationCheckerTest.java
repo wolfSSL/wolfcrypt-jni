@@ -23,6 +23,7 @@ package com.wolfssl.provider.jce.test;
 
 import static org.junit.Assert.*;
 
+import org.junit.After;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -67,6 +68,15 @@ public class WolfCryptPKIXRevocationCheckerTest {
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
+
+    /**
+     * Clean up wolfjce.ioTimeout system property after each
+     * test to avoid affecting other tests.
+     */
+    @After
+    public void clearIOTimeoutProperty() {
+        System.clearProperty("wolfjce.ioTimeout");
+    }
 
     /**
      * Test if this environment is Android.
@@ -1020,6 +1030,66 @@ public class WolfCryptPKIXRevocationCheckerTest {
             checker.getSoftFailExceptions();
         assertEquals("init() should clear soft fail exceptions",
             0, exceptions.size());
+
+        cm.free();
+    }
+
+    @Test(timeout = 15000)
+    public void testRevocationCheckerIOTimeoutLowValue()
+        throws Exception {
+
+        if (!WolfCrypt.OcspEnabled()) {
+            /* Skip test if OCSP not compiled in */
+            return;
+        }
+
+        if (!WolfCrypt.IoTimeoutEnabled()) {
+            /* Skip test if HAVE_IO_TIMEOUT not compiled in */
+            return;
+        }
+
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+        WolfCryptPKIXRevocationChecker checker =
+            (WolfCryptPKIXRevocationChecker)cpv.getRevocationChecker();
+
+        /* Load certs */
+        FileInputStream fis = new FileInputStream(caCertDer);
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        X509Certificate caCert = (X509Certificate)cf.generateCertificate(fis);
+        fis.close();
+
+        fis = new FileInputStream(serverCertDer);
+        X509Certificate serverCert =
+            (X509Certificate)cf.generateCertificate(fis);
+        fis.close();
+
+        /* Set 1 second I/O timeout via system property */
+        System.setProperty("wolfjce.ioTimeout", "1");
+
+        /* Set SOFT_FAIL and override OCSP URL to non-routable address.
+         * 198.51.100.1 (TEST-NET-2, RFC 5737) is not routable, so TCP connect
+         * will hang until timeout kicks in, rather than getting an immediate
+         * connection refused like localhost would. */
+        Set<Option> options = EnumSet.of(Option.SOFT_FAIL);
+        checker.setOptions(options);
+        checker.setOcspResponder(new URI("http://198.51.100.1:12345"));
+
+        /* Create CertManager, load CA, and init */
+        WolfSSLCertManager cm = new WolfSSLCertManager();
+        cm.CertManagerLoadCA(caCert);
+        checker.setCertManager(cm);
+        checker.init(false);
+
+        /* Time the check() call. With 1 second timeout and a non-routable OCSP
+         * URL, should complete quickly. */
+        long startMs = System.currentTimeMillis();
+        checker.check(serverCert, null);
+        long elapsedMs = System.currentTimeMillis() - startMs;
+
+        /* Verify check completed within reasonable time.
+         * Allow 10 sec margin for system overhead/etc. */
+        assertTrue("OCSP check with 1s timeout took " + elapsedMs +
+            "ms, expected < 10000ms", elapsedMs < 10000);
 
         cm.free();
     }

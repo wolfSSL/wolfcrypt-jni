@@ -1020,5 +1020,101 @@ public class WolfCryptTest {
         assertArrayEquals("Multiple conversions should produce same result",
                           der2, der3);
     }
+
+    @Test
+    public void testIoTimeoutEnabled() {
+        /* Result depends on wolfSSL compile options, but multiple
+         * calls should return a consistent value */
+        boolean enabled1 = WolfCrypt.IoTimeoutEnabled();
+        boolean enabled2 = WolfCrypt.IoTimeoutEnabled();
+        assertEquals("IoTimeoutEnabled should return consistent value",
+                     enabled1, enabled2);
+    }
+
+    @Test
+    public void testSetIOTimeoutValidValues() {
+
+        if (!WolfCrypt.IoTimeoutEnabled()) {
+            System.out.println("Skipping: HAVE_IO_TIMEOUT not enabled");
+            return;
+        }
+
+        /* Test a range of valid values */
+        WolfCrypt.setIOTimeout(0);
+        WolfCrypt.setIOTimeout(1);
+        WolfCrypt.setIOTimeout(5);
+        WolfCrypt.setIOTimeout(30);
+        WolfCrypt.setIOTimeout(3600);
+
+        /* Reset to default (no timeout) */
+        WolfCrypt.setIOTimeout(0);
+    }
+
+    @Test
+    public void testSetIOTimeoutZeroDisables() {
+
+        if (!WolfCrypt.IoTimeoutEnabled()) {
+            System.out.println("Skipping: HAVE_IO_TIMEOUT not enabled");
+            return;
+        }
+
+        /* Zero should disable timeout (default behavior) */
+        WolfCrypt.setIOTimeout(0);
+    }
+
+    @Test
+    public void testSetIOTimeoutMaxBoundary() {
+
+        if (!WolfCrypt.IoTimeoutEnabled()) {
+            System.out.println("Skipping: HAVE_IO_TIMEOUT not enabled");
+            return;
+        }
+
+        /* Exactly 3600 should succeed */
+        WolfCrypt.setIOTimeout(3600);
+
+        /* Reset to default */
+        WolfCrypt.setIOTimeout(0);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSetIOTimeoutNegative() {
+        WolfCrypt.setIOTimeout(-1);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSetIOTimeoutNegativeLarge() {
+        WolfCrypt.setIOTimeout(Integer.MIN_VALUE);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSetIOTimeoutExceedsMax() {
+        WolfCrypt.setIOTimeout(3601);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSetIOTimeoutExceedsMaxLarge() {
+        WolfCrypt.setIOTimeout(Integer.MAX_VALUE);
+    }
+
+    @Test
+    public void testSetIOTimeoutNotCompiledIn() {
+
+        if (WolfCrypt.IoTimeoutEnabled()) {
+            /* Feature is available, skip this test */
+            return;
+        }
+
+        /* When HAVE_IO_TIMEOUT is not compiled in, calling
+         * setIOTimeout should throw WolfCryptException */
+        try {
+            WolfCrypt.setIOTimeout(5);
+            fail("Should have thrown WolfCryptException " +
+                 "when HAVE_IO_TIMEOUT not compiled in");
+        }
+        catch (WolfCryptException e) {
+            /* Expected */
+        }
+    }
 }
 

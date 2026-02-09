@@ -29,6 +29,8 @@ extern "C" {
 #define com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_1024_BITS 128L
 #undef com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_2048_BITS
 #define com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_2048_BITS 256L
+#undef com_wolfssl_wolfcrypt_WolfCrypt_MAX_IO_TIMEOUT_SEC
+#define com_wolfssl_wolfcrypt_WolfCrypt_MAX_IO_TIMEOUT_SEC 3600L
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfCrypt
  * Method:    getWC_HASH_TYPE_NONE
@@ -183,6 +185,14 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcPubKeyPemToD
 
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    nativeSetIOTimeout
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_nativeSetIOTimeout
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
  * Method:    CrlEnabled
  * Signature: ()Z
  */
@@ -203,6 +213,14 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_OcspEnabled
  * Signature: ()Z
  */
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_Base16Enabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    IoTimeoutEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_IoTimeoutEnabled
   (JNIEnv *, jclass);
 
 #ifdef __cplusplus

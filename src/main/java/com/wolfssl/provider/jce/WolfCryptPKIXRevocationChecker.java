@@ -80,6 +80,14 @@ public class WolfCryptPKIXRevocationChecker extends PKIXRevocationChecker {
     /* Trust anchors for determining if issuer is a trust anchor */
     private Set<TrustAnchor> trustAnchors;
 
+    /* Last applied I/O timeout value from wolfjce.ioTimeout property.
+     * Used to skip redundant JNI calls when multiple checkers or
+     * repeated init() calls read the same property value. wolfIO_SetTimeout()
+     * sets a global value, so all checkers in the JVM share the same timeout.
+     * Integer.MIN_VALUE indicates no timeout has been applied yet. */
+    private static volatile int lastAppliedIOTimeout =
+        Integer.MIN_VALUE;
+
     /**
      * Create new WolfCryptPKIXRevocationChecker.
      */
@@ -146,6 +154,10 @@ public class WolfCryptPKIXRevocationChecker extends PKIXRevocationChecker {
 
         this.initialized = true;
         this.softFailExceptions.clear();
+
+        /* Set wolfSSL I/O timeout for HTTP-based operations (OCSP lookups,
+         * CRL fetching) if 'wolfjce.ioTimeout' System property is set. */
+        setIOTimeoutFromProperty();
 
         /* Verify we have OCSP support if needed */
         if (!options.contains(Option.PREFER_CRLS)) {
@@ -589,6 +601,77 @@ public class WolfCryptPKIXRevocationChecker extends PKIXRevocationChecker {
     @Override
     public List<CertPathValidatorException> getSoftFailExceptions() {
         return Collections.unmodifiableList(this.softFailExceptions);
+    }
+
+    /**
+     * Read and apply wolfjce.ioTimeout system property.
+     *
+     * Sets the native wolfSSL I/O timeout via wolfIO_SetTimeout()
+     * if the property is set and valid. If the property is set but
+     * contains an invalid value, throws CertPathValidatorException
+     * to fail revocation checker initialization.
+     *
+     * Note: The native timeout is a global (process-wide) setting
+     * shared by all threads and validations in the JVM. To reduce
+     * redundant JNI calls, the parsed value is compared against
+     * the last applied value and the native call is skipped if
+     * unchanged.
+     *
+     * @throws CertPathValidatorException if property value is
+     *         invalid (not a number, negative, exceeds max, or
+     *         HAVE_IO_TIMEOUT not compiled in)
+     */
+    private void setIOTimeoutFromProperty() throws CertPathValidatorException {
+
+        int timeoutSec;
+        String ioTimeout;
+
+        try {
+            ioTimeout = System.getProperty("wolfjce.ioTimeout");
+        } catch (SecurityException e) {
+            /* SecurityManager blocked property access, treat as
+             * property not set and continue without timeout */
+            return;
+        }
+
+        if (ioTimeout == null) {
+            return;
+        }
+        final String trimmed = ioTimeout.trim();
+        if (trimmed.isEmpty()) {
+            return;
+        }
+
+        try {
+            timeoutSec = Integer.parseInt(trimmed);
+
+            /* Skip JNI call if value unchanged from last apply */
+            if (timeoutSec != lastAppliedIOTimeout) {
+                WolfCrypt.setIOTimeout(timeoutSec);
+                lastAppliedIOTimeout = timeoutSec;
+
+                WolfCryptDebug.log(
+                    WolfCryptPKIXRevocationChecker.class,
+                    WolfCryptDebug.INFO,
+                    () -> "wolfjce.ioTimeout set to " +
+                    trimmed + " seconds");
+            }
+
+        } catch (NumberFormatException e) {
+            throw new CertPathValidatorException(
+                "Invalid wolfjce.ioTimeout value: " + trimmed +
+                ", must be integer seconds: " + e.getMessage(), e);
+
+        } catch (IllegalArgumentException e) {
+            throw new CertPathValidatorException(
+                "Invalid wolfjce.ioTimeout value: " + trimmed +
+                ": " + e.getMessage(), e);
+
+        } catch (WolfCryptException e) {
+            throw new CertPathValidatorException(
+                "wolfjce.ioTimeout set but native wolfSSL not " +
+                "compiled with HAVE_IO_TIMEOUT: " + e.getMessage(), e);
+        }
     }
 
     /**
