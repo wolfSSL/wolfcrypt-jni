@@ -39,6 +39,8 @@ import java.security.SignatureException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateExpiredException;
+import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
 import java.security.cert.TrustAnchor;
 import java.security.cert.CertPathBuilderSpi;
@@ -112,6 +114,170 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
         if (!(params instanceof PKIXBuilderParameters)) {
             throw new InvalidAlgorithmParameterException(
                 "params not of type PKIXBuilderParameters");
+        }
+    }
+
+    /**
+     * Check certificate against disabled algorithms constraints from security
+     * property jdk.certpath.disabledAlgorithms.
+     *
+     * Validates both the signature algorithm and public key algorithm/size
+     * against the disabled algorithms list.
+     *
+     * @param cert certificate to check
+     *
+     * @throws CertPathBuilderException if algorithm is disabled or key size is
+     *         too small
+     */
+    private void checkAlgorithmConstraints(X509Certificate cert)
+        throws CertPathBuilderException {
+
+        String sigAlg = null;
+        PublicKey pubKey = null;
+        String propertyName = "jdk.certpath.disabledAlgorithms";
+
+        if (cert == null) {
+            throw new CertPathBuilderException(
+                "X509Certificate is null when checking algorithm constraints");
+        }
+
+        /* Check signature algorithm against disabled list */
+        sigAlg = cert.getSigAlgName();
+        if (WolfCryptUtil.isAlgorithmDisabled(sigAlg, propertyName)) {
+            log("Algorithm constraints check failed on signature algorithm: " +
+                sigAlg);
+            throw new CertPathBuilderException(
+                "Algorithm constraints check failed on signature algorithm: " +
+                sigAlg);
+        }
+
+        /* Check public key algorithm and size against constraints */
+        pubKey = cert.getPublicKey();
+        if (!WolfCryptUtil.isKeyAllowed(pubKey, propertyName)) {
+            log("Algorithm constraints check failed on public key: " +
+                pubKey.getAlgorithm());
+            throw new CertPathBuilderException(
+                "Algorithm constraints check failed on public key: " +
+                pubKey.getAlgorithm());
+        }
+    }
+
+    /**
+     * Check trust anchor against disabled algorithms constraints from
+     * security property jdk.certpath.disabledAlgorithms.
+     *
+     * Handles both trust anchors with certificates and those with only a
+     * public key (no cert). Only checks the public key algorithm and size,
+     * not the signature algorithm, since trust anchors are self-signed and
+     * their signatures are inherently trusted (match SunJCE behavior).
+     *
+     * @param anchor trust anchor to check
+     *
+     * @throws CertPathBuilderException if key algorithm is disabled or key
+     *         size is too small
+     */
+    private void checkTrustAnchorConstraints(TrustAnchor anchor)
+        throws CertPathBuilderException {
+
+        PublicKey pubKey = null;
+        String propertyName = "jdk.certpath.disabledAlgorithms";
+
+        if (anchor == null) {
+            throw new CertPathBuilderException(
+                "TrustAnchor is null when checking trust anchor constraints");
+        }
+
+        X509Certificate cert = anchor.getTrustedCert();
+        if (cert != null) {
+            pubKey = cert.getPublicKey();
+        }
+        else {
+            pubKey = anchor.getCAPublicKey();
+        }
+
+        if (pubKey == null) {
+            throw new CertPathBuilderException(
+                "Trust anchor has no public key to check algo constraints");
+        }
+
+        if (!WolfCryptUtil.isKeyAllowed(pubKey, propertyName)) {
+            log("Algorithm constraints check failed on trust " +
+                "anchor public key: " + pubKey.getAlgorithm());
+            throw new CertPathBuilderException(
+                "Algorithm constraints check failed on trust " +
+                "anchor public key: " + pubKey.getAlgorithm());
+        }
+    }
+
+    /**
+     * Check if certificate uses a disabled algorithm.
+     *
+     * Same checks as checkAlgorithmConstraints() but returns boolean
+     * instead of throwing, for use in filtering intermediate certificates.
+     *
+     * @param cert certificate to check
+     *
+     * @return true if certificate uses a disabled algorithm, false if allowed
+     */
+    private boolean hasDisabledAlgorithm(X509Certificate cert) {
+
+        try {
+            checkAlgorithmConstraints(cert);
+            return false;
+        }
+        catch (CertPathBuilderException e) {
+            return true;
+        }
+    }
+
+    /**
+     * Check that each certificate in the path was signed by a key that meets
+     * algorithm constraints. Walks the chain from target toward trust anchor,
+     * checking each signer's public key against
+     * jdk.certpath.disabledAlgorithms.
+     *
+     * @param path list of certificates (target at index 0)
+     * @param anchor trust anchor that signed the last cert in path
+     *
+     * @throws CertPathBuilderException if a signer key is disabled
+     */
+    private void checkSignerKeyConstraints(
+        List<X509Certificate> path, TrustAnchor anchor)
+        throws CertPathBuilderException {
+
+        String propertyName = "jdk.certpath.disabledAlgorithms";
+
+        for (int i = 0; i < path.size(); i++) {
+
+            PublicKey signerKey = null;
+
+            if (i < path.size() - 1) {
+                /* Signer is the next cert in the path */
+                signerKey = path.get(i + 1).getPublicKey();
+            }
+            else {
+                /* Last cert in path is signed by trust anchor */
+                X509Certificate anchorCert = anchor.getTrustedCert();
+                if (anchorCert != null) {
+                    signerKey = anchorCert.getPublicKey();
+                }
+                else {
+                    signerKey = anchor.getCAPublicKey();
+                }
+            }
+
+            if (signerKey != null &&
+                !WolfCryptUtil.isKeyAllowed(signerKey, propertyName)) {
+
+                String certName =
+                    path.get(i).getSubjectX500Principal().getName();
+                log("Algorithm constraints check failed on signer key for: " +
+                    certName + ", signer key algorithm: " +
+                    signerKey.getAlgorithm());
+                throw new CertPathBuilderException(
+                    "Algorithm constraints check failed on signer key for: " +
+                    certName);
+            }
         }
     }
 
@@ -545,15 +711,22 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
      *
      * Searches through provided CertStores for CA certificates
      * (basicConstraints >= 0) and returns them as DER-encoded byte arrays.
-     * Trust anchor certificates are excluded from the results.
+     * Certificates are excluded if they are trust anchors, use disabled
+     * algorithms per jdk.certpath.disabledAlgorithms, or are not valid at the
+     * requested validation date (when checkDateInJava is true).
      *
      * @param certStores list of CertStores to search
      * @param anchors set of trust anchors to exclude
+     * @param checkDateInJava true to filter out certificates not valid at
+     *        validationDate
+     * @param validationDate date to check validity against, only used when
+     *        checkDateInJava is true
      *
      * @return list of DER-encoded intermediate certificates
      */
     private List<byte[]> collectIntermediateCertificates(
-        List<CertStore> certStores, Set<TrustAnchor> anchors) {
+        List<CertStore> certStores, Set<TrustAnchor> anchors,
+        boolean checkDateInJava, Date validationDate) {
 
         List<byte[]> intermediatesDer = new ArrayList<>();
 
@@ -572,7 +745,8 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
                 for (Certificate c : certs) {
                     if (c instanceof X509Certificate) {
                         X509Certificate x509 = (X509Certificate) c;
-                        /* Skip if it's a trust anchor */
+
+                        /* Skip if trust anchor */
                         boolean isTrustAnchor = false;
                         for (TrustAnchor anchor : anchors) {
                             X509Certificate ac = anchor.getTrustedCert();
@@ -581,11 +755,32 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
                                 break;
                             }
                         }
-                        if (!isTrustAnchor) {
-                            intermediatesDer.add(x509.getEncoded());
-                            log("collected intermediate: " +
-                                x509.getSubjectX500Principal().getName());
+
+                        /* Skip adding if cert uses disabled algorithm */
+                        if (isTrustAnchor || hasDisabledAlgorithm(x509)) {
+                            continue;
                         }
+
+                        /* If requested, check validity at the validation date
+                         * in Java. Needed when a custom validation date is set
+                         * but native X509_STORE check_time propagation is not
+                         * supported by linked native wolfSSL vesrion. */
+                        if (checkDateInJava) {
+                            try {
+                                x509.checkValidity(validationDate);
+                            } catch (CertificateExpiredException |
+                                CertificateNotYetValidException e) {
+                                log("skipping intermediate not valid at " +
+                                    "requested date: " +
+                                    x509.getSubjectX500Principal().getName());
+                                continue;
+                            }
+                        }
+
+                        /* Convert to DER and add to list */
+                        intermediatesDer.add(x509.getEncoded());
+                        log("collected intermediate: " +
+                            x509.getSubjectX500Principal().getName());
                     }
                 }
 
@@ -619,6 +814,7 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
         int maxPathLength = 0;
         Date validationDate = null;
         WolfSSLX509StoreCtx storeCtx = null;
+        boolean checkDateInJava = false;
 
         log("building and verifying path using native WOLFSSL_X509_STORE");
 
@@ -632,32 +828,68 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
         maxPathLength = params.getMaxPathLength();
         validationDate = params.getDate();
 
+        /* Determine if we need to validate cert dates in Java. Needed when a
+         * custom date is set but the native wolfSSL X509_STORE check_time
+         * propagation is not supported by linked version of wolfSSL. */
+        if ((validationDate != null) &&
+            !WolfSSLX509StoreCtx.isStoreCheckTimeSupported()) {
+            checkDateInJava = true;
+        }
+
+        if (checkDateInJava) {
+            log("validating cert dates in Java, X509_STORE check_time " +
+                "not supported");
+
+            /* Validate target cert date */
+            try {
+                targetCert.checkValidity(validationDate);
+            } catch (CertificateExpiredException |
+                     CertificateNotYetValidException e) {
+                throw new CertPathBuilderException("Target certificate not " +
+                    "valid at requested date " + validationDate + ": " +
+                    targetCert.getSubjectX500Principal().getName(), e);
+            }
+
+            /* Skip trust anchors not valid at requested date */
+            Set<TrustAnchor> validAnchors = new HashSet<>();
+            for (TrustAnchor anchor : anchors) {
+                X509Certificate ac = anchor.getTrustedCert();
+                if (ac == null) {
+                    /* No cert, keep anchor (can't check date without cert) */
+                    validAnchors.add(anchor);
+                    continue;
+                }
+                try {
+                    ac.checkValidity(validationDate);
+                    validAnchors.add(anchor);
+                } catch (CertificateExpiredException |
+                    CertificateNotYetValidException e) {
+                    log("trust anchor not valid at requested date, skipping: " +
+                        ac.getSubjectX500Principal().getName());
+                }
+            }
+            if (validAnchors.isEmpty()) {
+                throw new CertPathBuilderException(
+                    "No trust anchors valid at requested date:" +
+                    validationDate);
+            }
+            anchors = validAnchors;
+        }
+
         try {
             storeCtx = new WolfSSLX509StoreCtx();
 
-            /* If a custom validation date is specified, we skip date
-             * validation when adding certificates, then set the custom
-             * verification time for chain verification.
-             *
-             * This allows for testing/use of expired certs if desired,
-             * or validating against a specific date.
+            /* If a custom validation date is specified and native X509_STORE
+             * check_time is supported, skip date validation when adding certs,
+             * then set the custom verify time for chain verification.
              *
              * SunJCE only validates expiration dates on chain verification,
              * not cert loading, so our default behavior already does some
-             * extra validation here in the case when a custom date is not
-             * set. */
-            if (validationDate != null) {
-                if (!WolfSSLX509StoreCtx.isStoreCheckTimeSupported()) {
-                    throw new CertPathBuilderException(
-                        "PKIXBuilderParameters.setDate() requires " +
-                        "a wolfSSL version that supports X509_STORE " +
-                        "check_time propagation (> 5.8.4)");
-                }
+             * extra validation here in the case when a custom date not set. */
+            if ((validationDate != null) && !checkDateInJava) {
                 log("using custom validation date: " + validationDate);
-                storeCtx.setFlags(
-                    WolfSSLX509StoreCtx.WOLFSSL_NO_CHECK_TIME);
-                storeCtx.setVerificationTime(
-                    validationDate.getTime() / 1000);
+                storeCtx.setFlags(WolfSSLX509StoreCtx.WOLFSSL_NO_CHECK_TIME);
+                storeCtx.setVerificationTime(validationDate.getTime() / 1000);
             }
 
             /* Add trust anchors to the store */
@@ -680,9 +912,10 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
                 }
             }
 
-            /* Collect all intermediate certificates from CertStores */
-            List<byte[]> intermediatesDer =
-                collectIntermediateCertificates(certStores, anchors);
+            /* Collect all intermediate certificates from CertStores, filtering
+             * disabled algorithms and date-invalid certs when needed */
+            List<byte[]> intermediatesDer = collectIntermediateCertificates(
+                certStores, anchors, checkDateInJava, validationDate);
 
             /* Convert target cert to DER */
             byte[] targetDer;
@@ -698,8 +931,7 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
             byte[][] intermediatesArray = null;
             if (!intermediatesDer.isEmpty()) {
                 int size = intermediatesDer.size();
-                intermediatesArray =
-                    intermediatesDer.toArray(new byte[size][]);
+                intermediatesArray = intermediatesDer.toArray(new byte[size][]);
             }
 
             /* Build and verify the chain */
@@ -734,9 +966,9 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
             log("native chain building returned " + fullChain.size() +
                 " certificate(s)");
 
-            /* Chain includes target->intermediates->trust anchor.
-             * We need to separate the trust anchor from the path.
-             * The last cert in the chain should match a trust anchor. */
+            /* Chain includes target->intermediates->trust anchor. Separate
+             * trust anchor from the path. Last cert in chain should match a
+             * trust anchor */
             if (fullChain.isEmpty()) {
                 throw new CertPathBuilderException(
                     "Native chain building returned empty chain");
@@ -752,7 +984,7 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
                     anchorCert.getSubjectX500Principal().equals(
                         lastCert.getSubjectX500Principal())) {
 
-                    /* Verify it's the same cert (compare encoded) */
+                    /* Verify same cert (compare encoded) */
                     try {
                         if (Arrays.equals(anchorCert.getEncoded(),
                             lastCert.getEncoded())) {
@@ -931,6 +1163,9 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
                 log("target certificate is a trust anchor, " +
                     "returning empty path");
 
+                /* Check trust anchor public key constraints */
+                checkTrustAnchorConstraints(anchor);
+
                 try {
                     CertificateFactory cf =
                         CertificateFactory.getInstance("X.509");
@@ -946,11 +1181,17 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
             }
         }
 
+        /* Check target cert algorithm constraints before building */
+        checkAlgorithmConstraints(targetCert);
+
         /* Build and verify path using wolfSSL X509_STORE */
         NativeChainResult result = buildAndVerifyPathNative(
             targetCert, pkixParams);
         path = result.path;
         trustAnchor = result.trustAnchor;
+
+        /* Check that each signer key meets constraints. */
+        checkSignerKeyConstraints(path, trustAnchor);
 
         try {
             /* Convert path to CertPath object */
@@ -964,7 +1205,7 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
 
         log("successfully built path with " + path.size() + " certificate(s)");
 
-        /* PolicyNode not returned, certificate policies are not supported */
+        /* PolicyNode not returned, cert policies not supported */
         return new PKIXCertPathBuilderResult(certPath, trustAnchor,
             null, targetCert.getPublicKey());
     }

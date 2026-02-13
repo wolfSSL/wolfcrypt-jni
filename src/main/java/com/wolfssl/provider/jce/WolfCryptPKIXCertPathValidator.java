@@ -398,6 +398,53 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
     }
 
     /**
+     * Check trust anchor against disabled algorithms constraints from
+     * security property jdk.certpath.disabledAlgorithms.
+     *
+     * Handle both trust anchors with certificates and those with only a
+     * public key (no cert).
+     *
+     * @param anchor trust anchor to check
+     *
+     * @throws CertPathValidatorException if key algorithm is disabled or key
+     *         size is too small
+     */
+    private void checkTrustAnchorConstraints(TrustAnchor anchor)
+        throws CertPathValidatorException {
+
+        PublicKey pubKey = null;
+        String propertyName = "jdk.certpath.disabledAlgorithms";
+
+        if (anchor == null) {
+            throw new CertPathValidatorException(
+                "TrustAnchor is null when checking trust anchor constraints");
+        }
+
+        X509Certificate cert = anchor.getTrustedCert();
+        if (cert != null) {
+            pubKey = cert.getPublicKey();
+        }
+        else {
+            pubKey = anchor.getCAPublicKey();
+        }
+
+        if (pubKey == null) {
+            throw new CertPathValidatorException(
+                "Trust anchor has no public key to check against " +
+                "algo constraints");
+        }
+
+        if (!WolfCryptUtil.isKeyAllowed(pubKey, propertyName)) {
+            log("Algo constraints check failed on trust anchor public key: " +
+                pubKey.getAlgorithm());
+            throw new CertPathValidatorException(
+                "Algo constraints check failed on trust anchor public key: " +
+                pubKey.getAlgorithm(), null, null, -1,
+                BasicReason.ALGORITHM_CONSTRAINED);
+        }
+    }
+
+    /**
      * Check X509Certificate against constraints or settings inside
      * PKIXParameters.
      *
@@ -1022,6 +1069,9 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             log("Zero-length cert path, returning trust anchor: " +
                 anchorCert.getSubjectX500Principal().getName());
 
+            /* Check trust anchor public key constraints */
+            checkTrustAnchorConstraints(anchor);
+
             return new PKIXCertPathValidatorResult(anchor, null,
                 anchorCert.getPublicKey());
         }
@@ -1098,6 +1148,11 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
              * in PKIXCertPathValidatorResult */
             trustAnchor = findTrustAnchor(
                 pkixParams, certs.get(certs.size() - 1));
+
+            /* Check trust anchor public key constraints */
+            if (trustAnchor != null) {
+                checkTrustAnchorConstraints(trustAnchor);
+            }
 
         } finally {
             /* Free native WolfSSLCertManager resources */
