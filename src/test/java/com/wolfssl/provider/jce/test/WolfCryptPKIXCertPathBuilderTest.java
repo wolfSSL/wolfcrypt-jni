@@ -62,6 +62,7 @@ import java.security.cert.PKIXCertPathBuilderResult;
 import java.security.cert.CertificateException;
 import java.security.cert.TrustAnchor;
 import java.security.cert.X509CertSelector;
+import java.security.cert.CertSelector;
 import java.security.cert.CertStore;
 import java.security.cert.CollectionCertStoreParameters;
 import java.lang.IllegalArgumentException;
@@ -4477,6 +4478,48 @@ public class WolfCryptPKIXCertPathBuilderTest {
 
         assertNotNull("CertPathBuilderResult should not be null", result);
         checkPKIXCertPathBuilderResult(result, caCert, caCert.getPublicKey());
+    }
+
+    /**
+     * Test that building with a non-X509CertSelector target constraint
+     * throws InvalidAlgorithmParameterException.
+     */
+    @Test
+    public void testNonX509CertSelectorThrowsInvalidAlgParam()
+        throws Exception {
+
+        X509Certificate caCert = loadCertFromFile(caCertDer);
+        TrustAnchor anchor = new TrustAnchor(caCert, null);
+
+        /* Custom CertSelector that is not X509CertSelector */
+        CertSelector oddSelector = new CertSelector() {
+            public boolean match(Certificate cert) {
+                return false;
+            }
+            public Object clone() {
+                try {
+                    return super.clone();
+                } catch (CloneNotSupportedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+
+        PKIXBuilderParameters params = new PKIXBuilderParameters(
+            Collections.singleton(anchor), oddSelector);
+        params.setRevocationEnabled(false);
+
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+
+        try {
+            cpb.build(params);
+            fail("Expected InvalidAlgorithmParameterException for " +
+                "non-X509CertSelector");
+        } catch (InvalidAlgorithmParameterException e) {
+            /* Expected */
+            assertNotNull("Exception message should not be null",
+                e.getMessage());
+        }
     }
 }
 
