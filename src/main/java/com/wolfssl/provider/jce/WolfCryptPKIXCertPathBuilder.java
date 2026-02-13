@@ -284,8 +284,11 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
     /**
      * Find the target certificate based on the X509CertSelector in params.
      *
-     * Searches through all CertStores for a certificate matching the
-     * target constraints.
+     * Searches for a certificate matching the target constraints in the
+     * following order:
+     *   1. Directly set in the selector via setCertificate()
+     *   2. In CertStores attached to the parameters
+     *   3. Among trust anchor certificates
      *
      * @param params PKIXBuilderParameters containing target selector
      *
@@ -302,8 +305,7 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
         List<CertStore> certStores = null;
 
         if (params == null) {
-            throw new CertPathBuilderException(
-                "PKIXBuilderParameters is null");
+            throw new CertPathBuilderException("PKIXBuilderParameters is null");
         }
 
         selector = params.getTargetCertConstraints();
@@ -319,7 +321,8 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
         }
 
         x509Selector = (X509CertSelector)selector;
-        log("searching for target certificate with selector: " + x509Selector);
+        log("searching for target certificate with selector: " +
+            x509Selector);
 
         /* Check if target cert is directly set in selector */
         targetCert = x509Selector.getCertificate();
@@ -330,32 +333,42 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
 
         /* Search through CertStores for matching certificate */
         certStores = params.getCertStores();
-        if (certStores == null || certStores.isEmpty()) {
-            throw new CertPathBuilderException(
-                "No CertStores provided in PKIXBuilderParameters");
+        if (certStores != null) {
+            for (CertStore store : certStores) {
+                try {
+                    Collection<? extends Certificate> certs =
+                        store.getCertificates(x509Selector);
+
+                    if (certs != null && !certs.isEmpty()) {
+                        targetCert = (X509Certificate)certs.iterator().next();
+                        log("found target certificate in CertStore: " +
+                            targetCert.getSubjectX500Principal().getName());
+                        return targetCert;
+                    }
+
+                } catch (CertStoreException e) {
+                    log("error searching CertStore: " + e.getMessage());
+                    /* Continue to next store */
+                }
+            }
         }
 
-        for (CertStore store : certStores) {
-            try {
-                Collection<? extends Certificate> certs =
-                    store.getCertificates(x509Selector);
+        /* Search trust anchor certificates as fallback */
+        Set<TrustAnchor> anchors = params.getTrustAnchors();
+        if (anchors != null) {
+            for (TrustAnchor anchor : anchors) {
+                X509Certificate anchorCert = anchor.getTrustedCert();
+                if ((anchorCert != null) && x509Selector.match(anchorCert)) {
 
-                if (certs != null && !certs.isEmpty()) {
-                    /* Return first matching certificate */
-                    targetCert = (X509Certificate) certs.iterator().next();
-                    log("found target certificate: " +
-                        targetCert.getSubjectX500Principal().getName());
-                    return targetCert;
+                    log("found target certificate in trust anchors: " +
+                        anchorCert.getSubjectX500Principal().getName());
+                    return anchorCert;
                 }
-
-            } catch (CertStoreException e) {
-                log("error searching CertStore: " + e.getMessage());
-                /* Continue to next store */
             }
         }
 
         throw new CertPathBuilderException(
-            "Target certificate not found in CertStores");
+            "Target certificate not found matching selector");
     }
 
     /**
