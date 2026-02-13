@@ -115,6 +115,14 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
             throw new InvalidAlgorithmParameterException(
                 "params not of type PKIXBuilderParameters");
         }
+
+        /* Target constraints must be X509CertSelector if set */
+        PKIXBuilderParameters pkixParams = (PKIXBuilderParameters)params;
+        CertSelector selector = pkixParams.getTargetCertConstraints();
+        if ((selector != null) && !(selector instanceof X509CertSelector)) {
+            throw new InvalidAlgorithmParameterException(
+                "Target certificate constraints must be X509CertSelector");
+        }
     }
 
     /**
@@ -317,7 +325,8 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
 
         if (!(selector instanceof X509CertSelector)) {
             throw new CertPathBuilderException(
-                "Target certificate constraints must be X509CertSelector");
+                "Target certificate constraints must be " +
+                "X509CertSelector");
         }
 
         x509Selector = (X509CertSelector)selector;
