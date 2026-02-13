@@ -65,6 +65,7 @@ import java.security.cert.X509CertSelector;
 import java.security.cert.CertStore;
 import java.security.cert.CollectionCertStoreParameters;
 import java.lang.IllegalArgumentException;
+import java.util.Calendar;
 import java.util.Date;
 
 import com.wolfssl.wolfcrypt.WolfCrypt;
@@ -3670,6 +3671,740 @@ public class WolfCryptPKIXCertPathBuilderTest {
                 e.getMessage().contains("expired") ||
                 e.getMessage().contains(
                     "Failed to add certificate"));
+        }
+    }
+
+    /**
+     * Test that building a cert path fails when the signature algorithm
+     * (SHA256) is in the disabled algorithms list.
+     */
+    @Test
+    public void testAlgorithmConstraintsRejectsSignatureAlgo()
+        throws Exception {
+
+        String origProperty = null;
+        KeyStore store = null;
+        X509Certificate serverCert = null;
+        Collection<Certificate> certCollection = new ArrayList<>();
+
+        /* Save original security property value */
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load KeyStore with CA cert as trust anchor */
+            store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+            assertNotNull("KeyStore should not be null", store);
+
+            /* Load server cert (uses SHA256withRSA) */
+            serverCert = loadCertFromFile(serverCertDer);
+            certCollection.add(serverCert);
+
+            /* Set SHA256 as disabled algorithm */
+            Security.setProperty("jdk.certpath.disabledAlgorithms", "SHA256");
+
+            /* Create CertStore with target cert */
+            CertStore certStore = CertStore.getInstance("Collection",
+                new CollectionCertStoreParameters(certCollection));
+
+            /* Create PKIXBuilderParameters */
+            PKIXBuilderParameters params =
+                new PKIXBuilderParameters(store, null);
+            params.setRevocationEnabled(false);
+            params.addCertStore(certStore);
+
+            /* Set target cert selector */
+            X509CertSelector selector = new X509CertSelector();
+            selector.setCertificate(serverCert);
+            params.setTargetCertConstraints(selector);
+
+            /* Build cert path, should fail */
+            CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+
+            try {
+                cpb.build(params);
+                fail("Expected CertPathBuilderException for SHA256 " +
+                     "disabled algorithm");
+            } catch (CertPathBuilderException e) {
+                /* Expected exception */
+                assertNotNull("Exception message should not be null",
+                    e.getMessage());
+                assertTrue(
+                    "Exception should mention algorithm constraints, got: " +
+                    e.getMessage(), e.getMessage().contains(
+                        "Algorithm constraints"));
+            }
+
+        } finally {
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    /**
+     * Test that building a cert path fails when the key algorithm (RSA) is in
+     * the disabled algorithms list.
+     */
+    @Test
+    public void testAlgorithmConstraintsRejectsKeyAlgo()
+        throws Exception {
+
+        String origProperty = null;
+        KeyStore store = null;
+        X509Certificate serverCert = null;
+        Collection<Certificate> certCollection = new ArrayList<>();
+
+        /* Save original security property value */
+        origProperty = Security.getProperty("jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load KeyStore with CA cert as trust anchor */
+            store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+            assertNotNull("KeyStore should not be null", store);
+
+            /* Load server cert (uses RSA public key) */
+            serverCert = loadCertFromFile(serverCertDer);
+            certCollection.add(serverCert);
+
+            /* Set RSA as disabled algorithm */
+            Security.setProperty("jdk.certpath.disabledAlgorithms", "RSA");
+
+            /* Create CertStore with target cert */
+            CertStore certStore = CertStore.getInstance("Collection",
+                new CollectionCertStoreParameters(certCollection));
+
+            /* Create PKIXBuilderParameters */
+            PKIXBuilderParameters params =
+                new PKIXBuilderParameters(store, null);
+            params.setRevocationEnabled(false);
+            params.addCertStore(certStore);
+
+            /* Set target cert selector */
+            X509CertSelector selector = new X509CertSelector();
+            selector.setCertificate(serverCert);
+            params.setTargetCertConstraints(selector);
+
+            /* Build cert path, should fail */
+            CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+
+            try {
+                cpb.build(params);
+                fail("Expected CertPathBuilderException for " +
+                     "RSA disabled algorithm");
+            } catch (CertPathBuilderException e) {
+                /* Expected exception */
+                assertNotNull("Exception message should not be null",
+                    e.getMessage());
+                assertTrue(
+                    "Exception should mention algorithm constraints, got: " +
+                    e.getMessage(), e.getMessage().contains(
+                        "Algorithm constraints"));
+            }
+
+        } finally {
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    /**
+     * Test that building a cert path fails when the RSA key size is smaller
+     * than the minimum specified in disabled algorithms.
+     */
+    @Test
+    public void testAlgorithmConstraintsRejectsKeySize()
+        throws Exception {
+
+        String origProperty = null;
+        KeyStore store = null;
+        X509Certificate serverCert = null;
+        Collection<Certificate> certCollection = new ArrayList<>();
+
+        /* Save original security property value */
+        origProperty = Security.getProperty("jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load KeyStore with CA cert as trust anchor */
+            store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+            assertNotNull("KeyStore should not be null", store);
+
+            /* Load server cert (uses 2048-bit RSA key) */
+            serverCert = loadCertFromFile(serverCertDer);
+            certCollection.add(serverCert);
+
+            /* Set minimum RSA key size to 4096 bits, which will
+             * reject our 2048-bit certificate */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 4096");
+
+            /* Create CertStore with target cert */
+            CertStore certStore = CertStore.getInstance("Collection",
+                new CollectionCertStoreParameters(certCollection));
+
+            /* Create PKIXBuilderParameters */
+            PKIXBuilderParameters params =
+                new PKIXBuilderParameters(store, null);
+            params.setRevocationEnabled(false);
+            params.addCertStore(certStore);
+
+            /* Set target cert selector */
+            X509CertSelector selector = new X509CertSelector();
+            selector.setCertificate(serverCert);
+            params.setTargetCertConstraints(selector);
+
+            /* Build cert path - should fail */
+            CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+
+            try {
+                cpb.build(params);
+                fail("Expected CertPathBuilderException for " +
+                     "RSA key size constraint");
+            } catch (CertPathBuilderException e) {
+                /* Expected exception */
+                assertNotNull("Exception message should not be null",
+                    e.getMessage());
+                assertTrue(
+                    "Exception should mention algorithm constraints, got: " +
+                    e.getMessage(), e.getMessage().contains(
+                        "Algorithm constraints"));
+            }
+
+        } finally {
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    /**
+     * Test that building a cert path fails when SHA-256 (hyphenated variant)
+     * is in the disabled algorithms list, which should match SHA256withRSA
+     * via decomposition.
+     */
+    @Test
+    public void testAlgorithmConstraintsRejectsAlgoVariant()
+        throws Exception {
+
+        String origProperty = null;
+        KeyStore store = null;
+        X509Certificate serverCert = null;
+        Collection<Certificate> certCollection = new ArrayList<>();
+
+        /* Save original security property value */
+        origProperty = Security.getProperty("jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load KeyStore with CA cert as trust anchor */
+            store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+            assertNotNull("KeyStore should not be null", store);
+
+            /* Load server cert (uses SHA256withRSA) */
+            serverCert = loadCertFromFile(serverCertDer);
+            certCollection.add(serverCert);
+
+            /* Set SHA-256 (hyphenated) as disabled algorithm */
+            Security.setProperty("jdk.certpath.disabledAlgorithms", "SHA-256");
+
+            /* Create CertStore with target cert */
+            CertStore certStore = CertStore.getInstance("Collection",
+                new CollectionCertStoreParameters(certCollection));
+
+            /* Create PKIXBuilderParameters */
+            PKIXBuilderParameters params =
+                new PKIXBuilderParameters(store, null);
+            params.setRevocationEnabled(false);
+            params.addCertStore(certStore);
+
+            /* Set target cert selector */
+            X509CertSelector selector = new X509CertSelector();
+            selector.setCertificate(serverCert);
+            params.setTargetCertConstraints(selector);
+
+            /* Build cert path, should fail */
+            CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+
+            try {
+                cpb.build(params);
+                fail("Expected CertPathBuilderException for " +
+                     "SHA-256 disabled algorithm variant");
+            } catch (CertPathBuilderException e) {
+                /* Expected exception */
+                assertNotNull("Exception message should not be null",
+                    e.getMessage());
+                assertTrue("Exception should mention algorithm " +
+                    "constraints, got: " + e.getMessage(),
+                    e.getMessage().contains("Algorithm constraints"));
+            }
+
+        } finally {
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    /**
+     * Test that building a cert path fails when trust anchor's public key size
+     * violates the disabled algorithms constraint, even when the target cert
+     * is the trust anchor.
+     */
+    @Test
+    public void testTrustAnchorKeyConstraintsRejectsKeySize()
+        throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty("jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load CA cert (uses 2048-bit RSA key) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Set minimum RSA key size to 4096 bits */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 4096");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            /* Create PKIXBuilderParameters with CA cert as
+             * both trust anchor and target */
+            PKIXBuilderParameters params =
+                new PKIXBuilderParameters(anchors, new X509CertSelector());
+            params.setRevocationEnabled(false);
+
+            /* Set target to CA cert itself (trust anchor) */
+            X509CertSelector selector = new X509CertSelector();
+            selector.setCertificate(caCert);
+            params.setTargetCertConstraints(selector);
+
+            /* Add CA cert to CertStore so it can be found */
+            Collection<Certificate> certCollection = new ArrayList<>();
+            certCollection.add(caCert);
+            CertStore certStore = CertStore.getInstance("Collection",
+                new CollectionCertStoreParameters(certCollection));
+            params.addCertStore(certStore);
+
+            /* Build cert path, should fail due to trust
+             * anchor key size constraint */
+            CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+
+            try {
+                cpb.build(params);
+                fail("Expected CertPathBuilderException for " +
+                     "trust anchor RSA key size constraint");
+            } catch (CertPathBuilderException e) {
+                /* Expected exception */
+                assertNotNull("Exception message should not be null",
+                    e.getMessage());
+                assertTrue("Exception should mention algorithm constraints, " +
+                    "got: " + e.getMessage(),
+                    e.getMessage().contains("Algorithm constraints"));
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    /**
+     * Test that setDate() with a date within cert validity succeeds regardless
+     * of native check_time support.
+     *
+     * Uses currently-valid certs and sets a custom date that is also within
+     * their validity period. Exercises the Java date validation fallback when
+     * native check_time propagation is not supported.
+     */
+    @Test
+    public void testSetDateFallbackSucceedsWithValidDate()
+        throws Exception {
+
+        KeyStore store = null;
+        X509Certificate serverCert = null;
+        X509Certificate caCert = null;
+        Collection<Certificate> certCollection =
+            new ArrayList<>();
+
+        /* Load KeyStore with CA cert as trust anchor */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        assertNotNull("KeyStore should not be null", store);
+
+        /* Load CA and server certs */
+        caCert = loadCertFromFile(caCertDer);
+        serverCert = loadCertFromFile(serverCertDer);
+        certCollection.add(serverCert);
+
+        /* Create CertStore with target cert */
+        CertStore certStore = CertStore.getInstance("Collection",
+            new CollectionCertStoreParameters(certCollection));
+
+        /* Create PKIXBuilderParameters with custom date set
+         * to yesterday (within cert validity period) */
+        PKIXBuilderParameters params = new PKIXBuilderParameters(store, null);
+        params.setRevocationEnabled(false);
+        params.addCertStore(certStore);
+        params.setDate(new Date(System.currentTimeMillis() - 86400000L));
+
+        /* Set target cert selector */
+        X509CertSelector selector = new X509CertSelector();
+        selector.setCertificate(serverCert);
+        params.setTargetCertConstraints(selector);
+
+        /* Build cert path - should succeed with both native
+         * check_time and Java fallback paths */
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+        CertPathBuilderResult result = cpb.build(params);
+
+        assertNotNull("CertPathBuilderResult should not be null", result);
+        checkPKIXCertPathBuilderResult(result, caCert,
+            serverCert.getPublicKey());
+    }
+
+    /**
+     * Test that setDate() with a date after cert expiry fails regardless of
+     * native check_time support.
+     *
+     * Uses currently-valid certs but sets a custom date far in the future
+     * which is after their expiry. When native check_time is supported,
+     * the native builder rejects. When not supported, the Java fallback date
+     * check rejects the target cert before native building.
+     */
+    @Test
+    public void testSetDateFallbackRejectsExpiredDate()
+        throws Exception {
+
+        KeyStore store = null;
+        X509Certificate serverCert = null;
+        Collection<Certificate> certCollection =
+            new ArrayList<>();
+
+        /* Load KeyStore with CA cert as trust anchor */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        assertNotNull("KeyStore should not be null", store);
+
+        /* Load server cert */
+        serverCert = loadCertFromFile(serverCertDer);
+        certCollection.add(serverCert);
+
+        /* Create CertStore with target cert */
+        CertStore certStore = CertStore.getInstance("Collection",
+            new CollectionCertStoreParameters(certCollection));
+
+        /* Create PKIXBuilderParameters with custom date set
+         * to 100 years from now (after any test cert's validity) */
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.YEAR, 100);
+        PKIXBuilderParameters params =
+            new PKIXBuilderParameters(store, null);
+        params.setRevocationEnabled(false);
+        params.addCertStore(certStore);
+        params.setDate(cal.getTime());
+
+        /* Set target cert selector */
+        X509CertSelector selector = new X509CertSelector();
+        selector.setCertificate(serverCert);
+        params.setTargetCertConstraints(selector);
+
+        /* Build cert path, should fail with both native
+         * check_time and Java fallback paths */
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+
+        try {
+            cpb.build(params);
+            fail("Expected CertPathBuilderException for date after " +
+                "cert expiry");
+        } catch (CertPathBuilderException e) {
+            /* Expected */
+            assertNotNull("Exception message should not be null",
+                e.getMessage());
+        }
+    }
+
+    /**
+     * Test that building a cert path with intermediate chain fails when
+     * key size constraint disables the signer's key. Uses the RSA
+     * intermediate chain (server -> int2 -> int1 -> root) with
+     * RSA keySize < 4096, so all 2048-bit signer keys are rejected.
+     */
+    @Test
+    public void testSignerKeyConstraintsRejectsSmallKey()
+        throws Exception {
+
+        String origProperty = null;
+        KeyStore store = null;
+        X509Certificate serverCert = null;
+        X509Certificate int2Cert = null;
+        X509Certificate int1Cert = null;
+        Collection<Certificate> certCollection = new ArrayList<>();
+
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            store = createKeyStoreFromFile(
+                jksCaServerRSA2048, keyStorePass);
+            assertNotNull("KeyStore should not be null", store);
+
+            serverCert = loadCertFromFile(intRsaServerCertDer);
+            int2Cert = loadCertFromFile(intRsaInt2CertDer);
+            int1Cert = loadCertFromFile(intRsaInt1CertDer);
+            certCollection.add(serverCert);
+            certCollection.add(int2Cert);
+            certCollection.add(int1Cert);
+
+            /* Disable RSA keys smaller than 4096 bits,
+             * all test certs use 2048-bit RSA */
+            Security.setProperty(
+                "jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 4096");
+
+            CertStore certStore = CertStore.getInstance("Collection",
+                new CollectionCertStoreParameters(certCollection));
+
+            PKIXBuilderParameters params =
+                new PKIXBuilderParameters(store, null);
+            params.setRevocationEnabled(false);
+            params.addCertStore(certStore);
+
+            X509CertSelector selector = new X509CertSelector();
+            selector.setCertificate(serverCert);
+            params.setTargetCertConstraints(selector);
+
+            CertPathBuilder cpb =
+                CertPathBuilder.getInstance("PKIX", provider);
+
+            try {
+                cpb.build(params);
+                fail("Expected CertPathBuilderException for " +
+                     "RSA keySize < 4096 constraint");
+            } catch (CertPathBuilderException e) {
+                assertNotNull(
+                    "Exception message should not be null",
+                    e.getMessage());
+                assertTrue(
+                    "Exception should mention algorithm " +
+                    "constraints, got: " + e.getMessage(),
+                    e.getMessage().contains(
+                        "Algorithm constraints"));
+            }
+
+        } finally {
+            if (origProperty != null) {
+                Security.setProperty(
+                    "jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty(
+                    "jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    /**
+     * Test that intermediate filtering prevents chain building when
+     * intermediates use a disabled signature algorithm. Uses the RSA
+     * intermediate chain (server -> int2 -> int1 -> root) and disables
+     * SHA256 so intermediates are filtered out, preventing native
+     * chain building from finding a valid path.
+     */
+    @Test
+    public void testDisabledAlgoFiltersIntermediates()
+        throws Exception {
+
+        String origProperty = null;
+        KeyStore store = null;
+        X509Certificate serverCert = null;
+        X509Certificate int2Cert = null;
+        X509Certificate int1Cert = null;
+        Collection<Certificate> certCollection = new ArrayList<>();
+
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            store = createKeyStoreFromFile(
+                jksCaServerRSA2048, keyStorePass);
+            assertNotNull("KeyStore should not be null", store);
+
+            serverCert = loadCertFromFile(intRsaServerCertDer);
+            int2Cert = loadCertFromFile(intRsaInt2CertDer);
+            int1Cert = loadCertFromFile(intRsaInt1CertDer);
+            certCollection.add(serverCert);
+            certCollection.add(int2Cert);
+            certCollection.add(int1Cert);
+
+            /* Disable SHA256, which is used in all cert
+             * signatures (SHA256withRSA). Target cert check
+             * should catch this before intermediates are
+             * even considered. */
+            Security.setProperty(
+                "jdk.certpath.disabledAlgorithms", "SHA256");
+
+            CertStore certStore = CertStore.getInstance("Collection",
+                new CollectionCertStoreParameters(certCollection));
+
+            PKIXBuilderParameters params =
+                new PKIXBuilderParameters(store, null);
+            params.setRevocationEnabled(false);
+            params.addCertStore(certStore);
+
+            X509CertSelector selector = new X509CertSelector();
+            selector.setCertificate(serverCert);
+            params.setTargetCertConstraints(selector);
+
+            CertPathBuilder cpb =
+                CertPathBuilder.getInstance("PKIX", provider);
+
+            try {
+                cpb.build(params);
+                fail("Expected CertPathBuilderException for " +
+                     "SHA256 disabled with intermediate chain");
+            } catch (CertPathBuilderException e) {
+                assertNotNull(
+                    "Exception message should not be null",
+                    e.getMessage());
+                assertTrue(
+                    "Exception should mention algorithm " +
+                    "constraints, got: " + e.getMessage(),
+                    e.getMessage().contains(
+                        "Algorithm constraints"));
+            }
+
+        } finally {
+            if (origProperty != null) {
+                Security.setProperty(
+                    "jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty(
+                    "jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    /**
+     * Test that algorithm constraints allow a valid chain when
+     * the disabled algorithms list does not conflict with the
+     * chain's algorithms. Uses the RSA intermediate chain with
+     * only MD2 disabled (which none of the test certs use).
+     */
+    @Test
+    public void testAlgorithmConstraintsAllowValidChain()
+        throws Exception {
+
+        String origProperty = null;
+        KeyStore store = null;
+        X509Certificate serverCert = null;
+        X509Certificate int2Cert = null;
+        X509Certificate int1Cert = null;
+        X509Certificate caCert = null;
+        Collection<Certificate> certCollection = new ArrayList<>();
+
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            store = createKeyStoreFromFile(
+                jksCaServerRSA2048, keyStorePass);
+            assertNotNull("KeyStore should not be null", store);
+
+            caCert = loadCertFromFile(caCertDer);
+            serverCert = loadCertFromFile(intRsaServerCertDer);
+            int2Cert = loadCertFromFile(intRsaInt2CertDer);
+            int1Cert = loadCertFromFile(intRsaInt1CertDer);
+            certCollection.add(serverCert);
+            certCollection.add(int2Cert);
+            certCollection.add(int1Cert);
+
+            /* Set disabled algorithms to MD2 only, which is
+             * not used by any cert in the chain. Chain should
+             * build successfully. */
+            Security.setProperty(
+                "jdk.certpath.disabledAlgorithms", "MD2");
+
+            CertStore certStore = CertStore.getInstance("Collection",
+                new CollectionCertStoreParameters(certCollection));
+
+            PKIXBuilderParameters params =
+                new PKIXBuilderParameters(store, null);
+            params.setRevocationEnabled(false);
+            params.addCertStore(certStore);
+
+            X509CertSelector selector = new X509CertSelector();
+            selector.setCertificate(serverCert);
+            params.setTargetCertConstraints(selector);
+
+            CertPathBuilder cpb =
+                CertPathBuilder.getInstance("PKIX", provider);
+            CertPathBuilderResult result = cpb.build(params);
+
+            assertNotNull(
+                "CertPathBuilderResult should not be null",
+                result);
+            checkPKIXCertPathBuilderResult(
+                result, caCert, serverCert.getPublicKey());
+
+        } finally {
+            if (origProperty != null) {
+                Security.setProperty(
+                    "jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty(
+                    "jdk.certpath.disabledAlgorithms", "");
+            }
         }
     }
 }
