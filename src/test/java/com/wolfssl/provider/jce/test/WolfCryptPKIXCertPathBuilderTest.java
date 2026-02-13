@@ -66,6 +66,7 @@ import java.security.cert.CertStore;
 import java.security.cert.CollectionCertStoreParameters;
 import java.lang.IllegalArgumentException;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 
 import com.wolfssl.wolfcrypt.WolfCrypt;
@@ -4406,6 +4407,76 @@ public class WolfCryptPKIXCertPathBuilderTest {
                     "jdk.certpath.disabledAlgorithms", "");
             }
         }
+    }
+
+    /**
+     * Test that building a cert path with no CertStores fails gracefully with
+     * CertPathBuilderException instead of throwing an early error about
+     * missing CertStores. Uses a non-matching subject selector so the target
+     * cert cannot be found.
+     */
+    @Test
+    public void testBuildWithNoCertStoresFailsGracefully()
+        throws Exception {
+
+        X509Certificate caCert = null;
+        TrustAnchor anchor = null;
+
+        caCert = loadCertFromFile(caCertDer);
+        anchor = new TrustAnchor(caCert, null);
+
+        /* Selector with non-matching subject, no CertStores */
+        X509CertSelector selector = new X509CertSelector();
+        selector.setSubject("CN=NonExistent, O=NoOrg, C=US");
+
+        PKIXBuilderParameters params =
+            new PKIXBuilderParameters(Collections.singleton(anchor), selector);
+        params.setRevocationEnabled(false);
+
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+
+        try {
+            cpb.build(params);
+            fail("Expected CertPathBuilderException when target cert " +
+                "not found");
+        } catch (CertPathBuilderException e) {
+            /* Expected: should fail because target cert can't be found,
+             * not because of missing CertStores */
+            assertNotNull("Exception message should not be null",
+                e.getMessage());
+            assertTrue("Exception should mention target not found, got: " +
+                e.getMessage(), e.getMessage().contains("not found"));
+        }
+    }
+
+    /**
+     * Test that building a cert path with no CertStores succeeds when the
+     * target cert matches a trust anchor. The builder should find the target
+     * among trust anchors as a fallback.
+     */
+    @Test
+    public void testBuildWithNoCertStoresFindsAnchor()
+        throws Exception {
+
+        X509Certificate caCert = null;
+        TrustAnchor anchor = null;
+
+        caCert = loadCertFromFile(caCertDer);
+        anchor = new TrustAnchor(caCert, null);
+
+        /* Selector matching the trust anchor cert, no CertStores */
+        X509CertSelector selector = new X509CertSelector();
+        selector.setCertificate(caCert);
+
+        PKIXBuilderParameters params =
+            new PKIXBuilderParameters(Collections.singleton(anchor), selector);
+        params.setRevocationEnabled(false);
+
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+        CertPathBuilderResult result = cpb.build(params);
+
+        assertNotNull("CertPathBuilderResult should not be null", result);
+        checkPKIXCertPathBuilderResult(result, caCert, caCert.getPublicKey());
     }
 }
 
