@@ -134,6 +134,7 @@ public class WolfCrypt extends WolfObject {
     private static native byte[] wcKeyPemToDer(byte[] pem, String password);
     private static native byte[] wcCertPemToDer(byte[] pem);
     private static native byte[] wcPubKeyPemToDer(byte[] pem);
+    private static native void nativeSetIOTimeout(int timeoutSec);
 
     /* Public mappings of some SSL/TLS level enums/defines */
     /** wolfSSL file type: PEM */
@@ -191,6 +192,51 @@ public class WolfCrypt extends WolfObject {
      * @return true if enabled, otherwise false if not compiled in
      */
     public static native boolean Base16Enabled();
+
+    /**
+     * Tests if I/O timeout (HAVE_IO_TIMEOUT) has been enabled in wolfSSL.
+     *
+     * @return true if enabled, otherwise false if not compiled in
+     */
+    public static native boolean IoTimeoutEnabled();
+
+    /** Maximum allowed I/O timeout value in seconds (1 hour) */
+    private static final int MAX_IO_TIMEOUT_SEC = 3600;
+
+    /**
+     * Set the I/O timeout used by native wolfSSL for HTTP-based operations
+     * including OCSP lookups and CRL fetching.
+     *
+     * Wraps native wolfIO_SetTimeout(). Requires native wolfSSL to be
+     * compiled with HAVE_IO_TIMEOUT.
+     *
+     * This sets a global (library-wide) timeout value in native
+     * wolfSSL. All threads and certificate validations in the same
+     * JVM share this single timeout setting.
+     *
+     * @param timeoutSec timeout value in seconds, 0 to 3600 inclusive.
+     *        A value of 0 disables the timeout (default behavior).
+     *
+     * @throws WolfCryptException if HAVE_IO_TIMEOUT is not compiled
+     *         into native wolfSSL
+     * @throws IllegalArgumentException if timeoutSec is negative or
+     *         exceeds 3600 seconds
+     */
+    public static void setIOTimeout(int timeoutSec) {
+
+        if (timeoutSec < 0) {
+            throw new IllegalArgumentException(
+                "Timeout value must not be negative");
+        }
+
+        if (timeoutSec > MAX_IO_TIMEOUT_SEC) {
+            throw new IllegalArgumentException(
+                "Timeout value must not exceed " +
+                MAX_IO_TIMEOUT_SEC + " seconds");
+        }
+
+        nativeSetIOTimeout(timeoutSec);
+    }
 
     /**
      * Constant time byte array comparison.
