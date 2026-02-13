@@ -107,6 +107,21 @@ programatically for JCE provider customization:
 | System Property | Default | To Enable | Description |
 | --- | --- | --- | --- |
 | wolfjce.debug | "false" | "true" | Enable wolfJCE debug logging |
+| wolfjce.ioTimeout | UNSET | Integer (seconds) | I/O timeout for OCSP and CRL HTTP operations (0-3600) |
+
+**wolfjce.ioTimeout** - sets the I/O timeout (in seconds) used by native wolfSSL
+for HTTP-based OCSP lookups and CRL fetching. Wraps native `wolfIO_SetTimeout()`.
+Requires native wolfSSL to be compiled with `HAVE_IO_TIMEOUT`. Valid values are
+0 to 3600 inclusive (1 hour). A value of 0 disables the timeout (default
+behavior). If the property is not set, no timeout is applied. This
+property is read during `PKIXRevocationChecker.init()`, which occurs at
+certificate path validation time. This means the property can be set or changed
+after provider registration and will be picked up on the next validation.
+Invalid values (non-numeric, negative, exceeding 3600) will cause revocation
+checker initialization to fail with `CertPathValidatorException`. This property
+replaces the Sun-specific `com.sun.security.ocsp.timeout` and
+`com.sun.security.crl.timeout` properties (which use milliseconds) with a single
+wolfJCE-specific property in seconds that applies to both OCSP and CRL operations.
 
 ### Algorithm Support:
 ---------

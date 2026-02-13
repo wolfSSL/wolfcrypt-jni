@@ -56,7 +56,8 @@ import org.junit.runners.Suite.SuiteClasses;
     WolfCryptASN1UtilTest.class,
     WolfSSLKeyStoreTest.class,
     WolfCryptUtilTest.class,
-    WolfCryptServiceLoaderTest.class
+    WolfCryptServiceLoaderTest.class,
+    WolfCryptProviderIOTimeoutTest.class
 })
 
 public class WolfJCETestSuite { }
