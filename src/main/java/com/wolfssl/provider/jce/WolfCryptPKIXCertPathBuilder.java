@@ -39,8 +39,6 @@ import java.security.SignatureException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateException;
-import java.security.cert.CertificateExpiredException;
-import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
 import java.security.cert.TrustAnchor;
 import java.security.cert.CertPathBuilderSpi;
@@ -733,22 +731,16 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
      *
      * Searches through provided CertStores for CA certificates
      * (basicConstraints >= 0) and returns them as DER-encoded byte arrays.
-     * Certificates are excluded if they are trust anchors, use disabled
-     * algorithms per jdk.certpath.disabledAlgorithms, or are not valid at the
-     * requested validation date (when checkDateInJava is true).
+     * Certificates are excluded if they are trust anchors or use disabled
+     * algorithms per jdk.certpath.disabledAlgorithms.
      *
      * @param certStores list of CertStores to search
      * @param anchors set of trust anchors to exclude
-     * @param checkDateInJava true to filter out certificates not valid at
-     *        validationDate
-     * @param validationDate date to check validity against, only used when
-     *        checkDateInJava is true
      *
      * @return list of DER-encoded intermediate certificates
      */
     private List<byte[]> collectIntermediateCertificates(
-        List<CertStore> certStores, Set<TrustAnchor> anchors,
-        boolean checkDateInJava, Date validationDate) {
+        List<CertStore> certStores, Set<TrustAnchor> anchors) {
 
         List<byte[]> intermediatesDer = new ArrayList<>();
 
@@ -781,22 +773,6 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
                         /* Skip adding if cert uses disabled algorithm */
                         if (isTrustAnchor || hasDisabledAlgorithm(x509)) {
                             continue;
-                        }
-
-                        /* If requested, check validity at the validation date
-                         * in Java. Needed when a custom validation date is set
-                         * but native X509_STORE check_time propagation is not
-                         * supported by linked native wolfSSL vesrion. */
-                        if (checkDateInJava) {
-                            try {
-                                x509.checkValidity(validationDate);
-                            } catch (CertificateExpiredException |
-                                CertificateNotYetValidException e) {
-                                log("skipping intermediate not valid at " +
-                                    "requested date: " +
-                                    x509.getSubjectX500Principal().getName());
-                                continue;
-                            }
                         }
 
                         /* Convert to DER and add to list */
@@ -836,7 +812,6 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
         int maxPathLength = 0;
         Date validationDate = null;
         WolfSSLX509StoreCtx storeCtx = null;
-        boolean checkDateInJava = false;
 
         log("building and verifying path using native WOLFSSL_X509_STORE");
 
@@ -850,65 +825,15 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
         maxPathLength = params.getMaxPathLength();
         validationDate = params.getDate();
 
-        /* Determine if we need to validate cert dates in Java. Needed when a
-         * custom date is set but the native wolfSSL X509_STORE check_time
-         * propagation is not supported by linked version of wolfSSL. */
-        if ((validationDate != null) &&
-            !WolfSSLX509StoreCtx.isStoreCheckTimeSupported()) {
-            checkDateInJava = true;
-        }
-
-        if (checkDateInJava) {
-            log("validating cert dates in Java, X509_STORE check_time " +
-                "not supported");
-
-            /* Validate target cert date */
-            try {
-                targetCert.checkValidity(validationDate);
-            } catch (CertificateExpiredException |
-                     CertificateNotYetValidException e) {
-                throw new CertPathBuilderException("Target certificate not " +
-                    "valid at requested date " + validationDate + ": " +
-                    targetCert.getSubjectX500Principal().getName(), e);
-            }
-
-            /* Skip trust anchors not valid at requested date */
-            Set<TrustAnchor> validAnchors = new HashSet<>();
-            for (TrustAnchor anchor : anchors) {
-                X509Certificate ac = anchor.getTrustedCert();
-                if (ac == null) {
-                    /* No cert, keep anchor (can't check date without cert) */
-                    validAnchors.add(anchor);
-                    continue;
-                }
-                try {
-                    ac.checkValidity(validationDate);
-                    validAnchors.add(anchor);
-                } catch (CertificateExpiredException |
-                    CertificateNotYetValidException e) {
-                    log("trust anchor not valid at requested date, skipping: " +
-                        ac.getSubjectX500Principal().getName());
-                }
-            }
-            if (validAnchors.isEmpty()) {
-                throw new CertPathBuilderException(
-                    "No trust anchors valid at requested date:" +
-                    validationDate);
-            }
-            anchors = validAnchors;
-        }
-
         try {
             storeCtx = new WolfSSLX509StoreCtx();
 
-            /* If a custom validation date is specified and native X509_STORE
-             * check_time is supported, skip date validation when adding certs,
-             * then set the custom verify time for chain verification.
-             *
-             * SunJCE only validates expiration dates on chain verification,
-             * not cert loading, so our default behavior already does some
-             * extra validation here in the case when a custom date not set. */
-            if ((validationDate != null) && !checkDateInJava) {
+            /* If a custom validation date is specified, set NO_CHECK_TIME so
+             * expired certs can be loaded into the store, then set the custom
+             * verify time. Native code clears NO_CHECK_TIME on the ctx when
+             * USE_CHECK_TIME is set, so chain verification still validates
+             * dates against the custom time. */
+            if (validationDate != null) {
                 log("using custom validation date: " + validationDate);
                 storeCtx.setFlags(WolfSSLX509StoreCtx.WOLFSSL_NO_CHECK_TIME);
                 storeCtx.setVerificationTime(validationDate.getTime() / 1000);
@@ -916,7 +841,6 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
 
             /* Add trust anchors to the store */
             for (TrustAnchor anchor : anchors) {
-
                 X509Certificate anchorCert = anchor.getTrustedCert();
                 if (anchorCert != null) {
                     byte[] anchorDer;
@@ -934,10 +858,10 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
                 }
             }
 
-            /* Collect all intermediate certificates from CertStores, filtering
-             * disabled algorithms and date-invalid certs when needed */
+            /* Collect all intermediate certificates from CertStores,
+             * filtering disabled algorithms */
             List<byte[]> intermediatesDer = collectIntermediateCertificates(
-                certStores, anchors, checkDateInJava, validationDate);
+                certStores, anchors);
 
             /* Convert target cert to DER */
             byte[] targetDer;
@@ -1206,11 +1130,28 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
         /* Check target cert algorithm constraints before building */
         checkAlgorithmConstraints(targetCert);
 
-        /* Build and verify path using wolfSSL X509_STORE */
-        NativeChainResult result = buildAndVerifyPathNative(
-            targetCert, pkixParams);
-        path = result.path;
-        trustAnchor = result.trustAnchor;
+        if (pkixParams.getDate() != null &&
+            !WolfSSLX509StoreCtx.isStoreCheckTimeSupported()) {
+            /* Native builder can't handle custom dates on this wolfSSL version
+             * (check_time not supported in X509_STORE). Fall back to Java
+             * chain building. Date validation deferred to CertPathValidator. */
+            log("using Java chain building, native check_time not supported");
+            path = buildPath(targetCert, pkixParams);
+            trustAnchor = findPathTrustAnchor(path,
+                pkixParams.getTrustAnchors());
+
+            /* Check algorithm constraints for all certs in path (native path
+             * filters during collectIntermediateCerts) */
+            for (X509Certificate cert : path) {
+                checkAlgorithmConstraints(cert);
+            }
+        } else {
+            /* Build and verify path using wolfSSL X509_STORE */
+            NativeChainResult result =
+                buildAndVerifyPathNative(targetCert, pkixParams);
+            path = result.path;
+            trustAnchor = result.trustAnchor;
+        }
 
         /* Check that each signer key meets constraints. */
         checkSignerKeyConstraints(path, trustAnchor);
