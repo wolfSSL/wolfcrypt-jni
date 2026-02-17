@@ -281,6 +281,15 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
     return (int)result;
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_getWOLFSSL_1LOAD_1FLAG_1DATE_1ERR_1OKAY
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+
+    return WOLFSSL_LOAD_FLAG_DATE_ERR_OKAY;
+}
+
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerNew
   (JNIEnv* env, jclass jcl)
 {
@@ -357,6 +366,31 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     buffSz = (*env)->GetArrayLength(env, in);
 
     ret = wolfSSL_CertManagerLoadCABuffer(cm, buff, buffSz, format);
+
+    (*env)->ReleaseByteArrayElements(env, in, (jbyte*)buff, JNI_ABORT);
+
+    return (jint)ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerLoadCABufferEx
+  (JNIEnv* env, jclass jcl, jlong cmPtr, jbyteArray in, jlong sz, jint format, jint flags)
+{
+    int ret = 0;
+    word32 buffSz = 0;
+    byte* buff = NULL;
+    WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
+    (void)jcl;
+    (void)sz;
+
+    if (env == NULL || in == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
+    buff = (byte*)(*env)->GetByteArrayElements(env, in, NULL);
+    buffSz = (*env)->GetArrayLength(env, in);
+
+    ret = wolfSSL_CertManagerLoadCABuffer_ex(cm, buff, buffSz, format, 0,
+        (word32)flags);
 
     (*env)->ReleaseByteArrayElements(env, in, (jbyte*)buff, JNI_ABORT);
 

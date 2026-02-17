@@ -9,6 +9,14 @@ extern "C" {
 #endif
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    getWOLFSSL_LOAD_FLAG_DATE_ERR_OKAY
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_getWOLFSSL_1LOAD_1FLAG_1DATE_1ERR_1OKAY
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
  * Method:    CertManagerNew
  * Signature: ()J
  */
@@ -38,6 +46,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
  */
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerLoadCABuffer
   (JNIEnv *, jclass, jlong, jbyteArray, jlong, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    CertManagerLoadCABufferEx
+ * Signature: (J[BJII)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerLoadCABufferEx
+  (JNIEnv *, jclass, jlong, jbyteArray, jlong, jint, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager

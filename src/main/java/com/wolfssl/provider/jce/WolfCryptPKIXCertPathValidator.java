@@ -569,11 +569,15 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
      *
      * @param params PKIXParameters from which to get TrustAnchor Set
      * @param cm WolfSSLCertManager to load TrustAnchors into as trusted roots
+     * @param validationDate custom validation date, or null to use current
+     *                       time. When non-null,
+     *                       WOLFSSL_LOAD_FLAG_DATE_ERR_OKAY is used to allow
+     *                       loading expired/not-yet-valid CAs
      *
      * @throws CertPathValidatorException on failure to load trust anchors
      */
-    private void loadTrustAnchorsIntoCertManager(
-        PKIXParameters params, WolfSSLCertManager cm)
+    private void loadTrustAnchorsIntoCertManager(PKIXParameters params,
+        WolfSSLCertManager cm, Date validationDate)
         throws CertPathValidatorException {
 
         Set<TrustAnchor> trustAnchors = null;
@@ -601,7 +605,12 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             X509Certificate anchorCert = anchor.getTrustedCert();
             if (anchorCert != null) {
                 try {
-                    cm.CertManagerLoadCA(anchorCert);
+                    if (validationDate != null) {
+                        cm.CertManagerLoadCA(anchorCert,
+                            WolfSSLCertManager.WOLFSSL_LOAD_FLAG_DATE_ERR_OKAY);
+                    } else {
+                        cm.CertManagerLoadCA(anchorCert);
+                    }
 
                     log("loaded TrustAnchor: " +
                         anchorCert.getSubjectX500Principal().getName());
@@ -1118,7 +1127,8 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             /* Load trust anchors into CertManager from PKIXParameters.
              * This must happen before initializing cert path checkers since
              * OCSP validation requires trust anchors to verify responses. */
-            loadTrustAnchorsIntoCertManager(pkixParams, cm);
+            loadTrustAnchorsIntoCertManager(pkixParams, cm,
+                pkixParams.getDate());
 
             /* Initialize all PKIXCertPathCheckers before calling check().
              * Store the returned list so we use the same checker instances

@@ -4461,11 +4461,8 @@ public class WolfCryptPKIXCertPathBuilderTest {
                 return false;
             }
             public Object clone() {
-                try {
-                    return super.clone();
-                } catch (CloneNotSupportedException e) {
-                    throw new RuntimeException(e);
-                }
+                /* Stateless selector, safe to return this */
+                return this;
             }
         };
 
@@ -4596,8 +4593,7 @@ public class WolfCryptPKIXCertPathBuilderTest {
     /**
      * Test end-to-end builder + validator with a valid custom date. Builds a
      * path with expired certs using a date within their validity, then
-     * validates the result. Should succeed on all wolfSSL versions (native or
-     * Java fallback).
+     * validates the result.
      */
     @Test
     public void testBuildThenValidateWithValidCustomDate()
