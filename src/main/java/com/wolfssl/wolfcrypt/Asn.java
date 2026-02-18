@@ -30,6 +30,10 @@ import java.nio.ByteBuffer;
  */
 public class Asn extends WolfObject {
 
+    /** Default Asn constructor. */
+    public Asn() {
+    }
+
     /** Maximum encoded signature size */
     public static final int MAX_ENCODED_SIG_SIZE = 512;
 
