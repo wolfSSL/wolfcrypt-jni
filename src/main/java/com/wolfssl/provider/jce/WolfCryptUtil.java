@@ -54,6 +54,10 @@ import java.util.regex.Matcher;
  */
 public class WolfCryptUtil {
 
+    /** Default WolfCryptUtil constructor. */
+    public WolfCryptUtil() {
+    }
+
     /**
      * Maximum size of the keystore buffer to mark. We try to set this
      * high enough to handle any large keystore. Although there is no
@@ -75,8 +79,7 @@ public class WolfCryptUtil {
      * @param msg message to be logged
      */
     private static synchronized void log(String msg) {
-        WolfCryptDebug.log(WolfCryptUtil.class, WolfCryptDebug.INFO,
-            () -> msg);
+        WolfCryptDebug.log(WolfCryptUtil.class, WolfCryptDebug.INFO, () -> msg);
     }
 
     /**
