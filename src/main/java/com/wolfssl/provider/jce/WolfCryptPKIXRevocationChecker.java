@@ -407,6 +407,36 @@ public class WolfCryptPKIXRevocationChecker extends PKIXRevocationChecker {
     }
 
     /**
+     * Get human readable name for OCSPResponseStatus value.
+     *
+     * Per RFC 6960, OCSPResponseStatus ::= ENUMERATED {
+     *     successful (0), malformedRequest (1), internalError (2),
+     *     tryLater (3), sigRequired (5), unauthorized (6) }
+     *
+     * @param status OCSPResponseStatus value
+     * @return status name string
+     */
+    private String getOcspResponseStatusName(int status) {
+
+        switch (status) {
+            case 0:
+                return "SUCCESSFUL";
+            case 1:
+                return "MALFORMED_REQUEST";
+            case 2:
+                return "INTERNAL_ERROR";
+            case 3:
+                return "TRY_LATER";
+            case 5:
+                return "SIG_REQUIRED";
+            case 6:
+                return "UNAUTHORIZED";
+            default:
+                return "UNKNOWN(" + status + ")";
+        }
+    }
+
+    /**
      * Check pre-loaded OCSP response.
      *
      * Note: PKIXParameters.setDate() does not affect OCSP response validation.
@@ -420,6 +450,7 @@ public class WolfCryptPKIXRevocationChecker extends PKIXRevocationChecker {
     private void checkPreloadedOcspResponse(X509Certificate cert)
         throws CertPathValidatorException {
 
+        int ocspStatus;
         byte[] response;
         byte[] certDer;
 
@@ -435,14 +466,29 @@ public class WolfCryptPKIXRevocationChecker extends PKIXRevocationChecker {
                 "CertManager not available for OCSP response checking");
         }
 
+        /* Check OCSP response status before native verification.
+         * Non-successful OCSP responses (e.g. UNAUTHORIZED, TRY_LATER) should
+         * be reported as errors per RFC 6960. Use native wolfSSL to parse the
+         * response status from raw DER bytes. */
+        ocspStatus = WolfSSLCertManager.getOcspResponseStatus(response,
+            response.length);
+        if (ocspStatus > 0) {
+            throw new CertPathValidatorException("OCSP response error: " +
+                getOcspResponseStatusName(ocspStatus));
+        }
+        else if (ocspStatus < 0) {
+            throw new CertPathValidatorException(
+                "Failed to parse OCSP response status: " + ocspStatus);
+        }
+
         /* Load issuer cert so OCSP response signature can be verified */
         loadIssuerForOcspVerification(cert);
 
         try {
             certDer = cert.getEncoded();
 
-            certManager.CertManagerCheckOCSPResponse(
-                response, response.length, certDer, certDer.length);
+            certManager.CertManagerCheckOCSPResponse(response, response.length,
+                certDer, certDer.length);
 
         } catch (CertificateEncodingException e) {
             throw new CertPathValidatorException(

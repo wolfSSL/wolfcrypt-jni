@@ -84,6 +84,7 @@ public class WolfSSLCertManager {
     static native int CertManagerCheckOCSP(long cm, byte[] cert, int sz);
     static native int CertManagerCheckOCSPResponse(
         long cm, byte[] response, int responseSz, byte[] cert, int certSz);
+    static native int OcspResponseStatus(byte[] response, int responseSz);
     static native int CertManagerSetVerify(long cm, Object callback);
     static native int CertManagerClearVerify(long cm);
 
@@ -188,8 +189,9 @@ public class WolfSSLCertManager {
         synchronized (cmLock) {
             try {
                 /* Throws WolfCryptException on native error */
-                CertManagerLoadCABuffer(cert.getEncoded(),
-                    cert.getEncoded().length, WolfCrypt.SSL_FILETYPE_ASN1);
+                byte[] encoded = cert.getEncoded();
+                CertManagerLoadCABuffer(encoded, encoded.length,
+                    WolfCrypt.SSL_FILETYPE_ASN1);
             } catch (CertificateEncodingException e) {
                 throw new WolfCryptException(e);
             }
@@ -247,9 +249,9 @@ public class WolfSSLCertManager {
 
         synchronized (cmLock) {
             try {
-                CertManagerLoadCABufferEx(cert.getEncoded(),
-                    cert.getEncoded().length, WolfCrypt.SSL_FILETYPE_ASN1,
-                    flags);
+                byte[] encoded = cert.getEncoded();
+                CertManagerLoadCABufferEx(encoded, encoded.length,
+                    WolfCrypt.SSL_FILETYPE_ASN1, flags);
             } catch (CertificateEncodingException e) {
                 throw new WolfCryptException(e);
             }
@@ -292,8 +294,8 @@ public class WolfSSLCertManager {
 
                 if (cert != null && cert.getBasicConstraints() >= 0) {
                     /* Will throw WolfCryptException on error */
-                    CertManagerLoadCABuffer(cert.getEncoded(),
-                        cert.getEncoded().length,
+                    byte[] encoded = cert.getEncoded();
+                    CertManagerLoadCABuffer(encoded, encoded.length,
                         WolfCrypt.SSL_FILETYPE_ASN1);
                     loadedCerts++;
                 }
@@ -383,8 +385,9 @@ public class WolfSSLCertManager {
         synchronized (cmLock) {
             try {
                 /* Throws WolfCryptException on native error */
-                CertManagerVerifyBuffer(cert.getEncoded(),
-                    cert.getEncoded().length, WolfCrypt.SSL_FILETYPE_ASN1);
+                byte[] encoded = cert.getEncoded();
+                CertManagerVerifyBuffer(encoded, encoded.length,
+                    WolfCrypt.SSL_FILETYPE_ASN1);
             } catch (CertificateEncodingException e) {
                 throw new WolfCryptException(e);
             }
@@ -689,6 +692,38 @@ public class WolfSSLCertManager {
         } catch (CertificateEncodingException e) {
             throw new WolfCryptException(e);
         }
+    }
+
+    /**
+     * Get OCSPResponseStatus from raw OCSP response bytes.
+     *
+     * Uses native wolfSSL_d2i_OCSP_RESPONSE() to parse the response and
+     * wolfSSL_OCSP_response_status() to extract the status value per RFC 6960.
+     *
+     * This is a static method that does not require a WolfSSLCertManager
+     * instance.
+     *
+     * @param response raw OCSP response bytes (DER encoded)
+     * @param responseSz size of OCSP response
+     *
+     * @return OCSPResponseStatus value:
+     *         0 = successful,
+     *         1 = malformedRequest,
+     *         2 = internalError,
+     *         3 = tryLater,
+     *         5 = sigRequired,
+     *         6 = unauthorized,
+     *         negative on error (NOT_COMPILED_IN, BAD_FUNC_ARG,
+     *         MEMORY_E, or -1 if response parsing failed)
+     */
+    public static int getOcspResponseStatus(byte[] response, int responseSz) {
+
+        if (response == null || responseSz < 0 ||
+            responseSz > response.length) {
+            return WolfCryptError.BAD_FUNC_ARG.getCode();
+        }
+
+        return OcspResponseStatus(response, responseSz);
     }
 
     /**

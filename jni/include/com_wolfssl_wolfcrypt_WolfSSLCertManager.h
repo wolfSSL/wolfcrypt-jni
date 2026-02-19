@@ -137,6 +137,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
 
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
+ * Method:    OcspResponseStatus
+ * Signature: ([BI)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_OcspResponseStatus
+  (JNIEnv *, jclass, jbyteArray, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfSSLCertManager
  * Method:    CertManagerSetVerify
  * Signature: (JLjava/lang/Object;)I
  */
