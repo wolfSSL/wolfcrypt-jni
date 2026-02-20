@@ -26,8 +26,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.Collection;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Date;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.PublicKey;
@@ -60,6 +58,9 @@ import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfSSLCertManager;
 import com.wolfssl.wolfcrypt.WolfSSLCertManagerVerifyCallback;
 import com.wolfssl.wolfcrypt.WolfCryptException;
+import java.io.ByteArrayInputStream;
+import java.security.cert.CertificateFactory;
+import java.security.cert.CertificateException;
 
 /**
  * wolfJCE implementation of CertPathValidator for PKIX (X.509)
@@ -83,50 +84,42 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
      * Inner class implementing verification callback for date override.
      *
      * This callback is registered with WolfSSLCertManager when
-     * PKIXParameters.getDate() returns a non-null override date. It
-     * intercepts certificate date validation errors and re-validates
-     * the certificate dates against the override date instead of the
-     * current system time.
+     * PKIXParameters.getDate() returns a non-null override date. It intercepts
+     * certificate date validation errors and re-validates the certificate dates
+     * against the override date instead of the current system time.
      *
      * For thread safety, each CertPathValidator creates its own callback
-     * instance with its own certificate map and override date.
+     * instance with its own override date.
      */
     private class DateOverrideVerifyCallback
         implements WolfSSLCertManagerVerifyCallback {
 
         private final Date overrideDate;
-        private final Map<Integer, X509Certificate> certsByDepth;
+        private final CertificateFactory certFactory;
+
+        /* X509 error codes wolfSSL maps date errors to when
+         * OPENSSL_COMPATIBLE_DEFAULTS is defined. Values from wolfssl/ssl.h,
+         * WOLFSSL_X509_V_ERR enum. */
+        private static final int X509_V_ERR_CERT_NOT_YET_VALID = 9;
+        private static final int X509_V_ERR_CERT_HAS_EXPIRED = 10;
 
         /**
          * Create new DateOverrideVerifyCallback.
          *
          * @param date Override date to use for validation
-         * @param certs List of certificates in chain, ordered from
-         *              end-entity (index 0) to root
+         *
+         * @throws CertificateException if X.509 CertificateFactory
+         *         is not available
          */
-        public DateOverrideVerifyCallback(
-            Date date, List<X509Certificate> certs) {
+        public DateOverrideVerifyCallback(Date date)
+            throws CertificateException {
 
             this.overrideDate = date;
-            this.certsByDepth = new HashMap<>();
-
-            /* Map certificates by depth for lookup in callback.
-             * Depth 0 = end entity cert, increasing depth toward root. */
-            for (int i = 0; i < certs.size(); i++) {
-                certsByDepth.put(i, certs.get(i));
-            }
+            this.certFactory = CertificateFactory.getInstance("X.509");
         }
 
         /**
-         * Verify callback implementation that overrides date validation.
-         *
-         * When a date validation error occurs (ASN_BEFORE_DATE_E or
-         * ASN_AFTER_DATE_E), this checks if the override date falls
-         * within the certificate's validity period. If so, the error is
-         * overridden and verification continues. For all other errors,
-         * the original preverify result is used.
-         *
-         * This callback is called from native JNI.
+         * Delegates to 4-arg verify with null certDer.
          *
          * @param preverify  1 if pre-verification passed, 0 if failed
          * @param error      Error code from verification (0 = no error)
@@ -136,68 +129,99 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
          */
         @Override
         public int verify(int preverify, int error, int errorDepth) {
+            return verify(preverify, error, errorDepth, null);
+        }
+
+        /**
+         * Verify callback that enforces override date validation.
+         *
+         * This callback is called from native JNI with the DER-encoded
+         * certificate bytes from the WOLFSSL_X509_STORE_CTX.
+         *
+         * Validates the certificate against the override date. For date errors
+         * where the override date is valid, the error is overridden. Non date
+         * errors defer to preverify.
+         *
+         * Parses the DER-encoded certificate bytes provided by the native
+         * callback to obtain the certificate validity dates.
+         *
+         * Date errors are checked as both raw ASN error codes
+         * (ASN_BEFORE_DATE_E, ASN_AFTER_DATE_E) and X509 codes
+         * (X509_V_ERR_CERT_NOT_YET_VALID, X509_V_ERR_CERT_HAS_EXPIRED)
+         * since wolfSSL maps ASN codes to X509 codes when
+         * OPENSSL_COMPATIBLE_DEFAULTS is defined.
+         *
+         * @param preverify  1 if pre-verification passed, 0 if failed
+         * @param error      Error code from verification (0 = no error)
+         * @param errorDepth Certificate depth in chain (0 = end entity)
+         * @param certDer    DER-encoded certificate at errorDepth, or
+         *                   null if not available
+         *
+         * @return 1 to accept certificate, 0 to reject
+         */
+        @Override
+        public int verify(int preverify, int error, int errorDepth,
+            byte[] certDer) {
 
             Date notBefore;
             Date notAfter;
-            X509Certificate cert;
+            X509Certificate cert = null;
 
-            /* Get the certificate at this depth */
-            cert = certsByDepth.get(errorDepth);
-            if (cert == null) {
-                /* Reject if cert not found */
-                log("Date override: cert not found at depth " + errorDepth +
-                    ", rejecting");
-                return 0;
+            /* Parse cert from DER bytes provided by native callback */
+            if (certDer != null) {
+                try {
+                    cert = (X509Certificate)certFactory.generateCertificate(
+                        new ByteArrayInputStream(certDer));
+                } catch (CertificateException e) {
+                    log("Date override: failed to parse cert DER at depth " +
+                        errorDepth + ": " + e.getMessage());
+                }
             }
 
-            /* Get certificate validity dates */
+            /* If no cert available, defer to native result */
+            if (cert == null) {
+                log("Date override: no cert available at depth " + errorDepth +
+                    ", returning preverify: " + preverify);
+                return preverify;
+            }
+
+            /* Get cert validity dates */
             notBefore = cert.getNotBefore();
             notAfter = cert.getNotAfter();
 
-            /* When date override is active, always validate against the
-             * override date, not system time. */
-
-            /* If date error exists but override date is valid, accept */
-            if (error == WolfCryptError.ASN_BEFORE_DATE_E.getCode() ||
-                error == WolfCryptError.ASN_AFTER_DATE_E.getCode()) {
-
-                /* Override date must be within cert validity */
-                if (overrideDate.before(notBefore) ||
-                    overrideDate.after(notAfter)) {
-                    log("Date override: override date " + overrideDate +
-                        " outside validity window (notBefore: " + notBefore +
-                        ", notAfter: " + notAfter + "), rejecting");
-                    return 0;
-                }
-
+            /* Always check override date against cert validity. Override date
+             * may be outside cert validity window. */
+            if (overrideDate.before(notBefore) ||
+                overrideDate.after(notAfter)) {
                 log("Date override: override date " + overrideDate +
-                    " within validity, accepting despite date error");
+                    " outside validity window (notBefore: " + notBefore +
+                    ", notAfter: " + notAfter + "), rejecting");
+                return 0;
+            }
 
+            /* Override date is within cert validity window. Override native
+             * date error if present. For non-date errors, defer to preverify.
+             *
+             * Check both raw ASN codes and X509 mapped codes since wolfSSL
+             * maps ASN to X509 error codes with OPENSSL_COMPATIBLE_DEFAULTS. */
+            if (error == 0 || preverify == 1) {
+                return preverify;
+            }
+
+            if (error == WolfCryptError.ASN_BEFORE_DATE_E.getCode() ||
+                error == WolfCryptError.ASN_AFTER_DATE_E.getCode() ||
+                error == X509_V_ERR_CERT_NOT_YET_VALID ||
+                error == X509_V_ERR_CERT_HAS_EXPIRED) {
+                log("Date override: override date " + overrideDate +
+                    " within validity, accepting despite date error " + error);
                 return 1;
             }
 
-            /* No date error, but still need to validate override date.
-             * If override date is outside cert validity, reject even though
-             * current system time might be valid. */
-            if (overrideDate.before(notBefore)) {
-                log("Date override: override date " + overrideDate +
-                    " before cert validity (notBefore: " + notBefore +
-                    "), rejecting");
-                return 0;
-            }
+            /* Non-date error, defer to preverify */
+            log("Date override: non-date error " + error + " at depth " +
+                errorDepth + ", returning preverify: " + preverify);
 
-            if (overrideDate.after(notAfter)) {
-                log("Date override: override date " + overrideDate +
-                    " after cert validity (notAfter: " + notAfter +
-                    "), rejecting");
-                return 0;
-            }
-
-            /* Override date is valid, accept */
-            log("Date override: override date " + overrideDate +
-                " within validity, accepting");
-
-            return 1;
+            return preverify;
         }
     }
 
@@ -211,7 +235,7 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
     /**
      * Check CertPathParameters matches our requirements.
      *    1. Not null
-     *    2. Is an instance of PKIXParameters
+     *    2. Instance of PKIXParameters
      *
      * @throws InvalidAlgorithmParameterException if null or not an instance
      *         of PKIXParameters
@@ -350,8 +374,8 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
     }
 
     /**
-     * Check certificate against disabled algorithms constraints from
-     * security property jdk.certpath.disabledAlgorithms.
+     * Check certificate against disabled algorithms constraints from security
+     * property jdk.certpath.disabledAlgorithms.
      *
      * Validates both the signature algorithm and public key algorithm/size
      * against the disabled algorithms list.
@@ -378,12 +402,10 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         /* Check signature algorithm against disabled list */
         sigAlg = cert.getSigAlgName();
         if (WolfCryptUtil.isAlgorithmDisabled(sigAlg, propertyName)) {
-            log("Algorithm constraints check failed on signature " +
-                "algorithm: " + sigAlg);
+            log("Algorithm constraints check failed on sig algo: " + sigAlg);
             throw new CertPathValidatorException(
-                "Algorithm constraints check failed on signature " +
-                "algorithm: " + sigAlg, null, path, certIdx,
-                BasicReason.ALGORITHM_CONSTRAINED);
+                "Algorithm constraints check failed on sig algo: " + sigAlg,
+                null, path, certIdx, BasicReason.ALGORITHM_CONSTRAINED);
         }
 
         /* Check public key algorithm and size against constraints */
@@ -394,6 +416,53 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             throw new CertPathValidatorException(
                 "Algorithm constraints check failed on public key",
                 null, path, certIdx, BasicReason.ALGORITHM_CONSTRAINED);
+        }
+    }
+
+    /**
+     * Check trust anchor against disabled algorithms constraints from
+     * security property jdk.certpath.disabledAlgorithms.
+     *
+     * Handle both trust anchors with certificates and those with only a
+     * public key (no cert).
+     *
+     * @param anchor trust anchor to check
+     *
+     * @throws CertPathValidatorException if key algorithm is disabled or key
+     *         size is too small
+     */
+    private void checkTrustAnchorConstraints(TrustAnchor anchor)
+        throws CertPathValidatorException {
+
+        PublicKey pubKey = null;
+        String propertyName = "jdk.certpath.disabledAlgorithms";
+
+        if (anchor == null) {
+            throw new CertPathValidatorException(
+                "TrustAnchor is null when checking trust anchor constraints");
+        }
+
+        X509Certificate cert = anchor.getTrustedCert();
+        if (cert != null) {
+            pubKey = cert.getPublicKey();
+        }
+        else {
+            pubKey = anchor.getCAPublicKey();
+        }
+
+        if (pubKey == null) {
+            throw new CertPathValidatorException(
+                "Trust anchor has no public key to check against " +
+                "algo constraints");
+        }
+
+        if (!WolfCryptUtil.isKeyAllowed(pubKey, propertyName)) {
+            log("Algo constraints check failed on trust anchor public key: " +
+                pubKey.getAlgorithm());
+            throw new CertPathValidatorException(
+                "Algo constraints check failed on trust anchor public key: " +
+                pubKey.getAlgorithm(), null, null, -1,
+                BasicReason.ALGORITHM_CONSTRAINED);
         }
     }
 
@@ -423,9 +492,8 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         /* Check target cert constraints, if set in parameters */
         checkTargetCertConstraints(cert, certIdx, path, params);
 
-        /* Certificate policies are not currently supported by this
-         * CertPathValidator implementation, throw exceptions when
-         * user tries to use them. */
+        /* Certificate policies are not currently supported by this validator,
+         * throw exceptions when user tries to use them. */
         disallowCertPolicyUse(params);
     }
 
@@ -520,13 +588,16 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
      * Load TrustAnchors from PKIXParameters into WolfSSLCertManager as
      * trusted CA certificates.
      *
+     * Trust anchors are always loaded with WOLFSSL_LOAD_FLAG_DATE_ERR_OKAY
+     * since per RFC 5280 trust anchors should not be date-validated.
+     *
      * @param params PKIXParameters from which to get TrustAnchor Set
      * @param cm WolfSSLCertManager to load TrustAnchors into as trusted roots
      *
      * @throws CertPathValidatorException on failure to load trust anchors
      */
-    private void loadTrustAnchorsIntoCertManager(
-        PKIXParameters params, WolfSSLCertManager cm)
+    private void loadTrustAnchorsIntoCertManager(PKIXParameters params,
+        WolfSSLCertManager cm)
         throws CertPathValidatorException {
 
         Set<TrustAnchor> trustAnchors = null;
@@ -554,13 +625,21 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             X509Certificate anchorCert = anchor.getTrustedCert();
             if (anchorCert != null) {
                 try {
-                    cm.CertManagerLoadCA(anchorCert);
+                    cm.CertManagerLoadCA(anchorCert,
+                        WolfSSLCertManager.WOLFSSL_LOAD_FLAG_DATE_ERR_OKAY);
 
                     log("loaded TrustAnchor: " +
                         anchorCert.getSubjectX500Principal().getName());
 
                 } catch (WolfCryptException e) {
-                    throw new CertPathValidatorException(e);
+                    /* In wolfSSL <= 5.8.4 with WOLFSSL_TRUST_PEER_CERT and
+                     * OPENSSL_COMPATIBLE_DEFAULTS, a date error from trusted
+                     * peer loading may overwrite the successful CA load return
+                     * code. The CA is still loaded into the CertManager despite
+                     * the error return, so we just log and continue here. */
+                    log("TrustAnchor load returned error for " +
+                        anchorCert.getSubjectX500Principal().getName() +
+                        ", CA may still be loaded: " + e.getMessage());
                 }
             }
         }
@@ -604,18 +683,21 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                     "Failed verification on certificate", e, path, i);
             }
 
-            /* Verified successfully. If this is a CA and we have more
-             * certs, load this as trusted (intermediate) */
+            /* Verified successfully. If this is a CA and we have more certs,
+             * load this as trusted (intermediate). Use DATE_ERR_OKAY since
+             * this cert has already been date-validated above. */
             if (i > 0 && cert.getBasicConstraints() >= 0) {
                 try {
-                    cm.CertManagerLoadCA(cert);
+                    cm.CertManagerLoadCA(cert,
+                        WolfSSLCertManager.WOLFSSL_LOAD_FLAG_DATE_ERR_OKAY);
 
                     log("chain [" + i + "] is intermediate, loading as root");
 
                 } catch (WolfCryptException e) {
-
-                    log("chain [" + i + "] is CA, but failed to load as " +
-                        "trusted root, not loading");
+                    /* CA may still be loaded despite error from trusted peer
+                     * loading on older wolfSSL */
+                    log("chain [" + i + "] intermediate load returned error, " +
+                        "CA may still be loaded: " + e.getMessage());
                 }
             }
         }
@@ -672,13 +754,10 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         overrideDate = params.getDate();
         if (overrideDate != null) {
             try {
-                /* Create simple single-cert callback for this verification */
-                List<X509Certificate> singleCert = new ArrayList<>();
-                singleCert.add(cert);
                 DateOverrideVerifyCallback callback =
-                    new DateOverrideVerifyCallback(overrideDate, singleCert);
+                    new DateOverrideVerifyCallback(overrideDate);
                 cm.setVerifyCallback(callback);
-            } catch (WolfCryptException e) {
+            } catch (WolfCryptException | CertificateException e) {
                 cm.free();
                 throw new CertPathValidatorException(
                     "Failed to set date override callback in findTrustAnchor");
@@ -710,11 +789,18 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             }
 
             try {
-                /* Load anchor as CA */
-                cm.CertManagerLoadCA(anchorCert);
+                /* Load anchor as CA, skip date validation per RFC 5280 (trust
+                 * anchors not date-validated) */
+                cm.CertManagerLoadCA(anchorCert,
+                    WolfSSLCertManager.WOLFSSL_LOAD_FLAG_DATE_ERR_OKAY);
             } catch (WolfCryptException e) {
-                /* error loading CA, skip to next */
-                continue;
+                /* In wolfSSL <= 5.8.4 with WOLFSSL_TRUST_PEER_CERT and
+                 * OPENSSL_COMPATIBLE_DEFAULTS, a date error from trusted
+                 * peer loading may overwrite the successful CA load return
+                 * code. The CA is still loaded into the CertManager despite
+                 * the error return, so we just log and continue here. */
+                log("findTrustAnchor load error, CA may still be loaded: " +
+                    e.getMessage());
             }
 
             try {
@@ -764,14 +850,14 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
      * Check if revocation has been enabled in PKIXParameters, and if so
      * find and load any CRLs in params.getCertStores().
      *
-     * When a PKIXRevocationChecker has been registered via
-     * addCertPathChecker(), that checker handles revocation checking. CRL
-     * checking in the native CertManager is only enabled if:
+     * When a PKIXRevocationChecker is registered via addCertPathChecker(),
+     * that checker handles revocation checking. CRL checking in the native
+     * CertManager is only enabled if:
      *   - No PKIXRevocationChecker is present (default CRL behavior), or
      *   - PKIXRevocationChecker has PREFER_CRLS option set
      *
-     * @param params parameters used to check if revocation is enabled
-     *        and, if so load any CRLs available
+     * @param params parameters used to check if revocation is enabled and,
+     *        if so load any CRLs available
      * @param cm WolfSSLCertManager to load CRLs into
      * @param certPath the CertPath being validated (for exception reporting)
      * @param certs list of certificates from certPath
@@ -780,9 +866,8 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
      * @throws CertPathValidatorException if error is encountered during
      *        revocation checking or CRL loading
      */
-    private void checkRevocationEnabledAndLoadCRLs(
-        PKIXParameters params, WolfSSLCertManager cm,
-        CertPath certPath, List<X509Certificate> certs,
+    private void checkRevocationEnabledAndLoadCRLs(PKIXParameters params,
+        WolfSSLCertManager cm, CertPath certPath, List<X509Certificate> certs,
         List<PKIXCertPathChecker> pathCheckers)
         throws CertPathValidatorException {
 
@@ -810,9 +895,8 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                         (WolfCryptPKIXRevocationChecker)checker;
                     Set<PKIXRevocationChecker.Option> options =
                         revChecker.getOptions();
-                    if (options != null &&
-                        options.contains(
-                            PKIXRevocationChecker.Option.PREFER_CRLS)) {
+                    if (options != null && options.contains(
+                        PKIXRevocationChecker.Option.PREFER_CRLS)) {
                         preferCrls = true;
                     }
                     break;
@@ -827,8 +911,8 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         }
 
         if (params.isRevocationEnabled()) {
-            log("revocation enabled in PKIXParameters, checking " +
-                "for CRLs to load");
+            log("revocation enabled in PKIXParameters, checking for CRLs " +
+                "to load");
 
             if (!WolfCrypt.CrlEnabled()) {
                 throw new CertPathValidatorException(
@@ -872,8 +956,8 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                                 certCount++;
                             } catch (WolfCryptException e) {
                                 /* Log but not hard fail */
-                                log("Warning: failed to load cert from " +
-                                    "CertStore: " + e.getMessage());
+                                log("Failed to load cert from CertStore: " +
+                                    e.getMessage());
                             }
                         }
                     }
@@ -1022,6 +1106,9 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             log("Zero-length cert path, returning trust anchor: " +
                 anchorCert.getSubjectX500Principal().getName());
 
+            /* Check trust anchor public key constraints */
+            checkTrustAnchorConstraints(anchor);
+
             return new PKIXCertPathValidatorResult(anchor, null,
                 anchorCert.getPublicKey());
         }
@@ -1035,10 +1122,9 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
         }
 
         try {
-            /* Get List of Certificate objects in CertPath, sanity check
-             * that they are X509Certificate instances. This needs to be
-             * done before date override callback registration since
-             * callback needs access to certificate list. */
+            /* Get List of Certificate objects in CertPath, sanity check that
+             * they are X509Certificate instances. Done before date override
+             * callback registration since callback needs access to cert list */
             certs = new ArrayList<>();
             for (Certificate cert : certPath.getCertificates()) {
                 if (cert instanceof X509Certificate) {
@@ -1047,33 +1133,32 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             }
 
             /* Register verify callback to override date validation if
-             * PKIXParameters specifies an override date */
+             * PKIXParameters specifies an override date. Callback checks certs
+             * against the override date. */
             if (pkixParams.getDate() != null) {
                 try {
-                    DateOverrideVerifyCallback callback =
-                        new DateOverrideVerifyCallback(
-                            pkixParams.getDate(), certs);
-                    cm.setVerifyCallback(callback);
+                    cm.setVerifyCallback(new DateOverrideVerifyCallback(
+                        pkixParams.getDate()));
 
-                    log("Registered date override callback for " +
-                        "validation date: " + pkixParams.getDate());
+                    log("Registered date override callback for validation " +
+                        "date: " + pkixParams.getDate());
 
-                } catch (WolfCryptException e) {
+                } catch (WolfCryptException | CertificateException e) {
                     throw new CertPathValidatorException(
                         "Failed to register date override callback: " +
                         e.getMessage());
                 }
             }
 
-            /* Load trust anchors into CertManager from PKIXParameters.
-             * This must happen before initializing cert path checkers since
-             * OCSP validation requires trust anchors to verify responses. */
+            /* Load trust anchors into CertManager from PKIXParameters. Done
+             * before initializing cert path checkers since OCSP validation
+             * requires trust anchors to verify responses. */
             loadTrustAnchorsIntoCertManager(pkixParams, cm);
 
             /* Initialize all PKIXCertPathCheckers before calling check().
-             * Store the returned list so we use the same checker instances
-             * for both init() and check() calls. Pass certs so revocation
-             * checker can find issuers for OCSP response verification. */
+             * Store returned list to use same checker instances for init() and
+             * check(). Pass certs so revocation checker can find issuers
+             * for OCSP response verification. */
             pathCheckers = initCertPathCheckers(pkixParams, cm, certs);
 
             /* Sanity checks on certs from PKIXParameters constraints */
@@ -1082,12 +1167,12 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 callCertPathCheckers(certs.get(i), pathCheckers);
             }
 
-            /* Enable CRL if PKIXParameters.isRevocationEnabled(), load
-             * any CRLs found in PKIXParameters.getCertStores(). Needs to
-             * happen after trust anchors are loaded, since native wolfSSL
-             * will try to find/verify CRL against trusted roots on load.
-             * Pass pathCheckers so we can skip CRL setup when a
-             * PKIXRevocationChecker is handling revocation via OCSP. */
+            /* Enable CRL if PKIXParameters.isRevocationEnabled(), load any
+             * CRLs found in PKIXParameters.getCertStores(). Done after trust
+             * anchors loaded, since native wolfSSL will try to find/verify CRL
+             * against trusted roots on load. Pass pathCheckers so we can skip
+             * CRL setup when a PKIXRevocationChecker is handling revocation
+             * via OCSP. */
             checkRevocationEnabledAndLoadCRLs(pkixParams, cm, certPath, certs,
                 pathCheckers);
 
@@ -1096,16 +1181,20 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
 
             /* Cert chain has been verified, find TrustAnchor to return
              * in PKIXCertPathValidatorResult */
-            trustAnchor = findTrustAnchor(
-                pkixParams, certs.get(certs.size() - 1));
+            trustAnchor = findTrustAnchor(pkixParams,
+                certs.get(certs.size() - 1));
+
+            /* Check trust anchor public key constraints */
+            if (trustAnchor != null) {
+                checkTrustAnchorConstraints(trustAnchor);
+            }
 
         } finally {
             /* Free native WolfSSLCertManager resources */
             cm.free();
         }
 
-        /* PolicyNode not returned, since certificate policies are not
-         * yet supported */
+        /* PolicyNode not returned, since certificate policies not supported */
         return new PKIXCertPathValidatorResult(trustAnchor, null,
             certs.get(0).getPublicKey());
     }
@@ -1120,9 +1209,9 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
      * various checking options before being passed to the validate() method
      * via PKIXParameters.addCertPathChecker().
      *
-     * Note: The CertManager will be provided to the checker during
-     * certificate path validation when the checker's init() method is
-     * called with the appropriate parameters.
+     * Note: The CertManager will be provided to the checker during certificate
+     * path validation when the checker's init() method is called with the
+     * appropriate parameters.
      *
      * @return a CertPathChecker object that this implementation uses to
      *         check the revocation status of certificates.

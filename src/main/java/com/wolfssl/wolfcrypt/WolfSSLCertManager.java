@@ -55,14 +55,22 @@ public class WolfSSLCertManager {
     /* lock around native WOLFSSL_CERT_MANAGER pointer use */
     private final Object cmLock = new Object();
 
+    /** Flag to allow loading certs with date errors */
+    public static final int WOLFSSL_LOAD_FLAG_DATE_ERR_OKAY =
+        getWOLFSSL_LOAD_FLAG_DATE_ERR_OKAY();
+
     /* Verification callback, null if not set */
     private WolfSSLCertManagerVerifyCallback verifyCallback = null;
+
+    private static native int getWOLFSSL_LOAD_FLAG_DATE_ERR_OKAY();
 
     static native long CertManagerNew();
     static native void CertManagerFree(long cm);
     static native int CertManagerLoadCA(long cm, String f, String d);
     static native int CertManagerLoadCABuffer(
         long cm, byte[] in, long sz, int format);
+    static native int CertManagerLoadCABufferEx(
+        long cm, byte[] in, long sz, int format, int flags);
     static native int CertManagerUnloadCAs(long cm);
     static native int CertManagerVerifyBuffer(
         long cm, byte[] in, long sz, int format);
@@ -76,6 +84,7 @@ public class WolfSSLCertManager {
     static native int CertManagerCheckOCSP(long cm, byte[] cert, int sz);
     static native int CertManagerCheckOCSPResponse(
         long cm, byte[] response, int responseSz, byte[] cert, int certSz);
+    static native int OcspResponseStatus(byte[] response, int responseSz);
     static native int CertManagerSetVerify(long cm, Object callback);
     static native int CertManagerClearVerify(long cm);
 
@@ -180,8 +189,69 @@ public class WolfSSLCertManager {
         synchronized (cmLock) {
             try {
                 /* Throws WolfCryptException on native error */
-                CertManagerLoadCABuffer(cert.getEncoded(),
-                    cert.getEncoded().length, WolfCrypt.SSL_FILETYPE_ASN1);
+                byte[] encoded = cert.getEncoded();
+                CertManagerLoadCABuffer(encoded, encoded.length,
+                    WolfCrypt.SSL_FILETYPE_ASN1);
+            } catch (CertificateEncodingException e) {
+                throw new WolfCryptException(e);
+            }
+        }
+    }
+
+    /**
+     * Load CA into CertManager from byte array with extended flags.
+     *
+     * @param in byte array holding X.509 certificate to load
+     * @param sz size of input byte array, bytes
+     * @param format format of input certificate, either
+     *               WolfCrypt.SSL_FILETYPE_PEM (PEM formatted) or
+     *               WolfCrypt.SSL_FILETYPE_ASN1 (ASN.1/DER).
+     * @param flags load flags, e.g.
+     *              WOLFSSL_LOAD_FLAG_DATE_ERR_OKAY
+     *
+     * @throws IllegalStateException WolfSSLCertManager has been freed
+     * @throws WolfCryptException on native wolfSSL error
+     */
+    public synchronized void CertManagerLoadCABufferEx(byte[] in, long sz,
+        int format, int flags)
+        throws IllegalStateException, WolfCryptException {
+
+        int ret = 0;
+
+        confirmObjectIsActive();
+
+        synchronized (cmLock) {
+            ret = CertManagerLoadCABufferEx(this.cmPtr, in, sz, format, flags);
+            if (ret != WolfCrypt.WOLFSSL_SUCCESS) {
+                throw new WolfCryptException(ret);
+            }
+        }
+    }
+
+    /**
+     * Load CA into CertManager from X509Certificate object with extended flags.
+     *
+     * @param cert X509Certificate containing CA cert
+     * @param flags load flags, e.g.
+     *              WOLFSSL_LOAD_FLAG_DATE_ERR_OKAY
+     *
+     * @throws IllegalStateException WolfSSLCertManager has been freed
+     * @throws WolfCryptException on native wolfSSL error
+     */
+    public synchronized void CertManagerLoadCA(X509Certificate cert, int flags)
+        throws IllegalStateException, WolfCryptException {
+
+        confirmObjectIsActive();
+
+        if (cert == null) {
+            throw new WolfCryptException("Input X509Certificate is null");
+        }
+
+        synchronized (cmLock) {
+            try {
+                byte[] encoded = cert.getEncoded();
+                CertManagerLoadCABufferEx(encoded, encoded.length,
+                    WolfCrypt.SSL_FILETYPE_ASN1, flags);
             } catch (CertificateEncodingException e) {
                 throw new WolfCryptException(e);
             }
@@ -224,8 +294,8 @@ public class WolfSSLCertManager {
 
                 if (cert != null && cert.getBasicConstraints() >= 0) {
                     /* Will throw WolfCryptException on error */
-                    CertManagerLoadCABuffer(cert.getEncoded(),
-                        cert.getEncoded().length,
+                    byte[] encoded = cert.getEncoded();
+                    CertManagerLoadCABuffer(encoded, encoded.length,
                         WolfCrypt.SSL_FILETYPE_ASN1);
                     loadedCerts++;
                 }
@@ -315,8 +385,9 @@ public class WolfSSLCertManager {
         synchronized (cmLock) {
             try {
                 /* Throws WolfCryptException on native error */
-                CertManagerVerifyBuffer(cert.getEncoded(),
-                    cert.getEncoded().length, WolfCrypt.SSL_FILETYPE_ASN1);
+                byte[] encoded = cert.getEncoded();
+                CertManagerVerifyBuffer(encoded, encoded.length,
+                    WolfCrypt.SSL_FILETYPE_ASN1);
             } catch (CertificateEncodingException e) {
                 throw new WolfCryptException(e);
             }
@@ -621,6 +692,38 @@ public class WolfSSLCertManager {
         } catch (CertificateEncodingException e) {
             throw new WolfCryptException(e);
         }
+    }
+
+    /**
+     * Get OCSPResponseStatus from raw OCSP response bytes.
+     *
+     * Uses native wolfSSL_d2i_OCSP_RESPONSE() to parse the response and
+     * wolfSSL_OCSP_response_status() to extract the status value per RFC 6960.
+     *
+     * This is a static method that does not require a WolfSSLCertManager
+     * instance.
+     *
+     * @param response raw OCSP response bytes (DER encoded)
+     * @param responseSz size of OCSP response
+     *
+     * @return OCSPResponseStatus value:
+     *         0 = successful,
+     *         1 = malformedRequest,
+     *         2 = internalError,
+     *         3 = tryLater,
+     *         5 = sigRequired,
+     *         6 = unauthorized,
+     *         negative on error (NOT_COMPILED_IN, BAD_FUNC_ARG,
+     *         MEMORY_E, or -1 if response parsing failed)
+     */
+    public static int getOcspResponseStatus(byte[] response, int responseSz) {
+
+        if (response == null || responseSz < 0 ||
+            responseSz > response.length) {
+            return WolfCryptError.BAD_FUNC_ARG.getCode();
+        }
+
+        return OcspResponseStatus(response, responseSz);
     }
 
     /**

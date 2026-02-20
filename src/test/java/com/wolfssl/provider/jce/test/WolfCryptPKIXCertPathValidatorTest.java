@@ -1928,5 +1928,179 @@ public class WolfCryptPKIXCertPathValidatorTest {
                 e.getMessage().contains("no certificate"));
         }
     }
+
+    /**
+     * Test that trust anchor public key constraints are enforced when
+     * validating a normal (non-empty) cert path.
+     */
+    @Test
+    public void testTrustAnchorKeyConstraintsOnNormalPath()
+        throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        X509Certificate clientCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath path = null;
+        CertPathValidator validator = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty("jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load wolfSSL CA cert (2048-bit RSA key) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            try {
+                caCert = (X509Certificate)cf.generateCertificate(fis);
+            } finally {
+                fis.close();
+            }
+
+            /* Load wolfSSL client cert (2048-bit RSA key) */
+            fis = new FileInputStream(clientCertDer);
+            try {
+                clientCert = (X509Certificate)cf.generateCertificate(fis);
+            } finally {
+                fis.close();
+            }
+
+            /* Set minimum RSA key size to 4096 bits. The client
+             * cert (in the path) will fail first since it is
+             * checked before the trust anchor. Use a constraint
+             * that only affects key size to verify trust anchor
+             * checking also works in normal path flow. */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 4096");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Create CertPath with client cert */
+            List<Certificate> certList = new ArrayList<Certificate>();
+            certList.add(clientCert);
+            path = cf.generateCertPath(certList);
+
+            /* Validate - should fail because key size is too
+             * small (either path cert or trust anchor) */
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            try {
+                validator.validate(path, params);
+                fail("Expected CertPathValidatorException " +
+                     "for RSA key size constraint");
+            } catch (CertPathValidatorException cpve) {
+                assertEquals(
+                    "Expected ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    /**
+     * Test that trust anchor public key constraints are enforced when
+     * validating a zero-length cert path (trust anchor is the target
+     * certificate).
+     */
+    @Test
+    public void testTrustAnchorKeyConstraintsOnZeroLengthPath()
+        throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath emptyPath = null;
+        CertPathValidator validator = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty("jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load CA cert (2048-bit RSA key) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Set minimum RSA key size to 4096 bits */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 4096");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Create zero-length (empty) CertPath */
+            emptyPath = cf.generateCertPath(new ArrayList<Certificate>());
+
+            /* Validate - should fail because trust anchor
+             * key size is too small */
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            try {
+                validator.validate(emptyPath, params);
+                fail("Expected CertPathValidatorException for trust anchor " +
+                     "RSA key size constraint on zero-length path");
+            } catch (CertPathValidatorException cpve) {
+                assertEquals("Expected ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
 }
 
