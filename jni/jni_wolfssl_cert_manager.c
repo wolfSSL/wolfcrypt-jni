@@ -170,6 +170,32 @@ static void removeCallbackCtx(WOLFSSL_CERT_MANAGER* cm)
     }
 }
 
+/* Extract cert DER bytes at given depth from WOLFSSL_X509_STORE_CTX into
+ * a new jbyteArray. Returns NULL if cert not available at depth. */
+static jbyteArray getCertDerAtDepth(JNIEnv* jenv,
+    WOLFSSL_X509_STORE_CTX* store, int depth)
+{
+    jbyteArray der = NULL;
+    WOLFSSL_BUFFER_INFO* certInfo = NULL;
+
+    if (store->certs == NULL || depth < 0 || depth >= store->totalCerts) {
+        return NULL;
+    }
+
+    certInfo = &store->certs[depth];
+    if (certInfo->buffer == NULL || certInfo->length == 0) {
+        return NULL;
+    }
+
+    der = (*jenv)->NewByteArray(jenv, (jsize)certInfo->length);
+    if (der != NULL) {
+        (*jenv)->SetByteArrayRegion(jenv, der, 0, (jsize)certInfo->length,
+            (const jbyte*)certInfo->buffer);
+    }
+
+    return der;
+}
+
 /* Native verify callback that calls into Java verify callback.
  *
  * This is registered with wolfSSL_CertManagerSetVerify() and called
@@ -185,6 +211,7 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
     jint result = 0;
     JNIEnv* jenv = NULL;
     VerifyCallbackCtx* ctx = NULL;
+    jbyteArray certDer     = NULL;
     jclass callbackClass   = NULL;
     jmethodID verifyMethod = NULL;
 
@@ -236,9 +263,15 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
     error = store->error;
     errorDepth = store->error_depth;
 
+    /* If available, extract cert DER bytes from store context at errorDepth */
+    certDer = getCertDerAtDepth(jenv, store, errorDepth);
+
     /* Find verify() method on callback object */
     callbackClass = (*jenv)->GetObjectClass(jenv, ctx->callback);
     if (callbackClass == NULL) {
+        if (certDer != NULL) {
+            (*jenv)->DeleteLocalRef(jenv, certDer);
+        }
         if (needsDetach) {
             (*ctx->jvm)->DetachCurrentThread(ctx->jvm);
         }
@@ -246,8 +279,11 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
     }
 
     verifyMethod = (*jenv)->GetMethodID(jenv, callbackClass,
-        "verify", "(III)I");
+        "verify", "(III[B)I");
     if (verifyMethod == NULL) {
+        if (certDer != NULL) {
+            (*jenv)->DeleteLocalRef(jenv, certDer);
+        }
         (*jenv)->DeleteLocalRef(jenv, callbackClass);
         if (needsDetach) {
             (*ctx->jvm)->DetachCurrentThread(ctx->jvm);
@@ -255,9 +291,9 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
         return 0;
     }
 
-    /* Call Java callback.verify(preverify, error, errorDepth) */
+    /* Call Java callback.verify(preverify, error, errorDepth, certDer) */
     result = (*jenv)->CallIntMethod(jenv, ctx->callback, verifyMethod,
-        (jint)preverify, (jint)error, (jint)errorDepth);
+        (jint)preverify, (jint)error, (jint)errorDepth, certDer);
 
     /* Check for Java exceptions, reject on exception */
     if ((*jenv)->ExceptionCheck(jenv)) {
@@ -273,12 +309,24 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
         store->error = 0;
     }
 
+    if (certDer != NULL) {
+        (*jenv)->DeleteLocalRef(jenv, certDer);
+    }
     (*jenv)->DeleteLocalRef(jenv, callbackClass);
     if (needsDetach) {
         (*ctx->jvm)->DetachCurrentThread(ctx->jvm);
     }
 
     return (int)result;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_getWOLFSSL_1LOAD_1FLAG_1DATE_1ERR_1OKAY
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+
+    return WOLFSSL_LOAD_FLAG_DATE_ERR_OKAY;
 }
 
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerNew
@@ -357,6 +405,31 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     buffSz = (*env)->GetArrayLength(env, in);
 
     ret = wolfSSL_CertManagerLoadCABuffer(cm, buff, buffSz, format);
+
+    (*env)->ReleaseByteArrayElements(env, in, (jbyte*)buff, JNI_ABORT);
+
+    return (jint)ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerLoadCABufferEx
+  (JNIEnv* env, jclass jcl, jlong cmPtr, jbyteArray in, jlong sz, jint format, jint flags)
+{
+    int ret = 0;
+    word32 buffSz = 0;
+    byte* buff = NULL;
+    WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
+    (void)jcl;
+    (void)sz;
+
+    if (env == NULL || in == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
+    buff = (byte*)(*env)->GetByteArrayElements(env, in, NULL);
+    buffSz = (*env)->GetArrayLength(env, in);
+
+    ret = wolfSSL_CertManagerLoadCABuffer_ex(cm, buff, buffSz, format, 0,
+        (word32)flags);
 
     (*env)->ReleaseByteArrayElements(env, in, (jbyte*)buff, JNI_ABORT);
 
@@ -713,6 +786,69 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     (void)certSz;
     return NOT_COMPILED_IN;
 #endif
+}
+
+/* Get OCSPResponseStatus from raw OCSP response bytes.
+ *
+ * Uses wolfSSL_d2i_OCSP_RESPONSE() to parse response and
+ * wolfSSL_OCSP_response_status() to extract the status.
+ *
+ * RFC 6960:
+ *   OCSPResponse ::= SEQUENCE {
+ *       responseStatus OCSPResponseStatus,
+ *       responseBytes  [0] EXPLICIT ResponseBytes OPTIONAL }
+ *   OCSPResponseStatus ::= ENUMERATED {
+ *       successful (0), malformedRequest (1), internalError (2),
+ *       tryLater (3), sigRequired (5), unauthorized (6) }
+ *
+ * Returns OCSPResponseStatus ENUMERATED value (0-6) on success, or negative
+ * error code on failure (BAD_FUNC_ARG, MEMORY_E, NOT_COMPILED_IN, or -1 on
+ * parse failure).
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_OcspResponseStatus
+  (JNIEnv* env, jclass jcl, jbyteArray response, jint responseSz)
+{
+#if defined(HAVE_OCSP) && defined(OPENSSL_EXTRA)
+    int ret = -1;
+    jint arrLen = 0;
+    byte* respBuf = NULL;
+    const unsigned char* p = NULL;
+    OcspResponse* ocspResp = NULL;
+    (void)jcl;
+    (void)responseSz;
+
+    if (env == NULL || response == NULL) {
+        return BAD_FUNC_ARG;
+    }
+
+    arrLen = (*env)->GetArrayLength(env, response);
+    if (arrLen <= 0) {
+        return BAD_FUNC_ARG;
+    }
+
+    respBuf = (byte*)(*env)->GetByteArrayElements(env, response, NULL);
+    if (respBuf == NULL) {
+        return MEMORY_E;
+    }
+
+    p = (const unsigned char*)respBuf;
+    ocspResp = wolfSSL_d2i_OCSP_RESPONSE(NULL, &p, (int)arrLen);
+    if (ocspResp != NULL) {
+        ret = wolfSSL_OCSP_response_status(ocspResp);
+        wolfSSL_OCSP_RESPONSE_free(ocspResp);
+    }
+
+    (*env)->ReleaseByteArrayElements(env, response, (jbyte*)respBuf, JNI_ABORT);
+
+    return (jint)ret;
+
+#else
+    (void)env;
+    (void)jcl;
+    (void)response;
+    (void)responseSz;
+    return NOT_COMPILED_IN;
+#endif /* HAVE_OCSP && OPENSSL_EXTRA */
 }
 
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerSetVerify

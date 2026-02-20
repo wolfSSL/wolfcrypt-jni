@@ -59,5 +59,29 @@ public interface WolfSSLCertManagerVerifyCallback {
      * @return 1 to accept the certificate, 0 to reject
      */
     int verify(int preverify, int error, int errorDepth);
+
+    /**
+     * Verify callback with certificate DER bytes from store context.
+     *
+     * This overload passes the DER-encoded certificate being verified,
+     * extracted from the native WOLFSSL_X509_STORE_CTX. Implementations
+     * can override this method to inspect the actual certificate when it
+     * is not available through other means (e.g. trust anchors not in a
+     * pre-built map).
+     *
+     * The default implementation delegates to the 3-arg verify() method,
+     * so existing implementations are not broken.
+     *
+     * @param preverify  1 if pre-verification passed, 0 if failed
+     * @param error      Error code from verification (0 indicates no error)
+     * @param errorDepth Certificate depth in chain (0 = end entity cert)
+     * @param certDer    DER-encoded certificate at errorDepth, or null
+     *                   if not available from the store context
+     * @return 1 to accept the certificate, 0 to reject
+     */
+    default int verify(int preverify, int error, int errorDepth,
+        byte[] certDer) {
+        return verify(preverify, error, errorDepth);
+    }
 }
 
