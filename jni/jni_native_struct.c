@@ -44,6 +44,9 @@ JavaVM* g_vm = NULL;
 extern int wolfSSL_CertManager_init(void);
 extern void wolfSSL_CertManager_cleanup(void);
 
+/* Forward declaration for FIPS callback cleanup */
+extern void wolfCrypt_JNI_FipsCb_cleanup(JNIEnv* env);
+
 /* called when native library is loaded */
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
 {
@@ -64,8 +67,22 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
 /* called when native library is unloaded */
 JNIEXPORT void JNICALL JNI_OnUnload(JavaVM* vm, void* reserved)
 {
-    (void)vm;
+    JNIEnv* env = NULL;
+
     (void)reserved;
+
+    /* Get JNIEnv for cleanup of global refs. If GetEnv fails, env stays
+     * NULL and cleanup below still deregisters native FIPS callback but skip
+     * DeleteGlobalRef. */
+    if (vm != NULL) {
+        jint ret = (*vm)->GetEnv(vm, (void**)&env, JNI_VERSION_1_6);
+        if (ret != JNI_OK) {
+            env = NULL;
+        }
+    }
+
+    /* Deregister native FIPS callback and free global ref */
+    wolfCrypt_JNI_FipsCb_cleanup(env);
 
     /* Cleanup WolfSSLCertManager global mutex */
     wolfSSL_CertManager_cleanup();

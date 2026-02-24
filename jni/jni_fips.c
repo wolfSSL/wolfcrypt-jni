@@ -56,6 +56,22 @@ extern JavaVM* g_vm;
 static jobject g_errCb;
 #endif
 
+/* Deregister native FIPS callback and free global ref. Called from
+ * JNI_OnUnload in jni_native_struct.c. Logic here so we can access g_errCb. */
+void wolfCrypt_JNI_FipsCb_cleanup(JNIEnv* env)
+{
+#ifdef HAVE_FIPS
+    wolfCrypt_SetCb_fips(NULL);
+
+    if (env != NULL && g_errCb != NULL) {
+        (*env)->DeleteGlobalRef(env, g_errCb);
+        g_errCb = NULL;
+    }
+#else
+    (void)env;
+#endif
+}
+
 void NativeErrorCallback(const int ok, const int err, const char * const hash)
 {
 #ifdef HAVE_FIPS
@@ -63,6 +79,11 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
     jclass class;
     jmethodID method;
     jint ret;
+    jstring hashStr;
+
+    if (g_vm == NULL) {
+        return;
+    }
 
     ret = (int) ((*g_vm)->GetEnv(g_vm, (void**) &env, JNI_VERSION_1_6));
     if (ret == JNI_EDETACHED) {
@@ -81,16 +102,55 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
         return;
     }
 
-    if (JNIGlobalRefType != (*env)->GetObjectRefType(env, g_errCb))
-        throwWolfCryptException(env, "Invalid errorCallback reference");
-    else if (!(class = (*env)->GetObjectClass(env, g_errCb)))
-        throwWolfCryptException(env, "Failed to get callback class");
-    else if (!(method = (*env)->GetMethodID(env, class, "errorCallback",
-        "(IILjava/lang/String;)V")))
-        throwWolfCryptException(env, "Failed to get method ID");
-    else
-        (*env)->CallVoidMethod(env, g_errCb, method, ok, err,
-            (*env)->NewStringUTF(env, hash));
+    /* Return silently if stored callback ref is NULL or invalid */
+    if (g_errCb == NULL) {
+        return;
+    }
+
+    if (JNIGlobalRefType != (*env)->GetObjectRefType(env, g_errCb)) {
+        if ((*env)->ExceptionOccurred(env)) {
+            (*env)->ExceptionDescribe(env);
+            (*env)->ExceptionClear(env);
+        }
+        return;
+    }
+
+    class = (*env)->GetObjectClass(env, g_errCb);
+    if (!class) {
+        if ((*env)->ExceptionOccurred(env)) {
+            (*env)->ExceptionDescribe(env);
+            (*env)->ExceptionClear(env);
+        }
+        return;
+    }
+
+    method = (*env)->GetMethodID(env, class, "errorCallback",
+        "(IILjava/lang/String;)V");
+    if (!method) {
+        if ((*env)->ExceptionOccurred(env)) {
+            (*env)->ExceptionDescribe(env);
+            (*env)->ExceptionClear(env);
+        }
+        return;
+    }
+
+    hashStr = (*env)->NewStringUTF(env, hash);
+    if (!hashStr) {
+        if ((*env)->ExceptionOccurred(env)) {
+            (*env)->ExceptionDescribe(env);
+            (*env)->ExceptionClear(env);
+        }
+        return;
+    }
+
+    (*env)->CallVoidMethod(env, g_errCb, method, ok, err, hashStr);
+
+    (*env)->DeleteLocalRef(env, hashStr);
+
+    if ((*env)->ExceptionOccurred(env)) {
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+    }
 #endif
 }
 
@@ -98,10 +158,25 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1SetCb_1fips(
     JNIEnv* env, jclass class, jobject callback)
 {
 #ifdef HAVE_FIPS
-    if ((g_errCb = (*env)->NewGlobalRef(env, callback)))
-        wolfCrypt_SetCb_fips(NativeErrorCallback);
-    else
-        throwWolfCryptException(env, "Failed to store global error callback");
+    /* Unregister native callback */
+    wolfCrypt_SetCb_fips(NULL);
+
+    /* Free previous callback global ref if set */
+    if (g_errCb != NULL) {
+        (*env)->DeleteGlobalRef(env, g_errCb);
+        g_errCb = NULL;
+    }
+
+    if (callback != NULL) {
+        g_errCb = (*env)->NewGlobalRef(env, callback);
+        if (g_errCb != NULL) {
+            wolfCrypt_SetCb_fips(NativeErrorCallback);
+        }
+        else {
+            throwWolfCryptException(env,
+                "Failed to store global error callback");
+        }
+    }
 #endif
 }
 
