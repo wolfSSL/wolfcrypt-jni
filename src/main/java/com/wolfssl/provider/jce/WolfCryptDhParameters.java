@@ -83,31 +83,45 @@ public class WolfCryptDhParameters extends AlgorithmParametersSpi {
                     "Invalid DH parameters: expected SEQUENCE tag");
             }
 
-            /* Get sequence length */
+            /* Get sequence length, validate against input */
             seqLen = WolfCryptASN1Util.getDERLength(params, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(params, idx);
+            if (seqLen <= 0 || seqLen > (params.length - idx)) {
+                throw new IOException(
+                    "Invalid DH parameters: bad SEQUENCE length: " + seqLen);
+            }
+            int seqEnd = idx + seqLen;
 
             /* Decode prime (p) INTEGER */
-            if (params[idx++] != 0x02) {
+            if (idx >= seqEnd || params[idx++] != 0x02) {
                 throw new IOException(
                     "Invalid DH parameters: expected INTEGER tag for p");
             }
             pLen = WolfCryptASN1Util.getDERLength(params, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(params, idx);
+            if (pLen <= 0 || pLen > (seqEnd - idx)) {
+                throw new IOException(
+                    "Invalid DH parameters: bad length for p: " + pLen);
+            }
             pBytes = new byte[pLen];
             System.arraycopy(params, idx, pBytes, 0, pLen);
             idx += pLen;
             this.p = new BigInteger(1, pBytes);
 
             /* Decode generator (g) INTEGER */
-            if (params[idx++] != 0x02) {
+            if (idx >= seqEnd || params[idx++] != 0x02) {
                 throw new IOException(
                     "Invalid DH parameters: expected INTEGER tag for g");
             }
             gLen = WolfCryptASN1Util.getDERLength(params, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(params, idx);
+            if (gLen <= 0 || gLen > (seqEnd - idx)) {
+                throw new IOException(
+                    "Invalid DH parameters: bad length for g: " + gLen);
+            }
             gBytes = new byte[gLen];
             System.arraycopy(params, idx, gBytes, 0, gLen);
+            idx += gLen;
             this.g = new BigInteger(1, gBytes);
 
             /* Private value length not encoded in standard DH params */
