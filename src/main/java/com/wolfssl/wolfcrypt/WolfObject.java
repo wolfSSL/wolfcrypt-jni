@@ -100,8 +100,10 @@ public class WolfObject {
         /* Initialize native wolfCrypt library */
         init();
 
-        /* Run FIPS CAST if we are in FIPS mode. Will only forcefully
-         * be run once - Fips class keeps track of a successful run. */
+        /* Run FIPS CAST if we are in FIPS mode. Will only forcefully be run
+         * once. Fips class keeps track of a successful run. References Fips
+         * (a subclass) during WolfObject static init, but is safe because
+         * native libraries and init() have completed above. */
         if (Fips.enabled) {
             Fips.runAllCast_fips();
         }
