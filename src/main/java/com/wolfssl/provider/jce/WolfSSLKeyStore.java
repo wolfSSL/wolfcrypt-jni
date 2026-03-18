@@ -1913,7 +1913,8 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                 }
             }
 
-            /* Generate random PBKDF2 salt */
+            /* Generate random PBKDF2 salt. Lazily init shared SecureRandom to
+             * avoid extra native RNG structs. */
             synchronized (randLock) {
                 if (this.rand == null) {
                     this.rand = new SecureRandom();
@@ -1969,7 +1970,9 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             stream.write(bos.toByteArray());
 
         } finally {
-            dos.close();
+            if (dos != null) {
+                dos.close();
+            }
             if (encoded != null) {
                 Arrays.fill(encoded, (byte)0);
             }
@@ -1995,7 +1998,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      * calling enableCaching(false). If caching is disabled, no future
      * data will be stored until caching is re-enabled.
      */
-    private class BufferedPbkdf2HmacInputStream extends InputStream {
+    private static class BufferedPbkdf2HmacInputStream extends InputStream {
 
         /* InputStream from which data will be read */
         private InputStream is = null;
@@ -2460,10 +2463,12 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     "Invalid null arguments when creating WKSPrivateKey");
             }
 
-            /* Generate random salt and IV */
             this.kdfSalt = new byte[WKS_PBKDF2_SALT_SIZE];
             this.iv = new byte[WKS_ENC_IV_LENGTH];
 
+            /* Generate random salt and IV. Reuses caller SecureRandom when
+             * provided, only creates new one if null to minimize native RNG
+             * struct init. */
             synchronized (randLock) {
                 if (rng == null) {
                     rng = new SecureRandom();
@@ -2587,7 +2592,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                         "Invalid PBKDF2 salt size: " + tmp);
                 }
                 this.kdfSalt = new byte[tmp];
-                dis.read(this.kdfSalt);
+                dis.readFully(this.kdfSalt);
 
                 /* kdfIterations */
                 tmp = dis.readInt();
@@ -2604,7 +2609,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                         "Invalid IV size: " + tmp);
                 }
                 this.iv = new byte[tmp];
-                dis.read(this.iv);
+                dis.readFully(this.iv);
 
                 /* encrypted key */
                 tmp = dis.readInt();
@@ -2613,7 +2618,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                         "Bad encrypted key length, negative");
                 }
                 this.encryptedKey = new byte[tmp];
-                dis.read(this.encryptedKey);
+                dis.readFully(this.encryptedKey);
 
                 /* chain */
                 tmp = dis.readInt();
@@ -2629,8 +2634,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
                     /* type, get CertificateFactory */
                     tmpStr = dis.readUTF();
-                    if ((cf == null) ||
-                        ((cf != null) && !cf.getType().equals(tmpStr))) {
+                    if (cf == null || !cf.getType().equals(tmpStr)) {
                         cf = CertificateFactory.getInstance(tmpStr);
                     }
 
@@ -2643,7 +2647,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     tmpArr = new byte[tmp];
 
                     /* encoded cert */
-                    dis.read(tmpArr);
+                    dis.readFully(tmpArr);
                     certStream = new ByteArrayInputStream(tmpArr);
                     tmpCert = cf.generateCertificate(certStream);
                     certStream.close();
@@ -2660,7 +2664,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                         "expected (" + WKS_HMAC_KEY_LENGTH + ")");
                 }
                 this.hmacSha512 = new byte[tmp];
-                dis.read(this.hmacSha512);
+                dis.readFully(this.hmacSha512);
 
             } catch (Exception e) {
 
@@ -2959,7 +2963,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                 tmpArr = new byte[tmp];
 
                 /* encoded cert */
-                dis.read(tmpArr);
+                dis.readFully(tmpArr);
                 certStream = new ByteArrayInputStream(tmpArr);
                 this.cert = cf.generateCertificate(certStream);
                 certStream.close();
@@ -3087,10 +3091,12 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     "Invalid null arguments when creating WKSSecretKey");
             }
 
-            /* Generate random salt and IV */
             this.kdfSalt = new byte[WKS_PBKDF2_SALT_SIZE];
             this.iv = new byte[WKS_ENC_IV_LENGTH];
 
+            /* Generate random salt and IV. Reuses caller SecureRandom when
+             * provided, only creates new one if null to minimize native RNG
+             * struct init. */
             synchronized (randLock) {
                 if (rng == null) {
                     rng = new SecureRandom();
@@ -3203,7 +3209,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                         "Invalid PBKDF2 salt size: " + tmp);
                 }
                 this.kdfSalt = new byte[tmp];
-                dis.read(this.kdfSalt);
+                dis.readFully(this.kdfSalt);
 
                 /* kdfIterations */
                 tmp = dis.readInt();
@@ -3221,7 +3227,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                         "Invalid IV size: " + tmp);
                 }
                 this.iv = new byte[tmp];
-                dis.read(this.iv);
+                dis.readFully(this.iv);
 
                 /* encrypted key */
                 tmp = dis.readInt();
@@ -3230,7 +3236,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                         "Bad encrypted key length, negative");
                 }
                 this.encryptedKey = new byte[tmp];
-                dis.read(this.encryptedKey);
+                dis.readFully(this.encryptedKey);
 
                 /* HMAC-SHA512 */
                 tmp = dis.readInt();
@@ -3240,7 +3246,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                         "expected (" + WKS_HMAC_KEY_LENGTH + ")");
                 }
                 this.hmacSha512 = new byte[tmp];
-                dis.read(this.hmacSha512);
+                dis.readFully(this.hmacSha512);
 
             } catch (Exception e) {
 
