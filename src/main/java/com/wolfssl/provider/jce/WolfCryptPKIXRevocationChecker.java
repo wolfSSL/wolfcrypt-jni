@@ -72,7 +72,7 @@ public class WolfCryptPKIXRevocationChecker extends PKIXRevocationChecker {
     private WolfSSLCertManager certManager;
 
     /* State Tracking */
-    private boolean initialized;
+    private volatile boolean initialized;
 
     /* Full certificate chain for finding issuers */
     private List<X509Certificate> certChain;
