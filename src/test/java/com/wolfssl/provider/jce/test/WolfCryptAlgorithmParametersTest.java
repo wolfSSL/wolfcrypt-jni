@@ -1355,5 +1355,84 @@ public class WolfCryptAlgorithmParametersTest {
         assertEquals(mgf1WithNull.getDigestAlgorithm(),
             mgf1Absent.getDigestAlgorithm());
     }
+
+    @Test
+    public void testDHParametersDERTruncatedSequence()
+        throws Exception {
+
+        /* SEQUENCE tag with length larger than data */
+        byte[] bad = new byte[] { 0x30, 0x20 };
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("DH", "wolfJCE");
+        try {
+            params.init(bad);
+            fail("init with truncated SEQUENCE should throw IOException");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testDHParametersDERBadSequenceTag()
+        throws Exception {
+
+        /* Wrong tag (0x31 = SET instead of 0x30 = SEQUENCE) */
+        byte[] bad = new byte[] {
+            0x31, 0x06,
+            0x02, 0x01, 0x07,
+            0x02, 0x01, 0x02
+        };
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("DH", "wolfJCE");
+        try {
+            params.init(bad);
+            fail("init with bad SEQUENCE tag should throw IOException");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testDHParametersDERBadIntegerLength()
+        throws Exception {
+
+        /* SEQUENCE with p INTEGER length exceeding boundary */
+        byte[] bad = new byte[] {
+            0x30, 0x06,
+            0x02, 0x10, 0x07,
+            0x02, 0x01, 0x02
+        };
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("DH", "wolfJCE");
+        try {
+            params.init(bad);
+            fail("init with bad INTEGER length should throw IOException");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testDHParametersDERMissingGenerator()
+        throws Exception {
+
+        /* SEQUENCE with only one INTEGER (missing g) */
+        byte[] bad = new byte[] {
+            0x30, 0x03,
+            0x02, 0x01, 0x07
+        };
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("DH", "wolfJCE");
+        try {
+            params.init(bad);
+            fail("init missing generator INTEGER should throw IOException");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
 }
 
