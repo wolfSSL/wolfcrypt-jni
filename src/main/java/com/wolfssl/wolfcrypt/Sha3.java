@@ -50,10 +50,10 @@ public class Sha3 extends MessageDigest implements Cloneable {
     private byte[] initialData = null;
 
     /** Hash type of this current object */
-    private int hashType = 0;
+    private volatile int hashType = 0;
 
     /** Digest size of this current object */
-    private int digestSize = 0;
+    private volatile int digestSize = 0;
 
     /* Native JNI methods, internally reach back and grab/use pointer
      * from NativeStruct.java. We wrap calls to these below in order to
@@ -110,6 +110,9 @@ public class Sha3 extends MessageDigest implements Cloneable {
             case TYPE_SHA3_512:
                 this.digestSize = DIGEST_SIZE_512;
                 break;
+            default:
+                throw new WolfCryptException(
+                    "Unsupported SHA-3 type: " + hashType);
         }
     }
 
