@@ -1,0 +1,652 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    SpotBugs exclusion filter for wolfCrypt JNI/JCE
+
+    This file lists bugs that have been reviewed and determined to be
+    intentional design decisions or false positives.
+
+    Documentation:
+        https://spotbugs.readthedocs.io/en/stable/filter.html
+-->
+<FindBugsFilter>
+
+    <!--
+        DMI_RANDOM_USED_ONLY_ONCE: Intentional SecureRandom usage to
+        minimize native wc_Rng struct allocation. WolfCryptCipher
+        creates a fallback SecureRandom only when the caller does not
+        provide one. WolfSSLKeyStore and its inner classes lazily
+        initialize a shared SecureRandom, reusing it across calls.
+    -->
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptCipher"/>
+        <Method name="wolfCryptSetIV"/>
+        <Bug pattern="DMI_RANDOM_USED_ONLY_ONCE"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfSSLKeyStore"/>
+        <Method name="engineStore"/>
+        <Bug pattern="DMI_RANDOM_USED_ONLY_ONCE"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$WKSPrivateKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="DMI_RANDOM_USED_ONLY_ONCE"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$WKSSecretKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="DMI_RANDOM_USED_ONLY_ONCE"/>
+    </Match>
+
+    <!--
+        IC_SUPERCLASS_USES_SUBCLASS_DURING_INITIALIZATION:
+        WolfObject (superclass) references Fips (subclass) in its
+        static initializer to run FIPS CAST at library startup.
+        Safe because native libraries and init() complete before
+        Fips is accessed, and Fips only needs JNI for its own
+        static init (enabled(), getFipsVersion()).
+    -->
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.WolfObject"/>
+        <Method name="&lt;clinit&gt;"/>
+        <Bug pattern="IC_SUPERCLASS_USES_SUBCLASS_DURING_INITIALIZATION"/>
+    </Match>
+
+    <!--
+        CT_CONSTRUCTOR_THROW: Constructors that throw are
+        intentional across both packages:
+        1. Deprecated constructors that always throw to force
+           migration to new APIs
+        2. Feature-detect guards that throw WolfCryptException
+           when an algorithm is not compiled into native wolfCrypt
+        3. JCE key/service constructors that validate input and
+           throw IllegalArgumentException or KeyStoreException
+           per standard JCE contract
+    -->
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Aes"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.AesCcm"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.AesCmac"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.AesCtr"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.AesCts"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.AesEcb"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.AesGcm"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.AesGmac"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.AesOfb"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Chacha"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Curve25519"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Des3"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Dh"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Ecc"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Ed25519"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Hmac"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Md5"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Rsa"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Sha"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Sha224"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Sha256"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Sha3"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Sha384"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Sha512"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.WolfSSLCertManager"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.WolfSSLX509StoreCtx"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptDHPrivateKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptDHPublicKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptECPrivateKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptECPublicKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptMac"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptMessageDigestSha3"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptPBEKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfCryptPKIXCertPathBuilder\$NativeChainResult"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfCryptPKIXCertPathValidator\$DateOverrideVerifyCallback"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptRSAPrivateCrtKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptRSAPrivateKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptRSAPublicKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptSecretKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptSecretKeyFactory"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptKeyGenerator"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptSignature"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$BufferedPbkdf2HmacInputStream"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$WKSCertificate"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$WKSPrivateKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$WKSSecretKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+
+    <!--
+        NM_CLASS_NAMING_CONVENTION: wc-prefixed inner classes
+        registered by name in WolfCryptProvider for JCE
+        reflection. Renaming would break the public API.
+        Scoped to wc* inner class names only.
+    -->
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.\w+\$wc\w+"/>
+        <Bug pattern="NM_CLASS_NAMING_CONVENTION"/>
+    </Match>
+
+    <!--
+        NM_METHOD_NAMING_CONVENTION: Fips methods mirror native
+        wolfCrypt C API names (e.g. DhAgree = wc_DhAgree).
+        WolfCrypt utility methods are established public API.
+        Renaming would break existing users.
+    -->
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Fips"/>
+        <Method name="DhAgree"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Fips"/>
+        <Method name="DhGenerateKeyPair"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Fips"/>
+        <Method name="DhKeyDecode"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Fips"/>
+        <Method name="DhParamsLoad"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Fips"/>
+        <Method name="DhSetKey"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Fips"/>
+        <Method name="FreeDhKey"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Fips"/>
+        <Method name="InitDhKey"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Fips"/>
+        <Method name="InitMd5"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Fips"/>
+        <Method name="Md5Final"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Fips"/>
+        <Method name="Md5Update"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.WolfCrypt"/>
+        <Method name="Base16Enabled"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.WolfCrypt"/>
+        <Method name="ConstantCompare"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.WolfCrypt"/>
+        <Method name="CrlEnabled"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.WolfCrypt"/>
+        <Method name="IoTimeoutEnabled"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.WolfCrypt"/>
+        <Method name="OcspEnabled"/>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+    </Match>
+
+    <!--
+        FI_FINALIZER_NULLS_FIELDS: Intentional null-after-release
+        pattern in JNI finalizers to prevent double-free of native
+        wolfCrypt structs if finalize() is called more than once.
+        Scoped to the two classes with finalize() methods.
+    -->
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptCipher"/>
+        <Method name="finalize"/>
+        <Bug pattern="FI_FINALIZER_NULLS_FIELDS"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptSignature"/>
+        <Method name="finalize"/>
+        <Bug pattern="FI_FINALIZER_NULLS_FIELDS"/>
+    </Match>
+
+    <!--
+        CN_IDIOM_NO_SUPER_CALL: clone() uses new + native_copy
+        instead of super.clone() to allocate a fresh native
+        struct. super.clone() would share the native pointer,
+        causing double-free on finalize. Scoped to reviewed
+        classes only.
+    -->
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Md5"/>
+        <Method name="clone"/>
+        <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Sha"/>
+        <Method name="clone"/>
+        <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Sha224"/>
+        <Method name="clone"/>
+        <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Sha256"/>
+        <Method name="clone"/>
+        <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Sha3"/>
+        <Method name="clone"/>
+        <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Sha384"/>
+        <Method name="clone"/>
+        <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Sha512"/>
+        <Method name="clone"/>
+        <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptMessageDigestSha3"/>
+        <Method name="clone"/>
+        <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptPKIXRevocationChecker"/>
+        <Method name="clone"/>
+        <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
+    </Match>
+
+    <!--
+        IS2_INCONSISTENT_SYNC: False positives from mixed lock
+        strategies. Chacha/Hmac methods are synchronized on
+        'this' with internal stateLock/pointerLock for added
+        granularity. WolfSSLKeyStore inner class fields are
+        effectively immutable after construction/publication.
+        Scoped to reviewed fields only.
+    -->
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Chacha"/>
+        <Field name="state"/>
+        <Bug pattern="IS2_INCONSISTENT_SYNC"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Hmac"/>
+        <Or>
+            <Field name="key"/>
+            <Field name="state"/>
+            <Field name="type"/>
+        </Or>
+        <Bug pattern="IS2_INCONSISTENT_SYNC"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$KekCacheEntry"/>
+        <Or>
+            <Field name="derivedKey"/>
+            <Field name="expiryTime"/>
+            <Field name="passHash"/>
+        </Or>
+        <Bug pattern="IS2_INCONSISTENT_SYNC"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$WKSCertificate"/>
+        <Or>
+            <Field name="cert"/>
+            <Field name="creationDate"/>
+        </Or>
+        <Bug pattern="IS2_INCONSISTENT_SYNC"/>
+    </Match>
+
+    <!--
+        RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE: Defensive
+        null checks before Arrays.fill() in catch blocks
+        that wipe sensitive crypto material on error. Dead
+        code today but intentional safety net for key data.
+    -->
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfSSLKeyStore"/>
+        <Method name="decryptKey"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfSSLKeyStore"/>
+        <Method name="deriveKeyFromPassword"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$WKSPrivateKey"/>
+        <Method name="getDecryptedKey"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$WKSPrivateKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$WKSSecretKey"/>
+        <Method name="getDecryptedKey"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$WKSSecretKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$WKSCertificate"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE"/>
+    </Match>
+
+    <!--
+        EI_EXPOSE_REP/EI_EXPOSE_REP2: Internal APIs that
+        intentionally share state. PKIXRevocationChecker
+        getters/setters follow JCE API contract. Dh key
+        accessors are JNI-internal. Ecc.setRng() must share
+        the native RNG struct.
+    -->
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptPKIXRevocationChecker"/>
+        <Method name="getOcspResponderCert"/>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptPKIXRevocationChecker"/>
+        <Method name="getOcspResponses"/>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptPKIXRevocationChecker"/>
+        <Method name="setCertManager"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptPKIXRevocationChecker"/>
+        <Method name="setCertChain"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptPKIXRevocationChecker"/>
+        <Method name="setTrustAnchors"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptPKIXRevocationChecker"/>
+        <Method name="setOcspResponderCert"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Dh"/>
+        <Method name="getPublicKey"/>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Dh"/>
+        <Method name="getPrivateKey"/>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Ecc"/>
+        <Field name="rng"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.wolfcrypt.Rsa"/>
+        <Field name="rng"/>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!--
+        RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: Defensive
+        null check after switch that always assigns or throws.
+    -->
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptCipher"/>
+        <Method name="wolfCryptUpdate"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+    </Match>
+
+    <!--
+        EQ_CHECK_FOR_OPERAND_NOT_COMPATIBLE_WITH_THIS:
+        Intentional check to reject RSAPrivateCrtKey (a subtype
+        of RSAPrivateKey) since CRT and non-CRT keys with the
+        same modulus/exponent should not be considered equal.
+    -->
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptRSAPrivateKey"/>
+        <Method name="equals"/>
+        <Bug pattern="EQ_CHECK_FOR_OPERAND_NOT_COMPATIBLE_WITH_THIS"/>
+    </Match>
+
+    <!--
+        PA_PUBLIC_PRIMITIVE_ATTRIBUTE: WolfCryptDebug.DEBUG is
+        an intentional public API for toggling debug output.
+    -->
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptDebug"/>
+        <Field name="DEBUG"/>
+        <Bug pattern="PA_PUBLIC_PRIMITIVE_ATTRIBUTE"/>
+    </Match>
+
+    <!--
+        REC_CATCH_EXCEPTION: Broad catch in WKSPrivateKey(byte[])
+        ensures sensitive crypto material is wiped on any error.
+    -->
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfSSLKeyStore\$WKSPrivateKey"/>
+        <Method name="&lt;init&gt;" params="byte[]"/>
+        <Bug pattern="REC_CATCH_EXCEPTION"/>
+    </Match>
+
+    <!--
+        VA_FORMAT_STRING_USES_NEWLINE: Intentional \n for
+        consistent log formatting across platforms.
+    -->
+    <Match>
+        <Class name="~com\.wolfssl\.provider\.jce\.WolfCryptDebug\$WolfCryptFormatter"/>
+        <Method name="format"/>
+        <Bug pattern="VA_FORMAT_STRING_USES_NEWLINE"/>
+    </Match>
+
+</FindBugsFilter>
