@@ -59,59 +59,59 @@ public class WolfCrypt extends WolfObject {
      */
 
     /** wolfSSL hash type: None */
-    public static int WC_HASH_TYPE_NONE =
+    public static final int WC_HASH_TYPE_NONE =
         WolfCrypt.getWC_HASH_TYPE_NONE();
 
     /** wolfSSL hash type: MD2 */
-    public static int WC_HASH_TYPE_MD2 =
+    public static final int WC_HASH_TYPE_MD2 =
         WolfCrypt.getWC_HASH_TYPE_MD2();
 
     /** wolfSSL hash type: MD4 */
-    public static int WC_HASH_TYPE_MD4 =
+    public static final int WC_HASH_TYPE_MD4 =
         WolfCrypt.getWC_HASH_TYPE_MD4();
 
     /** wolfSSL hash type: MD5 */
-    public static int WC_HASH_TYPE_MD5 =
+    public static final int WC_HASH_TYPE_MD5 =
         WolfCrypt.getWC_HASH_TYPE_MD5();
 
     /** wolfSSL hash type: SHA-1 */
-    public static int WC_HASH_TYPE_SHA =
+    public static final int WC_HASH_TYPE_SHA =
         WolfCrypt.getWC_HASH_TYPE_SHA();
 
     /** wolfSSL hash type: SHA-224 */
-    public static int WC_HASH_TYPE_SHA224 =
+    public static final int WC_HASH_TYPE_SHA224 =
         WolfCrypt.getWC_HASH_TYPE_SHA224();
 
     /** wolfSSL hash type: SHA-256 */
-    public static int WC_HASH_TYPE_SHA256 =
+    public static final int WC_HASH_TYPE_SHA256 =
         WolfCrypt.getWC_HASH_TYPE_SHA256();
 
     /** wolfSSL hash type: SHA-384 */
-    public static int WC_HASH_TYPE_SHA384 =
+    public static final int WC_HASH_TYPE_SHA384 =
         WolfCrypt.getWC_HASH_TYPE_SHA384();
 
     /** wolfSSL hash type: SHA-512 */
-    public static int WC_HASH_TYPE_SHA512 =
+    public static final int WC_HASH_TYPE_SHA512 =
         WolfCrypt.getWC_HASH_TYPE_SHA512();
 
     /** wolfSSL hash type: MD5-SHA */
-    public static int WC_HASH_TYPE_MD5_SHA =
+    public static final int WC_HASH_TYPE_MD5_SHA =
         WolfCrypt.getWC_HASH_TYPE_MD5_SHA();
 
     /** wolfSSL hash type: SHA3-224 */
-    public static int WC_HASH_TYPE_SHA3_224 =
+    public static final int WC_HASH_TYPE_SHA3_224 =
         WolfCrypt.getWC_HASH_TYPE_SHA3_224();
 
     /** wolfSSL hash type: SHA3-256 */
-    public static int WC_HASH_TYPE_SHA3_256 =
+    public static final int WC_HASH_TYPE_SHA3_256 =
         WolfCrypt.getWC_HASH_TYPE_SHA3_256();
 
     /** wolfSSL hash type: SHA3-384 */
-    public static int WC_HASH_TYPE_SHA3_384 =
+    public static final int WC_HASH_TYPE_SHA3_384 =
         WolfCrypt.getWC_HASH_TYPE_SHA3_384();
 
     /** wolfSSL hash type: SHA3-512 */
-    public static int WC_HASH_TYPE_SHA3_512 =
+    public static final int WC_HASH_TYPE_SHA3_512 =
         WolfCrypt.getWC_HASH_TYPE_SHA3_512();
 
     /** Native JNI function bindings */
@@ -138,39 +138,39 @@ public class WolfCrypt extends WolfObject {
 
     /* Public mappings of some SSL/TLS level enums/defines */
     /** wolfSSL file type: PEM */
-    public static int SSL_FILETYPE_PEM  = 1;
+    public static final int SSL_FILETYPE_PEM  = 1;
     /** wolfSSL file type: ASN.1/DER */
-    public static int SSL_FILETYPE_ASN1 = 2;
+    public static final int SSL_FILETYPE_ASN1 = 2;
 
     /**
      * CRL option, will perform CRL checking on each certificate in the
      * chain. Checking only leaf certificate is the default behavior.
      */
-    public static int WOLFSSL_CRL_CHECKALL = 1;
+    public static final int WOLFSSL_CRL_CHECKALL = 1;
 
     /**
      * CRL option, will enable CRL checking on leaf certificate.
      */
-    public static int WOLFSSL_CRL_CHECK    = 2;
+    public static final int WOLFSSL_CRL_CHECK    = 2;
 
     /**
      * OCSP option, will use override URL for OCSP requests.
      * Must match native WOLFSSL_OCSP_URL_OVERRIDE value in ssl.h.
      */
-    public static int WOLFSSL_OCSP_URL_OVERRIDE = 1;
+    public static final int WOLFSSL_OCSP_URL_OVERRIDE = 1;
 
     /**
      * OCSP option, will not send nonce in OCSP requests.
      * Must match native WOLFSSL_OCSP_NO_NONCE value in ssl.h.
      */
-    public static int WOLFSSL_OCSP_NO_NONCE = 2;
+    public static final int WOLFSSL_OCSP_NO_NONCE = 2;
 
     /**
      * OCSP option, will perform OCSP checking on each certificate in the
      * chain. Checking only leaf certificate is the default behavior.
      * Must match native WOLFSSL_OCSP_CHECKALL value in ssl.h.
      */
-    public static int WOLFSSL_OCSP_CHECKALL = 4;
+    public static final int WOLFSSL_OCSP_CHECKALL = 4;
 
     /**
      * Tests if CRL (HAVE_CRL) has been enabled in native wolfCrypt.
