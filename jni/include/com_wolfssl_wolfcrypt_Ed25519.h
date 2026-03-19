@@ -9,6 +9,10 @@ extern "C" {
 #endif
 #undef com_wolfssl_wolfcrypt_Ed25519_NULL
 #define com_wolfssl_wolfcrypt_Ed25519_NULL 0LL
+#undef com_wolfssl_wolfcrypt_Ed25519_ED25519_KEY_SIZE
+#define com_wolfssl_wolfcrypt_Ed25519_ED25519_KEY_SIZE 32L
+#undef com_wolfssl_wolfcrypt_Ed25519_ED25519_SIG_SIZE
+#define com_wolfssl_wolfcrypt_Ed25519_ED25519_SIG_SIZE 64L
 /*
  * Class:     com_wolfssl_wolfcrypt_Ed25519
  * Method:    mallocNativeStruct

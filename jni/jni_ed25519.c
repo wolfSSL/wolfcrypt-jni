@@ -504,7 +504,6 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1sig
     }
 
     LogStr("wc_ed25519_sign_msg(ed25519=%p) = %d\n", ed25519, ret);
-    printf("wc_ed25519_sign_msg(ed25519=%p) = %d\n", ed25519, ret);
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 
     releaseByteArray(env, msg_in, msg, JNI_ABORT);
@@ -535,7 +534,7 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1verif
     sig = getByteArray(env, sig_in);
     msg = getByteArray(env, msg_in);
     msglen = getByteArrayLength(env, msg_in);
-    siglen = getByteArrayLength(env, msg_in);
+    siglen = getByteArrayLength(env, sig_in);
 
     if (!ed25519) {
         ret = BAD_FUNC_ARG;
