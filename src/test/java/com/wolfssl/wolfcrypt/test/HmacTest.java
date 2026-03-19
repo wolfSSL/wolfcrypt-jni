@@ -716,5 +716,53 @@ public class HmacTest {
             /* expected */
         }
     }
+
+    @Test
+    public void updateWithByteBuffer() {
+        byte[] key = Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+        byte[] data = "Hello World".getBytes();
+
+        /* Compute HMAC with byte array for reference */
+        Hmac hmac1 = new Hmac();
+        hmac1.setKey(Hmac.SHA256, key);
+        byte[] expected = hmac1.doFinal(data);
+
+        /* Compute same HMAC using ByteBuffer */
+        ByteBuffer buf = ByteBuffer.allocateDirect(data.length);
+        buf.put(data);
+        buf.flip();
+
+        Hmac hmac2 = new Hmac();
+        hmac2.setKey(Hmac.SHA256, key);
+        hmac2.update(buf);
+        byte[] result = hmac2.doFinal();
+
+        assertArrayEquals(expected, result);
+    }
+
+    @Test
+    public void updateWithByteBufferPartial() {
+        byte[] key = Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+        byte[] data = "Hello World".getBytes();
+
+        /* Compute HMAC of "World" via byte array */
+        Hmac hmac1 = new Hmac();
+        hmac1.setKey(Hmac.SHA256, key);
+        hmac1.update(data, 6, 5);
+        byte[] expected = hmac1.doFinal();
+
+        /* Compute same using ByteBuffer with position */
+        ByteBuffer buf = ByteBuffer.allocateDirect(data.length);
+        buf.put(data);
+        buf.flip();
+        buf.position(6);
+
+        Hmac hmac2 = new Hmac();
+        hmac2.setKey(Hmac.SHA256, key);
+        hmac2.update(buf);
+        byte[] result = hmac2.doFinal();
+
+        assertArrayEquals(expected, result);
+    }
 }
 
