@@ -280,6 +280,8 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3J_3B_3J(
     byte* e = NULL;
     jlong nSz;
     jlong eSz;
+    word32 nSz32;
+    word32 eSz32;
 
     key = (RsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -301,16 +303,21 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3J_3B_3J(
         return;
     }
 
+    nSz32 = (word32)nSz;
+    eSz32 = (word32)eSz;
+
     if (key == NULL || n == NULL || e == NULL) {
         ret = BAD_FUNC_ARG;
     }
     else {
-        ret = wc_RsaFlattenPublicKey(key, e, (word32*) &eSz, n, (word32*) &nSz);
+        ret = wc_RsaFlattenPublicKey(key, e, &eSz32, n, &nSz32);
     }
 
     if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
     } else {
+        nSz = (jlong)nSz32;
+        eSz = (jlong)eSz32;
 
         (*env)->SetLongArrayRegion(env, nSize, 0, 1, &nSz);
         if ((*env)->ExceptionOccurred(env)) {
@@ -328,10 +335,10 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3J_3B_3J(
     }
 
     LogStr("RsaFlattenPublicKey(key, e, eSz, n, nSz) = %d\n", ret);
-    LogStr("n[%u]: [%p]\n", (word32)nSz, n);
-    LogHex((byte*) n, 0, nSz);
-    LogStr("e[%u]: [%p]\n", (word32)eSz, e);
-    LogHex((byte*) e, 0, eSz);
+    LogStr("n[%u]: [%p]\n", nSz32, n);
+    LogHex((byte*) n, 0, nSz32);
+    LogStr("e[%u]: [%p]\n", eSz32, e);
+    LogHex((byte*) e, 0, eSz32);
 
     releaseByteArray(env, n_object, n, ret);
     releaseByteArray(env, e_object, e, ret);
