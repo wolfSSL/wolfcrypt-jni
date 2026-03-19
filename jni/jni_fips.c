@@ -588,6 +588,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmSetExtIV_1fips_
     iv = getByteArray(env, iv_buffer);
 
     if (aes == NULL || iv == NULL || size < 0) {
+        releaseByteArray(env, iv_buffer, iv, JNI_ABORT);
         return BAD_FUNC_ARG;
     }
 
