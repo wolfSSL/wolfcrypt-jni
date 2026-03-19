@@ -1181,6 +1181,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1id_1f
     }
 
     LogStr("wc_ecc_get_curve_id_from_params() = %d\n", ret);
+
+    releaseByteArray(env, prime_object, prime, JNI_ABORT);
+    releaseByteArray(env, af_object, Af, JNI_ABORT);
+    releaseByteArray(env, bf_object, Bf, JNI_ABORT);
+    releaseByteArray(env, order_object, order, JNI_ABORT);
+    releaseByteArray(env, gx_object, Gx, JNI_ABORT);
+    releaseByteArray(env, gy_object, Gy, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
