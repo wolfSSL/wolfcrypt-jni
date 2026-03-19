@@ -303,6 +303,11 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private(
         return NULL;
     }
 
+    if (ed25519 == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return NULL;
+    }
+
     outputSz = 2 * wc_ed25519_priv_size(ed25519); /* Export private + public */
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
@@ -312,9 +317,7 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private(
     }
     XMEMSET(output, 0, outputSz);
 
-    ret = (!ed25519)
-        ? BAD_FUNC_ARG
-        : wc_ed25519_export_private(ed25519, output, &outputSz);
+    ret = wc_ed25519_export_private(ed25519, output, &outputSz);
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
@@ -359,6 +362,11 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private_1only(
         return NULL;
     }
 
+    if (ed25519 == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return NULL;
+    }
+
     outputSz = wc_ed25519_size(ed25519);
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
@@ -368,9 +376,7 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private_1only(
     }
     XMEMSET(output, 0, outputSz);
 
-    ret = (!ed25519)
-        ? BAD_FUNC_ARG
-        : wc_ed25519_export_private_only(ed25519, output, &outputSz);
+    ret = wc_ed25519_export_private_only(ed25519, output, &outputSz);
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
@@ -415,6 +421,11 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1public(
         return NULL;
     }
 
+    if (ed25519 == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return NULL;
+    }
+
     outputSz = wc_ed25519_size(ed25519);
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
@@ -424,9 +435,7 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1public(
     }
     XMEMSET(output, 0, outputSz);
 
-    ret = (!ed25519)
-        ? BAD_FUNC_ARG
-        : wc_ed25519_export_public(ed25519, output, &outputSz);
+    ret = wc_ed25519_export_public(ed25519, output, &outputSz);
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
