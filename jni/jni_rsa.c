@@ -1816,6 +1816,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaExportCrtKey(
     byte* u = NULL;
     jlong nSz = 0, eSz = 0, dSz = 0, pSz = 0;
     jlong qSz = 0, dPSz = 0, dQSz = 0, uSz = 0;
+    word32 nSz32 = 0, eSz32 = 0, dSz32 = 0, pSz32 = 0, qSz32 = 0;
 
     key = (RsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1915,9 +1916,15 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaExportCrtKey(
     }
     else {
         /* Export e, n, d, p, q using wc_RsaExportKey() */
+        nSz32 = (word32)nSz;
+        eSz32 = (word32)eSz;
+        dSz32 = (word32)dSz;
+        pSz32 = (word32)pSz;
+        qSz32 = (word32)qSz;
+
         PRIVATE_KEY_UNLOCK();
-        ret = wc_RsaExportKey(key, e, (word32*)&eSz, n, (word32*)&nSz,
-            d, (word32*)&dSz, p, (word32*)&pSz, q, (word32*)&qSz);
+        ret = wc_RsaExportKey(key, e, &eSz32, n, &nSz32, d, &dSz32, p, &pSz32,
+            q, &qSz32);
 
         /* Export CRT parameters dP, dQ, u */
 #ifdef WOLFSSL_PUBLIC_MP
@@ -1969,6 +1976,13 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaExportCrtKey(
         throwWolfCryptExceptionFromError(env, ret);
     }
     else {
+        /* Assign word32 sizes back to jlong for Java */
+        nSz = (jlong)nSz32;
+        eSz = (jlong)eSz32;
+        dSz = (jlong)dSz32;
+        pSz = (jlong)pSz32;
+        qSz = (jlong)qSz32;
+
         /* Set updated size values. If any SetLongArrayRegion call fails,
          * continue to next call anyway since we need to release all arrays. */
         (*env)->SetLongArrayRegion(env, nSize, 0, 1, &nSz);
