@@ -799,6 +799,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecodePKC
         throwWolfCryptExceptionFromError(env, ret);
     }
 
+    releaseByteArray(env, key_object, k, JNI_ABORT);
+
     LogStr("wc_RsaPrivateKeyDecodePKCS8(k, kSize, key) = %d\n", ret);
     LogStr("key[%u]: [%p]\n", (word32)kSz, k);
     LogHex((byte*) k, 0, kSz);

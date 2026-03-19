@@ -296,6 +296,110 @@ public class RsaTest {
     }
 
     @Test
+    public void rsaPkcs8DecodeAndVerify() {
+        Rsa key = new Rsa();
+
+        byte[] prvKey = Util.h2b(
+                "308204a40201000282010100c303d12bfe39a432"
+              + "453b53c8842b2a7c749abdaa2a520747d6a636b2"
+              + "07328ed0ba697bc6c3449ed48148fd2d68a28b67"
+              + "bba175c8362c4ad21bf78bbacf0df9efecf1811e"
+              + "7b9b03479abf65cc7f652469a6e814895be434f7"
+              + "c5b01493f5677b3a7a78e101565691a613428dd2"
+              + "3c409c4cefd186df37511b0ca13bf5f1a34a35e4"
+              + "e1ce96df1b7ebf4e97d010e8a8083081af200b43"
+              + "14c57467b432826f8d86c28840993683ba1e4072"
+              + "2217d752652473b0ceef19cdaeff786c7bc01203"
+              + "d44e720d506d3ba33ba3995e9dc8d90c85b3d98a"
+              + "d95426db6dfaacbbff254cc4d179f471d3864018"
+              + "13b063b5724e30c49784862d562fd715f77fc0ae"
+              + "f5fc5be5fba1bad302030100010282010100a2e6"
+              + "d85f107164089e2e6dd16d1e85d20ab18c47ce2c"
+              + "516aa0129e53de914c1d6dea597bf277aad9c6d9"
+              + "8aabd8e116e46326ffb56c1359b8e3a5c872172e"
+              + "0c9f6fe5593f766f49b111c25a2e16290ddeb78e"
+              + "dc40d5a2eee01ea1f4be97db86639614cd980960"
+              + "2d30769c3ccde688ee4792790b5a00e25e5f117c"
+              + "7df908b72006892a5dfd00ab22e1f0b3bc24a95e"
+              + "260e1f002dfe219a535b6dd32bab9482684336d8"
+              + "f62fc622fcb5415d0d3360eaa47d7ee84b559156"
+              + "d35c578f1f94172faadee99ea8f4cf8a4c8ea0e4"
+              + "5673b2cf4f86c5693cf324208b5c960cfa6b123b"
+              + "9a67c1dfc696b2a5d5920d9b094268241045d450"
+              + "e4173948d0358b946d11de8fca5902818100ea24"
+              + "a7f96933e971dc527d8821282f49deba7216e9cc"
+              + "477a880d94578458163a81b03fa2cfa66c1eb006"
+              + "29008fe77776acdbcac7d95e9b3f269052aefc38"
+              + "900014bbb40f5894e72f6a7e1c4f4121d431591f"
+              + "4e8a1a8da7576c22d8e5f47e32a610cb64a55503"
+              + "87a627058cc3d7b627b24dba30da478f54d33d8b"
+              + "848d949858a502818100d5381bc38fc5930c470b"
+              + "6f3592c5b08d46c892188ff5800af7efa1fe80b9"
+              + "b52abaca18b05da507d0938dd89c041cd4628ea6"
+              + "268101ffce8a2a63343540aa6d80de89236a574d"
+              + "9e6ead934e56900b6d9d738b0cae273dde4ef0aa"
+              + "c56c78676c94529c37676c2defbbafdfa6903cc4"
+              + "47cf8d969e98a9b49fc5a650dcb3f0fb74170281"
+              + "805e830962bdba7ca2bf4274f57c1cd269c9040d"
+              + "857e3e3d2412c3187bf329f35f0e766c5975e441"
+              + "84699d32f3cd22abb035ba4ab23ce5d958b6624f"
+              + "5ddee59e0aca53b22cf79eb36b0a5b7965ec6e91"
+              + "4e9220f6fcfc16edd3760ce2ec7fb269136b780e"
+              + "5a4664b45eb725a05a753a4befc73c3ef7fd26b8"
+              + "20c4990a9a73bec31902818100ba449314ac3419"
+              + "3b5f9160acf7b4d681053651533de865dcaf2edc"
+              + "613ec97db87f87f03b9b03822937ce724e11d5b1"
+              + "c10c07a099914a8d7fec79cff139b5e985ec62f7"
+              + "da7dbc644d223c0ef2d651f587d899c011205d0f"
+              + "29fd5be2aed91cd921566dfc84d05fed10151c18"
+              + "21e7c43d4bd7d09e6a95cf22c9037b9ee36001fc"
+              + "2f02818011d04bcf1b67b99f1075478665ae31c2"
+              + "c630ac590650d90fb57006f7f0d3c8627ca8da6e"
+              + "f6213fd37f5fea8aab3fd92a5ef351d2c23037e3"
+              + "2da3750d1e4d2134d557705c89bf72ec4a6e68d5"
+              + "cd1874334e8c3a458fe69640eb63f919863a51dd"
+              + "894bb0f3f99f5d289538be35abca5ce7935334a1"
+              + "455d1339654246a19fcdf5bf");
+
+        /* FIPS after 2425 doesn't allow 1024-bit RSA */
+        if ((Fips.enabled && Fips.fipsVersion >= 5) ||
+            (Rsa.RSA_MIN_SIZE > 1024)) {
+            return;
+        }
+
+        /* Encode DER private key to PKCS8 */
+        key.decodePrivateKey(prvKey);
+        byte[] pkcs8 = key.privateKeyEncodePKCS8();
+        assertNotNull(pkcs8);
+        assertTrue(pkcs8.length > 0);
+        key.releaseNativeStruct();
+
+        /* Decode PKCS8 back into a new key */
+        Rsa pkcs8Key = new Rsa();
+        pkcs8Key.decodePrivateKeyPKCS8(pkcs8);
+        pkcs8Key.setRng(rng);
+
+        /* Extract public key for verification */
+        byte[] n_out = new byte[256];
+        byte[] e_out = new byte[3];
+        long[] n_len = { n_out.length };
+        long[] e_len = { e_out.length };
+        pkcs8Key.exportRawPublicKey(n_out, n_len, e_out, e_len);
+
+        Rsa pub = new Rsa();
+        pub.decodeRawPublicKey(Arrays.copyOf(n_out, (int)n_len[0]),
+            Arrays.copyOf(e_out, (int)e_len[0]));
+
+        /* Sign with PKCS8-decoded key, verify with public */
+        byte[] plaintext = "Hello PKCS8".getBytes();
+        byte[] signature = pkcs8Key.sign(plaintext, rng);
+        assertArrayEquals(plaintext, pub.verify(signature));
+
+        pkcs8Key.releaseNativeStruct();
+        pub.releaseNativeStruct();
+    }
+
+    @Test
     public void publicKeyDecodeAndEncodeWithByteBuffer() {
         Rsa key = new Rsa();
 
