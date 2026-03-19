@@ -753,11 +753,11 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecode(
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    releaseByteArray(env, key_object, k, JNI_ABORT);
-
     LogStr("wc_RsaPrivateKeyDecode(k, kSize, key) = %d\n", ret);
     LogStr("key[%u]: [%p]\n", (word32)kSz, k);
     LogHex((byte*) k, 0, kSz);
+
+    releaseByteArray(env, key_object, k, JNI_ABORT);
 
 #else
     throwNotCompiledInException(env);
@@ -802,11 +802,11 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecodePKC
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    releaseByteArray(env, key_object, k, JNI_ABORT);
-
     LogStr("wc_RsaPrivateKeyDecodePKCS8(k, kSize, key) = %d\n", ret);
     LogStr("key[%u]: [%p]\n", (word32)kSz, k);
     LogHex((byte*) k, 0, kSz);
+
+    releaseByteArray(env, key_object, k, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -844,6 +844,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecode
     LogStr("wc_RsaPublicKeyDecode(k, kSize, key) = %d\n", ret);
     LogStr("key[%u]: [%p]\n", (word32)kSz, k);
     LogHex((byte*) k, 0, kSz);
+
+    releaseByteArray(env, key_object, k, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
 #endif
