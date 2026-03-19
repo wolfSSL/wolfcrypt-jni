@@ -9,6 +9,8 @@ extern "C" {
 #endif
 #undef com_wolfssl_wolfcrypt_Curve25519_NULL
 #define com_wolfssl_wolfcrypt_Curve25519_NULL 0LL
+#undef com_wolfssl_wolfcrypt_Curve25519_CURVE25519_KEY_SIZE
+#define com_wolfssl_wolfcrypt_Curve25519_CURVE25519_KEY_SIZE 32L
 /*
  * Class:     com_wolfssl_wolfcrypt_Curve25519
  * Method:    mallocNativeStruct
