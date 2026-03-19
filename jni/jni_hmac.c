@@ -284,6 +284,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal
         /* getNativeStruct may throw exception, prevent throwing another */
         return NULL;
     }
+
+    if (!hmac) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return result;
+    }
+
     hmacSz = GetHashSizeByType(hmac->macType);
 
     if (hmacSz < 0) {
@@ -291,10 +297,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal
         return result;
     }
 
-    ret = (!hmac)
-        ? BAD_FUNC_ARG
-        : wc_HmacFinal(hmac, tmp);
-
+    ret = wc_HmacFinal(hmac, tmp);
     if (ret == 0) {
         result = (*env)->NewByteArray(env, hmacSz);
 
