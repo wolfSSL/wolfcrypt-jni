@@ -162,6 +162,7 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
     if (ret == 0) {
         output = (byte*)XMALLOC(inputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         if (output == NULL) {
+            releaseByteArray(env, input_obj, input, JNI_ABORT);
             throwOutOfMemoryException(env, "Failed to allocate key buffer");
             return result;
         }
@@ -188,6 +189,7 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
     }
 
     LogStr("wc_Chacha_Process(): output = %p, ret = %d\n", output, ret);
+    releaseByteArray(env, input_obj, input, JNI_ABORT);
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
     throwNotCompiledInException(env);
