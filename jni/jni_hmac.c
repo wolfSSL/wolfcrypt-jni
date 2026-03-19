@@ -305,7 +305,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal
     hmacSz = GetHashSizeByType(hmac->macType);
 
     if (hmacSz < 0) {
-        throwWolfCryptExceptionFromError(env, ret);
+        throwWolfCryptExceptionFromError(env, hmacSz);
         return result;
     }
 
