@@ -697,7 +697,11 @@ public class WolfCryptCipher extends CipherSpi {
 
     @Override
     protected byte[] engineGetIV() {
-        return this.iv;
+        if (this.iv != null) {
+            return this.iv.clone();
+        }
+
+        return null;
     }
 
     @Override
