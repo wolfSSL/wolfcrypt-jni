@@ -357,6 +357,50 @@ public class RsaTest {
     }
 
     @Test
+    public void exportRawPublicKeySizesCorrect() {
+        Rsa key = new Rsa();
+
+        byte[] n_in = Util
+                .h2b("aff5f9e2e2622320d44dbf54f2274a0f"
+                    + "96fa7d70a63ddaa563f4881143112bb3"
+                    + "c36fe65ba0c9ad99d6fb6e53cb08e393"
+                    + "8ee415b3a8cb7f9602f2154fab83dd16"
+                    + "0fa6f509ba2c41295af9eea8787d333e"
+                    + "961461447fc60b3c61616ef5b94e8221"
+                    + "14e6fad44d1f2c476bc23bc03609e2e7"
+                    + "0a483d826409fdb7c50a91269a773976"
+                    + "ef137e7fa477c3951e8fbcb48f2378aa"
+                    + "5e430e8c60b481beeb63df9abe10c7cc"
+                    + "f266e394fbd925e8725e4675fb6ad895"
+                    + "caed4b31d751c8712533e1c42ebefe91"
+                    + "66e1aa20631521858c7548c61626ede1"
+                    + "05f2812632bac96eb769c9be560beef4"
+                    + "200b86409727a5a61d1cc5831785ba4d"
+                    + "42f02dd298a56bbbd6c479ce724d5bb5");
+        byte[] e_in = Util.h2b("d0ee61");
+
+        /*
+         * Use oversized output buffers and initial sizes to verify returned
+         * sizes are correct after call.
+         */
+        byte[] n_out = new byte[512];
+        byte[] e_out = new byte[512];
+        long[] n_len = new long[1];
+        long[] e_len = new long[1];
+        n_len[0] = n_out.length;
+        e_len[0] = e_out.length;
+
+        key.decodeRawPublicKey(n_in, e_in);
+        key.exportRawPublicKey(n_out, n_len, e_out, e_len);
+
+        assertEquals(n_in.length, n_len[0]);
+        assertEquals(e_in.length, e_len[0]);
+
+        assertArrayEquals(n_in, Arrays.copyOf(n_out, (int)n_len[0]));
+        assertArrayEquals(e_in, Arrays.copyOf(e_out, (int)e_len[0]));
+    }
+
+    @Test
     public void rsaOperations() {
         Rsa priv = new Rsa();
         byte[] n_out = new byte[256];
