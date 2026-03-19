@@ -364,6 +364,7 @@ public class RsaTest {
         /* FIPS after 2425 doesn't allow 1024-bit RSA */
         if ((Fips.enabled && Fips.fipsVersion >= 5) ||
             (Rsa.RSA_MIN_SIZE > 1024)) {
+            key.releaseNativeStruct();
             return;
         }
 
@@ -502,6 +503,8 @@ public class RsaTest {
 
         assertArrayEquals(n_in, Arrays.copyOf(n_out, (int)n_len[0]));
         assertArrayEquals(e_in, Arrays.copyOf(e_out, (int)e_len[0]));
+
+        key.releaseNativeStruct();
     }
 
     @Test
@@ -625,6 +628,8 @@ public class RsaTest {
         assertTrue(dPSz[0] >= 127 && dPSz[0] <= 129);
         assertTrue(dQSz[0] >= 127 && dQSz[0] <= 129);
         assertTrue(uSz[0] >= 127 && uSz[0] <= 129);
+
+        key.releaseNativeStruct();
     }
 
     @Test
