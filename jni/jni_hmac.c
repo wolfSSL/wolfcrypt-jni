@@ -250,6 +250,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio
     int ret = 0;
     Hmac* hmac = NULL;
     byte* data = NULL;
+    jlong dataSz = 0;
 
     hmac = (Hmac*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -258,10 +259,15 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio
     }
 
     data = getDirectBufferAddress(env, data_object);
+    dataSz = (*env)->GetDirectBufferCapacity(env, data_object);
 
-    ret = (!hmac || !data)
-        ? BAD_FUNC_ARG
-        : wc_HmacUpdate(hmac, data + offset, length);
+    if (!hmac || !data || offset < 0 || length < 0 ||
+        ((jlong)offset + (jlong)length) > dataSz) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_HmacUpdate(hmac, data + offset, length);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
