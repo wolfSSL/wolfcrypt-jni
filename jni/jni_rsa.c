@@ -895,6 +895,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt(
     byte* plaintext = NULL;
     byte* output = NULL;
     word32 size = 0, outputSz = 0;
+    int encSz = 0;
 
     key = (RsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -916,9 +917,11 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt(
     }
 
     if (ret == 0) {
-        outputSz = wc_RsaEncryptSize(key);
-        if (outputSz < 0) {
-            ret = outputSz;
+        encSz = wc_RsaEncryptSize(key);
+        if (encSz < 0) {
+            ret = encSz;
+        } else {
+            outputSz = (word32)encSz;
         }
     }
 
@@ -979,6 +982,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
     byte* ciphertext = NULL;
     byte* output = NULL;
     word32 size = 0, outputSz = 0;
+    int encSz = 0;
 
     key = (RsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -994,9 +998,11 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
     }
 
     if (ret == 0) {
-        outputSz = wc_RsaEncryptSize(key);
-        if (outputSz < 0) {
-            ret = outputSz;
+        encSz = wc_RsaEncryptSize(key);
+        if (encSz < 0) {
+            ret = encSz;
+        } else {
+            outputSz = (word32)encSz;
         }
     }
 
@@ -1059,6 +1065,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt_1ex(
     byte* plaintext = NULL;
     byte* output = NULL;
     word32 size = 0, outputSz = 0;
+    int encSz = 0;
 
     key = (RsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1085,9 +1092,11 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt_1ex(
     }
 
     if (ret == 0) {
-        outputSz = wc_RsaEncryptSize(key);
-        if (outputSz < 0) {
-            ret = outputSz;
+        encSz = wc_RsaEncryptSize(key);
+        if (encSz < 0) {
+            ret = encSz;
+        } else {
+            outputSz = (word32)encSz;
         }
     }
 
@@ -1152,6 +1161,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt_1ex(
     byte* ciphertext = NULL;
     byte* output = NULL;
     word32 size = 0, outputSz = 0;
+    int encSz = 0;
 
     key = (RsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1172,9 +1182,11 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt_1ex(
     }
 
     if (ret == 0) {
-        outputSz = wc_RsaEncryptSize(key);
-        if (outputSz < 0) {
-            ret = outputSz;
+        encSz = wc_RsaEncryptSize(key);
+        if (encSz < 0) {
+            ret = encSz;
+        } else {
+            outputSz = (word32)encSz;
         }
     }
 
@@ -1236,6 +1248,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Sign(
     byte* data   = NULL;
     byte* output = NULL;
     word32 size = 0, outputSz = 0;
+    int encSz = 0;
 
     key = (RsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1257,9 +1270,11 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Sign(
     }
 
     if (ret == 0) {
-        outputSz = wc_RsaEncryptSize(key);
-        if (outputSz < 0) {
-            ret = outputSz;
+        encSz = wc_RsaEncryptSize(key);
+        if (encSz < 0) {
+            ret = encSz;
+        } else {
+            outputSz = (word32)encSz;
         }
     }
 
@@ -1320,6 +1335,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify(
     byte* signature = NULL;
     byte* output    = NULL;
     word32 size = 0, outputSz = 0;
+    int encSz = 0;
 
     key = (RsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1335,9 +1351,11 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify(
     }
 
     if (ret == 0) {
-        outputSz = wc_RsaEncryptSize(key);
-        if (outputSz < 0) {
-            ret = outputSz;
+        encSz = wc_RsaEncryptSize(key);
+        if (encSz < 0) {
+            ret = encSz;
+        } else {
+            outputSz = (word32)encSz;
         }
     }
 
@@ -1499,6 +1517,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify(
     word32  signatureSz = 0;
     word32  dataSz = 0;
     word32  outputSz = 0;
+    int encSz = 0;
     jboolean result = JNI_FALSE;
 
     /* get RsaKey pointer from Java object */
@@ -1521,9 +1540,11 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify(
 
     /* get output buffer size */
     if (ret == 0) {
-        outputSz = wc_RsaEncryptSize(key);
-        if (outputSz <= 0) {
-            ret = outputSz;
+        encSz = wc_RsaEncryptSize(key);
+        if (encSz <= 0) {
+            ret = encSz;
+        } else {
+            outputSz = (word32)encSz;
         }
     }
 
@@ -1666,11 +1687,14 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyCheck(
     /* get output buffer for decrypted signature */
     byte* output = NULL;
     word32 outputSz = 0;
+    int encSz = 0;
 
     if (ret == 0) {
-        outputSz = wc_RsaEncryptSize(key);
-        if (outputSz <= 0) {
-            ret = outputSz;
+        encSz = wc_RsaEncryptSize(key);
+        if (encSz <= 0) {
+            ret = encSz;
+        } else {
+            outputSz = (word32)encSz;
         }
     }
 
