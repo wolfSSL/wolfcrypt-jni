@@ -211,6 +211,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII
     int ret = 0;
     Hmac* hmac = NULL;
     byte* data = NULL;
+    word32 dataSz = 0;
 
     hmac = (Hmac*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -218,11 +219,16 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII
         return;
     }
 
-    data = getByteArray(env, data_object);
+    data   = getByteArray(env, data_object);
+    dataSz = getByteArrayLength(env, data_object);
 
-    ret = (!hmac || !data)
-        ? BAD_FUNC_ARG
-        : wc_HmacUpdate(hmac, data + offset, length);
+    if (!hmac || !data || offset < 0 || length < 0 ||
+        ((word32)offset + (word32)length) > dataSz) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_HmacUpdate(hmac, data + offset, length);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
