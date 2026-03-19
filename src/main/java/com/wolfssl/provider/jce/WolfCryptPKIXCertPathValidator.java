@@ -1185,9 +1185,11 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 certs.get(certs.size() - 1));
 
             /* Check trust anchor public key constraints */
-            if (trustAnchor != null) {
-                checkTrustAnchorConstraints(trustAnchor);
+            if (trustAnchor == null) {
+                throw new CertPathValidatorException(
+                    "Unable to find matching trust anchor");
             }
+            checkTrustAnchorConstraints(trustAnchor);
 
         } finally {
             /* Free native WolfSSLCertManager resources */

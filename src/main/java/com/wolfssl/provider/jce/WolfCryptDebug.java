@@ -190,12 +190,12 @@ class WolfCryptDebug {
 
         Level level = tag.equals(ERROR) ? Level.SEVERE : Level.INFO;
 
-        String className = cl.getSimpleName();
+        String msg = messageSupplier.get();
         if (nativePtr != 0) {
-            className = className + ": " + nativePtr;
+            msg = msg + " [nativePtr=" + nativePtr + "]";
         }
 
-        LogRecord record = new LogRecord(level, messageSupplier.get());
+        LogRecord record = new LogRecord(level, msg);
         record.setSourceClassName(cl.getName());
         jceLogger.log(record);
     }

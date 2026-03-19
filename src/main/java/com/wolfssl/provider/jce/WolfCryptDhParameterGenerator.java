@@ -51,8 +51,6 @@ public class WolfCryptDhParameterGenerator
     /* Exponent size in bits, 0 means not specified */
     private int exponentSize = 0;
 
-    /* SecureRandom for parameter generation */
-    private SecureRandom random = null;
 
     /**
      * Create new WolfCryptDhParameterGenerator object
@@ -60,12 +58,33 @@ public class WolfCryptDhParameterGenerator
     public WolfCryptDhParameterGenerator() {
     }
 
+    /**
+     * Initialize with desired prime size.
+     *
+     * The SecureRandom parameter is intentionally ignored;
+     * wolfCrypt uses its own internal RNG for DH parameter
+     * generation to ensure FIPS-compliant randomness.
+     *
+     * @param size desired prime size in bits
+     * @param random caller-supplied randomness (ignored)
+     */
     @Override
     protected void engineInit(int size, SecureRandom random) {
         this.size = size;
-        this.random = random;
     }
 
+    /**
+     * Initialize from a DHGenParameterSpec.
+     *
+     * The SecureRandom parameter is intentionally ignored;
+     * wolfCrypt uses its own internal RNG for DH parameter
+     * generation to ensure FIPS-compliant randomness.
+     *
+     * @param genParamSpec DH generation parameters
+     * @param random caller-supplied randomness (ignored)
+     * @throws InvalidAlgorithmParameterException if
+     *         genParamSpec is null or not a DHGenParameterSpec
+     */
     @Override
     protected void engineInit(AlgorithmParameterSpec genParamSpec,
         SecureRandom random) throws InvalidAlgorithmParameterException {
@@ -84,7 +103,6 @@ public class WolfCryptDhParameterGenerator
         DHGenParameterSpec dhGenSpec = (DHGenParameterSpec)genParamSpec;
         this.size = dhGenSpec.getPrimeSize();
         this.exponentSize = dhGenSpec.getExponentSize();
-        this.random = random;
     }
 
     @Override

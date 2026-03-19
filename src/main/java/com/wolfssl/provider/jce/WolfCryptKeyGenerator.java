@@ -114,6 +114,9 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
                 this.algString = "HmacSHA3-512";
                 this.keySizeBits = (Sha3.DIGEST_SIZE_512 * 8);
                 break;
+            default:
+                throw new IllegalArgumentException(
+                    "Unsupported AlgoType: " + type);
         }
 
         log("created KeyGenerator(" + this.algString + ")");

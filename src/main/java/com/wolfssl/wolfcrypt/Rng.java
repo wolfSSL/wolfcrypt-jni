@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 public class Rng extends NativeStruct {
 
     /** Maximum generate block length for wolfCrypt */
-    public static int RNG_MAX_BLOCK_LEN =
+    public static final int RNG_MAX_BLOCK_LEN =
         Rng.getRNG_MAX_BLOCK_LEN();
 
     /**

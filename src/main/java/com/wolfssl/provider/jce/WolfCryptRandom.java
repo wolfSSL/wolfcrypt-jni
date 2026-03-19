@@ -158,7 +158,7 @@ public final class WolfCryptRandom extends SecureRandomSpi {
      * @throws IOException on error reading from ObjectInputStream
      * @throws ClassNotFoundException if object class not found
      */
-    private synchronized void readObject(ObjectInputStream in)
+    private void readObject(ObjectInputStream in)
         throws IOException, ClassNotFoundException {
 
         in.defaultReadObject();
