@@ -813,7 +813,7 @@ public class WolfSSLCertManager {
 
     @SuppressWarnings("deprecation")
     @Override
-    public void finalize() throws Throwable
+    protected void finalize() throws Throwable
     {
         try {
             /* checks active state in this.free() */

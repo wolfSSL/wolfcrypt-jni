@@ -405,9 +405,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                         "Invalid parameters, either p or g is null");
                 }
 
-                if (this.dhP != null) {
-                    log("init with spec, prime len: " + this.dhP.length);
-                }
+                log("init with spec, prime len: " + this.dhP.length);
 
                 break;
 

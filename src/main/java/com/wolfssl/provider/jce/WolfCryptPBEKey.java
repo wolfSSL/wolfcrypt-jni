@@ -21,6 +21,8 @@
 
 package com.wolfssl.provider.jce;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.Arrays;
 import java.security.spec.InvalidKeySpecException;
 import javax.crypto.interfaces.PBEKey;
@@ -51,7 +53,7 @@ public class WolfCryptPBEKey implements PBEKey {
     private boolean destroyed = false;
 
     /** Lock around use of destroyed boolean */
-    private transient final Object destroyedLock = new Object();
+    private transient Object destroyedLock = new Object();
 
     /**
      * Create new WolfCryptPBEKey object.
@@ -283,6 +285,21 @@ public class WolfCryptPBEKey implements PBEKey {
 
             return true;
         }
+    }
+
+    /**
+     * Restore transient fields on deserialization.
+     *
+     * @param in ObjectInputStream to read from
+     *
+     * @throws IOException on error reading stream
+     * @throws ClassNotFoundException if class not found
+     */
+    private void readObject(ObjectInputStream in)
+        throws IOException, ClassNotFoundException {
+
+        in.defaultReadObject();
+        this.destroyedLock = new Object();
     }
 }
 
