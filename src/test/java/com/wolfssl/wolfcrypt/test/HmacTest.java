@@ -648,4 +648,121 @@ public class HmacTest {
             );
         }
     }
+
+    @Test
+    public void updateWithOffsetAndLength() {
+        byte[] key = Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+        byte[] data = "Hello World".getBytes();
+
+        /* Compute HMAC of full data for reference */
+        Hmac hmac1 = new Hmac();
+        hmac1.setKey(Hmac.SHA256, key);
+        byte[] expected = hmac1.doFinal(data);
+
+        /* Compute same HMAC using offset/length updates */
+        Hmac hmac2 = new Hmac();
+        hmac2.setKey(Hmac.SHA256, key);
+        hmac2.update(data, 0, 5);
+        hmac2.update(data, 5, 6);
+        byte[] result = hmac2.doFinal();
+
+        assertArrayEquals(expected, result);
+    }
+
+    @Test
+    public void updateWithNegativeOffsetShouldFail() {
+        byte[] key = Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+        byte[] data = "Hello".getBytes();
+
+        Hmac hmac = new Hmac();
+        hmac.setKey(Hmac.SHA256, key);
+
+        try {
+            hmac.update(data, -1, 3);
+            fail("update with negative offset should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void updateWithNegativeLengthShouldFail() {
+        byte[] key = Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+        byte[] data = "Hello".getBytes();
+
+        Hmac hmac = new Hmac();
+        hmac.setKey(Hmac.SHA256, key);
+
+        try {
+            hmac.update(data, 0, -1);
+            fail("update with negative length should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void updateWithOffsetLengthExceedingArrayShouldFail() {
+        byte[] key = Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+        byte[] data = "Hello".getBytes();
+
+        Hmac hmac = new Hmac();
+        hmac.setKey(Hmac.SHA256, key);
+
+        try {
+            hmac.update(data, 3, 5);
+            fail("update with offset+length > array size should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void updateWithByteBuffer() {
+        byte[] key = Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+        byte[] data = "Hello World".getBytes();
+
+        /* Compute HMAC with byte array for reference */
+        Hmac hmac1 = new Hmac();
+        hmac1.setKey(Hmac.SHA256, key);
+        byte[] expected = hmac1.doFinal(data);
+
+        /* Compute same HMAC using ByteBuffer */
+        ByteBuffer buf = ByteBuffer.allocateDirect(data.length);
+        buf.put(data);
+        buf.flip();
+
+        Hmac hmac2 = new Hmac();
+        hmac2.setKey(Hmac.SHA256, key);
+        hmac2.update(buf);
+        byte[] result = hmac2.doFinal();
+
+        assertArrayEquals(expected, result);
+    }
+
+    @Test
+    public void updateWithByteBufferPartial() {
+        byte[] key = Util.h2b("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+        byte[] data = "Hello World".getBytes();
+
+        /* Compute HMAC of "World" via byte array */
+        Hmac hmac1 = new Hmac();
+        hmac1.setKey(Hmac.SHA256, key);
+        hmac1.update(data, 6, 5);
+        byte[] expected = hmac1.doFinal();
+
+        /* Compute same using ByteBuffer with position */
+        ByteBuffer buf = ByteBuffer.allocateDirect(data.length);
+        buf.put(data);
+        buf.flip();
+        buf.position(6);
+
+        Hmac hmac2 = new Hmac();
+        hmac2.setKey(Hmac.SHA256, key);
+        hmac2.update(buf);
+        byte[] result = hmac2.doFinal();
+
+        assertArrayEquals(expected, result);
+    }
 }
+

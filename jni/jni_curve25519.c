@@ -278,6 +278,11 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1private(
         return NULL;
     }
 
+    if (curve25519 == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return NULL;
+    }
+
     outputSz = wc_curve25519_size(curve25519);
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
@@ -287,9 +292,7 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1private(
     }
     XMEMSET(output, 0, outputSz);
 
-    ret = (!curve25519)
-        ? BAD_FUNC_ARG
-        : wc_curve25519_export_private_raw(curve25519, output, &outputSz);
+    ret = wc_curve25519_export_private_raw(curve25519, output, &outputSz);
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
@@ -334,6 +337,11 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1public (
         return NULL;
     }
 
+    if (curve25519 == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return NULL;
+    }
+
     outputSz = wc_curve25519_size(curve25519);
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
@@ -343,9 +351,7 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1public (
     }
     XMEMSET(output, 0, outputSz);
 
-    ret = (!curve25519)
-        ? BAD_FUNC_ARG
-        : wc_curve25519_export_public(curve25519, output, &outputSz);
+    ret = wc_curve25519_export_public(curve25519, output, &outputSz);
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
@@ -397,18 +403,21 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1make_1shared_1secret(
         return NULL;
     }
 
+    if (curve25519 == NULL || pub == NULL) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return NULL;
+    }
+
     outputSz = wc_curve25519_size(curve25519);
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
         throwOutOfMemoryException(env,
-                                     "Failed to allocate shared secret buffer");
+            "Failed to allocate shared secret buffer");
         return result;
     }
     XMEMSET(output, 0, outputSz);
 
-    ret = (!curve25519 || !pub)
-        ? BAD_FUNC_ARG
-        : wc_curve25519_shared_secret(curve25519, pub, output, &outputSz);
+    ret = wc_curve25519_shared_secret(curve25519, pub, output, &outputSz);
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);

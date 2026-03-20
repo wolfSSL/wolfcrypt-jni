@@ -59,8 +59,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
     }
     XMEMSET(outKey, 0, kLen);
 
-    pass = (byte*)(*env)->GetByteArrayElements(env, passBuf, NULL);
-    salt = (byte*)(*env)->GetByteArrayElements(env, saltBuf, NULL);
+    if (passBuf != NULL) {
+        pass = (byte*)(*env)->GetByteArrayElements(env, passBuf, NULL);
+    }
+    if (saltBuf != NULL) {
+        salt = (byte*)(*env)->GetByteArrayElements(env, saltBuf, NULL);
+    }
 
     ret = wc_PKCS12_PBKDF(outKey, pass, passBufLen, salt, sBufLen,
                           iterations, kLen, typeH, id);
@@ -80,8 +84,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
         XFREE(outKey, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
-    (*env)->ReleaseByteArrayElements(env, passBuf, (jbyte*)pass, JNI_ABORT);
-    (*env)->ReleaseByteArrayElements(env, saltBuf, (jbyte*)salt, JNI_ABORT);
+    if (pass != NULL) {
+        (*env)->ReleaseByteArrayElements(env, passBuf, (jbyte*)pass, JNI_ABORT);
+    }
+    if (salt != NULL) {
+        (*env)->ReleaseByteArrayElements(env, saltBuf, (jbyte*)salt, JNI_ABORT);
+    }
 
     if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
@@ -133,7 +141,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
         pass = (byte*)(*env)->GetByteArrayElements(env, passBuf, NULL);
     }
 
-    salt = (byte*)(*env)->GetByteArrayElements(env, saltBuf, NULL);
+    if (saltBuf != NULL) {
+        salt = (byte*)(*env)->GetByteArrayElements(env, saltBuf, NULL);
+    }
 
     ret = wc_PBKDF2(outKey, pass, passBufLen, salt, sBufLen,
                     iterations, kLen, hashType);
@@ -156,8 +166,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
     if (pass != NULL) {
         (*env)->ReleaseByteArrayElements(env, passBuf, (jbyte*)pass, JNI_ABORT);
     }
-
-    (*env)->ReleaseByteArrayElements(env, saltBuf, (jbyte*)salt, JNI_ABORT);
+    if (salt != NULL) {
+        (*env)->ReleaseByteArrayElements(env, saltBuf, (jbyte*)salt, JNI_ABORT);
+    }
 
     if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
