@@ -32,6 +32,11 @@ public class Curve25519 extends NativeStruct {
     protected final Object stateLock = new Object();
 
     /**
+     * Curve25519 key size, from native CURVE25519_KEYSIZE.
+     */
+    public static final int CURVE25519_KEY_SIZE = 32;
+
+    /**
      * Create new Curve25519 object.
      *
      * @throws WolfCryptException if Curve25519 has not been compiled into

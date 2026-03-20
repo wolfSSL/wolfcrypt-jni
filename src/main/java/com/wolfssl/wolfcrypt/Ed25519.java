@@ -32,6 +32,16 @@ public class Ed25519 extends NativeStruct {
     protected final Object stateLock = new Object();
 
     /**
+     * Ed25519 private key size, from native ED25519_KEY_SIZE.
+     */
+    public static final int ED25519_KEY_SIZE = 32;
+
+    /**
+     * Ed25519 signature size, from native ED25519_SIG_SIZE.
+     */
+    public static final int ED25519_SIG_SIZE = 64;
+
+    /**
      * Create new Ed25519 object.
      *
      * @throws WolfCryptException if Ed25519 has not been compiled into native
