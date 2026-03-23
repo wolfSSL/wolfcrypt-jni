@@ -1625,56 +1625,6 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify(
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyInline(
-    JNIEnv* env, jobject this, jbyteArray signatureAndData_object,
-    jlong hashType, jint mgf, jint saltLen)
-{
-#if !defined(NO_RSA) && defined(WC_RSA_PSS)
-    int ret = 0;
-    RsaKey* key = NULL;
-    byte*   signatureAndData = NULL;
-    byte*   output = NULL;
-    word32  signatureAndDataSz = 0;
-    jboolean result = JNI_FALSE;
-
-    /* get RsaKey pointer from Java object */
-    key = (RsaKey*) getNativeStruct(env, this);
-    if ((*env)->ExceptionOccurred(env)) {
-        return JNI_FALSE;
-    }
-
-    /* get signature and data */
-    signatureAndData = getByteArray(env, signatureAndData_object);
-    signatureAndDataSz = getByteArrayLength(env, signatureAndData_object);
-
-    /* validate parameters */
-    if (key == NULL || signatureAndData == NULL || signatureAndDataSz == 0) {
-        ret = BAD_FUNC_ARG;
-    }
-
-    if (ret == 0) {
-        ret = wc_RsaPSS_VerifyInline_ex(signatureAndData, signatureAndDataSz,
-            &output, (enum wc_HashType)hashType, mgf, saltLen, key);
-    }
-    if (ret > 0) {
-        result = JNI_TRUE;
-    }
-
-    LogStr("wc_RsaPSS_VerifyInline_ex(sig, sigSz, out, hash, mgf, "
-           "saltLen, key) = %d\n", ret);
-
-    if (signatureAndData != NULL) {
-        releaseByteArray(env, signatureAndData_object, signatureAndData,
-                         JNI_ABORT);
-    }
-#else
-    throwNotCompiledInException(env);
-#endif
-
-    return result;
-}
-
-JNIEXPORT jboolean JNICALL
 Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyCheck(
     JNIEnv* env, jobject this, jbyteArray signature_object,
     jbyteArray data_object, jbyteArray digest_object, jlong hashType,

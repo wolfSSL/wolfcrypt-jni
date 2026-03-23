@@ -161,8 +161,6 @@ public class Rsa extends NativeStruct {
             int saltLen, Rng rng) throws WolfCryptException;
     private native boolean wc_RsaPSS_Verify(byte[] signature, byte[] data,
             long hashType, int mgf, int saltLen) throws WolfCryptException;
-    private native boolean wc_RsaPSS_VerifyInline(byte[] signatureAndData,
-            long hashType, int mgf, int saltLen) throws WolfCryptException;
     private native boolean wc_RsaPSS_VerifyCheck(byte[] signature, byte[] data,
             byte[] digest, long hashType, int mgf, int saltLen)
             throws WolfCryptException;
