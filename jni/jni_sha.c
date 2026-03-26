@@ -235,6 +235,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_native_1copy_1internal
 
     if (this == NULL || toBeCopied == NULL) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return;
     }
 
     sha = (Sha*) getNativeStruct(env, this);
@@ -660,6 +661,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1copy_1internal
 
     if (this == NULL || toBeCopied == NULL) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return;
     }
 
     sha = (Sha256*) getNativeStruct(env, this);
@@ -856,6 +858,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_native_1copy_1internal
 
     if (this == NULL || toBeCopied == NULL) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return;
     }
 
     sha = (Sha384*) getNativeStruct(env, this);
@@ -1051,6 +1054,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha512_native_1copy_1internal
 
     if (this == NULL || toBeCopied == NULL) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return;
     }
 
     sha = (Sha512*) getNativeStruct(env, this);
