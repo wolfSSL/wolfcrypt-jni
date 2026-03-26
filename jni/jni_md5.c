@@ -107,6 +107,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Md5_native_1copy_1internal
 
     if (this == NULL || toBeCopied == NULL) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return;
     }
 
     md5 = (Md5*) getNativeStruct(env, this);
