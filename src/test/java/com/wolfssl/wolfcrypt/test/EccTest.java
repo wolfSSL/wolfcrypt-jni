@@ -309,6 +309,37 @@ public class EccTest {
     }
 
     @Test
+    public void eccImportPrivateRawSetsCurve() {
+
+        /* secp256r1 private key (raw, with leading zero) */
+        byte[] prvKey = Util.h2b("00B298F9A9874F4"
+                + "F30A492429DE0CD2A575A132F24323EF79AD2EFFEBF9D597620");
+
+        /* ECC_SECP256R1 curve id from wolfSSL ecc.h */
+        int ECC_SECP256R1 = 7;
+
+        Ecc key = new Ecc();
+        try {
+            key.importPrivateRaw(prvKey, "secp256r1");
+
+            /* verify curve was set correctly after import */
+            assertEquals(ECC_SECP256R1, key.getCurveId());
+
+            /* try invalid curve name, expect failure */
+            try {
+                Ecc key2 = new Ecc();
+                key2.importPrivateRaw(prvKey, "BADCURVE");
+                fail("importPrivateRaw with invalid curve "
+                    + "should fail");
+            } catch (WolfCryptException e) {
+                /* expected */
+            }
+        } finally {
+            key.releaseNativeStruct();
+        }
+    }
+
+    @Test
     public void getEccCurveNameFromSpec()
         throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
 
