@@ -1408,7 +1408,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private_1
     }
 
     if (ret == 0) {
-        ret = wc_ecc_import_private_key(privKey, privKeySz, NULL, 0, ecc);
+        ret = wc_ecc_import_private_key_ex(privKey, privKeySz, NULL, 0,
+            ecc, curveId);
     }
 
     if (ret != 0) {
