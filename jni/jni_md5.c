@@ -139,6 +139,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update_1internal__Ljava_nio_ByteBuffer_2I
     int ret = 0;
     Md5*  md5  = NULL;
     byte* data = NULL;
+    jlong dataSz = 0;
 
     md5 = (Md5*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -147,19 +148,24 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update_1internal__Ljava_nio_ByteBuffer_2I
     }
 
     data = getDirectBufferAddress(env, data_buffer);
+    dataSz = (*env)->GetDirectBufferCapacity(env, data_buffer);
 
-    if (!md5 || !data) {
-        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+    if (!md5 || !data || position < 0 || len < 0 ||
+        ((jlong)position + (jlong)len) > dataSz) {
+        ret = BAD_FUNC_ARG;
     } else {
         ret = wc_Md5Update(md5, data + position, len);
-        if (ret != 0) {
-            throwWolfCryptExceptionFromError(env, ret);
-        }
+    }
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
     }
 
     LogStr("wc_Md5Update(md5=%p, data, len)\n", md5);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -186,17 +192,20 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update_1internal___3BII(
 
     if (md5 == NULL || data == NULL ||
         ((word32)(offset + len) > dataSz)) {
-        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        ret = BAD_FUNC_ARG;
     } else {
         ret = wc_Md5Update(md5, data + offset, len);
-        if (ret != 0) {
-            throwWolfCryptExceptionFromError(env, ret);
-        }
+    }
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
     }
 
     LogStr("wc_Md5Update(md5=%p, data, len)\n", md5);
-    LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
-    LogHex(data, offset, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
+        LogHex(data, offset, len);
+    }
 
     releaseByteArray(env, data_buffer, data, JNI_ABORT);
 #else
