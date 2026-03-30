@@ -47,10 +47,43 @@ public class WolfCryptException extends RuntimeException {
      * @param code wolfCrypt error code
      */
     public WolfCryptException(int code) {
-        super(WolfCryptError.fromInt(code).getDescription());
+        super(getErrorMessage(code));
 
         this.error = WolfCryptError.fromInt(code);
         this.code = code;
+    }
+
+    /**
+     * Build exception message from error code. For FIPS_NOT_ALLOWED_E
+     * errors, queries and appends the current FIPS module status to help
+     * diagnose the root cause.
+     *
+     * @param code wolfCrypt error code
+     * @return descriptive error message string
+     */
+    private static String getErrorMessage(int code) {
+
+        String msg = WolfCryptError.fromInt(code).getDescription();
+
+        /* Get module status for root cause of FIPS not allowed failure */
+        if (code == WolfCryptError.FIPS_NOT_ALLOWED_E.getCode()) {
+            try {
+                if (Fips.enabled) {
+                    int status = Fips.wolfCrypt_GetStatus_fips();
+                    if (status != 0) {
+                        String statusDesc =
+                            WolfCryptError.fromInt(status).getDescription();
+                        msg += " [FIPS module status: " + status + " (" +
+                            statusDesc + ")]";
+                    }
+                }
+            }
+            catch (Exception e) {
+                /* FIPS status query not available */
+            }
+        }
+
+        return msg;
     }
 
     /**
