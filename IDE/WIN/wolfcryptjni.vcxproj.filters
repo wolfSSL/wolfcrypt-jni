@@ -120,6 +120,9 @@
     <ClInclude Include="..\..\jni\include\wolfcrypt_jni_NativeStruct.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\jni\include\wolfcrypt_jni_util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\jni\jni_aes.c">
