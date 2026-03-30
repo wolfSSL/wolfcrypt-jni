@@ -294,15 +294,15 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3J_3B_3J(
 
     (*env)->GetLongArrayRegion(env, nSize, 0, 1, &nSz);
     if ((*env)->ExceptionOccurred(env)) {
-        releaseByteArray(env, n_object, n, ret);
-        releaseByteArray(env, e_object, e, ret);
+        releaseByteArray(env, n_object, n, JNI_ABORT);
+        releaseByteArray(env, e_object, e, JNI_ABORT);
         return;
     }
 
     (*env)->GetLongArrayRegion(env, eSize, 0, 1, &eSz);
     if ((*env)->ExceptionOccurred(env)) {
-        releaseByteArray(env, n_object, n, ret);
-        releaseByteArray(env, e_object, e, ret);
+        releaseByteArray(env, n_object, n, JNI_ABORT);
+        releaseByteArray(env, e_object, e, JNI_ABORT);
         return;
     }
 
