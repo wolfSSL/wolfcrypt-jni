@@ -161,11 +161,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
         /* CTS requires at least one block of input */
         ret = BUFFER_E;
     }
-    else if ((word32)(offset + length) >
+    else if (((jlong)offset + (jlong)length) >
         getByteArrayLength(env, input_object)) {
         ret = BUFFER_E; /* buffer overflow check */
     }
-    else if ((word32)(outputOffset + length) >
+    else if (((jlong)outputOffset + (jlong)length) >
         getByteArrayLength(env, output_object)) {
         ret = BUFFER_E; /* buffer overflow check */
     }
@@ -273,11 +273,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
         /* CTS requires at least one block of input */
         ret = BUFFER_E;
     }
-    else if ((word32)(offset + length) >
+    else if (((jlong)offset + (jlong)length) >
         getDirectBufferLimit(env, input_object)) {
         ret = BUFFER_E;
     }
-    else if ((word32)(outputOffset + length) >
+    else if (((jlong)outputOffset + (jlong)length) >
         getDirectBufferLimit(env, output_object)) {
         ret = BUFFER_E;
     }
