@@ -314,27 +314,33 @@ public class WolfCryptMessageDigestMd5Test {
             service.submit(new Runnable() {
                 @Override public void run() {
 
-                    MessageDigest md5 = null;
-
                     try {
-                        md5 = MessageDigest.getInstance(
-                            "MD5", "wolfJCE");
-                    } catch (NoSuchAlgorithmException |
-                             NoSuchProviderException e) {
-                        /* add empty array on failure, will error out below */
+                        MessageDigest md5 = null;
+
+                        try {
+                            md5 = MessageDigest.getInstance(
+                                "MD5", "wolfJCE");
+                        } catch (NoSuchAlgorithmException |
+                                 NoSuchProviderException e) {
+                            results.add(new byte[] {0});
+                            return;
+                        }
+
+                        /* process/update in 1024-byte chunks */
+                        for (int j = 0; j < rand10kBuf.length; j+= 1024) {
+                            md5.update(rand10kBuf, j, 1024);
+                        }
+
+                        /* get final hash */
+                        byte[] hash = md5.digest();
+                        results.add(hash.clone());
+
+                    } catch (Exception e) {
+                        /* ensure result added so iterator is not empty */
                         results.add(new byte[] {0});
+                    } finally {
+                        latch.countDown();
                     }
-
-                    /* process/update in 1024-byte chunks */
-                    for (int j = 0; j < rand10kBuf.length; j+= 1024) {
-                        md5.update(rand10kBuf, j, 1024);
-                    }
-
-                    /* get final hash */
-                    byte[] hash = md5.digest();
-                    results.add(hash.clone());
-
-                    latch.countDown();
                 }
             });
         }

@@ -322,27 +322,33 @@ public class WolfCryptMessageDigestShaTest {
             service.submit(new Runnable() {
                 @Override public void run() {
 
-                    MessageDigest sha = null;
-
                     try {
-                        sha = MessageDigest.getInstance(
-                            "SHA-1", "wolfJCE");
-                    } catch (NoSuchAlgorithmException |
-                             NoSuchProviderException e) {
-                        /* add empty array on failure, will error out below */
+                        MessageDigest sha = null;
+
+                        try {
+                            sha = MessageDigest.getInstance(
+                                "SHA-1", "wolfJCE");
+                        } catch (NoSuchAlgorithmException |
+                                 NoSuchProviderException e) {
+                            results.add(new byte[] {0});
+                            return;
+                        }
+
+                        /* process/update in 1024-byte chunks */
+                        for (int j = 0; j < rand10kBuf.length; j+= 1024) {
+                            sha.update(rand10kBuf, j, 1024);
+                        }
+
+                        /* get final hash */
+                        byte[] hash = sha.digest();
+                        results.add(hash.clone());
+
+                    } catch (Exception e) {
+                        /* ensure result added so iterator is not empty */
                         results.add(new byte[] {0});
+                    } finally {
+                        latch.countDown();
                     }
-
-                    /* process/update in 1024-byte chunks */
-                    for (int j = 0; j < rand10kBuf.length; j+= 1024) {
-                        sha.update(rand10kBuf, j, 1024);
-                    }
-
-                    /* get final hash */
-                    byte[] hash = sha.digest();
-                    results.add(hash.clone());
-
-                    latch.countDown();
                 }
             });
         }
