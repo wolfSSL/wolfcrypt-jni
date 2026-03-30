@@ -129,8 +129,8 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_provider_jce_WolfSSLKeyStore_X509Che
 #else
     (void)env;
     (void)class;
-    (void)certDer;
-    (void)pkcs8Der;
+    (void)certDerArr;
+    (void)pkcs8KeyDerArr;
     throwWolfCryptExceptionFromError(env, NOT_COMPILED_IN);
     return JNI_FALSE;
 #endif
