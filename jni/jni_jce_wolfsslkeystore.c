@@ -104,6 +104,9 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_provider_jce_WolfSSLKeyStore_X509Che
         }
     }
 
+    if (keyInfo != NULL) {
+        wolfSSL_EVP_PKEY_free(keyInfo);
+    }
     if (key != NULL) {
         wolfSSL_EVP_PKEY_free(key);
     }
