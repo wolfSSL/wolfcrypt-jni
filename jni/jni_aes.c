@@ -128,11 +128,11 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update_1internal__I_3BII_3BI(
     }
     else if (length == 0) {
         ret = 0;
-    } else if ((word32)(offset + length) >
+    } else if (((jlong)offset + (jlong)length) >
              getByteArrayLength(env, input_object)) {
         ret = BUFFER_E; /* buffer overflow check */
     }
-    else if ((word32)(outputOffset + length) >
+    else if (((jlong)outputOffset + (jlong)length) >
              getByteArrayLength(env, output_object)) {
         ret = BUFFER_E; /* buffer overflow check */
     }
@@ -196,11 +196,11 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update_1internal__ILjava_nio_ByteBuffer_2
     else if (offset < 0 || length < 0) {
         ret = BAD_FUNC_ARG; /* signed sanizizers */
     }
-    else if ((word32)(offset + length) >
+    else if (((jlong)offset + (jlong)length) >
              getDirectBufferLimit(env, input_object)) {
         ret = BUFFER_E; /* buffer overflow check */
     }
-    else if ((word32)(outputOffset + length) >
+    else if (((jlong)outputOffset + (jlong)length) >
              getDirectBufferLimit(env, output_object)) {
         ret = BUFFER_E; /* buffer overflow check */
     }

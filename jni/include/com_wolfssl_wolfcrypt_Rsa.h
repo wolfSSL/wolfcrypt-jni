@@ -231,14 +231,6 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa
- * Method:    wc_RsaPSS_VerifyInline
- * Signature: ([BJII)Z
- */
-JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyInline
-  (JNIEnv *, jobject, jbyteArray, jlong, jint, jint);
-
-/*
- * Class:     com_wolfssl_wolfcrypt_Rsa
  * Method:    wc_RsaPSS_VerifyCheck
  * Signature: ([B[B[BJII)Z
  */

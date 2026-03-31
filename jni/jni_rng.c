@@ -123,6 +123,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_ni
     int ret = 0;
     RNG*  rng    = NULL;
     byte* buffer = NULL;
+    jlong bufferSz = 0;
 
     rng = (RNG*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -131,8 +132,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_ni
     }
 
     buffer = getDirectBufferAddress(env, buffer_buffer);
+    bufferSz = (*env)->GetDirectBufferCapacity(env, buffer_buffer);
 
-    if (rng == NULL || buffer == NULL) {
+    if (rng == NULL || buffer == NULL || position < 0 || size < 0 ||
+        ((jlong)position + (jlong)size) > bufferSz) {
         ret = BAD_FUNC_ARG;
     }
 
@@ -173,7 +176,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
 
     if (rng == NULL || buffer == NULL ||
         offset < 0 || length < 0 ||
-        ((word32)(offset + length) > bufferSz)) {
+        (((jlong)offset + (jlong)length) > bufferSz)) {
         ret = BAD_FUNC_ARG;
     }
 

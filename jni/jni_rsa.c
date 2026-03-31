@@ -294,15 +294,15 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3J_3B_3J(
 
     (*env)->GetLongArrayRegion(env, nSize, 0, 1, &nSz);
     if ((*env)->ExceptionOccurred(env)) {
-        releaseByteArray(env, n_object, n, ret);
-        releaseByteArray(env, e_object, e, ret);
+        releaseByteArray(env, n_object, n, JNI_ABORT);
+        releaseByteArray(env, e_object, e, JNI_ABORT);
         return;
     }
 
     (*env)->GetLongArrayRegion(env, eSize, 0, 1, &eSz);
     if ((*env)->ExceptionOccurred(env)) {
-        releaseByteArray(env, n_object, n, ret);
-        releaseByteArray(env, e_object, e, ret);
+        releaseByteArray(env, n_object, n, JNI_ABORT);
+        releaseByteArray(env, e_object, e, JNI_ABORT);
         return;
     }
 
@@ -920,6 +920,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt(
         encSz = wc_RsaEncryptSize(key);
         if (encSz < 0) {
             ret = encSz;
+        } else if (encSz == 0) {
+            /* Treat 0 length modulus as error */
+            ret = BAD_FUNC_ARG;
         } else {
             outputSz = (word32)encSz;
         }
@@ -1001,6 +1004,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
         encSz = wc_RsaEncryptSize(key);
         if (encSz < 0) {
             ret = encSz;
+        } else if (encSz == 0) {
+            /* Treat 0 length modulus as error */
+            ret = BAD_FUNC_ARG;
         } else {
             outputSz = (word32)encSz;
         }
@@ -1095,6 +1101,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt_1ex(
         encSz = wc_RsaEncryptSize(key);
         if (encSz < 0) {
             ret = encSz;
+        } else if (encSz == 0) {
+            /* Treat 0 length modulus as error */
+            ret = BAD_FUNC_ARG;
         } else {
             outputSz = (word32)encSz;
         }
@@ -1185,6 +1194,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt_1ex(
         encSz = wc_RsaEncryptSize(key);
         if (encSz < 0) {
             ret = encSz;
+        } else if (encSz == 0) {
+            /* Treat 0 length modulus as error */
+            ret = BAD_FUNC_ARG;
         } else {
             outputSz = (word32)encSz;
         }
@@ -1273,6 +1285,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Sign(
         encSz = wc_RsaEncryptSize(key);
         if (encSz < 0) {
             ret = encSz;
+        } else if (encSz == 0) {
+            /* Treat 0 length modulus as error */
+            ret = BAD_FUNC_ARG;
         } else {
             outputSz = (word32)encSz;
         }
@@ -1354,6 +1369,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Verify(
         encSz = wc_RsaEncryptSize(key);
         if (encSz < 0) {
             ret = encSz;
+        } else if (encSz == 0) {
+            /* Treat 0 length modulus as error */
+            ret = BAD_FUNC_ARG;
         } else {
             outputSz = (word32)encSz;
         }
@@ -1411,6 +1429,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Sign(
 {
 #if !defined(NO_RSA) && defined(WC_RSA_PSS)
     int ret = 0;
+    int encSz = 0;
     RsaKey* key = NULL;
     RNG*    rng = NULL;
     byte*   data = NULL;
@@ -1444,9 +1463,14 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Sign(
 
     /* get signature size */
     if (ret == 0) {
-        signatureSz = wc_RsaEncryptSize(key);
-        if (signatureSz <= 0) {
-            ret = signatureSz;
+        encSz = wc_RsaEncryptSize(key);
+        if (encSz < 0) {
+            ret = encSz;
+        } else if (encSz == 0) {
+            /* Treat 0 length modulus as error */
+            ret = BAD_FUNC_ARG;
+        } else {
+            signatureSz = (word32)encSz;
         }
     }
 
@@ -1541,8 +1565,11 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify(
     /* get output buffer size */
     if (ret == 0) {
         encSz = wc_RsaEncryptSize(key);
-        if (encSz <= 0) {
+        if (encSz < 0) {
             ret = encSz;
+        } else if (encSz == 0) {
+            /* Treat 0 length modulus as error */
+            ret = BAD_FUNC_ARG;
         } else {
             outputSz = (word32)encSz;
         }
@@ -1598,56 +1625,6 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify(
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyInline(
-    JNIEnv* env, jobject this, jbyteArray signatureAndData_object,
-    jlong hashType, jint mgf, jint saltLen)
-{
-#if !defined(NO_RSA) && defined(WC_RSA_PSS)
-    int ret = 0;
-    RsaKey* key = NULL;
-    byte*   signatureAndData = NULL;
-    byte*   output = NULL;
-    word32  signatureAndDataSz = 0;
-    jboolean result = JNI_FALSE;
-
-    /* get RsaKey pointer from Java object */
-    key = (RsaKey*) getNativeStruct(env, this);
-    if ((*env)->ExceptionOccurred(env)) {
-        return JNI_FALSE;
-    }
-
-    /* get signature and data */
-    signatureAndData = getByteArray(env, signatureAndData_object);
-    signatureAndDataSz = getByteArrayLength(env, signatureAndData_object);
-
-    /* validate parameters */
-    if (key == NULL || signatureAndData == NULL || signatureAndDataSz == 0) {
-        ret = BAD_FUNC_ARG;
-    }
-
-    if (ret == 0) {
-        ret = wc_RsaPSS_VerifyInline_ex(signatureAndData, signatureAndDataSz,
-            &output, (enum wc_HashType)hashType, mgf, saltLen, key);
-    }
-    if (ret > 0) {
-        result = JNI_TRUE;
-    }
-
-    LogStr("wc_RsaPSS_VerifyInline_ex(sig, sigSz, out, hash, mgf, "
-           "saltLen, key) = %d\n", ret);
-
-    if (signatureAndData != NULL) {
-        releaseByteArray(env, signatureAndData_object, signatureAndData,
-                         JNI_ABORT);
-    }
-#else
-    throwNotCompiledInException(env);
-#endif
-
-    return result;
-}
-
-JNIEXPORT jboolean JNICALL
 Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyCheck(
     JNIEnv* env, jobject this, jbyteArray signature_object,
     jbyteArray data_object, jbyteArray digest_object, jlong hashType,
@@ -1691,8 +1668,11 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyCheck(
 
     if (ret == 0) {
         encSz = wc_RsaEncryptSize(key);
-        if (encSz <= 0) {
+        if (encSz < 0) {
             ret = encSz;
+        } else if (encSz == 0) {
+            /* Treat 0 length modulus as error */
+            ret = BAD_FUNC_ARG;
         } else {
             outputSz = (word32)encSz;
         }
@@ -1744,6 +1724,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1CheckPadding(
 {
 #if !defined(NO_RSA) && defined(WC_RSA_PSS)
     int ret = 0;
+    int encSz = 0;
     RsaKey* key = NULL;
     byte*   signature = NULL;
     byte*   digest = NULL;
@@ -1773,9 +1754,14 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1CheckPadding(
 
     /* get PSS data buffer size */
     if (ret == 0) {
-        pssDataSz = wc_RsaEncryptSize(key);
-        if (pssDataSz <= 0) {
-            ret = pssDataSz;
+        encSz = wc_RsaEncryptSize(key);
+        if (encSz < 0) {
+            ret = encSz;
+        } else if (encSz == 0) {
+            /* Treat 0 length modulus as error */
+            ret = BAD_FUNC_ARG;
+        } else {
+            pssDataSz = (word32)encSz;
         }
     }
 

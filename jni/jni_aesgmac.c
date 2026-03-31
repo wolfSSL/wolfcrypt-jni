@@ -34,6 +34,7 @@
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
+#include <wolfcrypt_jni_util.h>
 
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
@@ -326,7 +327,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacVerify(
 
                 if (ret == 0) {
                     /* Compare the computed tag with the provided tag */
-                    if (XMEMCMP(computedTag, authTag, authTagSz) != 0) {
+                    if (JNIConstantCompare(computedTag, authTag,
+                        authTagSz) != 0) {
                         ret = AES_GCM_AUTH_E; /* Authentication failure */
                     }
                 }
