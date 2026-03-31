@@ -413,16 +413,7 @@ public class WolfCryptCipher extends CipherSpi {
                 break;
 
             case WC_RSA:
-                if (rsa != null) {
-                    rsa.releaseNativeStruct();
-                    rsa = null;
-                }
-                if (this.rng == null) {
-                    this.rng = new Rng();
-                    this.rng.init();
-                }
-                rsa = new Rsa();
-                rsa.setRng(this.rng);
+                /* RSA struct creation handled in wolfCryptSetKey() */
                 break;
         }
     }
