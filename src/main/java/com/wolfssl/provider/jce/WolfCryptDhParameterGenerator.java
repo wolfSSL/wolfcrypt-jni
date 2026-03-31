@@ -161,35 +161,38 @@ public class WolfCryptDhParameterGenerator
                  * wolfCrypt may return PRIME_GEN_E (-251) if it fails to
                  * find a suitable prime after the NIST FIPS 186-4 mandated
                  * number of attempts. */
-                while (retryCount < MAX_PARAM_GEN_RETRIES) {
-                    Rng rng = null;
-                    try {
-                        /* Create and initialize RNG. */
-                        rng = new Rng();
-                        rng.init();
+                Rng rng = null;
+                try {
+                    /* Create and initialize RNG once for all retries */
+                    rng = new Rng();
+                    rng.init();
 
-                        /* Generate DH parameters, may throw exception with
-                         * bad function arg if size not supported natively. */
-                        params = Dh.generateDhParams(rng, size);
+                    while (retryCount < MAX_PARAM_GEN_RETRIES) {
+                        try {
+                            /* Generate DH parameters, may throw exception
+                             * with bad function arg if size not supported
+                             * natively. */
+                            params = Dh.generateDhParams(rng, size);
 
-                        /* Success, exit retry loop */
-                        break;
+                            /* Success, exit retry loop */
+                            break;
 
-                    } catch (WolfCryptException e) {
-                        /* Only retry on PRIME_GEN_E error */
-                        if (e.getError() == WolfCryptError.PRIME_GEN_E) {
-                            lastPrimeGenException = e;
-                            retryCount++;
-                        }
-                        else {
-                            throw e;
+                        } catch (WolfCryptException e) {
+                            /* Only retry on PRIME_GEN_E error */
+                            if (e.getError() == WolfCryptError.PRIME_GEN_E) {
+                                lastPrimeGenException = e;
+                                retryCount++;
+                            }
+                            else {
+                                throw e;
+                            }
                         }
                     }
-                    finally {
-                        if (rng != null) {
-                            rng.free();
-                            rng.releaseNativeStruct();
-                        }
+                }
+                finally {
+                    if (rng != null) {
+                        rng.free();
+                        rng.releaseNativeStruct();
                     }
                 }
 
