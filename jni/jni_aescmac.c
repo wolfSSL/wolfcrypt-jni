@@ -183,7 +183,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1CmacUpdate___3BII(
 
     /* Validate bounds to prevent buffer overflow */
     if (!cmac || !data || offset < 0 || length < 0 ||
-        (word32)(offset + length) > dataSz) {
+        ((jlong)offset + (jlong)length) > dataSz) {
         ret = BAD_FUNC_ARG;
     } else {
         ret = wc_CmacUpdate(cmac, data + offset, length);
@@ -222,7 +222,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1CmacUpdate__Ljava_
 
     /* Validate bounds to prevent buffer overflow */
     if (!cmac || !data || offset < 0 || length < 0 ||
-        (word32)(offset + length) > bufferLimit) {
+        ((jlong)offset + (jlong)length) > bufferLimit) {
         ret = BAD_FUNC_ARG;
     } else {
         ret = wc_CmacUpdate(cmac, data + offset, length);

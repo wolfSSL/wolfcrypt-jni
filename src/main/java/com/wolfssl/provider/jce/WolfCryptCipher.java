@@ -1987,6 +1987,16 @@ public class WolfCryptCipher extends CipherSpi {
                 this.aesEcb = null;
             }
 
+            if (this.aesCtr != null) {
+                this.aesCtr.releaseNativeStruct();
+                this.aesCtr = null;
+            }
+
+            if (this.aesOfb != null) {
+                this.aesOfb.releaseNativeStruct();
+                this.aesOfb = null;
+            }
+
             if (this.aesGcm != null) {
                 this.aesGcm.releaseNativeStruct();
                 this.aesGcm = null;

@@ -235,6 +235,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha_native_1copy_1internal
 
     if (this == NULL || toBeCopied == NULL) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return;
     }
 
     sha = (Sha*) getNativeStruct(env, this);
@@ -266,6 +267,7 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update_1internal__Ljava_nio_ByteBuffer_2I
     int ret = 0;
     Sha*  sha  = NULL;
     byte* data = NULL;
+    jlong dataSz = 0;
 
     sha = (Sha*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -274,17 +276,24 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update_1internal__Ljava_nio_ByteBuffer_2I
     }
 
     data = getDirectBufferAddress(env, data_buffer);
+    dataSz = (*env)->GetDirectBufferCapacity(env, data_buffer);
 
-    ret = (!sha || !data)
-        ? BAD_FUNC_ARG
-        : wc_ShaUpdate(sha, data + position, len);
+    if (!sha || !data || position < 0 || len < 0 ||
+        ((jlong)position + (jlong)len) > dataSz) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_ShaUpdate(sha, data + position, len);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_ShaUpdate(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -321,8 +330,10 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update_1internal___3BII(
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_ShaUpdate_fips(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, offset, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, offset, len);
+    }
 
     releaseByteArray(env, data_buffer, data, JNI_ABORT);
 #else
@@ -468,6 +479,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1update_1interna
     int ret = 0;
     Sha224* sha = NULL;
     byte*  data = NULL;
+    jlong dataSz = 0;
 
     sha = (Sha224*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -476,8 +488,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1update_1interna
     }
 
     data = getDirectBufferAddress(env, data_buffer);
+    dataSz = (*env)->GetDirectBufferCapacity(env, data_buffer);
 
-    if (sha == NULL || data == NULL) {
+    if (sha == NULL || data == NULL || position < 0 || len < 0 ||
+        ((jlong)position + (jlong)len) > dataSz) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -489,8 +503,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1update_1interna
     }
 
     LogStr("wc_Sha224Update(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 #else
     (void)env;
     (void)this;
@@ -532,8 +548,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1update_1interna
     }
 
     LogStr("wc_Sha224Update(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
-    LogHex(data, offset, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
+        LogHex(data, offset, len);
+    }
 
     releaseByteArray(env, data_buffer, data, JNI_ABORT);
 #else
@@ -660,6 +678,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha256_native_1copy_1internal
 
     if (this == NULL || toBeCopied == NULL) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return;
     }
 
     sha = (Sha256*) getNativeStruct(env, this);
@@ -691,6 +710,7 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update_1internal__Ljava_nio_ByteBuffer
     int ret = 0;
     Sha256* sha = NULL;
     byte*  data = NULL;
+    jlong dataSz = 0;
 
     sha = (Sha256*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -699,17 +719,24 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update_1internal__Ljava_nio_ByteBuffer
     }
 
     data = getDirectBufferAddress(env, data_buffer);
+    dataSz = (*env)->GetDirectBufferCapacity(env, data_buffer);
 
-    ret = (!sha || !data)
-        ? BAD_FUNC_ARG
-        : wc_Sha256Update(sha, data + position, len);
+    if (!sha || !data || position < 0 || len < 0 ||
+        ((jlong)position + (jlong)len) > dataSz) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_Sha256Update(sha, data + position, len);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Sha256Update(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -748,8 +775,10 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update_1internal___3BII(
     }
 
     LogStr("wc_Sha256Update(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 
     releaseByteArray(env, data_buffer, data, JNI_ABORT);
 #else
@@ -856,6 +885,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_native_1copy_1internal
 
     if (this == NULL || toBeCopied == NULL) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return;
     }
 
     sha = (Sha384*) getNativeStruct(env, this);
@@ -887,6 +917,7 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1update_1internal__Ljava_nio_ByteBuffer
     int ret = 0;
     Sha384* sha = NULL;
     byte*  data = NULL;
+    jlong dataSz = 0;
 
     sha = (Sha384*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -895,17 +926,24 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1update_1internal__Ljava_nio_ByteBuffer
     }
 
     data = getDirectBufferAddress(env, data_buffer);
+    dataSz = (*env)->GetDirectBufferCapacity(env, data_buffer);
 
-    ret = (!sha || !data)
-        ? BAD_FUNC_ARG
-        : wc_Sha384Update(sha, data + position, len);
+    if (!sha || !data || position < 0 || len < 0 ||
+        ((jlong)position + (jlong)len) > dataSz) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_Sha384Update(sha, data + position, len);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Sha384Update(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -943,8 +981,10 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1update_1internal___3BII(
     }
 
     LogStr("wc_Sha384Update(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
-    LogHex(data, offset, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
+        LogHex(data, offset, len);
+    }
 
     releaseByteArray(env, data_buffer, data, JNI_ABORT);
 #else
@@ -1051,6 +1091,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha512_native_1copy_1internal
 
     if (this == NULL || toBeCopied == NULL) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return;
     }
 
     sha = (Sha512*) getNativeStruct(env, this);
@@ -1082,6 +1123,7 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1update_1internal__Ljava_nio_ByteBuffer
     int ret = 0;
     Sha512* sha = NULL;
     byte*  data = NULL;
+    jlong dataSz = 0;
 
     sha = (Sha512*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1090,17 +1132,24 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1update_1internal__Ljava_nio_ByteBuffer
     }
 
     data = getDirectBufferAddress(env, data_buffer);
+    dataSz = (*env)->GetDirectBufferCapacity(env, data_buffer);
 
-    ret = (!sha || !data)
-        ? BAD_FUNC_ARG
-        : wc_Sha512Update(sha, data + position, len);
+    if (!sha || !data || position < 0 || len < 0 ||
+        ((jlong)position + (jlong)len) > dataSz) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_Sha512Update(sha, data + position, len);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Sha512Update(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -1139,8 +1188,10 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1update_1internal___3BII(
     }
 
     LogStr("wc_Sha512Update(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
-    LogHex(data, offset, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
+        LogHex(data, offset, len);
+    }
 
     releaseByteArray(env, data_buffer, data, JNI_ABORT);
 #else
@@ -1345,6 +1396,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1update_1internal_
     int ret = 0;
     byte* data = NULL;
     wc_Sha3* sha = NULL;
+    jlong dataSz = 0;
 
     sha = (wc_Sha3*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1353,8 +1405,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1update_1internal_
     }
 
     data = getDirectBufferAddress(env, data_buffer);
+    dataSz = (*env)->GetDirectBufferCapacity(env, data_buffer);
 
-    if (sha == NULL || data == NULL) {
+    if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
+        ((jlong)offset + (jlong)len) > dataSz) {
         ret = BAD_FUNC_ARG;
     }
 
@@ -1383,8 +1437,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1update_1internal_
     }
 
     LogStr("wc_Sha3_Update(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 #else
     (void)env;
     (void)this;
@@ -1444,8 +1500,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1update_1internal_
     }
 
     LogStr("wc_Sha3_Update(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, offset, len);
+    if (ret == 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, offset, len);
+    }
 
     releaseByteArray(env, data_buffer, data, JNI_ABORT);
 #else

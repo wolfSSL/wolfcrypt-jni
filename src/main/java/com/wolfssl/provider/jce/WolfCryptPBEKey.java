@@ -205,8 +205,8 @@ public class WolfCryptPBEKey implements PBEKey {
     /**
      * Destroy this object.
      *
-     * Calling this method will zeroize the password and salt arrays
-     * contained in this object and mark it as unusable.
+     * Calling this method will zeroize the password, salt, and encoded
+     * key arrays contained in this object and mark it as unusable.
      */
     public synchronized void destroy() {
         synchronized (destroyedLock) {
@@ -215,6 +215,9 @@ public class WolfCryptPBEKey implements PBEKey {
             }
             if (this.salt != null) {
                 Arrays.fill(this.salt, (byte)0);
+            }
+            if (this.encoded != null) {
+                Arrays.fill(this.encoded, (byte)0);
             }
             this.iterations = 0;
             this.algorithm = null;
