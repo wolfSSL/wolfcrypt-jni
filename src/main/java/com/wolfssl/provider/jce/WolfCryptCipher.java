@@ -174,9 +174,6 @@ public class WolfCryptCipher extends CipherSpi {
             initOaepParamsSha1();
         }
 
-        this.rng = new Rng();
-        this.rng.init();
-
         switch (cipherType) {
             case WC_AES:
                 blockSize = Aes.BLOCK_SIZE;
@@ -416,12 +413,7 @@ public class WolfCryptCipher extends CipherSpi {
                 break;
 
             case WC_RSA:
-                if (rsa != null) {
-                    rsa.releaseNativeStruct();
-                    rsa = null;
-                }
-                rsa = new Rsa();
-                rsa.setRng(this.rng);
+                /* RSA struct creation handled in wolfCryptSetKey() */
                 break;
         }
     }
@@ -1021,6 +1013,10 @@ public class WolfCryptCipher extends CipherSpi {
                 if (this.rsa != null)
                     this.rsa.releaseNativeStruct();
 
+                if (this.rng == null) {
+                    this.rng = new Rng();
+                    this.rng.init();
+                }
                 this.rsa = new Rsa();
                 this.rsa.setRng(this.rng);
 
@@ -2023,6 +2019,7 @@ public class WolfCryptCipher extends CipherSpi {
             }
 
             if (this.rng != null) {
+                this.rng.free();
                 this.rng.releaseNativeStruct();
                 this.rng = null;
             }
