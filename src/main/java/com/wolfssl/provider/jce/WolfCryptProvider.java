@@ -23,8 +23,10 @@ package com.wolfssl.provider.jce;
 
 import java.security.Provider;
 import java.security.Security;
+import java.util.concurrent.atomic.AtomicInteger;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfSSLX509StoreCtx;
 
 /**
@@ -35,6 +37,51 @@ public final class WolfCryptProvider extends Provider {
     private static final long serialVersionUID = 1L;
 
     /**
+     * Default FIPS error callback for wolfJCE provider.
+     *
+     * Logs FIPS errors to aid in debugging module failures. Registered
+     * automatically when wolfJCE provider is instantiated with FIPS wolfCrypt.
+     */
+    private static class JCEFIPSErrorCallback implements Fips.ErrorCallback {
+
+        /* Track last error code to suppress repeated consecutive messages.
+         * Native wolfCrypt may call the callback with the same error code
+         * multiple times during a failure sequence. */
+        private static final AtomicInteger lastErr = new AtomicInteger(0);
+
+        /**
+         * Called by native wolfCrypt when FIPS error occurs.
+         *
+         * @param ok 1 if verification passed, otherwise 0
+         * @param err wolfCrypt FIPS error code
+         * @param hash expected verifyCore hash value
+         */
+        @Override
+        public void errorCallback(int ok, int err, String hash) {
+
+            int prev = lastErr.getAndSet(err);
+            if (prev == err) {
+                return;
+            }
+
+            String errStr = WolfCryptError.fromInt(err).getDescription();
+
+            System.err.println("wolfJCE FIPS error: ok = " + ok + ", err = " +
+                err + " (" + errStr + "), hash = " + hash);
+
+            if (err == WolfCryptError.IN_CORE_FIPS_E.getCode()) {
+                System.err.println("wolfJCE FIPS: in core integrity hash " +
+                    "check failure. Copy hash above into verifyCore[] in " +
+                    "fips_test.c and rebuild");
+            }
+
+            WolfCryptDebug.log(JCEFIPSErrorCallback.class, WolfCryptDebug.ERROR,
+                () -> "FIPS error: ok = " + ok + ", err = " + err + " (" +
+                errStr + "), hash = " + hash);
+        }
+    }
+
+    /**
      * Create new WolfCryptProvider object
      */
     public WolfCryptProvider() {
@@ -43,6 +90,14 @@ public final class WolfCryptProvider extends Provider {
         /* Refresh debug flags in case system properties were set after
          * WolfCryptDebug class was first loaded (e.g., via JAVA_OPTS) */
         WolfCryptDebug.refreshDebugFlags();
+
+        /* Register default FIPS error callback if FIPS enabled. */
+        if (Fips.enabled) {
+            Fips.wolfCrypt_SetCb_fips(new JCEFIPSErrorCallback());
+
+            WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
+                () -> "Registered wolfCrypt FIPS error callback");
+        }
 
         registerServices();
     }
