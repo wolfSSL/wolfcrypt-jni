@@ -75,7 +75,34 @@ del wolfssl
 mklink /D wolfssl ..\..\..\..\..\..\..\src\java\com\wolfssl\
 ```
 
-## 3. Push Certificate and KeyStore Files to Android Device
+## 3. Convert JKS KeyStore Files to BKS for Android Use
+
+Android does not support JKS format KeyStores. Several JUnit tests
+require BKS format KeyStore files which must be converted from the existing
+JKS files.
+
+To convert, you will need to download a Bouncy Castle provider JAR from the
+[Bouncy Castle website](https://www.bouncycastle.org/download/bouncy-castle-java/).
+Then run the conversion script from the `examples/certs` directory:
+
+```
+cd examples/certs
+./convert-to-bks.sh <path/to/bcprov.jar>
+```
+
+For example, when using `bcprov-jdk18on-1.78.1.jar`:
+
+```
+cd examples/certs
+./convert-to-bks.sh ~/Downloads/bcprov-jdk18on-1.78.1.jar
+```
+
+This will create the following BKS files needed by the Android tests:
+
+- `ca-server-rsa-2048.bks`
+- `ca-server-ecc-256.bks`
+
+## 4. Push Certificate and KeyStore Files to Android Device
 
 Several JUnit tests require access to certificate and KeyStore files. These
 files are located in the `examples/certs` directory and must be pushed to
@@ -92,18 +119,20 @@ adb shell mkdir -p /data/local/tmp/examples/certs/crl
 adb push ./examples/certs/ /data/local/tmp/examples/
 ```
 
-This will push all certificate files, KeyStore files (.jks, .wks, .p12),
-and subdirectories (intermediate, rsapss, crl) needed by the JUnit tests.
+This will push all certificate files, KeyStore files (.jks, .wks, .bks,
+.p12), and subdirectories (intermediate, rsapss, crl) needed by the JUnit
+tests.
 
-If this step is skipped, tests in the following classes will be skipped due
-to missing certificate files:
+If step 3 (BKS conversion) or this step is skipped, tests in the following
+classes will be skipped due to missing files:
 
-- `WolfSSLKeyStoreTest`
+- `WolfCryptPKIXCertPathBuilderTest`
 - `WolfCryptPKIXCertPathValidatorTest`
 - `WolfCryptPKIXRevocationCheckerTest`
+- `WolfSSLKeyStoreTest`
 - `WolfSSLCertManagerOCSPTest`
 
-## 4. Import and Build the Example Project with Android Studio
+## 5. Import and Build the Example Project with Android Studio
 
 1) Open the Android Studio project by double clicking on the `Android` folder
 in wolfcrypt-jni/IDE/. Or, from inside Android Studio, open the `Android`

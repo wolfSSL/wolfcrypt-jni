@@ -304,8 +304,9 @@ public class WolfCryptKeyGeneratorTest {
             }
         }
 
-        /* If running under wolfCrypt FIPS, we should fail if SecureRandom is
-         * not wolfJCE */
+        /* If running under wolfCrypt FIPS, verify that a non-wolfJCE
+         * SecureRandom is silently replaced with wolfJCE SecureRandom
+         * and key generation still succeeds. */
         if (Fips.enabled) {
             try {
                 rand = SecureRandom.getInstance("SHA1PRNG", "SUN");
@@ -316,14 +317,10 @@ public class WolfCryptKeyGeneratorTest {
 
             kg = KeyGenerator.getInstance(algorithm, "wolfJCE");
             assertNotNull(kg);
-            try {
-                kg.init(keySizes[0], rand);
-                fail("KeyGenerator.init should throw " +
-                     "InvalidParameterException when given non-FIPS wolfJCE " +
-                     "SecureRandom when in FIPS mode");
-            } catch (InvalidParameterException e) {
-                /* expected */
-            }
+            kg.init(keySizes[0], rand);
+            key = kg.generateKey();
+            assertNotNull(key);
+            assertEquals(keySizes[0] / 8, key.getEncoded().length);
 
             /* Reset SecureRandom to our own (or default) */
             rand = SecureRandom.getInstance("DEFAULT");

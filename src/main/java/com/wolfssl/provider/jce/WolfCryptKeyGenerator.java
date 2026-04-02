@@ -156,22 +156,39 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
      * Sanitize SecureRandom object if in FIPS mode to ensure we are
      * using wolfCrypt FIPS DRBG.
      *
+     * If wolfCrypt FIPS is enabled and the provided SecureRandom is
+     * not from the wolfJCE provider, this method will replace it with
+     * a wolfJCE SecureRandom (HashDRBG) to maintain FIPS compliance.
+     * This handles the case where the JDK auto-provides a platform
+     * default SecureRandom (e.g. AndroidOpenSSL) when the user calls
+     * KeyGenerator.init(int keysize) without specifying a SecureRandom.
+     *
      * @param random SecureRandom object used for key generation.
      *
+     * @return original SecureRandom if non-FIPS or already wolfJCE,
+     *         otherwise a new wolfJCE SecureRandom (HashDRBG).
+     *
      * @throws InvalidParameterException if on top of wolfCrypt FIPS
-     *         and SecureRandom provider is not wolfJCE.
+     *         and unable to get wolfJCE SecureRandom.
      */
-    private void sanitizeSecureRandom(SecureRandom random)
+    private SecureRandom sanitizeSecureRandom(SecureRandom random)
         throws InvalidParameterException {
 
         if (Fips.enabled && (random != null)) {
             String randomProvider = random.getProvider().getName();
             if (!randomProvider.equals("wolfJCE")) {
-                throw new InvalidParameterException(
-                    "SecureRandom provider must be wolfJCE if " +
-                    "using wolfCrypt FIPS, current = " + randomProvider);
+                try {
+                    random = SecureRandom.getInstance("HashDRBG", "wolfJCE");
+
+                } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
+                    throw new InvalidParameterException(
+                        "wolfCrypt FIPS requires wolfJCE SecureRandom but " +
+                        "unable to obtain: " + e.getMessage());
+                }
             }
         }
+
+        return random;
     }
 
     /**
@@ -181,7 +198,7 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
      */
     @Override
     protected void engineInit(SecureRandom random) {
-        this.random = random;
+        this.random = sanitizeSecureRandom(random);
     }
 
     /**
@@ -220,10 +237,9 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
         sanitizeKeySize(keysize);
 
         /* If using wolfCrypt FIPS, make sure this is our SecureRandom */
-        sanitizeSecureRandom(random);
+        this.random = sanitizeSecureRandom(random);
 
         this.keySizeBits = keysize;
-        this.random = random;
     }
 
     /**
