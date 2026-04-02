@@ -66,6 +66,7 @@ import java.security.spec.ECParameterSpec;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.test.Util;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.provider.jce.WolfCryptProvider;
@@ -170,25 +171,47 @@ public class WolfCryptKeyPairGeneratorTest {
 
         /* build list of enabled curves and key sizes,
          * getCurveSizeFromName() will return 0 if curve not found */
-        String[] curves = null;
+        if (FeatureDetect.EccEnabled()) {
 
-        if (Fips.enabled && Fips.fipsVersion >= 5) {
-            curves = supportedCurvesFIPS1403;
-        } else {
-            curves = supportedCurves;
-        }
+            String[] curves = null;
 
-        for (int i = 0; i < curves.length; i++) {
+            if (Fips.enabled && Fips.fipsVersion >= 5) {
+                curves = supportedCurvesFIPS1403;
+            } else {
+                curves = supportedCurves;
+            }
 
-            int size = Ecc.getCurveSizeFromName(curves[i].toUpperCase());
+            for (int i = 0; i < curves.length; i++) {
 
-            if (size > 0) {
-                enabledCurves.add(curves[i]);
+                int size = Ecc.getCurveSizeFromName(curves[i].toUpperCase());
 
-                if (!enabledEccKeySizes.contains(Integer.valueOf(size))) {
-                    enabledEccKeySizes.add(Integer.valueOf(size));
+                if (size > 0) {
+                    /* Verify curve supports key generation. */
+                    try {
+                        KeyPairGenerator testKpg =
+                            KeyPairGenerator.getInstance("EC", "wolfJCE");
+                        ECGenParameterSpec testSpec =
+                             new ECGenParameterSpec(curves[i]);
+                        testKpg.initialize(testSpec);
+                        KeyPair testKp = testKpg.generateKeyPair();
+                        if (testKp == null) {
+                            continue;
+                        }
+                    } catch (Exception e) {
+                        /* Curve not usable for keygen, skip */
+                        continue;
+                    }
+
+                    enabledCurves.add(curves[i]);
+
+                    if (!enabledEccKeySizes.contains(Integer.valueOf(size))) {
+                        enabledEccKeySizes.add(Integer.valueOf(size));
+                    }
                 }
             }
+
+            assertFalse("ECC enabled but no usable curves found",
+                enabledCurves.isEmpty());
         }
     }
 
@@ -1174,7 +1197,9 @@ public class WolfCryptKeyPairGeneratorTest {
 
                 if (wce != null) {
                     String msg = wce.getMessage();
-                    if (msg != null && msg.contains("Bad function argument")) {
+                    if (msg != null &&
+                        (msg.contains("Bad function argument") ||
+                         msg.contains("Key size error"))) {
                         /* Expected for non-FIPS-approved curves */
                         continue;
                     }

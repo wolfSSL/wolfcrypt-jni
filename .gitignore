@@ -19,6 +19,7 @@ wolfcrypt*.tar.gz
 
 # Android
 IDE/Android/.idea/deploymentTargetDropDown.xml
+IDE/Android/.idea/vcs.xml
 IDE/Android/app/.cxx/
 IDE/Android/app/src/main/cpp/wolfssl
 

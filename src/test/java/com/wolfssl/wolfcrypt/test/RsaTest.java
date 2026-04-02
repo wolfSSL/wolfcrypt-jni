@@ -109,30 +109,47 @@ public class RsaTest {
         assertTrue(minRsaSize > 0);
     }
 
+    /**
+     * Helper to make RSA key with retry. In FIPS mode the prime generation
+     * loop has a finite retry count (NIST FIPS 186-4 B.3.3). On rare occasions
+     * this can fail with PRIME_GEN_E even with a healthy RNG, so retry once
+     * on that error.
+     *
+     * JCE level classes have retry built in, but not at the JNI class
+     * level.
+     */
+    private void makeKeyWithRetry(int size, long e, Rng rng) {
+
+        Rsa key = new Rsa();
+        try {
+            key.makeKey(size, e, rng);
+        } catch (WolfCryptException ex) {
+            if (Fips.enabled &&
+                ex.getError() == WolfCryptError.PRIME_GEN_E) {
+                /* Retry once on transient PRIME_GEN_E */
+                key.releaseNativeStruct();
+                key = new Rsa();
+                key.makeKey(size, e, rng);
+            } else {
+                key.releaseNativeStruct();
+                throw ex;
+            }
+        }
+        key.releaseNativeStruct();
+    }
+
     @Test
     public void testMakeKey() {
-
-        Rsa key = null;
 
         /* FIPS after 2425 doesn't allow 1024-bit RSA key gen */
         if ((Fips.enabled && Fips.fipsVersion < 5) ||
             (!Fips.enabled && Rsa.RSA_MIN_SIZE <= 1024)) {
-            key = new Rsa();
-            key.makeKey(1024, 65537, rng);
-            key.releaseNativeStruct();
+            makeKeyWithRetry(1024, 65537, rng);
         }
 
-        key = new Rsa();
-        key.makeKey(2048, 65537, rng);
-        key.releaseNativeStruct();
-
-        key = new Rsa();
-        key.makeKey(3072, 65537, rng);
-        key.releaseNativeStruct();
-
-        key = new Rsa();
-        key.makeKey(4096, 65537, rng);
-        key.releaseNativeStruct();
+        makeKeyWithRetry(2048, 65537, rng);
+        makeKeyWithRetry(3072, 65537, rng);
+        makeKeyWithRetry(4096, 65537, rng);
     }
 
     @Test
