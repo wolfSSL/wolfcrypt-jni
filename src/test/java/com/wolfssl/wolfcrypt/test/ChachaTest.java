@@ -32,6 +32,7 @@ import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
 import com.wolfssl.wolfcrypt.Chacha;
 import com.wolfssl.wolfcrypt.NativeStruct;
@@ -73,16 +74,31 @@ public class ChachaTest {
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
-    @BeforeClass
-    public static void checkAvailability() {
-        try {
-            new Chacha();
-            System.out.println("JNI Chacha Class");
-        } catch (WolfCryptException e) {
-            if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
-                System.out.println("Chacha test skipped: " + e.getError());
-            Assume.assumeNoException(e);
+    /* Rule to check if ChaCha is available, skips tests if not.
+     * Chacha() constructor does not allocate native memory, so no
+     * need to release if it throws. */
+    @Rule(order = Integer.MIN_VALUE + 1)
+    public TestRule chachaAvailable = new TestRule() {
+        @Override
+        public Statement apply(final Statement base, Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    try {
+                        new Chacha();
+                    } catch (WolfCryptException e) {
+                        Assume.assumeTrue("ChaCha not compiled in: " +
+                            e.getError(), false);
+                    }
+                    base.evaluate();
+                }
+            };
         }
+    };
+
+    @BeforeClass
+    public static void testPrintClassName() {
+        System.out.println("JNI Chacha Class");
     }
 
     @Test
