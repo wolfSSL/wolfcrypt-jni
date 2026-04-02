@@ -3,29 +3,42 @@
 # Flag to track if we downloaded BC during this session
 BC_DOWNLOADED=false
 
-# Function to get the latest Bouncy Castle version from Maven Central
-get_latest_version() {
-  local metadata_url="https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/maven-metadata.xml"
-  if command -v curl >/dev/null; then
-    curl -s "$metadata_url" | grep '<latest>' | sed -e 's/.*<latest>\(.*\)<\/latest>.*/\1/'
-  elif command -v wget >/dev/null; then
-    wget -q -O - "$metadata_url" | grep '<latest>' | sed -e 's/.*<latest>\(.*\)<\/latest>.*/\1/'
+# Pinned Bouncy Castle version and SHA-256 hashes for verification.
+# Update these when upgrading to a new Bouncy Castle release.
+BC_VERSION="1.78.1"
+BC_PROV_SHA256="add5915e6acfc6ab5836e1fd8a5e21c6488536a8c1f21f386eeb3bf280b702d7"
+BC_TLS_SHA256="483bd1582d3957adfe100747f22c6da0ff9532d6464f9c454181f99bfa44e52b"
+
+# Function to verify SHA-256 hash of a downloaded file
+verify_sha256() {
+  local file="$1"
+  local expected="$2"
+  local actual=""
+
+  if command -v sha256sum >/dev/null; then
+    actual=$(sha256sum "$file" | awk '{print $1}')
+  elif command -v shasum >/dev/null; then
+    actual=$(shasum -a 256 "$file" | awk '{print $1}')
   else
-    echo "Error: Neither curl nor wget is installed. Please install one to fetch the latest version."
-    exit 1
+    echo "Warning: no sha256sum or shasum available, skipping hash verification"
+    return 0
   fi
-}
 
-# Function to download Bouncy Castle JARs with the latest version
-download_bc_jars() {
-  local bc_version=$(get_latest_version)
-  local lib_dir="../../../lib"
-  local bc_url="https://repo1.maven.org/maven2/org/bouncycastle"
-
-  if [ -z "$bc_version" ]; then
-    echo "failed (could not determine latest version)"
+  if [ "$actual" != "$expected" ]; then
+    echo "SHA-256 mismatch for $file"
+    echo "  expected: $expected"
+    echo "  actual:   $actual"
+    rm -f "$file"
     return 1
   fi
+  return 0
+}
+
+# Function to download Bouncy Castle JARs with pinned version
+download_bc_jars() {
+  local bc_version="$BC_VERSION"
+  local lib_dir="../../../lib"
+  local bc_url="https://repo1.maven.org/maven2/org/bouncycastle"
 
   echo -n "Downloading Bouncy Castle JARs (version $bc_version)... "
   mkdir -p "$lib_dir" || {
@@ -34,14 +47,14 @@ download_bc_jars() {
   }
 
   if command -v wget >/dev/null; then
-    wget -P "$lib_dir" "$bc_url/bcprov-jdk18on/$bc_version/bcprov-jdk18on-$bc_version.jar" &&
-      wget -P "$lib_dir" "$bc_url/bctls-jdk18on/$bc_version/bctls-jdk18on-$bc_version.jar" || {
+    wget -q -P "$lib_dir" "$bc_url/bcprov-jdk18on/$bc_version/bcprov-jdk18on-$bc_version.jar" &&
+      wget -q -P "$lib_dir" "$bc_url/bctls-jdk18on/$bc_version/bctls-jdk18on-$bc_version.jar" || {
       echo "failed (wget error: check URL or network)"
       return 1
     }
   elif command -v curl >/dev/null; then
-    curl -L -o "$lib_dir/bcprov-jdk18on-$bc_version.jar" "$bc_url/bcprov-jdk18on/$bc_version/bcprov-jdk18on-$bc_version.jar" &&
-      curl -L -o "$lib_dir/bctls-jdk18on-$bc_version.jar" "$bc_url/bctls-jdk18on/$bc_version/bctls-jdk18on-$bc_version.jar" || {
+    curl -sL -o "$lib_dir/bcprov-jdk18on-$bc_version.jar" "$bc_url/bcprov-jdk18on/$bc_version/bcprov-jdk18on-$bc_version.jar" &&
+      curl -sL -o "$lib_dir/bctls-jdk18on-$bc_version.jar" "$bc_url/bctls-jdk18on/$bc_version/bctls-jdk18on-$bc_version.jar" || {
       echo "failed (curl error: check URL or network)"
       return 1
     }
@@ -51,14 +64,19 @@ download_bc_jars() {
     return 1
   fi
 
-  if [ -f "$lib_dir/bcprov-jdk18on-$bc_version.jar" ] && [ -f "$lib_dir/bctls-jdk18on-$bc_version.jar" ]; then
-    echo "done"
-    BC_DOWNLOADED=true
-    return 0
-  else
-    echo "failed (downloaded files not found)"
+  # Verify SHA-256 hashes
+  verify_sha256 "$lib_dir/bcprov-jdk18on-$bc_version.jar" "$BC_PROV_SHA256" || {
+    echo "failed (bcprov hash verification)"
     return 1
-  fi
+  }
+  verify_sha256 "$lib_dir/bctls-jdk18on-$bc_version.jar" "$BC_TLS_SHA256" || {
+    echo "failed (bctls hash verification)"
+    return 1
+  }
+
+  echo "done"
+  BC_DOWNLOADED=true
+  return 0
 }
 
 # Function to cleanup BC JARs
@@ -88,9 +106,8 @@ else
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     if download_bc_jars; then
-      bc_version=$(get_latest_version)
-      echo "Running crypto benchmark with Bouncy Castle (version $bc_version)"
-      CLASSPATH="$CLASSPATH:../../../lib/bcprov-jdk18on-$bc_version.jar:../../../lib/bctls-jdk18on-$bc_version.jar"
+      echo "Running crypto benchmark with Bouncy Castle (version $BC_VERSION)"
+      CLASSPATH="$CLASSPATH:../../../lib/bcprov-jdk18on-$BC_VERSION.jar:../../../lib/bctls-jdk18on-$BC_VERSION.jar"
     else
       echo "Running crypto benchmark without Bouncy Castle due to download failure"
     fi
