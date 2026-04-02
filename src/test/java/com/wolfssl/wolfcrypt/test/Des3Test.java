@@ -78,7 +78,7 @@ public class Des3Test {
     };
 
     @BeforeClass
-    public static void checkAvailability() {
+    public static void testPrintClassName() {
         System.out.println("JNI Des3 Class");
     }
 
