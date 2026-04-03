@@ -46,6 +46,7 @@ import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.DHPrivateKeySpec;
 import javax.crypto.spec.DHPublicKeySpec;
 
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -103,9 +104,7 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testDHKeyFactoryInstantiation() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
 
         /* Test that we can get a DH KeyFactory instance */
         KeyFactory kf = KeyFactory.getInstance("DH", "wolfJCE");
@@ -123,9 +122,8 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testPKCS8PrivateKeyConversion() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         /* Generate a test key pair using wolfJCE */
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
@@ -158,9 +156,8 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testX509PublicKeyConversion() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         /* Generate a test key pair using wolfJCE */
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
@@ -193,9 +190,7 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testDHPrivateKeySpecConversion() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
 
         /* Generate a test key pair using system provider for reference */
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH");
@@ -230,9 +225,7 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testDHPublicKeySpecConversion() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
 
         /* Generate a test key pair using system provider for reference */
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH");
@@ -267,9 +260,8 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testKeySpecExtraction() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         /* Generate a test key pair using wolfJCE */
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
@@ -306,9 +298,7 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testKeyTranslation() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
 
         /* Generate a test key pair using system provider */
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH");
@@ -342,9 +332,8 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testRoundTripConversion() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         /* Generate a test key pair using wolfJCE */
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
@@ -374,9 +363,7 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testMultipleKeySizes() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
 
         KeyFactory kf = KeyFactory.getInstance("DH", "wolfJCE");
 
@@ -416,9 +403,7 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testInvalidKeySpecs() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
 
         KeyFactory kf = KeyFactory.getInstance("DH", "wolfJCE");
 
@@ -467,9 +452,8 @@ public class WolfCryptDHKeyFactoryTest {
     public void testDHPrivateKeySpecConversionWithoutSunJCE()
         throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         /* Remove SunJCE provider temporarily if present */
         Provider sunJCE = Security.getProvider("SunJCE");
@@ -512,9 +496,8 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testBigIntegerEdgeCases() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         /* Generate a reference key to get the DHParameterSpec */
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
@@ -594,9 +577,8 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testParameterValidation() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         KeyFactory wolfKF = KeyFactory.getInstance("DH", "wolfJCE");
 
@@ -655,9 +637,8 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testPrivateKeyBoundaryValues() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         /* Generate a reference key to get the DHParameterSpec */
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
@@ -706,9 +687,8 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testMemoryCleanup() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         KeyFactory wolfKF = KeyFactory.getInstance("DH", "wolfJCE");
 
@@ -740,9 +720,8 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testBackwardCompatibility() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         /* Generate key using standard approach */
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
@@ -774,9 +753,8 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testErrorHandling() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         KeyFactory wolfKF = KeyFactory.getInstance("DH", "wolfJCE");
 
@@ -830,9 +808,8 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testInteroperabilityWithSunJCE() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         /* Generate key pair using SunJCE */
         KeyPairGenerator sunKpg = KeyPairGenerator.getInstance("DH");
@@ -890,9 +867,8 @@ public class WolfCryptDHKeyFactoryTest {
     @Test
     public void testRoundTripWithDHKeySpec() throws Exception {
 
-        if (!FeatureDetect.DhEnabled()) {
-            return;
-        }
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
 
         /* Generate a test key pair using wolfJCE */
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
