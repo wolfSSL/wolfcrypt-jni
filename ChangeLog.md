@@ -1,3 +1,78 @@
+### wolfCrypt JNI Release 1.10.0 (04/15/2026)
+
+Release 1.10.0 of wolfCrypt JNI and JCE has bug fixes and new features including:
+
+**New JCE Functionality:**
+- Add Cipher `RSA/ECB/OAEPWithSHA-256AndMGF1Padding` support (PR 188)
+- Add Cipher `RSA/ECB/OAEPWithSHA-1AndMGF1Padding` support (PR 191)
+- Add Cipher `WRAP_MODE` and `UNWRAP_MODE` support for RSA-based key wrapping (PR 197)
+- Add PKIX CertPathBuilder implementation using native wolfSSL `X509_STORE` (PR 190, 192, 198, 200)
+- Add `jdk.certpath.disabledAlgorithms` enforcement to CertPathBuilder and CertPathValidator (PR 200)
+- Register default FIPS error callback in `WolfCryptProvider` for FIPS error debugging (PR 207)
+- Enrich `WolfCryptException` with FIPS module status for `FIPS_NOT_ALLOWED_E` errors (PR 207)
+
+**New JNI Functionality:**
+- Add hex string conversion via `WolfCrypt.toHexString()` and `WolfCrypt.hexStringToByteArray()` (PR 187)
+- Add PEM to DER conversion support for keys and certificates (PR 186)
+- Add `setFlags()` and `setVerificationTime()` methods to `WolfSSLX509StoreCtx` (PR 192)
+
+**New Property Support:**
+- Add `wolfssl.skipLibraryLoad` system property for custom native library loading (PR 189)
+- Add `wolfjce.ioTimeout` system property for OCSP/CRL IO timeouts (PR 199)
+
+**JNI and JCE Changes:**
+- Fix FIPS error callback lifecycle, deregister native callback in `JNI_OnUnload` (PR 203)
+- Fix Ed25519 signature verification passing message length instead of signature length (PR 205)
+- Fix `jlong` to `word32` pointer cast in `RsaFlattenPublicKey` and `RsaExportCrtKey` (PR 205)
+- Fix unsigned return value handling for `wc_RsaEncryptSize()` across RSA functions (PR 205, 206)
+- Add HMAC offset/length bounds validation for byte array and ByteBuffer variants (PR 205)
+- Improve NULL check handling in HMAC, Ed25519, Curve25519, and Pwdbased JNI wrappers (PR 205)
+- Add missing `releaseByteArray()` calls across ECC, RSA, ChaCha, and AES-GCM JNI functions (PR 205, 206)
+- Fix incorrect error code in `HmacFinal` hash size check (PR 205)
+- Return defensive copy of IV array from `engineGetIV()` (PR 205)
+- Fix `wc_ecc_import_private_raw()` not passing validated `curveId` to underlying import function (PR 206)
+- Zeroize encoded key byte array in `WolfCryptPBEKey.destroy()` (PR 206)
+- Use constant-time comparison for GMAC tag verification (PR 206)
+- Add missing AES-CTR and AES-OFB cleanup in `WolfCryptCipher.finalize()` (PR 206)
+- Fix signed integer overflow in JNI offset/length bounds checks (PR 206)
+- Add ByteBuffer bounds validation in SHA, MD5, and RNG native functions (PR 206)
+- Fix missing return after throw in SHA and MD5 copy NULL checks (PR 206)
+- Remove unused `wc_RsaPSS_VerifyInline` JNI wrapper that skipped padding check (PR 206)
+- Reduce `WC_RNG` struct allocations in `WolfCryptCipher` and `WolfCryptDhParameterGenerator` (PR 208)
+- Expand FIPS-compliant SecureRandom sanitization in `WolfCryptKeyGenerator` (PR 209)
+- Zero intermediate output buffers before free across JNI wrappers (PR 210)
+- Fix DH key export return value reset in success paths (PR 210)
+- Free internal AES struct in GMAC after use (PR 210)
+
+**Example Changes:**
+- Add `CertPathBuilder` and `CertPathValidator` example (PR 190)
+- Update Android example project CMakeLists.txt file exclusion list (PR 198, 206)
+- Add JKS to BKS KeyStore conversion script for Android testing (PR 209)
+- Migrate Android example project from `jcenter()` to `mavenCentral()` and AndroidX (PR 209)
+- Add Gradle wrapper `distributionSha256Sum` to Android example project (PR 210)
+
+**Testing Changes:**
+- Add Java 24 and 25 tests to GitHub Actions workflows (PR 193)
+- Add GitHub Actions workflow for Linux 32-bit testing with Java 17 (PR 194)
+- Add GitHub Actions workflow for UBSan undefined behavior testing (PR 195)
+- Add `ant spotbugs` target and GitHub Actions SpotBugs static analysis workflow (PR 204)
+- Add GitHub Actions workflow for Android FIPS Ready testing (PR 209)
+- Add GitHub Actions workflow for Java 9+ module (JPMS) testing (PR 196)
+- Fix threaded MessageDigest tests hanging on FIPS error (PR 207)
+- Improve JUnit test reliability for FIPS mode and CI environments (PR 209)
+- Pin Bouncy Castle dependency version with SHA-256 hash verification (PR 209)
+- Update Apache Ant CI dependency to 1.10.16 (PR 209)
+
+**Misc Changes:**
+- Add Java 9+ module support (JPMS) for `jlink` compatibility (PR 196)
+- Fix Javadoc warnings about default constructors in `WolfCryptUtil` and `Asn` (PR 201)
+- Fix code issues and warnings found by SpotBugs static analysis (PR 204)
+- Update copyright dates to 2026 (PR 185)
+
+The wolfCrypt JNI/JCE Manual is available at:
+https://www.wolfssl.com/documentation/manuals/wolfcryptjni/. For build
+instructions and more details, please check the manual.
+
 ### wolfCrypt JNI Release 1.9.0 (12/31/2025)
 
 Release 1.9.0 of wolfCrypt JNI and JCE has bug fixes and new features including:
@@ -107,7 +182,7 @@ Release 1.9.0 of wolfCrypt JNI and JCE has bug fixes and new features including:
 
 The wolfCrypt JNI/JCE Manual is available at:
 https://www.wolfssl.com/documentation/manuals/wolfcryptjni/. For build
-instructions and more details comments, please check the manual.
+instructions and more details, please check the manual.
 
 ### wolfCrypt JNI Release 1.8.0 (01/23/2025)
 
@@ -128,7 +203,7 @@ Release 1.8.0 of wolfCrypt JNI and JCE has bug fixes and new features including:
 
 The wolfCrypt JNI/JCE Manual is available at:
 https://www.wolfssl.com/documentation/manuals/wolfcryptjni/. For build
-instructions and more details comments, please check the manual.
+instructions and more details, please check the manual.
 
 ### wolfCrypt JNI Release 1.7.0 (11/11/2024)
 
@@ -152,7 +227,7 @@ Release 1.7.0 of wolfCrypt JNI and JCE has bug fixes and new features including:
 
 The wolfCrypt JNI/JCE Manual is available at:
 https://www.wolfssl.com/documentation/manuals/wolfcryptjni/. For build
-instructions and more details comments, please check the manual.
+instructions and more details, please check the manual.
 
 ### wolfCrypt JNI Release 1.6.0 (4/17/2024)
 
@@ -208,7 +283,7 @@ Release 1.6.0 of wolfCrypt JNI and JCE has bug fixes and new features including:
 
 The wolfCrypt JNI/JCE Manual is available at:
 https://www.wolfssl.com/documentation/manuals/wolfcryptjni/. For build
-instructions and more details comments, please check the manual.
+instructions and more details, please check the manual.
 
 ### wolfCrypt JNI Release 1.5.0 (11/14/2022)
 
