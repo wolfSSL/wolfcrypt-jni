@@ -27,6 +27,7 @@
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/hmac.h>
+#include <wolfssl/wolfcrypt/memory.h>
 
 #include <com_wolfssl_wolfcrypt_Hmac.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -326,6 +327,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal
     LogStr("wc_HmacFinal(hmac=%p, result) = %d\n", hmac, ret);
     LogStr("result[%u]: [%p]\n", (word32)hmacSz, tmp);
     LogHex(tmp, 0, hmacSz);
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(tmp, sizeof(tmp));
+    #else
+        XMEMSET(tmp, 0, sizeof(tmp));
+    #endif
 #else
     throwNotCompiledInException(env);
 #endif
