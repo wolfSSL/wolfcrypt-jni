@@ -28,6 +28,7 @@
 #endif
 #include <wolfssl/wolfcrypt/chacha.h>
 #include <wolfssl/wolfcrypt/asn.h>
+#include <wolfssl/wolfcrypt/memory.h>
 
 #include <com_wolfssl_wolfcrypt_Chacha.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -190,7 +191,16 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
 
     LogStr("wc_Chacha_Process(): output = %p, ret = %d\n", output, ret);
     releaseByteArray(env, input_obj, input, JNI_ABORT);
-    XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+
+    if (output != NULL) {
+        #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+            !defined(WOLFSSL_NO_FORCE_ZERO)
+            wc_ForceZero(output, inputSz);
+        #else
+            XMEMSET(output, 0, inputSz);
+        #endif
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
 #else
     throwNotCompiledInException(env);
 #endif

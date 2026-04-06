@@ -27,6 +27,7 @@
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/cmac.h>
+#include <wolfssl/wolfcrypt/memory.h>
 
 #include <com_wolfssl_wolfcrypt_AesCmac.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -275,6 +276,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1CmacFinal(
     LogStr("wc_CmacFinal(cmac=%p, result) = %d\n", cmac, ret);
     LogStr("result[%u]: [%p]\n", (word32)macSz, tmp);
     LogHex(tmp, 0, macSz);
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(tmp, sizeof(tmp));
+    #else
+        XMEMSET(tmp, 0, sizeof(tmp));
+    #endif
 #else
     throwNotCompiledInException(env);
 #endif
@@ -331,6 +338,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1AesCmacGenerate(
             (*env)->SetByteArrayRegion(env, mac_object, 0, copySize,
                 (const jbyte*) tmp);
         }
+
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(tmp, sizeof(tmp));
+    #else
+        XMEMSET(tmp, 0, sizeof(tmp));
+    #endif
     }
 
     LogStr("wc_AesCmacGenerate(data=%p, dataSz=%d, key=%p, keySz=%d) = %d\n",
