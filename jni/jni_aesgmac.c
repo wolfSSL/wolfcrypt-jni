@@ -226,6 +226,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1Gmac(
     authIn = getByteArray(env, authIn_object);
     authTag = getByteArray(env, authTag_object);
 
+    /* Initialize GMAC structure */
+    XMEMSET(&gmac, 0, sizeof(Gmac));
+
     if (key == NULL || iv == NULL || authIn == NULL || authTag == NULL) {
         ret = BAD_FUNC_ARG;
     }
@@ -235,9 +238,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1Gmac(
         ivSz = getByteArrayLength(env, iv_object);
         authInSz = getByteArrayLength(env, authIn_object);
         authTagSz = getByteArrayLength(env, authTag_object);
-
-        /* Initialize GMAC structure */
-        XMEMSET(&gmac, 0, sizeof(Gmac));
 
         /* Set the key */
         ret = wc_GmacSetKey(&gmac, key, keySz);
@@ -274,6 +274,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1Gmac(
     releaseByteArray(env, authIn_object, authIn, JNI_ABORT);
     releaseByteArray(env, authTag_object, authTag, JNI_ABORT);
 
+    wc_AesFree(&gmac.aes);
+
     return ret;
 #else
     throwNotCompiledInException(env);
@@ -299,6 +301,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacVerify(
     authIn = getByteArray(env, authIn_object);
     authTag = getByteArray(env, authTag_object);
 
+    /* Initialize GMAC structure */
+    XMEMSET(&gmac, 0, sizeof(Gmac));
+
     if (key == NULL || iv == NULL || authIn == NULL || authTag == NULL) {
         ret = BAD_FUNC_ARG;
     }
@@ -308,9 +313,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacVerify(
         ivSz = getByteArrayLength(env, iv_object);
         authInSz = getByteArrayLength(env, authIn_object);
         authTagSz = getByteArrayLength(env, authTag_object);
-
-        /* Initialize GMAC structure */
-        XMEMSET(&gmac, 0, sizeof(Gmac));
 
         /* Set the key */
         ret = wc_GmacSetKey(&gmac, key, keySz);
@@ -346,6 +348,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacVerify(
     releaseByteArray(env, iv_object, iv, JNI_ABORT);
     releaseByteArray(env, authIn_object, authIn, JNI_ABORT);
     releaseByteArray(env, authTag_object, authTag, JNI_ABORT);
+
+    wc_AesFree(&gmac.aes);
 
     return ret;
 #else

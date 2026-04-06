@@ -28,6 +28,7 @@
 #endif
 #include <wolfssl/wolfcrypt/curve25519.h>
 #include <wolfssl/wolfcrypt/asn.h>
+#include <wolfssl/wolfcrypt/memory.h>
 
 #include <com_wolfssl_wolfcrypt_Curve25519.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -271,6 +272,7 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1private(
     curve25519_key* curve25519 = NULL;
     byte* output = NULL;
     word32 outputSz = 0;
+    word32 outputBufSz = 0;
 
     curve25519 = (curve25519_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -284,6 +286,7 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1private(
     }
 
     outputSz = wc_curve25519_size(curve25519);
+    outputBufSz = outputSz;
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
@@ -311,6 +314,12 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1private(
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(output, outputBufSz);
+    #else
+        XMEMSET(output, 0, outputBufSz);
+    #endif
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
     throwNotCompiledInException(env);
@@ -390,6 +399,7 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1make_1shared_1secret(
     curve25519_key* pub = NULL;
     byte* output = NULL;
     word32 outputSz = 0;
+    word32 outputBufSz = 0;
 
     curve25519 = (curve25519_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -409,6 +419,8 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1make_1shared_1secret(
     }
 
     outputSz = wc_curve25519_size(curve25519);
+    outputBufSz = outputSz;
+
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
         throwOutOfMemoryException(env,
@@ -437,6 +449,12 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1make_1shared_1secret(
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(output, outputBufSz);
+    #else
+        XMEMSET(output, 0, outputBufSz);
+    #endif
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
     throwNotCompiledInException(env);

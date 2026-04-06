@@ -32,6 +32,7 @@
 #include <wolfssl/wolfcrypt/coding.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/memory.h>
 #include <wolfssl/ssl.h>
 #include <wolfssl/wolfio.h>
 #include <com_wolfssl_wolfcrypt_WolfCrypt.h>
@@ -432,6 +433,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
         (*env)->ReleaseStringUTFChars(env, passwordStr, password);
     }
     if (der != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(der, pemSz);
+    #else
+        XMEMSET(der, 0, pemSz);
+    #endif
         XFREE(der, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
     if (ret != 0) {

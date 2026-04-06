@@ -32,6 +32,7 @@
 #include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/misc.h>
 #include <wolfssl/wolfcrypt/hash.h>
+#include <wolfssl/wolfcrypt/memory.h>
 
 #include <com_wolfssl_wolfcrypt_Rsa.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -1047,6 +1048,12 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
     LogHex((byte*) output, 0, outputSz);
 
     if (output != NULL) {
+        #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+            !defined(WOLFSSL_NO_FORCE_ZERO)
+            wc_ForceZero(output, outputSz);
+        #else
+            XMEMSET(output, 0, outputSz);
+        #endif
         XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
     releaseByteArray(env, ciphertext_object, ciphertext, JNI_ABORT);
@@ -1237,6 +1244,12 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt_1ex(
     LogStr("wc_RsaPrivateDecrypt_ex(OAEP) = %d\n", ret);
 
     if (output != NULL) {
+        #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+            !defined(WOLFSSL_NO_FORCE_ZERO)
+            wc_ForceZero(output, outputSz);
+        #else
+            XMEMSET(output, 0, outputSz);
+        #endif
         XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
     releaseByteArray(env, ciphertext_object, ciphertext, JNI_ABORT);
