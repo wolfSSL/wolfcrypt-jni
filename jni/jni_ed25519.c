@@ -28,6 +28,7 @@
 #endif
 #include <wolfssl/wolfcrypt/ed25519.h>
 #include <wolfssl/wolfcrypt/asn.h>
+#include <wolfssl/wolfcrypt/memory.h>
 
 #include <com_wolfssl_wolfcrypt_Ed25519.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -296,6 +297,7 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private(
     ed25519_key* ed25519 = NULL;
     byte* output = NULL;
     word32 outputSz = 0;
+    word32 outputBufSz = 0;
 
     ed25519 = (ed25519_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -309,6 +311,7 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private(
     }
 
     outputSz = 2 * wc_ed25519_priv_size(ed25519); /* Export private + public */
+    outputBufSz = outputSz;
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
@@ -332,10 +335,17 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private(
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    LogStr("wc_ed25519_export_x963(ed25519, output=%p, outputSz) = %d\n", output, ret);
+    LogStr("wc_ed25519_export_x963(ed25519, output=%p, outputSz) = %d\n",
+        output, ret);
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(output, outputBufSz);
+    #else
+        XMEMSET(output, 0, outputBufSz);
+    #endif
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
     throwNotCompiledInException(env);
@@ -355,6 +365,7 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private_1only(
     ed25519_key* ed25519 = NULL;
     byte* output = NULL;
     word32 outputSz = 0;
+    word32 outputBufSz = 0;
 
     ed25519 = (ed25519_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -368,6 +379,7 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private_1only(
     }
 
     outputSz = wc_ed25519_size(ed25519);
+    outputBufSz = outputSz;
 
     output = XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
@@ -395,6 +407,12 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private_1only(
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
     LogHex((byte*) output, 0, outputSz);
 
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(output, outputBufSz);
+    #else
+        XMEMSET(output, 0, outputBufSz);
+    #endif
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
 #else
     throwNotCompiledInException(env);
