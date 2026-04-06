@@ -1307,20 +1307,21 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhPublicKeyEncode(
     /* Encode X.509 public key */
     ret = wc_DhPubKeyToDer(key, der, &derSz);
 
+    LogStr("wc_DhPubKeyToDer(key=%p) = %d\n", key, ret);
+
     if (ret >= 0) {
         derSz = ret;  /* Actual size written */
         result = (*env)->NewByteArray(env, derSz);
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, derSz,
                 (const jbyte*)der);
+            ret = 0;
         }
         else {
             LogStr("Failed to allocate result array\n");
             ret = MEMORY_E;
         }
     }
-
-    LogStr("wc_DhPubKeyToDer(key=%p) = %d\n", key, ret);
 
     /* Clean up */
     if (der != NULL) {
