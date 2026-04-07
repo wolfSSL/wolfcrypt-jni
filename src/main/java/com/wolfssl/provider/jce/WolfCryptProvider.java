@@ -198,9 +198,16 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.ShaEnabled()) {
             put("Signature.SHA1withRSA",
                     "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA1wRSA");
-            put("Signature.SHA1withECDSA",
+
+            /* FIPS 186-5 (wolfCrypt FIPS v7+) no longer allows SHA-1 for
+             * ECDSA signatures. Only register SHA1withECDSA when not using
+             * FIPS, or when using FIPS versions prior to v7 which follow
+             * FIPS 186-4. */
+            if (!Fips.enabled || Fips.fipsVersion < 7) {
+                put("Signature.SHA1withECDSA",
                     "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA1wECDSA");
-            put("Alg.Alias.Signature.1.2.840.10045.4.1", "SHA1withECDSA");
+                put("Alg.Alias.Signature.1.2.840.10045.4.1", "SHA1withECDSA");
+            }
         }
         if (FeatureDetect.Sha224Enabled()) {
             put("Signature.SHA224withRSA",
