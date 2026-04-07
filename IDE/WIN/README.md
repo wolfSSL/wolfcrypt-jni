@@ -138,6 +138,12 @@ section titled `/* Configuration */`:
 #define WOLFSSL_KEY_GEN
 #define HAVE_CRL
 #define OPENSSL_ALL
+#define WOLFSSL_SHA224
+#define HAVE_FFDHE_2048
+#define HAVE_FFDHE_3072
+#define HAVE_FFDHE_4096
+#define HAVE_FFDHE_Q
+#define WOLFSSL_VALIDATE_FFC_IMPORT
 #define WOLFSSL_PUBLIC_MP
 ```
 
