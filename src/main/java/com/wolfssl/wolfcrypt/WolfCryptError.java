@@ -33,8 +33,18 @@ public enum WolfCryptError {
 
     /* error codes match <wolfssl>/wolfssl/wolfcrypt/error-crypt.h */
 
-    /** errors -101 - -299 */
-    MAX_CODE_E          (-100),
+    /** errors -97 - -1008 */
+    MAX_CODE_E          (-96),
+
+    /** MP dynamic memory allocation failed */
+    MP_MEM              (-97),
+    /** MP value passed is not able to be used */
+    MP_VAL              (-98),
+    /** MP non-blocking returning after partial completion */
+    MP_WOULDBLOCK       (-99),
+    /** MP point not at infinity */
+    MP_NOT_INF          (-100),
+
     /** opening random device error */
     OPEN_RAN_E          (-101),
     /** reading random device error */
@@ -79,10 +89,21 @@ public enum WolfCryptError {
     /** got a mp zero result, not expected */
     MP_ZERO_E           (-121),
 
+    /** AES-EAX Authentication check failure */
+    AES_EAX_AUTH_E      (-122),
+    /** No longer usable for operation */
+    KEY_EXHAUSTED_E     (-123),
+
     /** out of memory error */
     MEMORY_E            (-125),
     /** var state modified by different thread */
     VAR_STATE_CHANGE_E  (-126),
+    /** FIPS Module in degraded mode */
+    FIPS_DEGRADED_E     (-127),
+    /** Module CODE too big */
+    FIPS_CODE_SZ_E      (-128),
+    /** Module DATA too big */
+    FIPS_DATA_SZ_E      (-129),
 
     /** RSA wrong block type for RSA function */
     RSA_WRONG_TYPE_E    (-130),
@@ -143,14 +164,22 @@ public enum WolfCryptError {
     ASN_SIG_KEY_E       (-157),
     /** ASN key init error, invalid input */
     ASN_DH_KEY_E        (-158),
-    /** ASN ntru key decode error, invalid input */
-    ASN_NTRU_KEY_E      (-159),
+    /** SRTP-KDF Known Answer Test Failure */
+    KDF_SRTP_KAT_FIPS_E (-159),
     /** ASN unsupported critical extension */
     ASN_CRIT_EXT_E      (-160),
     /** ASN alternate name error */
     ASN_ALT_NAME_E      (-161),
     /** ASN no PEM header found */
     ASN_NO_PEM_HEADER   (-162),
+    /** Ed25519 Known answer test failure */
+    ED25519_KAT_FIPS_E  (-163),
+    /** Ed448 Known answer test failure */
+    ED448_KAT_FIPS_E    (-164),
+    /** PBKDF2 Known answer test failure */
+    PBKDF2_KAT_FIPS_E   (-165),
+    /** Error for private/public key mismatch */
+    WC_KEY_MISMATCH_E   (-166),
 
     /** ECC input argument of wrong type */
     ECC_BAD_ARG_E       (-170),
@@ -170,6 +199,8 @@ public enum WolfCryptError {
     ALT_NAME_E          (-177),
     /** missing key usage extension */
     BAD_OCSP_RESPONDER  (-178),
+    /** CRL date error */
+    CRL_CERT_DATE_ERR   (-179),
 
     /** AES-GCM Authentication check failure */
     AES_GCM_AUTH_E      (-180),
@@ -290,6 +321,9 @@ public enum WolfCryptError {
     /** Hash Type not enabled/available */
     HASH_TYPE_E          (-232),
 
+    /** Invalid FIPS Version defined */
+    FIPS_INVALID_VER_E   (-233),
+
     /** Key size error, either too small or large */
     WC_KEY_SIZE_E        (-234),
     /** ASN Cert Gen, invalid country code size */
@@ -340,15 +374,117 @@ public enum WolfCryptError {
     ECDSA_PAT_FIPS_E     (-255),
     /** DH KAT failure */
     DH_KAT_FIPS_E        (-256),
-
+    /** AESCCM KAT failure */
+    AESCCM_KAT_FIPS_E   (-257),
+    /** SHA-3 KAT failure */
+    SHA3_KAT_FIPS_E      (-258),
+    /** ECDHE KAT failure */
+    ECDHE_KAT_FIPS_E     (-259),
+    /** AES-GCM invocation counter overflow */
+    AES_GCM_OVERFLOW_E   (-260),
+    /** AES-CCM invocation counter overflow */
+    AES_CCM_OVERFLOW_E   (-261),
+    /** RSA Key Pair-Wise Consistency check fail */
+    RSA_KEY_PAIR_E       (-262),
+    /** DH Check Priv Key error */
+    DH_CHECK_PRIV_E      (-263),
+    /** AF_ALG socket error */
+    WC_AFALG_SOCK_E      (-264),
+    /** /dev/crypto error */
+    WC_DEVCRYPTO_E       (-265),
+    /** zlib init error */
+    ZLIB_INIT_ERROR      (-266),
+    /** zlib compression error */
+    ZLIB_COMPRESS_ERROR  (-267),
+    /** zlib decompression error */
+    ZLIB_DECOMPRESS_ERROR (-268),
+    /** No signer in PKCS#7 signed data msg */
+    PKCS7_NO_SIGNER_E   (-269),
+    /** PKCS7 operations wants more input */
+    WC_PKCS7_WANT_READ_E (-270),
+    /** Crypto callback unavailable */
+    CRYPTOCB_UNAVAILABLE (-271),
+    /** Signature needs verified by caller */
+    PKCS7_SIGNEEDS_CHECK (-272),
+    /** PSS salt length not recoverable */
+    PSS_SALTLEN_RECOVER_E (-273),
+    /** ChaCha20Poly1305 limit overflow */
+    CHACHA_POLY_OVERFLOW (-274),
+    /** ASN self-signed certificate error */
+    ASN_SELF_SIGNED_E    (-275),
+    /** SAKKE derivation verification error */
+    SAKKE_VERIFY_FAIL_E  (-276),
+    /** IV was not set */
+    MISSING_IV           (-277),
+    /** Key was not set */
+    MISSING_KEY          (-278),
+    /** Value of length parameter is invalid */
+    BAD_LENGTH_E         (-279),
+    /** ECDSA KAT failure */
+    ECDSA_KAT_FIPS_E    (-280),
+    /** RSA Pairwise failure */
+    RSA_PAT_FIPS_E       (-281),
+    /** TLS12 KDF KAT failure */
+    KDF_TLS12_KAT_FIPS_E (-282),
+    /** TLS13 KDF KAT failure */
+    KDF_TLS13_KAT_FIPS_E (-283),
+    /** SSH KDF KAT failure */
+    KDF_SSH_KAT_FIPS_E   (-284),
+    /** DHE Pairwise Consistency Test failure */
+    DHE_PCT_E            (-285),
+    /** ECDHE Pairwise Consistency Test failure */
+    ECC_PCT_E            (-286),
     /** Cannot export private key */
     FIPS_PRIVATE_KEY_LOCKED_E (-287),
+    /** Protocol callback unavailable */
+    PROTOCOLCB_UNAVAILABLE (-288),
+    /** AES-SIV authentication failed */
+    AES_SIV_AUTH_E       (-289),
+    /** No valid device ID */
+    NO_VALID_DEVID       (-290),
+    /** Input/output failure */
+    IO_FAILED_E          (-291),
+    /** System/library call failed */
+    SYSLIB_FAILED_E      (-292),
+    /** Callback return to indicate HW has PSK */
+    USE_HW_PSK           (-293),
+    /** Entropy Repetition Test failed */
+    ENTROPY_RT_E         (-294),
+    /** Entropy Adaptive Proportion Test failed */
+    ENTROPY_APT_E        (-295),
+    /** Invalid ASN.1 - depth check */
+    ASN_DEPTH_E          (-296),
+    /** ASN.1 length invalid */
+    ASN_LEN_E            (-297),
+    /** SM4-GCM Authentication check failure */
+    SM4_GCM_AUTH_E       (-298),
+    /** SM4-CCM Authentication check failure */
+    SM4_CCM_AUTH_E       (-299),
+
+    /** Deadlock averted -- retry the call */
+    DEADLOCK_AVERTED_E   (-1000),
+    /** ASCON Authentication check failure */
+    ASCON_AUTH_E         (-1001),
+    /** Crypto acceleration is currently inhibited */
+    WC_ACCEL_INHIBIT_E   (-1002),
+    /** Bad index */
+    BAD_INDEX_E          (-1003),
+    /** Process interrupted */
+    INTERRUPTED_E        (-1004),
+    /** Encoded public key does not match stored hash */
+    MLKEM_PUB_HASH_E     (-1005),
+    /** Object is busy */
+    BUSY_E               (-1006),
+    /** Operation was redundant or preempted */
+    ALREADY_E            (-1007),
+    /** Sequence counter would overflow */
+    SEQ_OVERFLOW_E       (-1008),
 
     /** Update this to indicate last error */
-    WC_LAST_E            (-299),
+    WC_LAST_E            (-1008),
 
-    /** errors -101 - -299 */
-    MIN_CODE_E           (-300),
+    /** Last usable code */
+    MIN_CODE_E           (-1999),
 
     /** OCSP Certificate revoked */
     OCSP_CERT_REVOKED    (-360),
