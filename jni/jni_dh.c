@@ -296,11 +296,21 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
     LogHex(pub, 0, pubSz);
 
     if (priv != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(priv, privSz);
+    #else
         XMEMSET(priv, 0, privSz);
+    #endif
         XFREE(priv, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
     if (pub != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(pub, pubSz);
+    #else
         XMEMSET(pub, 0, pubSz);
+    #endif
         XFREE(pub, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 #else
@@ -417,7 +427,12 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
     LogHex(secret, 0, secretSz);
 
     if (secret != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(secret, secretSz);
+    #else
         XMEMSET(secret, 0, secretSz);
+    #endif
         XFREE(secret, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
@@ -856,7 +871,12 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhExportKeyPair(
 
     pub = (byte*)XMALLOC(pubSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (pub == NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(priv, privSz);
+    #else
         XMEMSET(priv, 0, privSz);
+    #endif
         XFREE(priv, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         throwOutOfMemoryException(env, "Failed to allocate public key buffer");
         return NULL;
@@ -902,11 +922,21 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhExportKeyPair(
 
     /* Clean up */
     if (priv != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(priv, privSz);
+    #else
         XMEMSET(priv, 0, privSz);
+    #endif
         XFREE(priv, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
     if (pub != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(pub, pubSz);
+    #else
         XMEMSET(pub, 0, pubSz);
+    #endif
         XFREE(pub, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
@@ -1187,7 +1217,12 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhPrivateKeyEncode(
 
     /* Clean up */
     if (der != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(der, derSz);
+    #else
         XMEMSET(der, 0, derSz);
+    #endif
         XFREE(der, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 

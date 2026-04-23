@@ -388,7 +388,12 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private(
     LogHex((byte*) output, 0, outputSz);
 
     if (output != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(output, outputBufSz);
+    #else
         XMEMSET(output, 0, outputBufSz);
+    #endif
         XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 #else
@@ -616,7 +621,12 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccKeyToDer(
     LogHex((byte*) output, 0, outputSz);
 
     if (output != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(output, outputBufSz);
+    #else
         XMEMSET(output, 0, outputBufSz);
+    #endif
         XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 #else
@@ -827,7 +837,12 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
     LogHex((byte*) output, 0, outputSz);
 
     if (output != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(output, outputBufSz);
+    #else
         XMEMSET(output, 0, outputBufSz);
+    #endif
         XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 #else
@@ -1133,11 +1148,21 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1ke
     }
 
     if (derKey != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(derKey, derKeyBufSz);
+    #else
         XMEMSET(derKey, 0, derKeyBufSz);
+    #endif
         XFREE(derKey, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
     if (pkcs8 != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(pkcs8, pkcs8Sz);
+    #else
         XMEMSET(pkcs8, 0, pkcs8Sz);
+    #endif
         XFREE(pkcs8,  NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
@@ -1250,7 +1275,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1pri
         ecc, output, ret);
 
     if (output != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(output, outputSz);
+    #else
         XMEMSET(output, 0, outputSz);
+    #endif
         XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 #else

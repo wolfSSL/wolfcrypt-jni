@@ -385,7 +385,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
     }
 
     if (out != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(out, inLen);
+    #else
         XMEMSET(out, 0, inLen);
+    #endif
         XFREE(out, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
