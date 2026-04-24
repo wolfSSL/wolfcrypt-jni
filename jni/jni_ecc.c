@@ -1611,6 +1611,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curv
     curveIdx = wc_ecc_get_curve_idx_from_name(name);
     if (curveIdx < 0) {
         LogStr("wc_ecc_get_curve_idx_from_name failed, idx: %d\n", curveIdx);
+        (*env)->ReleaseStringUTFChars(env, curveName, name);
         throwWolfCryptExceptionFromError(env, curveIdx);
         return NULL;
     }
