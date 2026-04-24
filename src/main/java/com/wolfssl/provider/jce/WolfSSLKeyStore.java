@@ -1459,11 +1459,14 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         if (pkcs8Key == null || pkcs8Key.length == 0) {
             throw new KeyStoreException("Bad PrivateKey PKCS#8 encoding");
         }
-
-        match = X509CheckPrivateKey(derCert, pkcs8Key);
-        if (!match) {
-            throw new KeyStoreException("X509Certificate does not match " +
-                "provided private key");
+        try {
+            match = X509CheckPrivateKey(derCert, pkcs8Key);
+            if (!match) {
+                throw new KeyStoreException("X509Certificate does not match " +
+                    "provided private key");
+            }
+        } finally {
+            Arrays.fill(pkcs8Key, (byte)0);
         }
     }
 
@@ -1986,7 +1989,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
         log("KeyStore successfully stored to OutputStream");
 
-        return; 
+        return;
     }
 
     /**
