@@ -440,7 +440,9 @@ public class WolfCryptDHKeyFactory extends KeyFactorySpi {
                     throw new InvalidKeySpecException(
                         "DHPrivateKey.getEncoded() returned null");
                 }
-                return (T) new PKCS8EncodedKeySpec(encoded);
+                T pkcs8EncKS = (T) new PKCS8EncodedKeySpec(encoded);
+                Arrays.fill(encoded, (byte)0);
+                return pkcs8EncKS;
             }
             else if (keySpec.isAssignableFrom(DHPrivateKeySpec.class)) {
                 /* Extract private value and params directly from key */
@@ -542,6 +544,8 @@ public class WolfCryptDHKeyFactory extends KeyFactorySpi {
             }
 
             keySpec = new PKCS8EncodedKeySpec(encoded);
+            Arrays.fill(encoded, (byte)0);
+
             return engineGeneratePrivate(keySpec);
 
         } catch (InvalidKeySpecException e) {

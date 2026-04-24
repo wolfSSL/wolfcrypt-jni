@@ -534,7 +534,10 @@ public class WolfCryptRSAKeyFactory extends KeyFactorySpi {
                     throw new InvalidKeySpecException(
                         "RSAPrivateCrtKey.getEncoded() returned null");
                 }
-                return (T) new PKCS8EncodedKeySpec(encoded);
+                T pkcs8EncKS = (T) new PKCS8EncodedKeySpec(encoded);
+                Arrays.fill(encoded, (byte)0);
+
+                return pkcs8EncKS;
             }
             else if (keySpec.isAssignableFrom(RSAPrivateCrtKeySpec.class)) {
                 /* Extract CRT parameters directly from key */
@@ -600,7 +603,10 @@ public class WolfCryptRSAKeyFactory extends KeyFactorySpi {
                     throw new InvalidKeySpecException(
                         "RSAPrivateKey.getEncoded() returned null");
                 }
-                return (T) new PKCS8EncodedKeySpec(encoded);
+                T pkcs8EncKS = (T) new PKCS8EncodedKeySpec(encoded);
+                Arrays.fill(encoded, (byte)0);
+
+                return pkcs8EncKS;
             }
             else if (keySpec.isAssignableFrom(RSAPrivateKeySpec.class)) {
                 /* Extract basic private key parameters */
@@ -705,6 +711,7 @@ public class WolfCryptRSAKeyFactory extends KeyFactorySpi {
             }
 
             keySpec = new PKCS8EncodedKeySpec(encoded);
+            Arrays.fill(encoded, (byte)0);
 
             return engineGeneratePrivate(keySpec);
 
