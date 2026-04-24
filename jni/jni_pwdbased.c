@@ -191,7 +191,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
     (void)jcl;
     (void)passBuf;
     (void)passBufLen;
-    (void)salt;
+    (void)saltBuf;
     (void)sBufLen;
     (void)iterations;
     (void)kLen;
