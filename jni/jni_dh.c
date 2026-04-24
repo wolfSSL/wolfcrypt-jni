@@ -190,7 +190,6 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
     word32 pubSz  = size;
     int lBitPriv = 0, lBitPub  = 0;
     byte lBit[1] = { 0x00 };
-    int exceptionThrown = 0;
 
     key = (DhKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -245,44 +244,47 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateKeyPair(
         }
 
         jbyteArray privateKey = (*env)->NewByteArray(env, lBitPriv + privSz);
-        jbyteArray publicKey  = (*env)->NewByteArray(env, lBitPub + pubSz);
-
-        if (privateKey) {
-            if (lBitPriv) {
-                (*env)->SetByteArrayRegion(env, privateKey, 0, 1,
-                                                            (const jbyte*)lBit);
-                (*env)->SetByteArrayRegion(env, privateKey, 1, privSz,
-                                                            (const jbyte*)priv);
-            } else {
-                (*env)->SetByteArrayRegion(env, privateKey, 0, privSz,
-                                                            (const jbyte*)priv);
-            }
-
-            setByteArrayMember(env, this, "privateKey", privateKey);
-            if ((*env)->ExceptionOccurred(env)) {
-                /* if exception raised, skip any additional JNI functions */
-                exceptionThrown = 1;
-            }
-
-        } else {
-            throwWolfCryptException(env, "Failed to allocate privateKey");
-            exceptionThrown = 1;
+        jbyteArray publicKey  = NULL;
+        if (!privateKey) {
+            (*env)->ExceptionClear(env);
+            throwOutOfMemoryException(env, "Failed to allocate privateKey");
         }
 
-        if (publicKey && (exceptionThrown == 0)) {
-            if (lBitPub) {
-                (*env)->SetByteArrayRegion(env, publicKey, 0, 1,
-                                                            (const jbyte*)lBit);
-                (*env)->SetByteArrayRegion(env, publicKey, 1, pubSz,
-                                                             (const jbyte*)pub);
-            } else {
-                (*env)->SetByteArrayRegion(env, publicKey, 0, pubSz,
-                                                             (const jbyte*)pub);
+        if (!(*env)->ExceptionOccurred(env)) {
+            publicKey = (*env)->NewByteArray(env, lBitPub + pubSz);
+            if (!publicKey) {
+                (*env)->ExceptionClear(env);
+                throwOutOfMemoryException(env, "Failed to allocate publicKey");
             }
+        }
 
+        if (!(*env)->ExceptionOccurred(env)) {
+            if (lBitPriv) {
+                (*env)->SetByteArrayRegion(env, privateKey, 0, 1,
+                                                        (const jbyte*)lBit);
+                (*env)->SetByteArrayRegion(env, privateKey, 1, privSz,
+                                                        (const jbyte*)priv);
+            }
+            else {
+                (*env)->SetByteArrayRegion(env, privateKey, 0, privSz,
+                                                        (const jbyte*)priv);
+            }
+            setByteArrayMember(env, this, "privateKey", privateKey);
+        }
+
+        /* if exception raised, skip any additional JNI functions */
+        if (!(*env)->ExceptionOccurred(env)) {
+            if (lBitPub) {
+                (*env)->SetByteArrayRegion(env, publicKey, 0,
+                                                1, (const jbyte*)lBit);
+                (*env)->SetByteArrayRegion(env, publicKey, 1,
+                                                pubSz, (const jbyte*)pub);
+            }
+            else {
+                (*env)->SetByteArrayRegion(env, publicKey, 0,
+                                                pubSz, (const jbyte*)pub);
+            }
             setByteArrayMember(env, this, "publicKey", publicKey);
-        } else {
-            throwWolfCryptException(env, "Failed to allocate publicKey");
         }
     } else {
         throwWolfCryptExceptionFromError(env, ret);
