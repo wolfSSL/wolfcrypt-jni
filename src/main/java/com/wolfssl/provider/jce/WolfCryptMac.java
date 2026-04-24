@@ -24,6 +24,7 @@ package com.wolfssl.provider.jce;
 import javax.crypto.MacSpi;
 import java.security.Key;
 import java.security.spec.AlgorithmParameterSpec;
+import java.util.Arrays;
 import java.security.InvalidKeyException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
@@ -232,6 +233,8 @@ public class WolfCryptMac extends MacSpi {
             }
         } catch (com.wolfssl.wolfcrypt.WolfCryptException e) {
             throw new InvalidKeyException("Invalid key: " + e.getMessage());
+        } finally {
+            Arrays.fill(encodedKey, (byte)0);
         }
 
         log("init with key and spec");
