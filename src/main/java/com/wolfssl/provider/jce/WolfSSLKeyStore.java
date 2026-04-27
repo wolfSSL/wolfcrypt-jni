@@ -1186,6 +1186,8 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                 sKey = new SecretKeySpec(plainKey, sk.keyAlgo);
             }
 
+        } catch (WolfCryptException wce) {
+            throw new UnrecoverableKeyException("Error getting key: " + wce);
         } finally {
             if (plainKey != null) {
                 Arrays.fill(plainKey, (byte)0);
