@@ -193,7 +193,7 @@ Java_com_wolfssl_wolfcrypt_AesCtr_native_1update_1internal__Ljava_nio_ByteBuffer
     if (aes == NULL || input == NULL || output == NULL) {
         ret = BAD_FUNC_ARG;
     }
-    else if (offset < 0 || length < 0) {
+    else if (offset < 0 || length < 0 || outputOffset < 0) {
         ret = BAD_FUNC_ARG;
     }
     else if (((jlong)offset + (jlong)length) >
@@ -205,7 +205,8 @@ Java_com_wolfssl_wolfcrypt_AesCtr_native_1update_1internal__Ljava_nio_ByteBuffer
         ret = BUFFER_E; /* buffer overflow check */
     }
     else {
-        ret = wc_AesCtrEncrypt(aes, output, input + offset, length);
+        ret = wc_AesCtrEncrypt(aes, output + outputOffset,
+                               input + offset, length);
         LogStr("wc_AesCtrEncrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
     }
 

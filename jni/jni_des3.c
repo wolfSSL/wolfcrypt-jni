@@ -187,7 +187,7 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update_1internal__ILjava_nio_ByteBuffer_
     if (!des || !input || !output) {
         ret = BAD_FUNC_ARG; /* NULL sanitizers */
     }
-    else if (offset < 0 || length < 0) {
+    else if (offset < 0 || length < 0 || outputOffset < 0) {
         ret = BAD_FUNC_ARG; /* signed sanizizers */
     }
     else if (((jlong)offset + (jlong)length) >
@@ -199,11 +199,13 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update_1internal__ILjava_nio_ByteBuffer_
         ret = BUFFER_E; /* buffer overflow check */
     }
     else if (opmode == DES_ENCRYPTION) {
-        ret = wc_Des3_CbcEncrypt(des, output, input + offset, length);
+        ret = wc_Des3_CbcEncrypt(des, output + outputOffset,
+                                 input + offset, length);
         LogStr("wc_Des3CbcEncrypt(des=%p, out, in, inSz) = %d\n", des, ret);
     }
     else {
-        ret = wc_Des3_CbcDecrypt(des, output, input + offset, length);
+        ret = wc_Des3_CbcDecrypt(des, output + outputOffset,
+                                 input + offset, length);
         LogStr("wc_Des3CbcDecrypt(des=%p, out, in, inSz) = %d\n", des, ret);
     }
 
@@ -217,8 +219,8 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update_1internal__ILjava_nio_ByteBuffer_
 
     LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
     LogHex((byte*) input, offset, length);
-    LogStr("output[%u]: [%p]\n", (word32)length, output);
-    LogHex((byte*) output, 0, length);
+    LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
+    LogHex((byte*) output, outputOffset, length);
 #else
     throwNotCompiledInException(env);
 #endif
