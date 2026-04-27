@@ -345,7 +345,11 @@ public class WolfCryptSignature extends SignatureSpi {
                     privKeyBytes = ecPriv.getS().toByteArray();
                 }
 
-                this.ecc.importPrivate(privKeyBytes, null);
+                try {
+                    this.ecc.importPrivate(privKeyBytes, null);
+                } finally {
+                    zeroArray(privKeyBytes);
+                }
 
                 break;
         }
