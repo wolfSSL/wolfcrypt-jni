@@ -207,7 +207,7 @@ Java_com_wolfssl_wolfcrypt_AesOfb_native_1update_1internal__ILjava_nio_ByteBuffe
     if (aes == NULL || input == NULL || output == NULL) {
         ret = BAD_FUNC_ARG;
     }
-    else if (offset < 0 || length < 0) {
+    else if (offset < 0 || length < 0 || outputOffset < 0) {
         ret = BAD_FUNC_ARG;
     }
     else if (((jlong)offset + (jlong)length) >
@@ -219,17 +219,20 @@ Java_com_wolfssl_wolfcrypt_AesOfb_native_1update_1internal__ILjava_nio_ByteBuffe
         ret = BUFFER_E; /* buffer overflow check */
     }
     else if (opmode == AES_ENCRYPTION) {
-        ret = wc_AesOfbEncrypt(aes, output, input + offset, length);
+        ret = wc_AesOfbEncrypt(aes, output + outputOffset,
+                               input + offset, length);
         LogStr("wc_AesOfbEncrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
     }
     else {
 #ifdef HAVE_AES_DECRYPT
-        ret = wc_AesOfbDecrypt(aes, output, input + offset, length);
+        ret = wc_AesOfbDecrypt(aes, output + outputOffset,
+                               input + offset, length);
         LogStr("wc_AesOfbDecrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
 #else
         /* If HAVE_AES_DECRYPT not defined, fall back to encrypt
          * (OFB mode uses same operation for both) */
-        ret = wc_AesOfbEncrypt(aes, output, input + offset, length);
+        ret = wc_AesOfbEncrypt(aes, output + outputOffset,
+                               input + offset, length);
         LogStr("wc_AesOfbEncrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
 #endif
     }
@@ -244,8 +247,8 @@ Java_com_wolfssl_wolfcrypt_AesOfb_native_1update_1internal__ILjava_nio_ByteBuffe
 
     LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
     LogHex((byte*) input, offset, length);
-    LogStr("output[%u]: [%p]\n", (word32)length, output);
-    LogHex((byte*) output, 0, length);
+    LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
+    LogHex((byte*) output, outputOffset, length);
 #else
     throwNotCompiledInException(env);
     ret = NOT_COMPILED_IN;
