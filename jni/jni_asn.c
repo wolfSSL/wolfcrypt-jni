@@ -163,6 +163,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getPkcs8AlgoID
     if (ret == 0) {
         ret = (int)algoId;
     }
+    else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
 
     return (jint)ret;
 
@@ -170,7 +173,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getPkcs8AlgoID
     (void)env;
     (void)class;
     (void)pkcs8Der;
-    return (jint)NOT_COMPILED_IN;
+    throwNotCompiledInException(env);
+    return 0;
 #endif
 }
 
