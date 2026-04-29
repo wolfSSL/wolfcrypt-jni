@@ -332,8 +332,12 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 this.ecPublic = new Ecc();
                 this.ecPrivate.releaseNativeStruct();
                 this.ecPrivate = new Ecc();
-                this.ecPrivate.importPrivateOnCurve(priv, null, this.curveName);
-                zeroArray(priv);
+                try {
+                    this.ecPrivate.importPrivateOnCurve(priv, null,
+                                                        this.curveName);
+                } finally {
+                    zeroArray(priv);
+                }
 
                 this.state = EngineState.WC_PRIVKEY_DONE;
 
@@ -489,8 +493,11 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 "Unable to get DH private key from Key object");
         }
 
-        this.dh.setPrivateKey(dhPriv);
-        zeroArray(dhPriv);
+        try {
+            this.dh.setPrivateKey(dhPriv);
+        } finally {
+            zeroArray(dhPriv);
+        }
 
         return;
     }
@@ -531,6 +538,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         BigInteger privateValue = null;
         BigInteger order = null;
         ECParameterSpec ecParams = null;
+        byte[] privKeyBytes;
 
         if (!(key instanceof ECPrivateKey)) {
             throw new InvalidKeyException(
@@ -568,8 +576,15 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             throw new InvalidAlgorithmParameterException(
                 "ECC curve is null, please check algorithm parameters");
         }
-        this.ecPrivate.importPrivateOnCurve(ecKey.getS().toByteArray(),
+
+        privKeyBytes = ecKey.getS().toByteArray();
+
+        try {
+            this.ecPrivate.importPrivateOnCurve(privKeyBytes,
                 null, this.curveName);
+        } finally {
+            zeroArray(privKeyBytes);
+        }
     }
 
     /**

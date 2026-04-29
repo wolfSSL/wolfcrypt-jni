@@ -80,7 +80,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
     }
 
     if (outKey != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(outKey, kLen);
+    #else
         XMEMSET(outKey, 0, kLen);
+    #endif
         XFREE(outKey, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
@@ -159,7 +164,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
     }
 
     if (outKey != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(outKey, kLen);
+    #else
         XMEMSET(outKey, 0, kLen);
+    #endif
         XFREE(outKey, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
@@ -181,7 +191,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
     (void)jcl;
     (void)passBuf;
     (void)passBufLen;
-    (void)salt;
+    (void)saltBuf;
     (void)sBufLen;
     (void)iterations;
     (void)kLen;

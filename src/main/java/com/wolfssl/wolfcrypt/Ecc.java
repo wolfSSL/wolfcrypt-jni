@@ -24,6 +24,7 @@ package com.wolfssl.wolfcrypt;
 import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.spec.EllipticCurve;
+import java.util.Arrays;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.ECFieldFp;
 
@@ -673,6 +674,7 @@ public class Ecc extends NativeStruct {
         if ((bytes.length == fieldSizeBytes + 1) && (bytes[0] == 0)) {
             byte[] result = new byte[fieldSizeBytes];
             System.arraycopy(bytes, 1, result, 0, fieldSizeBytes);
+            Arrays.fill(bytes, (byte)0);
             return result;
         }
 
@@ -681,6 +683,7 @@ public class Ecc extends NativeStruct {
             byte[] result = new byte[fieldSizeBytes];
             System.arraycopy(bytes, 0, result, fieldSizeBytes - bytes.length,
                 bytes.length);
+            Arrays.fill(bytes, (byte)0);
             return result;
         }
 

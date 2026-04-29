@@ -948,86 +948,94 @@ public class WolfCryptCipher extends CipherSpi {
             throw new InvalidKeyException("Key does not support encoding");
         }
 
-        switch (cipherType) {
-            case WC_AES:
-                if (this.direction == OpMode.WC_ENCRYPT) {
-                    if (cipherMode == CipherMode.WC_GCM) {
-                        this.aesGcm.setKey(encodedKey);
+        try {
+            switch (cipherType) {
+                case WC_AES:
+                    if (this.direction == OpMode.WC_ENCRYPT) {
+                        if (cipherMode == CipherMode.WC_GCM) {
+                            this.aesGcm.setKey(encodedKey);
+                        }
+                        else if (cipherMode == CipherMode.WC_CCM) {
+                            this.aesCcm.setKey(encodedKey);
+                        }
+                        else if (cipherMode == CipherMode.WC_CTS) {
+                            this.aesCts.setKey(
+                                encodedKey, iv, AesCts.ENCRYPT_MODE);
+                        }
+                        else if (cipherMode == CipherMode.WC_ECB) {
+                            this.aesEcb.setKey(
+                                encodedKey, null, AesEcb.ENCRYPT_MODE);
+                        }
+                        else if (cipherMode == CipherMode.WC_CTR) {
+                            this.aesCtr.setKey(encodedKey, iv);
+                        }
+                        else if (cipherMode == CipherMode.WC_OFB) {
+                            this.aesOfb.setKey(
+                                encodedKey, iv, AesOfb.ENCRYPT_MODE);
+                        }
+                        else {
+                            this.aes.setKey(encodedKey, iv, Aes.ENCRYPT_MODE);
+                        }
+                    } else {
+                        if (cipherMode == CipherMode.WC_GCM) {
+                            this.aesGcm.setKey(encodedKey);
+                        }
+                        else if (cipherMode == CipherMode.WC_CCM) {
+                            this.aesCcm.setKey(encodedKey);
+                        }
+                        else if (cipherMode == CipherMode.WC_CTS) {
+                            this.aesCts.setKey(
+                                encodedKey, iv, AesCts.DECRYPT_MODE);
+                        }
+                        else if (cipherMode == CipherMode.WC_ECB) {
+                            this.aesEcb.setKey(
+                                encodedKey, null, AesEcb.DECRYPT_MODE);
+                        }
+                        else if (cipherMode == CipherMode.WC_CTR) {
+                            this.aesCtr.setKey(encodedKey, iv);
+                        }
+                        else if (cipherMode == CipherMode.WC_OFB) {
+                            this.aesOfb.setKey(
+                                encodedKey, iv, AesOfb.ENCRYPT_MODE);
+                        }
+                        else {
+                            this.aes.setKey(encodedKey, iv, Aes.DECRYPT_MODE);
+                        }
                     }
-                    else if (cipherMode == CipherMode.WC_CCM) {
-                        this.aesCcm.setKey(encodedKey);
-                    }
-                    else if (cipherMode == CipherMode.WC_CTS) {
-                        this.aesCts.setKey(encodedKey, iv, AesCts.ENCRYPT_MODE);
-                    }
-                    else if (cipherMode == CipherMode.WC_ECB) {
-                        this.aesEcb.setKey(
-                            encodedKey, null, AesEcb.ENCRYPT_MODE);
-                    }
-                    else if (cipherMode == CipherMode.WC_CTR) {
-                        this.aesCtr.setKey(encodedKey, iv);
-                    }
-                    else if (cipherMode == CipherMode.WC_OFB) {
-                        this.aesOfb.setKey(encodedKey, iv, AesOfb.ENCRYPT_MODE);
-                    }
-                    else {
-                        this.aes.setKey(encodedKey, iv, Aes.ENCRYPT_MODE);
-                    }
-                } else {
-                    if (cipherMode == CipherMode.WC_GCM) {
-                        this.aesGcm.setKey(encodedKey);
-                    }
-                    else if (cipherMode == CipherMode.WC_CCM) {
-                        this.aesCcm.setKey(encodedKey);
-                    }
-                    else if (cipherMode == CipherMode.WC_CTS) {
-                        this.aesCts.setKey(encodedKey, iv, AesCts.DECRYPT_MODE);
-                    }
-                    else if (cipherMode == CipherMode.WC_ECB) {
-                        this.aesEcb.setKey(
-                            encodedKey, null, AesEcb.DECRYPT_MODE);
-                    }
-                    else if (cipherMode == CipherMode.WC_CTR) {
-                        this.aesCtr.setKey(encodedKey, iv);
-                    }
-                    else if (cipherMode == CipherMode.WC_OFB) {
-                        this.aesOfb.setKey(encodedKey, iv, AesOfb.ENCRYPT_MODE);
-                    }
-                    else {
-                        this.aes.setKey(encodedKey, iv, Aes.DECRYPT_MODE);
-                    }
-                }
-                break;
+                    break;
 
-            case WC_DES3:
-                if (this.direction == OpMode.WC_ENCRYPT) {
-                    this.des3.setKey(encodedKey, iv, Des3.ENCRYPT_MODE);
-                } else {
-                    this.des3.setKey(encodedKey, iv, Des3.DECRYPT_MODE);
-                }
-                break;
+                case WC_DES3:
+                    if (this.direction == OpMode.WC_ENCRYPT) {
+                        this.des3.setKey(encodedKey, iv, Des3.ENCRYPT_MODE);
+                    } else {
+                        this.des3.setKey(encodedKey, iv, Des3.DECRYPT_MODE);
+                    }
+                    break;
 
-            case WC_RSA:
+                case WC_RSA:
 
-                /* reset key struct if needed */
-                if (this.rsa != null)
-                    this.rsa.releaseNativeStruct();
+                    /* reset key struct if needed */
+                    if (this.rsa != null)
+                        this.rsa.releaseNativeStruct();
 
-                if (this.rng == null) {
-                    this.rng = new Rng();
-                    this.rng.init();
-                }
-                this.rsa = new Rsa();
-                this.rsa.setRng(this.rng);
+                    if (this.rng == null) {
+                        this.rng = new Rng();
+                        this.rng.init();
+                    }
+                    this.rsa = new Rsa();
+                    this.rsa.setRng(this.rng);
 
-                if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
+                    if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
 
-                    this.rsa.decodePrivateKeyPKCS8(encodedKey);
+                        this.rsa.decodePrivateKeyPKCS8(encodedKey);
 
-                } else {
-                    this.rsa.decodePublicKey(encodedKey);
-                }
-                break;
+                    } else {
+                        this.rsa.decodePublicKey(encodedKey);
+                    }
+                    break;
+            }
+        } finally {
+            zeroArray(encodedKey);
         }
     }
 
@@ -1756,6 +1764,7 @@ public class WolfCryptCipher extends CipherSpi {
         throws InvalidKeyException {
 
         byte encodedKey[] = null;
+        int kLen = 0;
 
         /* validate key class type */
         if (this.cipherType == CipherType.WC_RSA) {
@@ -1781,7 +1790,9 @@ public class WolfCryptCipher extends CipherSpi {
         if (encodedKey == null)
             throw new InvalidKeyException("Key does not support encoding");
 
-        return encodedKey.length;
+        kLen = encodedKey.length;
+        zeroArray(encodedKey);
+        return kLen;
     }
 
     @Override
@@ -1857,6 +1868,7 @@ public class WolfCryptCipher extends CipherSpi {
         throws IllegalBlockSizeException, InvalidKeyException {
 
         byte[] encodedKey = null;
+        byte[] wcBuf;
 
         if (key == null) {
             throw new InvalidKeyException(
@@ -1870,12 +1882,14 @@ public class WolfCryptCipher extends CipherSpi {
         }
 
         try {
-            return wolfCryptFinal(encodedKey, 0, encodedKey.length);
-
+            wcBuf = wolfCryptFinal(encodedKey, 0, encodedKey.length);
         } catch (BadPaddingException e) {
             throw new InvalidKeyException("Failed to wrap key: " +
                 e.getMessage(), e);
+        } finally {
+            zeroArray(encodedKey);
         }
+        return wcBuf;
     }
 
     @Override

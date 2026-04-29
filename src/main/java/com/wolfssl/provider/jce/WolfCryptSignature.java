@@ -345,7 +345,11 @@ public class WolfCryptSignature extends SignatureSpi {
                     privKeyBytes = ecPriv.getS().toByteArray();
                 }
 
-                this.ecc.importPrivate(privKeyBytes, null);
+                try {
+                    this.ecc.importPrivate(privKeyBytes, null);
+                } finally {
+                    zeroArray(privKeyBytes);
+                }
 
                 break;
         }
@@ -447,69 +451,74 @@ public class WolfCryptSignature extends SignatureSpi {
         if (encodedKey == null)
             throw new InvalidKeyException("Key does not support encoding");
 
-        /* initialize native struct */
-        switch (keyType) {
-            case WC_RSA:
-                if (this.rsa != null) {
-                    this.rsa.releaseNativeStruct();
-                }
-                this.rsa = new Rsa();
-                break;
-            case WC_ECDSA:
-                if (this.ecc != null) {
-                    this.ecc.releaseNativeStruct();
-                }
-                synchronized (this.rngLock) {
-                    this.ecc = new Ecc(this.rng);
-                }
-                break;
-        }
-
-        wolfCryptInitPrivateKey(privateKey, encodedKey);
-
-        /* init hash object if digest type is set */
-        if (this.digestType == null) {
-            /* For RSASSA-PSS, hash init will happen in engineSetParameter() */
-            log("init sign with PrivateKey (hash init deferred for PSS)");
-            return;
-        }
-
-        synchronized (hashLock) {
-            switch (this.digestType) {
-                case WC_MD5:
-                    this.md5.init();
+        try {
+            /* initialize native struct */
+            switch (keyType) {
+                case WC_RSA:
+                    if (this.rsa != null) {
+                        this.rsa.releaseNativeStruct();
+                    }
+                    this.rsa = new Rsa();
                     break;
-
-                case WC_SHA1:
-                    this.sha.init();
-                    break;
-
-                case WC_SHA224:
-                    this.sha224.init();
-                    break;
-
-                case WC_SHA256:
-                    this.sha256.init();
-                    break;
-
-                case WC_SHA384:
-                    this.sha384.init();
-                    break;
-
-                case WC_SHA512:
-                    this.sha512.init();
-                    break;
-
-                case WC_SHA3_224:
-                case WC_SHA3_256:
-                case WC_SHA3_384:
-                case WC_SHA3_512:
-                    this.sha3.init();
+                case WC_ECDSA:
+                    if (this.ecc != null) {
+                        this.ecc.releaseNativeStruct();
+                    }
+                    synchronized (this.rngLock) {
+                        this.ecc = new Ecc(this.rng);
+                    }
                     break;
             }
-        }
 
-        log("init sign with PrivateKey");
+            wolfCryptInitPrivateKey(privateKey, encodedKey);
+
+            /* init hash object if digest type is set */
+            if (this.digestType == null) {
+                /* For RSASSA-PSS, hash init will happen in
+                 * engineSetParameter() */
+                log("init sign with PrivateKey (hash init deferred for PSS)");
+                return;
+            }
+
+            synchronized (hashLock) {
+                switch (this.digestType) {
+                    case WC_MD5:
+                        this.md5.init();
+                        break;
+
+                    case WC_SHA1:
+                        this.sha.init();
+                        break;
+
+                    case WC_SHA224:
+                        this.sha224.init();
+                        break;
+
+                    case WC_SHA256:
+                        this.sha256.init();
+                        break;
+
+                    case WC_SHA384:
+                        this.sha384.init();
+                        break;
+
+                    case WC_SHA512:
+                        this.sha512.init();
+                        break;
+
+                    case WC_SHA3_224:
+                    case WC_SHA3_256:
+                    case WC_SHA3_384:
+                    case WC_SHA3_512:
+                        this.sha3.init();
+                        break;
+                }
+            }
+
+            log("init sign with PrivateKey");
+        } finally {
+            zeroArray(encodedKey);
+        }
     }
 
     @Override

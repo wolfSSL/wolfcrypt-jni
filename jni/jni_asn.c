@@ -147,7 +147,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getPkcs8AlgoID
     }
 
     if (p8Copy != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(p8Copy, p8Len);
+    #else
         XMEMSET(p8Copy, 0, p8Len);
+    #endif
         XFREE(p8Copy, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
@@ -158,6 +163,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getPkcs8AlgoID
     if (ret == 0) {
         ret = (int)algoId;
     }
+    else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
 
     return (jint)ret;
 
@@ -165,7 +173,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getPkcs8AlgoID
     (void)env;
     (void)class;
     (void)pkcs8Der;
-    return (jint)NOT_COMPILED_IN;
+    throwNotCompiledInException(env);
+    return 0;
 #endif
 }
 
