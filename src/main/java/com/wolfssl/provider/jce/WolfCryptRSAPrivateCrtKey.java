@@ -240,6 +240,7 @@ public class WolfCryptRSAPrivateCrtKey implements RSAPrivateCrtKey,
         if ((data != null) && (data.length > 1) && (data[0] == 0)) {
             byte[] result = new byte[data.length - 1];
             System.arraycopy(data, 1, result, 0, data.length - 1);
+            Arrays.fill(data, (byte)0);
             return result;
         }
         return data;

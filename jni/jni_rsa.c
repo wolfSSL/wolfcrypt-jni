@@ -418,7 +418,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaKeyToDer
     LogHex((byte*) output, 0, outputSz);
 
     if (output != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(output, outputBufSz);
+    #else
         XMEMSET(output, 0, outputBufSz);
+    #endif
         XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 #else
@@ -602,11 +607,21 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyToP
     }
 
     if (derKey != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(derKey, derKeyBufSz);
+    #else
         XMEMSET(derKey, 0, derKeyBufSz);
+    #endif
         XFREE(derKey, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
     if (pkcs8 != NULL) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(pkcs8, pkcs8BufSz);
+    #else
         XMEMSET(pkcs8, 0, pkcs8BufSz);
+    #endif
         XFREE(pkcs8,  NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 

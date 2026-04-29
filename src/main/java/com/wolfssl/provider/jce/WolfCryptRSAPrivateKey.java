@@ -160,7 +160,9 @@ public class WolfCryptRSAPrivateKey implements RSAPrivateKey, Destroyable {
 
         /* Remove leading zero byte if present (sign byte) */
         if ((bytes.length > 0) && (bytes[0] == 0)) {
-            return Arrays.copyOfRange(bytes, 1, bytes.length);
+            byte[] cpyBytes = Arrays.copyOfRange(bytes, 1, bytes.length);
+            Arrays.fill(bytes, (byte)0);
+            return cpyBytes;
         }
         return bytes;
     }
