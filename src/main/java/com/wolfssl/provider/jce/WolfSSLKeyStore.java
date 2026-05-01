@@ -418,7 +418,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
     /**
      * Cleanup method to wipe KEK cache when KeyStore is garbage collected.
      */
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     @Override
     protected void finalize() throws Throwable {
         try {

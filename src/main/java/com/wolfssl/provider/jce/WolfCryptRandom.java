@@ -111,7 +111,7 @@ public final class WolfCryptRandom extends SecureRandomSpi {
         WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO, () -> msg);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     @Override
     protected synchronized void finalize() throws Throwable {
         try {
