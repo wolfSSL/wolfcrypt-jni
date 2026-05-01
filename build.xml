@@ -323,6 +323,7 @@
             includeantruntime="false">
             <exclude name="com/wolfssl/provider/jce/test/**" unless="jar.includes.jce"/>
             <compilerarg value="-Xlint:-options" />
+            <compilerarg value="-Xlint:-path" />
         </javac>
 
     </target>

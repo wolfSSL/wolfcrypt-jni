@@ -114,6 +114,7 @@ class WolfCryptDebug {
             Level level = record.getLevel();
             String levelStr = level != null ? level.getName() : "UNKNOWN";
 
+            @SuppressWarnings("deprecation")
             long threadId = record.getThreadID();
             String message = record.getMessage();
             if (message == null) {

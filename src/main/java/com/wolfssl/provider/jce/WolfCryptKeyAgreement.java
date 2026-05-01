@@ -662,7 +662,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             () -> "[" + algString + "] " + msg);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     @Override
     protected void finalize() throws Throwable {
         try {
