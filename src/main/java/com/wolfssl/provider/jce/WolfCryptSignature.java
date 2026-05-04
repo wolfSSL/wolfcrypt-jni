@@ -1379,7 +1379,7 @@ public class WolfCryptSignature extends SignatureSpi {
             () -> "[" + keyString + "-" + digestString + "] " + msg);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     @Override
     protected synchronized void finalize() throws Throwable {
         try {

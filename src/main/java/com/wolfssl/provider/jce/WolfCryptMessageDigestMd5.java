@@ -115,7 +115,7 @@ public final class WolfCryptMessageDigestMd5
         return new WolfCryptMessageDigestMd5(md5Copy);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     @Override
     protected void finalize() throws Throwable {
         try {

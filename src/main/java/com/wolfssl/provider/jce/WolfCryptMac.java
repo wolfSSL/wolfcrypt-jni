@@ -320,7 +320,7 @@ public class WolfCryptMac extends MacSpi {
             () -> "[" + algString + "] " + msg);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     @Override
     protected void finalize() throws Throwable {
         try {
