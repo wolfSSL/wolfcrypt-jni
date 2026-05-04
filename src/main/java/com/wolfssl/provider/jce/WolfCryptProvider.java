@@ -84,6 +84,7 @@ public final class WolfCryptProvider extends Provider {
     /**
      * Create new WolfCryptProvider object
      */
+    @SuppressWarnings("deprecation")
     public WolfCryptProvider() {
         super("wolfJCE", 1.10, "wolfCrypt JCE Provider");
 

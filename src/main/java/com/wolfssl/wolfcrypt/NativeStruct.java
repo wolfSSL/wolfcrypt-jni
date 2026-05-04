@@ -111,7 +111,7 @@ public abstract class NativeStruct extends WolfObject {
 
     private native void xfree(long pointer);
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     @Override
     protected void finalize() throws Throwable {
         releaseNativeStruct();

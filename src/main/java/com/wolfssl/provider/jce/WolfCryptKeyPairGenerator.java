@@ -685,7 +685,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
             () -> "[" + algString + "] " + msg);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     @Override
     protected synchronized void finalize() throws Throwable {
         try {

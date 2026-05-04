@@ -115,7 +115,7 @@ public final class WolfCryptMessageDigestSha384
         return new WolfCryptMessageDigestSha384(shaCopy);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     @Override
     protected void finalize() throws Throwable {
         try {

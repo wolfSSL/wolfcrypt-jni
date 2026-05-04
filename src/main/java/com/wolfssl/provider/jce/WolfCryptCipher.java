@@ -297,6 +297,7 @@ public class WolfCryptCipher extends CipherSpi {
      * @param spec OAEPParameterSpec containing OAEP parameters
      * @throws InvalidAlgorithmParameterException if parameters are invalid
      */
+    @SuppressWarnings("deprecation")
     private void setOaepParams(OAEPParameterSpec spec)
         throws InvalidAlgorithmParameterException {
 
@@ -1983,7 +1984,7 @@ public class WolfCryptCipher extends CipherSpi {
             () -> "[" + algString + "-" + algMode + "] " + msg);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     @Override
     protected void finalize() throws Throwable {
         try {
