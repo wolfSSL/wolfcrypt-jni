@@ -49,6 +49,7 @@ public class Des3 extends BlockCipher {
         int offset, int length, byte[] output, int outputOffset);
     private native int native_update_internal(int opmode, ByteBuffer input,
         int offset, int length, ByteBuffer output, int outputOffset);
+    private native void wc_Des3Free();
 
     /**
      * Malloc native JNI Des3 structure
@@ -116,6 +117,15 @@ public class Des3 extends BlockCipher {
             return native_update_internal(opmode, input, offset, length,
                 output, outputOffset);
         }
+    }
+
+    /**
+     * Zero 3DES key schedule via wc_Des3Free before native struct memory
+     * is freed. Caller (BlockCipher.releaseNativeStruct) holds pointerLock.
+     */
+    @Override
+    protected void native_free() {
+        wc_Des3Free();
     }
 
     /**

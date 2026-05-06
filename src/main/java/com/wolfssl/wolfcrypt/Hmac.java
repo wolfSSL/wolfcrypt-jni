@@ -105,6 +105,7 @@ public class Hmac extends NativeStruct {
     private native void wc_HmacUpdate(ByteBuffer data, int offset, int length);
     private native byte[] wc_HmacFinal();
     private native int wc_HmacSizeByType(int type);
+    private native void native_free();
     private native static int getCodeMd5();
     private native static int getCodeSha();
     private native static int getCodeSha224();
@@ -125,6 +126,26 @@ public class Hmac extends NativeStruct {
      * @throws OutOfMemoryError when malloc fails with memory error
      */
     protected native long mallocNativeStruct() throws OutOfMemoryError;
+
+    /**
+     * Zero ipad/opad (key-derived state) in the native Hmac struct via
+     * wc_HmacFree before the underlying memory is freed.
+     */
+    @Override
+    public synchronized void releaseNativeStruct() {
+        synchronized (stateLock) {
+            synchronized (pointerLock) {
+                /* Gate on pointer, not state: clearKey and partial-init
+                 * failure can both leave pointer != 0 with non-READY state. */
+                if (getNativeStruct() == NULL) {
+                    return;
+                }
+                native_free();
+                super.releaseNativeStruct();
+            }
+            state = WolfCryptState.RELEASED;
+        }
+    }
 
     /**
      * Check if type is -1, if so that type is not compiled in at native
@@ -202,13 +223,30 @@ public class Hmac extends NativeStruct {
 
         throwIfKeyNotLoaded();
 
-        synchronized (pointerLock) {
-            /* Reset the HMAC state */
-            releaseNativeStruct();
-            initNativeStruct();
-
-            /* Re-set the key and type */
-            wc_HmacSetKey(type, key);
+        synchronized (stateLock) {
+            boolean success = false;
+            try {
+                synchronized (pointerLock) {
+                    releaseNativeStruct();
+                    initNativeStruct();
+                    wc_HmacSetKey(type, key);
+                }
+                /* Only reached on success; if any step threw, state stays
+                 * RELEASED so a follow-up update/doFinal fails fast rather
+                 * than running on a half-initialized native struct. */
+                state = WolfCryptState.READY;
+                success = true;
+            } finally {
+                if (!success) {
+                    /* Scrub stored key material on partial-init failure so
+                     * the secret doesn't linger in the Java heap. */
+                    if (this.key != null) {
+                        Arrays.fill(this.key, (byte) 0);
+                        this.key = null;
+                    }
+                    this.type = -1;
+                }
+            }
         }
     }
 

@@ -57,13 +57,19 @@ public class Chacha extends NativeStruct {
     private native byte[] wc_Chacha_process(byte in[]);
     private native void wc_Chacha_setKey(byte[] Key);
     private native void wc_Chacha_setIV(byte[] IV);
+    private native void native_free();
 
     @Override
     public synchronized void releaseNativeStruct() {
-        /* No native ChaCha free API, so just release NativeStruct */
         synchronized (stateLock) {
             if ((state != WolfCryptState.UNINITIALIZED) &&
                 (state != WolfCryptState.RELEASED)) {
+                /* Only scrub ChaCha state if a key was actually set */
+                if (state == WolfCryptState.READY) {
+                    synchronized (pointerLock) {
+                        native_free();
+                    }
+                }
                 super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }

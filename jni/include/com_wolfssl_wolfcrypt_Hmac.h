@@ -59,6 +59,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSizeByType
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    native_free
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_native_1free
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
  * Method:    getCodeMd5
  * Signature: ()I
  */

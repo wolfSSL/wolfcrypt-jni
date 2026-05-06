@@ -65,6 +65,7 @@ public class AesCts extends NativeStruct {
     /* Native JNI methods, internally reach back and grab/use pointer from
      * NativeStruct.java. */
     private native long mallocNativeStruct_internal() throws OutOfMemoryError;
+    private native void native_free();
     private native void native_set_key_internal(byte[] key, byte[] iv,
         int opmode);
     private native int native_update_internal(int opmode, byte[] input,
@@ -376,7 +377,14 @@ public class AesCts extends NativeStruct {
     @Override
     public synchronized void releaseNativeStruct() {
         synchronized (stateLock) {
-            if (state != WolfCryptState.RELEASED) {
+            if ((state != WolfCryptState.UNINITIALIZED) &&
+                (state != WolfCryptState.RELEASED)) {
+                /* Only scrub AES_KEY/IV if a key was actually set */
+                if (state == WolfCryptState.READY) {
+                    synchronized (pointerLock) {
+                        native_free();
+                    }
+                }
                 super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }

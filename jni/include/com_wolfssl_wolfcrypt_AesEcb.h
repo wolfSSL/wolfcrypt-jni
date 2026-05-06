@@ -53,6 +53,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesEcb_native_1update_1interna
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesEcb_native_1update_1internal__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2I
   (JNIEnv *, jobject, jint, jobject, jint, jint, jobject, jint);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_AesEcb
+ * Method:    wc_AesFree
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesEcb_wc_1AesFree
+  (JNIEnv *, jobject);
+
 #ifdef __cplusplus
 }
 #endif

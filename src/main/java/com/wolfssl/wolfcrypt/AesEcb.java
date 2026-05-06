@@ -58,6 +58,7 @@ public class AesEcb extends BlockCipher {
         int offset, int length, byte[] output, int outputOffset);
     private native int native_update_internal(int opmode, ByteBuffer input,
         int offset, int length, ByteBuffer output, int outputOffset);
+    private native void wc_AesFree();
 
     /**
      * Malloc native AesEcb structure
@@ -126,6 +127,15 @@ public class AesEcb extends BlockCipher {
             return native_update_internal(opmode, input, offset, length,
                 output, outputOffset);
         }
+    }
+
+    /**
+     * Zero AES key schedule via wc_AesFree before native struct memory
+     * is freed. Caller (BlockCipher.releaseNativeStruct) holds pointerLock.
+     */
+    @Override
+    protected void native_free() {
+        wc_AesFree();
     }
 
     /**

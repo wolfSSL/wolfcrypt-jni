@@ -71,6 +71,7 @@ public class AesOfb extends NativeStruct {
         int offset, int length, byte[] output, int outputOffset);
     private native int native_decrypt_internal(ByteBuffer input,
         int offset, int length, ByteBuffer output, int outputOffset);
+    private native void wc_AesFree();
 
     /**
      * Malloc native AesOfb structure
@@ -664,7 +665,14 @@ public class AesOfb extends NativeStruct {
     @Override
     public synchronized void releaseNativeStruct() {
         synchronized (stateLock) {
-            if (state != WolfCryptState.RELEASED) {
+            if ((state != WolfCryptState.UNINITIALIZED) &&
+                (state != WolfCryptState.RELEASED)) {
+                /* Only scrub key schedule if a key was actually set */
+                if (state == WolfCryptState.READY) {
+                    synchronized (pointerLock) {
+                        wc_AesFree();
+                    }
+                }
                 super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }

@@ -244,3 +244,26 @@ Java_com_wolfssl_wolfcrypt_AesEcb_native_1update_1internal__ILjava_nio_ByteBuffe
     return ret;
 }
 
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesEcb_wc_1AesFree
+  (JNIEnv* env, jobject this)
+{
+#if !defined(NO_AES) && defined(HAVE_AES_ECB)
+    Aes* aes = NULL;
+
+    aes = (Aes*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, if so stop and return */
+        return;
+    }
+
+    if (aes != NULL) {
+        wc_AesFree(aes);
+    }
+
+    LogStr("wc_AesFree(aes=%p)\n", aes);
+#else
+    (void)this;
+    throwNotCompiledInException(env);
+#endif
+}
+
