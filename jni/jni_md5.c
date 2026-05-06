@@ -190,8 +190,8 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update_1internal___3BII(
     data   = getByteArray(env, data_buffer);
     dataSz = getByteArrayLength(env, data_buffer);
 
-    if (md5 == NULL || data == NULL ||
-        ((word32)(offset + len) > dataSz)) {
+    if (md5 == NULL || data == NULL || offset < 0 || len < 0 ||
+        ((jlong)offset + (jlong)len) > (jlong)dataSz) {
         ret = BAD_FUNC_ARG;
     } else {
         ret = wc_Md5Update(md5, data + offset, len);
