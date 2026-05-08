@@ -39,6 +39,8 @@ import java.security.spec.ECGenParameterSpec;
 import java.security.spec.RSAKeyGenParameterSpec;
 import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.InvalidKeySpecException;
+import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.interfaces.ECPrivateKey;
@@ -473,12 +475,20 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                         }
                         pubSpec = new X509EncodedKeySpec(pubDer);
 
-                        KeyFactory kf = KeyFactory.getInstance("RSA");
+                        /* Prefer wolfJCE KeyFactory by name to avoid a
+                         * higher priority Provider that may strip RSA CRT
+                         * params (incompatible with WolfCryptSignature). Fall
+                         * back to default lookup in builds where wolfJCE does
+                         * not register KeyFactory.RSA (!WOLFSSL_PUBLIC_MP). */
+                        KeyFactory kf =
+                            WolfCryptUtil.getKeyFactoryPreferWolfJCE("RSA");
                         rsaPriv = (RSAPrivateKey)kf.generatePrivate(privSpec);
                         rsaPub  = (RSAPublicKey)kf.generatePublic(pubSpec);
 
                         if (this.type == KeyType.WC_RSA_PSS) {
                             /* Try to use RSASSA-PSS KeyFactory if available.
+                             * wolfJCE does not currently register one, so
+                             * this resolves through Provider priority order.
                              * Not all platforms support it (e.g. Android). */
                             try {
                                 /* Get key specs to generate PSS keys */
@@ -492,11 +502,20 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                                 /* Use RSASSA-PSS KeyFactory */
                                 KeyFactory pssKf =
                                     KeyFactory.getInstance("RSASSA-PSS");
-                                rsaPriv = (RSAPrivateKey)pssKf
+                                RSAPrivateKey altPriv = (RSAPrivateKey)pssKf
                                     .generatePrivate(privCrtSpec);
-                                rsaPub  = (RSAPublicKey)pssKf
+                                RSAPublicKey altPub = (RSAPublicKey)pssKf
                                     .generatePublic(pubKeySpec);
-                            } catch (NoSuchAlgorithmException e) {
+
+                                /* Only adopt PSS KeyFactory output if it
+                                 * preserves CRT params. */
+                                if (altPriv instanceof RSAPrivateCrtKey) {
+                                    rsaPriv = altPriv;
+                                    rsaPub  = altPub;
+                                }
+                            } catch (NoSuchAlgorithmException |
+                                     InvalidKeySpecException |
+                                     ClassCastException e) {
                                 /* RSASSA-PSS KeyFactory not available on this
                                  * platform, use regular RSA keys which are
                                  * still valid for PSS operations */
@@ -594,7 +613,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     ecc.releaseNativeStruct();
 
                     try {
-                        KeyFactory kf = KeyFactory.getInstance("EC");
+                        KeyFactory kf =
+                            WolfCryptUtil.getKeyFactoryPreferWolfJCE("EC");
 
                         eccPriv  = (ECPrivateKey)kf.generatePrivate(privSpec);
                         eccPub   = (ECPublicKey)kf.generatePublic(pubSpec);
@@ -642,7 +662,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 dh.releaseNativeStruct();
 
                 try {
-                    KeyFactory kf = KeyFactory.getInstance("DH");
+                    KeyFactory kf =
+                        WolfCryptUtil.getKeyFactoryPreferWolfJCE("DH");
 
                     dhPriv  = (DHPrivateKey)kf.generatePrivate(privSpec);
                     dhPub   = (DHPublicKey)kf.generatePublic(pubSpec);

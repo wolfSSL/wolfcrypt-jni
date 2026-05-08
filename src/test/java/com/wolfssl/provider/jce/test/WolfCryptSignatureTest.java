@@ -28,6 +28,7 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.junit.Test;
 import org.junit.BeforeClass;
+import org.junit.Assume;
 
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
@@ -49,8 +50,12 @@ import java.security.spec.ECGenParameterSpec;
 import java.security.spec.PSSParameterSpec;
 import java.security.spec.MGF1ParameterSpec;
 import java.security.interfaces.RSAKey;
+import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.security.spec.RSAKeyGenParameterSpec;
+import java.io.Closeable;
+import java.math.BigInteger;
 
 import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
@@ -2365,6 +2370,189 @@ public class WolfCryptSignatureTest {
             boolean verified = verifier.verify(signature);
             assertTrue("Signature verification should succeed for " + algo +
                 " after setParameter(ECParameterSpec)", verified);
+        }
+    }
+
+    /* WolfCryptSignature rejects RSAPrivateKey instances that do not also
+     * implement RSAPrivateCrtKey. These tests:
+     *   (a) document that restriction by asserting the error type and that
+     *       the message identifies CRT parameters as the cause,
+     *   (b) verify that a key produced by wolfJCE KeyPairGenerator is accepted
+     *       by wolfJCE Signature, even when a foreign Provider sits above
+     *       wolfJCE in the Provider list.
+     */
+
+    /* SHA256withRSA Signature.initSign() should accept a non-CRT-typed
+     * RSAPrivateKey when its getEncoded() returns a valid PKCS#8 that still
+     * contains all CRT components (mimics opaque keys returned by some
+     * Providers where the Java type does not advertise CRT support but the
+     * encoding does carry CRT. */
+    @Test
+    public void testEngineInitSignAcceptsNonCrtTypedKeyWithCrtEncoding()
+        throws Exception {
+
+        Assume.assumeTrue("RSA min size > 2048", Rsa.RSA_MIN_SIZE <= 2048);
+
+        /* Generate a real wolfJCE RSA CRT key, then wrap it as a plain
+         * RSAPrivateKey that hides the CRT interface but exposes the full
+         * PKCS#8 encoding from getEncoded(). */
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", "wolfJCE");
+        kpg.initialize(new RSAKeyGenParameterSpec(2048,
+            BigInteger.valueOf(Rsa.getDefaultRsaExponent())));
+        KeyPair kp = kpg.generateKeyPair();
+        final RSAPrivateKey realPriv = (RSAPrivateKey) kp.getPrivate();
+        final byte[] realEncoded = realPriv.getEncoded();
+
+        RSAPrivateKey nonCrtTypedWithCrtEncoding = new RSAPrivateKey() {
+            private static final long serialVersionUID = 1L;
+            @Override public BigInteger getModulus() {
+                return realPriv.getModulus();
+            }
+            @Override public BigInteger getPrivateExponent() {
+                return realPriv.getPrivateExponent();
+            }
+            @Override public String getAlgorithm() { return "RSA"; }
+            @Override public String getFormat() { return "PKCS#8"; }
+            @Override public byte[] getEncoded() {
+                return realEncoded.clone();
+            }
+        };
+
+        Signature signer = Signature.getInstance("SHA256withRSA", "wolfJCE");
+        signer.initSign(nonCrtTypedWithCrtEncoding);
+        signer.update("non-crt-type-crt-encoding".getBytes());
+        byte[] sig = signer.sign();
+        assertNotNull(sig);
+
+        Signature verifier =
+            Signature.getInstance("SHA256withRSA", "wolfJCE");
+        verifier.initVerify(kp.getPublic());
+        verifier.update("non-crt-type-crt-encoding".getBytes());
+        assertTrue(verifier.verify(sig));
+    }
+
+    /* SHA256withRSA Signature.initSign() should throw InvalidKeyException with
+     * a CRT-specific message when the encoded form fails native decode and
+     * the Java type is not RSAPrivateCrtKey. */
+    @Test
+    public void testEngineInitSignRejectsNonCrtKeyWithBadEncoding()
+        throws Exception {
+
+        Assume.assumeTrue("RSA min size > 2048", Rsa.RSA_MIN_SIZE <= 2048);
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", "wolfJCE");
+        kpg.initialize(new RSAKeyGenParameterSpec(2048,
+            BigInteger.valueOf(Rsa.getDefaultRsaExponent())));
+        KeyPair kp = kpg.generateKeyPair();
+        final RSAPrivateKey realPriv = (RSAPrivateKey) kp.getPrivate();
+
+        /* Encoding is undecodable garbage, native wc_RsaPrivateKeyDecode()
+         * will fail. Java type is non-CRT, so the catch path should
+         * produce the CRT-specific error message. */
+        final byte[] badEncoded = new byte[] {
+            0x30, 0x10, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+        RSAPrivateKey nonCrtPriv = new RSAPrivateKey() {
+            private static final long serialVersionUID = 1L;
+            @Override public BigInteger getModulus() {
+                return realPriv.getModulus();
+            }
+            @Override public BigInteger getPrivateExponent() {
+                return realPriv.getPrivateExponent();
+            }
+            @Override public String getAlgorithm() { return "RSA"; }
+            @Override public String getFormat() { return "PKCS#8"; }
+            @Override public byte[] getEncoded() {
+                return badEncoded.clone();
+            }
+        };
+
+        Signature signer = Signature.getInstance("SHA256withRSA", "wolfJCE");
+        try {
+            signer.initSign(nonCrtPriv);
+            fail("Expected InvalidKeyException for undecodable encoding");
+
+        } catch (InvalidKeyException e) {
+            String msg = e.getMessage() == null ? "" : e.getMessage();
+            assertTrue("Error must mention CRT parameters, got: " + msg,
+                msg.contains("CRT"));
+        }
+    }
+
+    /* SHA256withRSA Signature.initSign() should throw InvalidKeyException
+     * referencing the encoding for a key that returns null from getEncoded() */
+    @Test
+    public void testEngineInitSignRejectsKeyWithNullEncoding()
+        throws Exception {
+
+        Assume.assumeTrue("RSA min size > 2048", Rsa.RSA_MIN_SIZE <= 2048);
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", "wolfJCE");
+        kpg.initialize(new RSAKeyGenParameterSpec(2048,
+            BigInteger.valueOf(Rsa.getDefaultRsaExponent())));
+        KeyPair kp = kpg.generateKeyPair();
+        final RSAPrivateKey realPriv = (RSAPrivateKey) kp.getPrivate();
+        RSAPrivateKey opaquePriv = new RSAPrivateKey() {
+            private static final long serialVersionUID = 1L;
+            @Override public BigInteger getModulus() {
+                return realPriv.getModulus();
+            }
+            @Override public BigInteger getPrivateExponent() {
+                return realPriv.getPrivateExponent();
+            }
+            @Override public String getAlgorithm() { return "RSA"; }
+            @Override public String getFormat() { return null; }
+            @Override public byte[] getEncoded() { return null; }
+        };
+
+        Signature signer = Signature.getInstance("SHA256withRSA", "wolfJCE");
+        try {
+            signer.initSign(opaquePriv);
+            fail("Expected InvalidKeyException for null encoding");
+
+        } catch (InvalidKeyException e) {
+            String msg = e.getMessage() == null ? "" : e.getMessage();
+            assertTrue("Error should reference encoding, got: " + msg,
+                msg.contains("encoding"));
+        }
+    }
+
+    /* SHA256withRSA Signature.initSign() should accept the PrivateKey
+     * returned by wolfJCE RSA KeyPairGenerator and produce a verifiable
+     * signature, even with a degraded RSA KeyFactory installed at higher
+     * priority than wolfJCE. */
+    @Test
+    public void testEngineInitSignAcceptsKpgKeyWhenMockRsaIsHighest()
+        throws Exception {
+
+        Assume.assumeTrue("RSA min size > 2048", Rsa.RSA_MIN_SIZE <= 2048);
+
+        Closeable scope = MockNonCrtProvider.install();
+        try {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "wolfJCE");
+            kpg.initialize(new RSAKeyGenParameterSpec(2048,
+                BigInteger.valueOf(Rsa.getDefaultRsaExponent())));
+            KeyPair kp = kpg.generateKeyPair();
+
+            /* Signature.initSign() must not throw "RSA private key must
+             * include CRT parameters" for a key produced by wolfJCE
+             * KeyPairGenerator, regardless of what other Providers are
+             * registered above wolfJCE. */
+            Signature signer =
+                Signature.getInstance("SHA256withRSA", "wolfJCE");
+            signer.initSign(kp.getPrivate());
+            signer.update("kpg-to-signature".getBytes());
+            byte[] sig = signer.sign();
+            assertNotNull(sig);
+
+            Signature verifier =
+                Signature.getInstance("SHA256withRSA", "wolfJCE");
+            verifier.initVerify(kp.getPublic());
+            verifier.update("kpg-to-signature".getBytes());
+            assertTrue(verifier.verify(sig));
+        } finally {
+            scope.close();
         }
     }
 }

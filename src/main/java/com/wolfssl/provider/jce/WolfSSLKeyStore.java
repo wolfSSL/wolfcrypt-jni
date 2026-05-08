@@ -33,19 +33,19 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.security.Key;
+import java.security.KeyFactory;
 import java.security.KeyStoreSpi;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
-import java.security.KeyFactory;
 import java.security.Security;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.InvalidKeySpecException;
 import java.security.KeyStoreException;
 import java.security.NoSuchProviderException;
 import java.security.InvalidKeyException;
 import java.security.InvalidAlgorithmParameterException;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.InvalidKeySpecException;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.security.cert.CertificateFactory;
@@ -1154,12 +1154,17 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                         "unprotected key");
                 }
 
+                /* Prefer wolfJCE KeyFactory by name for RSA/EC, fall back to
+                 * default Provider lookup in builds where wolfJCE does not
+                 * register that KeyFactory (e.g. KeyFactory.RSA when
+                 * !WOLFSSL_PUBLIC_MP). No KeyFactory.RSASSA-PSS in wolfJCE
+                 * yet, so PSS keeps default lookup. */
                 if (algoId == Asn.RSAk) {
-                    keyFact = KeyFactory.getInstance("RSA");
+                    keyFact = WolfCryptUtil.getKeyFactoryPreferWolfJCE("RSA");
                 } else if (algoId == Asn.RSAPSSk) {
                     keyFact = KeyFactory.getInstance("RSASSA-PSS");
                 } else if (algoId == Asn.ECDSAk) {
-                    keyFact = KeyFactory.getInstance("EC");
+                    keyFact = WolfCryptUtil.getKeyFactoryPreferWolfJCE("EC");
                 } else {
                     throw new NoSuchAlgorithmException(
                         "Only RSA, RSASSA-PSS, and EC private key " +

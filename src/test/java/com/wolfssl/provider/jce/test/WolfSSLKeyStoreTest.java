@@ -40,6 +40,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.ByteArrayInputStream;
@@ -57,7 +58,10 @@ import java.security.KeyFactory;
 import java.security.KeyStoreException;
 import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
 import java.security.UnrecoverableKeyException;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateException;
@@ -2938,6 +2942,98 @@ public class WolfSSLKeyStoreTest {
         /* Verify the certificate can also be retrieved */
         Certificate certOut = store.getCertificate("pssKey");
         assertNotNull("Retrieved PSS cert should not be null", certOut);
+    }
+
+    /* Tests for the case where a foreign Provider sits above wolfJCE in the
+     * Provider list and returns degraded keys for "RSA"/"EC" lookups.
+     * WolfSSLKeyStore.engineGetKey() must not fall through to that Provider
+     * when reconstructing PrivateKey objects from PKCS#8.
+     * See MockNonCrtProvider for details.
+     *
+     * WKS store + load + getKey on an RSA private key entry should return
+     * an RSAPrivateCrtKey usable as a SHA256withRSA Signature input, even
+     * with a degraded RSA KeyFactory installed at higher priority than
+     * wolfJCE. */
+    @Test
+    public void testGetKeyRsaWhenMockRsaProviderIsHighest() throws Exception {
+
+        Assume.assumeNotNull(serverKeyRsa, serverCertRsa);
+
+        char[] pw = storePass.toCharArray();
+
+        KeyStore ks = KeyStore.getInstance(storeType, storeProvider);
+        ks.load(null, pw);
+        ks.setKeyEntry("rsa-key", serverKeyRsa, pw,
+            new Certificate[] { serverCertRsa });
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ks.store(bos, pw);
+        bos.close();
+
+        Closeable scope = MockNonCrtProvider.install();
+        try {
+            KeyStore loaded = KeyStore.getInstance(storeType, storeProvider);
+            loaded.load(new ByteArrayInputStream(bos.toByteArray()), pw);
+
+            PrivateKey priv = (PrivateKey) loaded.getKey("rsa-key", pw);
+            assertNotNull(priv);
+            assertTrue("Loaded RSA key must be RSAPrivateCrtKey: " +
+                priv.getClass().getName(),
+                priv instanceof RSAPrivateCrtKey);
+
+            /* Sanity check, usable as a wolfJCE Signature input. */
+            Signature signer =
+                Signature.getInstance("SHA256withRSA", "wolfJCE");
+            signer.initSign(priv);
+            signer.update("ks-rsa".getBytes());
+            assertNotNull(signer.sign());
+        } finally {
+            scope.close();
+        }
+    }
+
+    /* WKS store + load + getKey on an EC private key entry should return an
+     * ECPrivateKey with non-null params usable as a SHA256withECDSA Signature
+     * input, even with a degraded EC KeyFactory installed at higher priority
+     * than wolfJCE. */
+    @Test
+    public void testGetKeyEcWhenMockEcProviderIsHighest() throws Exception {
+
+        Assume.assumeNotNull(serverKeyEcc, serverCertEcc);
+
+        char[] pw = storePass.toCharArray();
+
+        KeyStore ks = KeyStore.getInstance(storeType, storeProvider);
+        ks.load(null, pw);
+        ks.setKeyEntry("ec-key", serverKeyEcc, pw,
+            new Certificate[] { serverCertEcc });
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ks.store(bos, pw);
+        bos.close();
+
+        Closeable scope = MockNonCrtProvider.install();
+        try {
+            KeyStore loaded = KeyStore.getInstance(storeType, storeProvider);
+            loaded.load(new ByteArrayInputStream(bos.toByteArray()), pw);
+
+            PrivateKey priv = (PrivateKey) loaded.getKey("ec-key", pw);
+            assertNotNull(priv);
+            assertTrue("Loaded EC key must be ECPrivateKey: " +
+                priv.getClass().getName(),
+                priv instanceof ECPrivateKey);
+            ECPrivateKey ecPriv = (ECPrivateKey) priv;
+            assertNotNull("Loaded EC key params must be non-null",
+                ecPriv.getParams());
+
+            Signature signer =
+                Signature.getInstance("SHA256withECDSA", "wolfJCE");
+            signer.initSign(priv);
+            signer.update("ks-ec".getBytes());
+            assertNotNull(signer.sign());
+        } finally {
+            scope.close();
+        }
     }
 }
 
