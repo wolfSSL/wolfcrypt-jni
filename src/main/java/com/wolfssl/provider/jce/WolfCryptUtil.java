@@ -28,6 +28,7 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.security.Key;
+import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -797,6 +798,28 @@ public class WolfCryptUtil {
         /* Remove spaces after commas, split into List */
         disabledAlgos = disabledAlgos.replaceAll(", ", ",");
         return Arrays.asList(disabledAlgos.split(","));
+    }
+
+    /**
+     * Get a KeyFactory for the given algorithm, preferring wolfJCE if it
+     * registers one and falling back to default Provider lookup otherwise.
+     *
+     * @param algorithm KeyFactory algorithm name (e.g. "RSA", "EC", "DH")
+     *
+     * @return KeyFactory instance, never null
+     *
+     * @throws NoSuchAlgorithmException if no Provider supports the algorithm
+     */
+    public static KeyFactory getKeyFactoryPreferWolfJCE(String algorithm)
+        throws NoSuchAlgorithmException {
+
+        try {
+            return KeyFactory.getInstance(algorithm, "wolfJCE");
+        } catch (NoSuchAlgorithmException e) {
+            return KeyFactory.getInstance(algorithm);
+        } catch (NoSuchProviderException e) {
+            return KeyFactory.getInstance(algorithm);
+        }
     }
 }
 
