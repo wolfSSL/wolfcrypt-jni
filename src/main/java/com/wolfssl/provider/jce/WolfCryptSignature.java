@@ -412,14 +412,6 @@ public class WolfCryptSignature extends SignatureSpi {
                 !(privateKey instanceof RSAPrivateKey)) {
             throw new InvalidKeyException("Key is not of type RSAPrivateKey");
 
-        } else if (this.keyType == KeyType.WC_RSA &&
-                   privateKey instanceof RSAPrivateKey &&
-                   !(privateKey instanceof RSAPrivateCrtKey)) {
-            throw new InvalidKeyException(
-                "RSA private key must include CRT parameters " +
-                "(p, q, dP, dQ, qInv). Keys created from only " +
-                "modulus and exponent are not supported by wolfSSL.");
-
         } else if (this.keyType == KeyType.WC_ECDSA &&
                 !(privateKey instanceof ECPrivateKey)) {
             throw new InvalidKeyException("Key is not of type ECPrivateKey");
@@ -470,7 +462,28 @@ public class WolfCryptSignature extends SignatureSpi {
                     break;
             }
 
-            wolfCryptInitPrivateKey(privateKey, encodedKey);
+            try {
+                wolfCryptInitPrivateKey(privateKey, encodedKey);
+            } catch (WolfCryptException e) {
+                /* Native PKCS#8 decode or import failed. wolfSSL's
+                 * wc_RsaPrivateKeyDecode() requires all 8 RSA components
+                 * (n, e, d, p, q, dP, dQ, qInv) to be present in the
+                 * encoding, even though native signing math can handle
+                 * non-CRT keys. */
+                if (this.keyType == KeyType.WC_RSA &&
+                        !(privateKey instanceof RSAPrivateCrtKey)) {
+                    InvalidKeyException ike = new InvalidKeyException(
+                        "RSA private key import failed. wolfSSL requires " +
+                        "the PKCS#8 encoding to include CRT parameters " +
+                        "(p, q, dP, dQ, qInv).");
+                    ike.initCause(e);
+                    throw ike;
+                }
+                InvalidKeyException ike = new InvalidKeyException(
+                    "Failed to import private key: " + e.getMessage());
+                ike.initCause(e);
+                throw ike;
+            }
 
             /* init hash object if digest type is set */
             if (this.digestType == null) {

@@ -37,6 +37,7 @@ import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.interfaces.DHPrivateKey;
 import javax.crypto.spec.DHParameterSpec;
 
+import java.io.Closeable;
 import java.security.Security;
 import java.security.Provider;
 import java.security.NoSuchProviderException;
@@ -45,6 +46,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PublicKey;
 import java.security.PrivateKey;
+import java.security.Signature;
 import java.security.KeyFactory;
 import java.security.InvalidParameterException;
 import java.security.InvalidAlgorithmParameterException;
@@ -57,6 +59,7 @@ import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.PSSParameterSpec;
 import java.security.spec.MGF1ParameterSpec;
+import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.interfaces.ECPublicKey;
@@ -1309,6 +1312,224 @@ public class WolfCryptKeyPairGeneratorTest {
                 ECPublicKey ecPub1 = (ECPublicKey) kp1.getPublic();
                 ECPublicKey ecPub2 = (ECPublicKey) kp2.getPublic();
             }
+        }
+    }
+
+    /*
+     * Tests for the case where a foreign Provider sits above wolfJCE in the
+     * Provider list and returns degraded keys for "RSA"/"EC"/"DH" lookups.
+     * wolfJCE KeyPairGenerator must not fall through to that Provider.
+     * See MockNonCrtProvider for details.
+     */
+
+    /* RSA KeyPairGenerator should produce an RSAPrivateCrtKey, and a
+     * SHA256withRSA sign/verify roundtrip on that key should succeed, even with
+     * a degraded RSA KeyFactory installed at higher priority than wolfJCE */
+    @Test
+    public void testKeyPairGeneratorRsaWhenMockRsaProviderIsHighest()
+        throws Exception {
+
+        Assume.assumeTrue("RSA min size > 2048", Rsa.RSA_MIN_SIZE <= 2048);
+
+        Closeable scope = MockNonCrtProvider.install();
+        try {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "wolfJCE");
+            kpg.initialize(new RSAKeyGenParameterSpec(2048,
+                BigInteger.valueOf(Rsa.getDefaultRsaExponent())));
+
+            KeyPair kp = kpg.generateKeyPair();
+            assertNotNull(kp);
+
+            assertTrue("Generated RSA priv key must be RSAPrivateCrtKey got: " +
+                kp.getPrivate().getClass().getName(),
+                kp.getPrivate() instanceof RSAPrivateCrtKey);
+
+            /* WolfCryptSignature.engineInitSign rejects non-CRT inputs, so
+             * a key fabricated by the mock would fail here. */
+            Signature signer =
+                Signature.getInstance("SHA256withRSA", "wolfJCE");
+            signer.initSign(kp.getPrivate());
+            signer.update("hello".getBytes());
+            byte[] sig = signer.sign();
+            assertNotNull(sig);
+
+            Signature verifier =
+                Signature.getInstance("SHA256withRSA", "wolfJCE");
+            verifier.initVerify(kp.getPublic());
+            verifier.update("hello".getBytes());
+            assertTrue("Signature verify should succeed",
+                verifier.verify(sig));
+        } finally {
+            scope.close();
+        }
+    }
+
+    /* RSASSA-PSS KeyPairGenerator should produce an RSAPrivateCrtKey, and an
+     * RSASSA-PSS sign/verify roundtrip on that key should succeed, even with a
+     * degraded RSA KeyFactory installed at higher priority than wolfJCE. */
+    @Test
+    public void testKeyPairGeneratorRsaPssWhenMockRsaProviderIsHighest()
+        throws Exception {
+
+        Assume.assumeTrue("RSA min size > 2048", Rsa.RSA_MIN_SIZE <= 2048);
+        Assume.assumeTrue("RSA-PSS not available",
+            Security.getProvider("wolfJCE")
+                .getService("Signature", "RSASSA-PSS") != null);
+
+        Closeable scope = MockNonCrtProvider.install();
+        try {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSASSA-PSS", "wolfJCE");
+            kpg.initialize(new RSAKeyGenParameterSpec(2048,
+                BigInteger.valueOf(Rsa.getDefaultRsaExponent())));
+
+            KeyPair kp = kpg.generateKeyPair();
+            assertNotNull(kp);
+
+            assertTrue("Generated RSASSA-PSS private key must be " +
+                "RSAPrivateCrtKey",
+                kp.getPrivate() instanceof RSAPrivateCrtKey);
+
+            PSSParameterSpec pssSpec = new PSSParameterSpec(
+                "SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1);
+
+            Signature signer =
+                Signature.getInstance("RSASSA-PSS", "wolfJCE");
+            signer.setParameter(pssSpec);
+            signer.initSign(kp.getPrivate());
+            signer.update("pss-hello".getBytes());
+            byte[] sig = signer.sign();
+            assertNotNull(sig);
+
+            Signature verifier =
+                Signature.getInstance("RSASSA-PSS", "wolfJCE");
+            verifier.setParameter(pssSpec);
+            verifier.initVerify(kp.getPublic());
+            verifier.update("pss-hello".getBytes());
+            assertTrue(verifier.verify(sig));
+        } finally {
+            scope.close();
+        }
+    }
+
+    /* Generated RSA public key should expose a non-null X.509
+     * SubjectPublicKeyInfo encoding via getEncoded(), even with a degraded
+     * RSA KeyFactory installed at higher priority than wolfJCE. */
+    @Test
+    public void testKeyPairGeneratorRsaPublicEncodingWhenMockRsaIsHighest()
+        throws Exception {
+
+        Assume.assumeTrue("RSA min size > 2048", Rsa.RSA_MIN_SIZE <= 2048);
+
+        Closeable scope = MockNonCrtProvider.install();
+        try {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "wolfJCE");
+            kpg.initialize(new RSAKeyGenParameterSpec(2048,
+                BigInteger.valueOf(Rsa.getDefaultRsaExponent())));
+
+            KeyPair kp = kpg.generateKeyPair();
+            assertTrue("Generated RSA public key must be RSAPublicKey",
+                kp.getPublic() instanceof RSAPublicKey);
+
+            /* getEncoded() must produce X.509 SubjectPublicKeyInfo bytes.
+             * The mock returns null encoding, so a fall-through fails. */
+            byte[] enc = kp.getPublic().getEncoded();
+            assertNotNull("Public key encoding must be non-null", enc);
+            assertTrue("Public key encoding too small: " + enc.length,
+                enc.length > 64);
+        } finally {
+            scope.close();
+        }
+    }
+
+    /* EC KeyPairGenerator should produce an ECPrivateKey with valid params,
+     * and a SHA256withECDSA sign/verify roundtrip on that key should succeed,
+     * even with degraded EC KeyFactory at higher priority than wolfJCE. */
+    @Test
+    public void testKeyPairGeneratorEcWhenMockEcProviderIsHighest()
+        throws Exception {
+
+        Assume.assumeTrue("ECC not enabled", FeatureDetect.EccEnabled());
+
+        Closeable scope = MockNonCrtProvider.install();
+        try {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("EC", "wolfJCE");
+            kpg.initialize(new ECGenParameterSpec("secp256r1"));
+
+            KeyPair kp = kpg.generateKeyPair();
+            assertNotNull(kp);
+
+            assertTrue("EC private key must be ECPrivateKey",
+                kp.getPrivate() instanceof ECPrivateKey);
+            assertTrue("EC public key must be ECPublicKey",
+                kp.getPublic() instanceof ECPublicKey);
+
+            ECPrivateKey ecPriv = (ECPrivateKey) kp.getPrivate();
+            assertNotNull("EC private key params must be present",
+                ecPriv.getParams());
+            assertTrue("EC private key value must be positive",
+                ecPriv.getS().signum() > 0);
+
+            Signature signer =
+                Signature.getInstance("SHA256withECDSA", "wolfJCE");
+            signer.initSign(kp.getPrivate());
+            signer.update("ec-hello".getBytes());
+            byte[] sig = signer.sign();
+            assertNotNull(sig);
+
+            Signature verifier =
+                Signature.getInstance("SHA256withECDSA", "wolfJCE");
+            verifier.initVerify(kp.getPublic());
+            verifier.update("ec-hello".getBytes());
+            assertTrue(verifier.verify(sig));
+        } finally {
+            scope.close();
+        }
+    }
+
+    /* DH KeyPairGenerator should produce DHPrivateKey/DHPublicKey objects
+     * with positive private/public values and parameters matching the input
+     * DHParameterSpec, even with a degraded DH KeyFactory installed at
+     * higher priority than wolfJCE. */
+    @Test
+    public void testKeyPairGeneratorDhWhenMockDhProviderIsHighest()
+        throws Exception {
+
+        Assume.assumeTrue("DH not enabled", FeatureDetect.DhEnabled());
+
+        BigInteger pVal = new BigInteger(1, prime);
+        BigInteger gVal = new BigInteger(1, base);
+        DHParameterSpec dhSpec = new DHParameterSpec(pVal, gVal);
+
+        Closeable scope = MockNonCrtProvider.install();
+        try {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("DH", "wolfJCE");
+            kpg.initialize(dhSpec);
+
+            KeyPair kp = kpg.generateKeyPair();
+            assertNotNull(kp);
+
+            assertTrue("DH private key must be DHPrivateKey",
+                kp.getPrivate() instanceof DHPrivateKey);
+            assertTrue("DH public key must be DHPublicKey",
+                kp.getPublic() instanceof DHPublicKey);
+
+            DHPrivateKey dhPriv = (DHPrivateKey) kp.getPrivate();
+            DHPublicKey dhPub = (DHPublicKey) kp.getPublic();
+            assertTrue("DH private value must be positive",
+                dhPriv.getX().signum() > 0);
+            assertTrue("DH public value must be positive",
+                dhPub.getY().signum() > 0);
+            assertEquals("DH private p must match input", pVal,
+                dhPriv.getParams().getP());
+            assertEquals("DH private g must match input", gVal,
+                dhPriv.getParams().getG());
+        } finally {
+            scope.close();
         }
     }
 }
