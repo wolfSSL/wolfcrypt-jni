@@ -1289,6 +1289,39 @@ public class WolfCryptCipher extends CipherSpi {
         return output;
     }
 
+    /**
+     * Normalize an RSA ciphertext byte array to the modulus byte length
+     * before passing it to native wc_RsaPrivateDecrypt / wc_RsaSSL_Verify.
+     *
+     * Proper PKCS#1 v1.5 and OAEP ciphertexts are exactly k bytes long
+     * (modulus length). In practice, zero bytes could be stripped. This
+     * left-pads input with zeros, leaving inputs longer than the modulus
+     * as error cases.
+     *
+     * @param  in        ciphertext bytes
+     * @param  modSize   RSA modulus length in bytes
+     * @return a byte[] of length exactly modSize (the same array if already
+     *         the right size, otherwise a new zero-padded copy)
+     * @throws IllegalBlockSizeException if in.length greater than modSize
+     */
+    private static byte[] leftPadRSACiphertext(byte[] in, int modSize)
+        throws IllegalBlockSizeException {
+
+        if (in.length == modSize) {
+            return in;
+        }
+
+        if (in.length > modSize) {
+            throw new IllegalBlockSizeException("RSA input length (" +
+                in.length + ") exceeds key size (" + modSize + ")");
+        }
+
+        byte[] padded = new byte[modSize];
+        System.arraycopy(in, 0, padded, modSize - in.length, in.length);
+
+        return padded;
+    }
+
     private byte[] wolfCryptFinal(byte[] input, int inputOffset, int len)
         throws IllegalBlockSizeException, BadPaddingException {
 
@@ -1510,12 +1543,14 @@ public class WolfCryptCipher extends CipherSpi {
                         }
 
                         try {
+                            tmpIn = leftPadRSACiphertext(tmpIn,
+                                this.rsa.getEncryptSize());
+
                             tmpOut = this.rsa.decryptOaep(tmpIn,
                                 this.oaepHashType, this.oaepMgf);
 
                         } catch (WolfCryptException e) {
-                            throw new BadPaddingException(
-                                "OAEP decryption failed: " + e.getMessage());
+                            throw new BadPaddingException("Decryption error");
                         }
                     }
                 } else {
@@ -1530,10 +1565,17 @@ public class WolfCryptCipher extends CipherSpi {
                         }
 
                     } else {
-                        if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
-                            tmpOut = this.rsa.decrypt(tmpIn);
-                        } else {
-                            tmpOut = this.rsa.verify(tmpIn);
+                        try {
+                            tmpIn = leftPadRSACiphertext(tmpIn,
+                                this.rsa.getEncryptSize());
+
+                            if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
+                                tmpOut = this.rsa.decrypt(tmpIn);
+                            } else {
+                                tmpOut = this.rsa.verify(tmpIn);
+                            }
+                        } catch (WolfCryptException e) {
+                            throw new BadPaddingException("Decryption error");
                         }
                     }
                 }
