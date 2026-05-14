@@ -62,6 +62,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.RSAPrivateKeySpec;
+import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.math.BigInteger;
@@ -124,6 +125,183 @@ public class WolfCryptCipherTest {
      * for RSA-2048. This is generated once in @BeforeClass and reused
      * across all RSA encryption/decryption tests. */
     private static KeyPair rsaPair = null;
+
+    /* 2048-bit RSA private key (CRT components) and matching ciphertext
+     * used by testRSADecryptWrongKey*() below, avoids keygen. */
+    private static final BigInteger WRONG_N =
+        new BigInteger(
+            "ce37e8e3e15016a8c7a00bfaa0ba989d3b46d712e9ad3c88d958a1c09913" +
+            "aacc68e582910ba930e124b7e0af1389466747913728abde8f75f67c974e" +
+            "4f2016a5fa92cf5908c69d848b8a49bf1ff641b966a4d8a0b841e88177d2" +
+            "46b18267c29396e49f8bbcfb530465cdfff9911ecc83d6d64e8f8f38bf24" +
+            "a2b6dcf1f7261144fc3f440d3badf6a7b181a21a4237c04af670878d2544" +
+            "04d45d22bd1d4f577c5df4ecbfb7b954ce6dea65c38c3d8bbad2cfe70f87" +
+            "7f48eb666cc79e7d181c040b5aa1549366a8f166e1afc85430dbd2c2e467" +
+            "d0c261a60ec908ae082be23f0a953e2ecc90e7eb242834bb2b2c0ea31875" +
+            "c2f2f0926ab59101e586c13c570a834f", 16);
+    private static final BigInteger WRONG_E = new BigInteger("10001", 16);
+    private static final BigInteger WRONG_D =
+        new BigInteger(
+            "5d7d746c67780725d286c9178169c709b5577ae71ca088caa3faae2e6257" +
+            "cbbdab2aade4732c6bb80e8cfc64730f6fa720078241c2957e65a4ef3c2b" +
+            "68ecebc7a8cf89085cd5aa90ee302e19e37421bcdb7f8da46394a1c39c5e" +
+            "6ce549f11f8208cd3255c8420a937a5207a40dba304eef05ae8d2009c282" +
+            "69f04c3fb863fe3c7f4ab6ea4e77caa83c3c4afc612fb222caffe43dac7d" +
+            "983ba0a06f3793cef5d510b462fc923e6bd690e031b7d0afc9c164cfad3a" +
+            "c17fc5bfe93026a2dc1e5dcd415386593c4914f20392cf361797305b5e13" +
+            "9cccc5a67a8da8a1708250c6a956c0d7d434d1bfd44831528c69652241e1" +
+            "48f55b0a3b6a3bd600e5fe6ea6e3ae79", 16);
+    private static final BigInteger WRONG_P =
+        new BigInteger(
+            "ed873670adb26b946182172de98b7176230e6e33408567b6fd30b9d9cde5" +
+            "8a38f5e3a20f98a363562b3872d26767749e0f66c58acb1eb17031367b06" +
+            "032a7041106ae134d8e750c27722acde4c95b307f2354ef34b69bcae326c" +
+            "d79c258580819c4ac1d1273505f6ccb18ba6f14896ad1b663ceb7ca3949e" +
+            "8055419168844959", 16);
+    private static final BigInteger WRONG_Q =
+        new BigInteger(
+            "de415f3839708dec407d23955c31303a0b13a119440aaabc2b097f5dee68" +
+            "d1f32c3b756787b66d8d83ef23dc8010a6bfb9ec0c0cda548335f8b46b46" +
+            "d78452035cc96b7bb902df2394003c001b120b380b8f2990193eaced4b61" +
+            "dfbf7d7064262139778057a0856c6456d3957472f2598519d2744697e352" +
+            "5beb050b8bf074e7", 16);
+    private static final BigInteger WRONG_DP =
+        new BigInteger(
+            "3c7ba1b12f89af3b295926edd9fa57f9ed134f9c5d619af74da18ab19b6c" +
+            "47b61966cd6d8b408f9af1867e36757e3283cd082e651933c79af9ed1586" +
+            "8267dc0db55081e8231343cd40e8e37bf7a466e22f1ac3efcfd42ce76e8f" +
+            "a8976a3684727c89ccb0a57b2af99d45d879ba16f1c742a2d60060cc869b" +
+            "95b21ff016dd189", 16);
+    private static final BigInteger WRONG_DQ =
+        new BigInteger(
+            "95d05aeefb48f3619cd6bd75a07f4792d88492c3052a6b8c0b368bb43550" +
+            "52b527cbac87ece2fb55b8e929b3286011068bbca122c8c8cee9428bdb04" +
+            "15a20be658552d2e68b796d1d4a193d03e6f1b40dc09d46a5d99f1d6c249" +
+            "67191ce4f59cfe284e75249bff53e10ee5f0885e331e44a9f3428d933497" +
+            "ff7d9c18fc6b4961", 16);
+    private static final BigInteger WRONG_QINV =
+        new BigInteger(
+            "6617bdc3fdc5ce55a85374bb648615f0344a5c2f0a0a242523e5b6732352" +
+            "f033c498b354cbead470fff266a7395524f7f102cfced32b90e111c3808c" +
+            "0127cbb4bdfd627ccd2baf3369d104f013e81af50646c3728a3be8fecf3f" +
+            "35053dec6009c150a501eb1bdbae0d8b685f5c849d784d35b72e2bd2c14a" +
+            "d1b07eafee807341", 16);
+
+    /* PrivateKey built from WRONG_* components above. */
+    private static PrivateKey wrongRSAPrivateKey = null;
+
+    /* Ciphertext, when decrypted with the WRONG_* key above, returns
+     * RSA_BUFFER_E from native wolfSSL. */
+    private static final byte[] CIPHERTEXT_BUFFER_E = new byte[] {
+        (byte)0xbd, (byte)0x91, (byte)0x45, (byte)0x72, (byte)0xbb, (byte)0x89,
+        (byte)0xff, (byte)0x9f, (byte)0x9f, (byte)0x0e, (byte)0x3a, (byte)0x31,
+        (byte)0xde, (byte)0xd9, (byte)0xd5, (byte)0xc5, (byte)0x9d, (byte)0xf7,
+        (byte)0xa3, (byte)0x1b, (byte)0x5e, (byte)0xfa, (byte)0x3d, (byte)0x71,
+        (byte)0xe8, (byte)0x9a, (byte)0x4c, (byte)0xf3, (byte)0x2c, (byte)0x96,
+        (byte)0x3b, (byte)0x34, (byte)0xcc, (byte)0xea, (byte)0xb5, (byte)0x99,
+        (byte)0xb2, (byte)0x12, (byte)0x15, (byte)0x3e, (byte)0xc3, (byte)0xf8,
+        (byte)0x94, (byte)0xae, (byte)0x85, (byte)0x56, (byte)0x72, (byte)0xd9,
+        (byte)0x04, (byte)0xfc, (byte)0x9d, (byte)0x78, (byte)0x98, (byte)0x99,
+        (byte)0x78, (byte)0xa8, (byte)0x60, (byte)0x84, (byte)0x3a, (byte)0xfa,
+        (byte)0x9f, (byte)0x02, (byte)0x19, (byte)0x65, (byte)0x6c, (byte)0x1c,
+        (byte)0x0e, (byte)0x0d, (byte)0x6d, (byte)0x75, (byte)0x99, (byte)0x77,
+        (byte)0x87, (byte)0x3a, (byte)0x33, (byte)0x2a, (byte)0x2e, (byte)0x43,
+        (byte)0xb0, (byte)0x6c, (byte)0x1c, (byte)0x63, (byte)0x3e, (byte)0xdc,
+        (byte)0x63, (byte)0x80, (byte)0x6c, (byte)0xc0, (byte)0x42, (byte)0xbe,
+        (byte)0xff, (byte)0x1d, (byte)0xcd, (byte)0x5f, (byte)0xf3, (byte)0x1f,
+        (byte)0xae, (byte)0x62, (byte)0xf8, (byte)0x7d, (byte)0xd3, (byte)0x94,
+        (byte)0x8d, (byte)0x9a, (byte)0x97, (byte)0x11, (byte)0x8e, (byte)0x3a,
+        (byte)0x06, (byte)0x44, (byte)0x65, (byte)0x83, (byte)0x7b, (byte)0x21,
+        (byte)0x5f, (byte)0x36, (byte)0x5b, (byte)0xf7, (byte)0x99, (byte)0xe1,
+        (byte)0x25, (byte)0x60, (byte)0x94, (byte)0x34, (byte)0x72, (byte)0x2e,
+        (byte)0x52, (byte)0x3e, (byte)0xe4, (byte)0x18, (byte)0x17, (byte)0x4b,
+        (byte)0xd5, (byte)0x40, (byte)0x3b, (byte)0x1f, (byte)0x65, (byte)0x25,
+        (byte)0x7b, (byte)0xe3, (byte)0xfa, (byte)0x10, (byte)0x6f, (byte)0x9f,
+        (byte)0x13, (byte)0xaf, (byte)0x71, (byte)0xb3, (byte)0xcb, (byte)0xd7,
+        (byte)0x49, (byte)0xd7, (byte)0x60, (byte)0xa3, (byte)0x0f, (byte)0xed,
+        (byte)0xf5, (byte)0x60, (byte)0x00, (byte)0x59, (byte)0x01, (byte)0xd6,
+        (byte)0x71, (byte)0x21, (byte)0xf0, (byte)0xf9, (byte)0x45, (byte)0xa2,
+        (byte)0x79, (byte)0xf9, (byte)0x26, (byte)0x29, (byte)0x87, (byte)0x88,
+        (byte)0xa8, (byte)0xe3, (byte)0xe2, (byte)0xd7, (byte)0x75, (byte)0x8b,
+        (byte)0xe3, (byte)0xcf, (byte)0xf1, (byte)0xc0, (byte)0x73, (byte)0x78,
+        (byte)0xed, (byte)0x99, (byte)0x9d, (byte)0x12, (byte)0x1b, (byte)0xc3,
+        (byte)0xf7, (byte)0x70, (byte)0xe3, (byte)0x9a, (byte)0x5f, (byte)0x12,
+        (byte)0xbb, (byte)0x9f, (byte)0xcf, (byte)0xa3, (byte)0x53, (byte)0xeb,
+        (byte)0x05, (byte)0x5b, (byte)0x92, (byte)0xeb, (byte)0xe2, (byte)0x1d,
+        (byte)0x16, (byte)0xc1, (byte)0x8c, (byte)0x1f, (byte)0xc9, (byte)0xa0,
+        (byte)0xbc, (byte)0xb1, (byte)0x12, (byte)0x05, (byte)0x3d, (byte)0xa8,
+        (byte)0x7a, (byte)0xc3, (byte)0x52, (byte)0x37, (byte)0xd5, (byte)0xbe,
+        (byte)0xa9, (byte)0x79, (byte)0x8a, (byte)0x29, (byte)0x2e, (byte)0x9a,
+        (byte)0xbb, (byte)0x18, (byte)0xc6, (byte)0x3f, (byte)0x36, (byte)0x7d,
+        (byte)0x2a, (byte)0xc9, (byte)0x34, (byte)0x58, (byte)0xbb, (byte)0x9d,
+        (byte)0xd2, (byte)0x94, (byte)0x4c, (byte)0x07, (byte)0x95, (byte)0x73,
+        (byte)0xda, (byte)0xe5, (byte)0x8d, (byte)0x2c
+    };
+
+    /* All-0xFF 256-byte ciphertext, numerically equal to 2^2048 - 1 and
+     * larger than any 2048-bit RSA modulus. Native wc_RsaPrivateDecrypt()
+     * rejects with RSA_OUT_OF_RANGE_E ("Ciphertext to decrypt is out of
+     * range") before attempting any modular exponentiation. */
+    private static final byte[] CIPHERTEXT_OUT_OF_RANGE = new byte[256];
+    static {
+        Arrays.fill(CIPHERTEXT_OUT_OF_RANGE, (byte) 0xff);
+    }
+
+    /* Plaintext + matching stripped-leading-zero ciphertext pair, used by
+     * testRSADecryptAcceptsStrippedLeadingZeros below. */
+    private static final byte[] PLAINTEXT_LZS = new byte[] {
+        (byte)0x77, (byte)0x6f, (byte)0x6c, (byte)0x66, (byte)0x53, (byte)0x53,
+        (byte)0x4c, (byte)0x20, (byte)0x6c, (byte)0x65, (byte)0x61, (byte)0x64,
+        (byte)0x69, (byte)0x6e, (byte)0x67, (byte)0x2d, (byte)0x7a, (byte)0x65,
+        (byte)0x72, (byte)0x6f, (byte)0x20, (byte)0x73, (byte)0x74, (byte)0x72,
+        (byte)0x69, (byte)0x70, (byte)0x20, (byte)0x74, (byte)0x65, (byte)0x73,
+        (byte)0x74
+    };
+    private static final byte[] CIPHERTEXT_LZS = new byte[] {
+        (byte)0x3d, (byte)0xb9, (byte)0x24, (byte)0xa5, (byte)0x54, (byte)0xe3,
+        (byte)0xb9, (byte)0xde, (byte)0xe5, (byte)0xb1, (byte)0xd5, (byte)0x6b,
+        (byte)0xc0, (byte)0x2a, (byte)0xd0, (byte)0xb9, (byte)0xa1, (byte)0xfd,
+        (byte)0xf0, (byte)0x0c, (byte)0xcf, (byte)0xdc, (byte)0xc0, (byte)0x48,
+        (byte)0x07, (byte)0x2f, (byte)0xe5, (byte)0x32, (byte)0x55, (byte)0x5f,
+        (byte)0x81, (byte)0xaa, (byte)0x53, (byte)0x60, (byte)0x6b, (byte)0x1f,
+        (byte)0x26, (byte)0x95, (byte)0x2d, (byte)0xac, (byte)0x22, (byte)0x83,
+        (byte)0x40, (byte)0x1e, (byte)0xc3, (byte)0x90, (byte)0xbc, (byte)0x41,
+        (byte)0x98, (byte)0x37, (byte)0x76, (byte)0xc8, (byte)0x36, (byte)0xc8,
+        (byte)0xf7, (byte)0x7a, (byte)0xe1, (byte)0xf3, (byte)0x43, (byte)0xd5,
+        (byte)0x0d, (byte)0xe0, (byte)0x13, (byte)0x99, (byte)0x28, (byte)0xc4,
+        (byte)0xb5, (byte)0x11, (byte)0x12, (byte)0x1f, (byte)0x34, (byte)0x86,
+        (byte)0x94, (byte)0x05, (byte)0xf5, (byte)0xa3, (byte)0x2f, (byte)0x53,
+        (byte)0xdf, (byte)0xef, (byte)0x46, (byte)0x25, (byte)0x56, (byte)0xd2,
+        (byte)0x4f, (byte)0x6a, (byte)0x62, (byte)0xdb, (byte)0x69, (byte)0x1e,
+        (byte)0xcb, (byte)0x04, (byte)0x21, (byte)0x82, (byte)0xb3, (byte)0xa9,
+        (byte)0x32, (byte)0x9f, (byte)0xd3, (byte)0x02, (byte)0x81, (byte)0xa7,
+        (byte)0x93, (byte)0x95, (byte)0x9f, (byte)0xa9, (byte)0xcc, (byte)0xf7,
+        (byte)0xa9, (byte)0xc7, (byte)0x7f, (byte)0x21, (byte)0x9f, (byte)0xf5,
+        (byte)0x2b, (byte)0xba, (byte)0x6d, (byte)0xe2, (byte)0xf2, (byte)0x09,
+        (byte)0x36, (byte)0x00, (byte)0x5a, (byte)0x7b, (byte)0xda, (byte)0x18,
+        (byte)0xf1, (byte)0x20, (byte)0xf0, (byte)0xf1, (byte)0x6f, (byte)0x17,
+        (byte)0x86, (byte)0x80, (byte)0x17, (byte)0x0b, (byte)0xe8, (byte)0x61,
+        (byte)0xb1, (byte)0x98, (byte)0xee, (byte)0x60, (byte)0xdb, (byte)0x2f,
+        (byte)0x8f, (byte)0xce, (byte)0x35, (byte)0x55, (byte)0x0e, (byte)0x32,
+        (byte)0xed, (byte)0xca, (byte)0x01, (byte)0xcc, (byte)0xbd, (byte)0x63,
+        (byte)0x09, (byte)0xb6, (byte)0x33, (byte)0xfa, (byte)0xc9, (byte)0x14,
+        (byte)0x2c, (byte)0x01, (byte)0x41, (byte)0x07, (byte)0x50, (byte)0x76,
+        (byte)0xc5, (byte)0x59, (byte)0xba, (byte)0x08, (byte)0xa4, (byte)0x82,
+        (byte)0x19, (byte)0x29, (byte)0xb4, (byte)0xdc, (byte)0x0f, (byte)0xdd,
+        (byte)0x9f, (byte)0x31, (byte)0x40, (byte)0x8b, (byte)0x5f, (byte)0xdc,
+        (byte)0x85, (byte)0xae, (byte)0xc6, (byte)0xbc, (byte)0xf1, (byte)0x9b,
+        (byte)0x04, (byte)0xf3, (byte)0xba, (byte)0x7a, (byte)0x88, (byte)0xac,
+        (byte)0x6e, (byte)0x4a, (byte)0x3e, (byte)0x0d, (byte)0x99, (byte)0x76,
+        (byte)0x17, (byte)0x95, (byte)0xb2, (byte)0xc9, (byte)0xbf, (byte)0xf7,
+        (byte)0x3b, (byte)0xd5, (byte)0x33, (byte)0x3a, (byte)0xa9, (byte)0x8e,
+        (byte)0x18, (byte)0xa7, (byte)0xdc, (byte)0x4b, (byte)0xee, (byte)0xbd,
+        (byte)0xf9, (byte)0x04, (byte)0xe8, (byte)0x0e, (byte)0x7c, (byte)0x7b,
+        (byte)0xca, (byte)0x07, (byte)0x0a, (byte)0xe6, (byte)0x40, (byte)0x75,
+        (byte)0x8c, (byte)0xf0, (byte)0x6b, (byte)0xe4, (byte)0x66, (byte)0x48,
+        (byte)0xdf, (byte)0xf8, (byte)0xa5, (byte)0xce, (byte)0xeb, (byte)0x4c,
+        (byte)0x7d, (byte)0xa9, (byte)0x9a, (byte)0x1c, (byte)0x7c, (byte)0xde,
+        (byte)0xa1, (byte)0xd2, (byte)0x3f
+    };
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
@@ -198,6 +376,24 @@ public class WolfCryptCipherTest {
                  * error when they try to use the null key pair */
                 System.err.println("Failed to generate RSA key pair in " +
                     "@BeforeClass: " + e.getMessage());
+            }
+        }
+
+        /* Build the 'wrong' RSA private key once up front. */
+        if (enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            try {
+                RSAPrivateCrtKeySpec spec = new RSAPrivateCrtKeySpec(
+                    WRONG_N, WRONG_E, WRONG_D, WRONG_P, WRONG_Q,
+                    WRONG_DP, WRONG_DQ, WRONG_QINV);
+
+                wrongRSAPrivateKey = KeyFactory.getInstance("RSA")
+                    .generatePrivate(spec);
+
+            } catch (Exception e) {
+                /* If key build fails, tests using wrongRSAPrivateKey will
+                 * fail with a clear NullPointerException. */
+                System.err.println("Failed to build wrong RSA private " +
+                    "key in @BeforeClass: " + e.getMessage());
             }
         }
     }
@@ -4446,6 +4642,7 @@ public class WolfCryptCipherTest {
         }
 
         /* PUBLIC DECRYPT */
+        /* Input that is too big must throw IllegalBlockSizeException */
         ciph.init(Cipher.DECRYPT_MODE, pub);
 
         tmp = ciph.update(inputA);
@@ -4458,9 +4655,9 @@ public class WolfCryptCipherTest {
 
         try {
             ciph.doFinal();
-            fail("Cipher.doFinal should throw exception when data " +
-                 "is larger than RSA key size");
-        } catch (WolfCryptException | IllegalBlockSizeException e) {
+            fail("Cipher.doFinal should throw IllegalBlockSizeException " +
+                 "when data is larger than RSA key size");
+        } catch (IllegalBlockSizeException e) {
             /* expected */
         }
 
@@ -4484,6 +4681,7 @@ public class WolfCryptCipherTest {
         }
 
         /* PRIVATE DECRYPT */
+       /* Input too big must throw IllegalBlockSizeException */
         ciph.init(Cipher.DECRYPT_MODE, priv);
 
         tmp = ciph.update(inputA);
@@ -4496,9 +4694,9 @@ public class WolfCryptCipherTest {
 
         try {
             ciph.doFinal();
-            fail("Cipher.doFinal should throw exception when data " +
-                 "is larger than RSA key size");
-        } catch (WolfCryptException | IllegalBlockSizeException e) {
+            fail("Cipher.doFinal should throw IllegalBlockSizeException " +
+                 "when data is larger than RSA key size");
+        } catch (IllegalBlockSizeException e) {
             /* expected */
         }
     }
@@ -4638,6 +4836,100 @@ public class WolfCryptCipherTest {
 
         testRSAInterop("RSA");
         testRSAInterop("RSA/ECB/PKCS1Padding");
+    }
+
+    /**
+     * Regression test for RSA/ECB/PKCS1Padding decrypt behavior when the
+     * wrong private key is supplied. The ciphertext, when decrypted with the
+     * wrong private key, returns native RSA_BUFFER_E ("RSA buffer error,
+     * output too small or input too big").
+     *
+     * Cipher doFinal() in DECRYPT_MODE with PKCS#1 v1.5 padding must throw
+     * BadPaddingException when the decrypted block fails the PKCS#1 unpad
+     * check.
+     */
+    @Test
+    public void testRSADecryptWrongKeyBufferError()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException {
+
+        Cipher dec;
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        dec = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, wrongRSAPrivateKey);
+
+        try {
+            dec.doFinal(CIPHERTEXT_BUFFER_E);
+            fail("Decrypt with wrong RSA private key should throw " +
+                "BadPaddingException");
+        } catch (BadPaddingException e) {
+            /* Expected per JCE Cipher contract */
+        }
+    }
+
+    /**
+     * Regression test for the RSA_OUT_OF_RANGE_E native error path.
+     * When the ciphertext (as integer) exceeds the (wrong) key's modulus,
+     * native wc_RsaPrivateDecrypt() rejects up front instead of failing in
+     * the PKCS#1 unpad check. Must throw BadPaddingException.
+     */
+    @Test
+    public void testRSADecryptWrongKeyOutOfRange()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException {
+
+        Cipher dec;
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        dec = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, wrongRSAPrivateKey);
+
+        try {
+            dec.doFinal(CIPHERTEXT_OUT_OF_RANGE);
+            fail("Decrypt of out-of-range ciphertext should throw " +
+                "BadPaddingException");
+        } catch (BadPaddingException e) {
+            /* Expected per JCE Cipher contract */
+        }
+    }
+
+    /**
+     * Regression test for RSA/ECB/PKCS1Padding decrypt with a ciphertext
+     * whose leading 0x00 byte has been stripped (input shorter than modulus).
+     */
+    @Test
+    public void testRSADecryptAcceptsStrippedLeadingZeros()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        Cipher dec;
+        byte[] recovered;
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        /* Sanity check that ciphertext is shorter than modulus */
+        assertTrue("Pinned ciphertext should be shorter than 256 bytes",
+            CIPHERTEXT_LZS.length < 256);
+
+        dec = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, wrongRSAPrivateKey);
+
+        recovered = dec.doFinal(CIPHERTEXT_LZS);
+
+        assertArrayEquals("Decrypted plaintext should match the original",
+            PLAINTEXT_LZS, recovered);
     }
 
     @Test
