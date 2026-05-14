@@ -227,3 +227,26 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update_1internal__ILjava_nio_ByteBuffer_
 
     return ret;
 }
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Des3_wc_1Des3Free
+  (JNIEnv* env, jobject this)
+{
+#ifndef NO_DES3
+    Des3* des = NULL;
+
+    des = (Des3*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, if so stop and return */
+        return;
+    }
+
+    if (des != NULL) {
+        wc_Des3Free(des);
+    }
+
+    LogStr("wc_Des3Free(des=%p)\n", des);
+#else
+    (void)this;
+    throwNotCompiledInException(env);
+#endif
+}

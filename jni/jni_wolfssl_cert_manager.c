@@ -40,10 +40,12 @@
 
 /* Struct holding Java callback information for verify callback to use for
  * reaching back to Java. Stored in CallbackNode struct, which is is mapped to
- * WOLFSSL_CERT_MANAGER pointer in CallbackNode. */
+ * WOLFSSL_CERT_MANAGER pointer in CallbackNode. refcount is protected by
+ * g_callbackMutex; ctx is freed when it reaches 0. */
 typedef struct {
     JavaVM* jvm;       /* Java VM pointer for thread attachment */
     jobject callback;  /* Global reference to Java callback object */
+    int refcount;
 } VerifyCallbackCtx;
 
 /* Linked list node struct for callback context storage */
@@ -170,6 +172,70 @@ static void removeCallbackCtx(WOLFSSL_CERT_MANAGER* cm)
     }
 }
 
+/* Decrement ctx refcount; free if it reaches 0. Acquires the mutex
+ * internally; caller must not hold it. Tolerates ctx == NULL. */
+static void releaseCtx(VerifyCallbackCtx* ctx)
+{
+    int shouldFree = 0;
+    jobject callback = NULL;
+    JavaVM* jvm = NULL;
+    JNIEnv* env = NULL;
+    int needsDetach = 0;
+
+    if (ctx == NULL) {
+        return;
+    }
+
+    if (wc_LockMutex(&g_callbackMutex) != 0) {
+        /* Mutex error: leak rather than risk corrupting refcount */
+        return;
+    }
+
+    if (--ctx->refcount == 0) {
+        callback = ctx->callback;
+        jvm = ctx->jvm;
+        shouldFree = 1;
+    }
+
+    wc_UnLockMutex(&g_callbackMutex);
+
+    if (!shouldFree) {
+        return;
+    }
+
+    /* Delete GlobalRef using a JNIEnv on the current thread */
+    if (callback != NULL && jvm != NULL) {
+        if ((*jvm)->GetEnv(jvm, (void**)&env, JNI_VERSION_1_6)
+            == JNI_EDETACHED) {
+#ifdef __ANDROID__
+            if ((*jvm)->AttachCurrentThread(jvm, &env, NULL) == 0) {
+                needsDetach = 1;
+            }
+            else {
+                env = NULL;
+            }
+#else
+            if ((*jvm)->AttachCurrentThread(jvm, (void**)&env, NULL) == 0) {
+                needsDetach = 1;
+            }
+            else {
+                env = NULL;
+            }
+#endif
+        }
+        if (env != NULL) {
+            (*env)->DeleteGlobalRef(env, callback);
+            if (needsDetach) {
+                (*jvm)->DetachCurrentThread(jvm);
+            }
+        }
+        /* If env attach fails (rare), GlobalRef is leaked rather than
+         * corrupting the JVM. */
+    }
+
+    XFREE(ctx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+}
+
 /* Extract cert DER bytes at given depth from WOLFSSL_X509_STORE_CTX into
  * a new jbyteArray. Returns NULL if cert not available at depth. */
 static jbyteArray getCertDerAtDepth(JNIEnv* jenv,
@@ -234,10 +300,19 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
         ctx = g_callbackList->ctx;
     }
 
+    /* Retain ctx so a concurrent SetVerify/ClearVerify can't free it
+     * while we're using it. */
+    if (ctx != NULL) {
+        ctx->refcount++;
+    }
+
     wc_UnLockMutex(&g_callbackMutex);
 
     /* No callback registered, use preverify result */
     if (ctx == NULL || ctx->callback == NULL) {
+        if (ctx != NULL) {
+            releaseCtx(ctx);
+        }
         return preverify;
     }
 
@@ -253,7 +328,8 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
             ctx->jvm, (void**)&jenv, NULL);
 #endif
         if (result != 0) {
-            /* Failed to attach, reject */
+            /* Failed to attach, drop our retained reference and reject */
+            releaseCtx(ctx);
             return 0;
         }
         needsDetach = 1;
@@ -275,6 +351,7 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
         if (needsDetach) {
             (*ctx->jvm)->DetachCurrentThread(ctx->jvm);
         }
+        releaseCtx(ctx);
         return 0;
     }
 
@@ -288,6 +365,7 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
         if (needsDetach) {
             (*ctx->jvm)->DetachCurrentThread(ctx->jvm);
         }
+        releaseCtx(ctx);
         return 0;
     }
 
@@ -317,6 +395,7 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
         (*ctx->jvm)->DetachCurrentThread(ctx->jvm);
     }
 
+    releaseCtx(ctx);
     return (int)result;
 }
 
@@ -856,8 +935,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
 {
 #ifndef NO_WOLFSSL_CM_VERIFY
     int ret = 0;
+    int clearNativeVerify = 0;
     WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
     VerifyCallbackCtx* ctx = NULL;
+    VerifyCallbackCtx* oldCtx = NULL;
     JavaVM* jvm = NULL;
     (void)jcl;
 
@@ -876,30 +957,58 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     if (ctx == NULL) {
         return MEMORY_E;
     }
+    XMEMSET(ctx, 0, sizeof(VerifyCallbackCtx));
+    ctx->refcount = 1;
+    ctx->jvm = jvm;
 
     /* Create global reference to callback object so it persists across
      * JNI calls and thread boundaries */
     ctx->callback = (*env)->NewGlobalRef(env, callback);
     if (ctx->callback == NULL) {
-        XFREE(ctx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        releaseCtx(ctx);
         return MEMORY_E;
     }
-    ctx->jvm = jvm;
 
     /* Add context to global list */
     if (wc_LockMutex(&g_callbackMutex) != 0) {
-        (*env)->DeleteGlobalRef(env, ctx->callback);
-        XFREE(ctx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        releaseCtx(ctx);
         return BAD_MUTEX_E;
+    }
+
+    /* If a callback ctx is already registered for this cm, remove it.
+     * The list's reference is dropped via releaseCtx; an in-flight
+     * verify thread keeps oldCtx alive via its own refcount. */
+    oldCtx = findCallbackCtx(cm);
+    if (oldCtx != NULL) {
+        removeCallbackCtx(cm);
     }
 
     ret = addCallbackCtx(cm, ctx);
 
+    /* If add failed and we displaced oldCtx, try to put it back. If
+     * rollback also fails, defer clearing the wolfSSL native callback
+     * until after the mutex is dropped, so we don't hold our lock across
+     * an external wolfSSL call. */
+    if (ret != 0 && oldCtx != NULL) {
+        if (addCallbackCtx(cm, oldCtx) == 0) {
+            oldCtx = NULL;
+        }
+        else {
+            clearNativeVerify = 1;
+        }
+    }
+
     wc_UnLockMutex(&g_callbackMutex);
 
+    if (clearNativeVerify) {
+        wolfSSL_CertManagerSetVerify(cm, NULL);
+    }
+
+    /* Drop list's reference on displaced ctx (NULL if restored above) */
+    releaseCtx(oldCtx);
+
     if (ret != 0) {
-        (*env)->DeleteGlobalRef(env, ctx->callback);
-        XFREE(ctx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        releaseCtx(ctx);
         return ret;
     }
 
@@ -945,15 +1054,10 @@ Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerClearVerify
 
     wc_UnLockMutex(&g_callbackMutex);
 
-    /* Free context if it existed */
+    /* Drop list's reference; in-flight verify will keep ctx alive
+     * via its own refcount. */
     if (ctx != NULL) {
-        /* Delete global reference to callback object */
-        if (ctx->callback != NULL) {
-            (*env)->DeleteGlobalRef(env, ctx->callback);
-        }
-
-        /* Free context structure */
-        XFREE(ctx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        releaseCtx(ctx);
     }
 
     return WOLFSSL_SUCCESS;

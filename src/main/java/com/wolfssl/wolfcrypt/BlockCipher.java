@@ -262,11 +262,27 @@ public abstract class BlockCipher extends NativeStruct {
         return ret;
     }
 
+    /**
+     * Hook for subclasses to zero/free key material in the native struct
+     * (e.g. wc_AesFree, wc_Des3Free) before the underlying memory is
+     * freed by NativeStruct.xfree. Default is a no-op.
+     */
+    protected void native_free() {
+        /* no-op by default */
+    }
+
     @Override
     public synchronized void releaseNativeStruct() {
         synchronized (stateLock) {
             if ((state != WolfCryptState.UNINITIALIZED) &&
                 (state != WolfCryptState.RELEASED)) {
+                /* Only scrub key schedule if a key was actually set;
+                 * INITIALIZED means alloc'd but never keyed. */
+                if (state == WolfCryptState.READY) {
+                    synchronized (pointerLock) {
+                        native_free();
+                    }
+                }
                 super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }

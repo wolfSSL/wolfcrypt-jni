@@ -338,3 +338,30 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
     return ret;
 }
 
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1free(
+    JNIEnv* env, jobject this)
+{
+#if defined(OPENSSL_EXTRA) && !defined(NO_AES) && defined(HAVE_CTS) && \
+    !defined(WOLFSSL_NO_OPENSSL_AES_LOW_LEVEL_API)
+    AesCtsCtx* ctx = (AesCtsCtx*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    LogStr("free AesCts %p\n", ctx);
+
+    if (ctx != NULL) {
+        #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+            !defined(WOLFSSL_NO_FORCE_ZERO)
+            wc_ForceZero(ctx, sizeof(AesCtsCtx));
+        #else
+            XMEMSET(ctx, 0, sizeof(AesCtsCtx));
+        #endif
+    }
+#else
+    (void)this;
+    throwNotCompiledInException(env);
+#endif
+}
+

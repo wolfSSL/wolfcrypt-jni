@@ -43,6 +43,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Des3_native_1update_1internal_
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Des3
+ * Method:    wc_Des3Free
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Des3_wc_1Des3Free
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Des3
  * Method:    mallocNativeStruct
  * Signature: ()J
  */
