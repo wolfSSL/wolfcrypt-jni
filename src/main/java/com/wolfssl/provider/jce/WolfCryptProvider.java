@@ -275,6 +275,17 @@ public final class WolfCryptProvider extends Provider {
                   "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_512wECDSAP1363");
         }
 
+        /* Ed25519 Signature support */
+        if (FeatureDetect.Ed25519Enabled()) {
+            put("Signature.Ed25519",
+                "com.wolfssl.provider.jce.WolfCryptEdDSASignature");
+            /* EdDSA is the generic family name; maps to Ed25519 in this provider */
+            put("Alg.Alias.Signature.EdDSA", "Ed25519");
+            /* Ed25519 OID: 1.3.101.112 */
+            put("Alg.Alias.Signature.1.3.101.112", "Ed25519");
+            put("Alg.Alias.Signature.OID.1.3.101.112", "Ed25519");
+        }
+
         /* RSA-PSS Signature support.
          * Include Bouncy Castle and other alias styles for compatibility */
         if (FeatureDetect.RsaEnabled()) {
@@ -526,6 +537,14 @@ public final class WolfCryptProvider extends Provider {
             put("KeyAgreement.ECDH",
                 "com.wolfssl.provider.jce.WolfCryptKeyAgreement$wcECDH");
         }
+        if (FeatureDetect.Curve25519Enabled()) {
+            put("KeyAgreement.XDH",
+                "com.wolfssl.provider.jce.WolfCryptKeyAgreement$wcX25519");
+            put("KeyAgreement.X25519",
+                "com.wolfssl.provider.jce.WolfCryptKeyAgreement$wcX25519");
+            /* X25519 OID: 1.3.101.110 */
+            put("Alg.Alias.KeyAgreement.1.3.101.110", "X25519");
+        }
 
         /* KeyGenerator */
         if (FeatureDetect.AesEnabled()) {
@@ -591,6 +610,21 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenDH");
             put("Alg.Alias.KeyPairGenerator.DiffieHellman", "DH");
         }
+        if (FeatureDetect.Ed25519Enabled()) {
+            put("KeyPairGenerator.Ed25519",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenEd25519");
+            /* EdDSA is the family name; Ed25519 is the algorithm */
+            put("Alg.Alias.KeyPairGenerator.EdDSA", "Ed25519");
+            /* Ed25519 OID: 1.3.101.112 */
+            put("Alg.Alias.KeyPairGenerator.1.3.101.112", "Ed25519");
+        }
+        if (FeatureDetect.Curve25519Enabled()) {
+            put("KeyPairGenerator.X25519",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenX25519");
+            put("Alg.Alias.KeyPairGenerator.XDH", "X25519");
+            /* X25519 OID: 1.3.101.110 */
+            put("Alg.Alias.KeyPairGenerator.1.3.101.110", "X25519");
+        }
 
 
         /* CertPathValidator */
@@ -652,6 +686,18 @@ public final class WolfCryptProvider extends Provider {
         }
 
         /* KeyFactory */
+        if (FeatureDetect.Ed25519Enabled()) {
+            put("KeyFactory.Ed25519",
+                "com.wolfssl.provider.jce.WolfCryptEdDSAKeyFactory");
+            put("Alg.Alias.KeyFactory.EdDSA", "Ed25519");
+            put("Alg.Alias.KeyFactory.1.3.101.112", "Ed25519");
+        }
+        if (FeatureDetect.Curve25519Enabled()) {
+            put("KeyFactory.X25519",
+                "com.wolfssl.provider.jce.WolfCryptX25519KeyFactory");
+            put("Alg.Alias.KeyFactory.XDH", "X25519");
+            put("Alg.Alias.KeyFactory.1.3.101.110", "X25519");
+        }
         if (FeatureDetect.EccEnabled()) {
             put("KeyFactory.EC",
                 "com.wolfssl.provider.jce.WolfCryptECKeyFactory");

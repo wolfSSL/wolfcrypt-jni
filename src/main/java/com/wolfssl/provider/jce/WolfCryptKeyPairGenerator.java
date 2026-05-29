@@ -55,6 +55,8 @@ import javax.crypto.spec.DHPublicKeySpec;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Dh;
+import com.wolfssl.wolfcrypt.Ed25519;
+import com.wolfssl.wolfcrypt.Curve25519;
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -68,7 +70,9 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         WC_RSA,
         WC_RSA_PSS,
         WC_ECC,
-        WC_DH
+        WC_DH,
+        WC_ED25519,
+        WC_X25519
     }
 
     private KeyType type = null;
@@ -148,6 +152,16 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
             }
 
             /* Initialize RNG for default key generation */
+            synchronized (rngLock) {
+                if (this.rng == null) {
+                    this.rng = new Rng();
+                    this.rng.init();
+                }
+            }
+        }
+
+        /* Ed25519 and X25519 are fixed-size; only need RNG. */
+        if (type == KeyType.WC_ED25519 || type == KeyType.WC_X25519) {
             synchronized (rngLock) {
                 if (this.rng == null) {
                     this.rng = new Rng();
@@ -288,6 +302,10 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
             log("init with keysize " + keysize + ", using curve: " +
                 curveName);
 
+        } else if (type == KeyType.WC_ED25519 || type == KeyType.WC_X25519) {
+            /* Ed25519 and X25519 are fixed-size; keysize argument is ignored */
+            log("ignoring keysize " + keysize + " for fixed-size " +
+                typeToString(type) + " key");
         } else {
             this.keysize = keysize;
         }
@@ -678,6 +696,68 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
                 break;
 
+            case WC_ED25519: {
+
+                Ed25519 ed = new Ed25519();
+
+                synchronized (rngLock) {
+                    ed.makeKey(this.rng, Ed25519.ED25519_KEY_SIZE);
+                }
+
+                byte[] privSeed = ed.exportPrivateOnly();
+                byte[] pubBytes  = ed.exportPublic();
+                ed.releaseNativeStruct();
+
+                if (privSeed == null || pubBytes == null) {
+                    throw new RuntimeException(
+                        "Failed to export Ed25519 key material");
+                }
+
+                WolfCryptEdDSAPrivateKey edPriv =
+                    new WolfCryptEdDSAPrivateKey(privSeed);
+                WolfCryptEdDSAPublicKey edPub =
+                    new WolfCryptEdDSAPublicKey(pubBytes);
+
+                zeroArray(privSeed);
+
+                pair = new KeyPair(edPub, edPriv);
+
+                log("generated Ed25519 KeyPair");
+
+                break;
+            }
+
+            case WC_X25519: {
+
+                Curve25519 x25519 = new Curve25519();
+
+                synchronized (rngLock) {
+                    x25519.makeKey(this.rng, Curve25519.CURVE25519_KEY_SIZE);
+                }
+
+                byte[] privScalar = x25519.exportPrivate();
+                byte[] pubBytes    = x25519.exportPublic();
+                x25519.releaseNativeStruct();
+
+                if (privScalar == null || pubBytes == null) {
+                    throw new RuntimeException(
+                        "Failed to export X25519 key material");
+                }
+
+                WolfCryptX25519PrivateKey xPriv =
+                    new WolfCryptX25519PrivateKey(privScalar);
+                WolfCryptX25519PublicKey xPub =
+                    new WolfCryptX25519PublicKey(pubBytes);
+
+                zeroArray(privScalar);
+
+                pair = new KeyPair(xPub, xPriv);
+
+                log("generated X25519 KeyPair");
+
+                break;
+            }
+
             default:
                 throw new RuntimeException(
                     "Unsupported algorithm for key generation: " + this.type);
@@ -696,6 +776,10 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 return "ECC";
             case WC_DH:
                 return "DH";
+            case WC_ED25519:
+                return "Ed25519";
+            case WC_X25519:
+                return "X25519";
             default:
                 return "None";
         }
@@ -780,6 +864,32 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
          */
         public wcKeyPairGenDH() {
             super(KeyType.WC_DH);
+        }
+    }
+
+    /**
+     * wolfCrypt Ed25519 key pair generator class
+     */
+    public static final class wcKeyPairGenEd25519
+            extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenEd25519 object
+         */
+        public wcKeyPairGenEd25519() {
+            super(KeyType.WC_ED25519);
+        }
+    }
+
+    /**
+     * wolfCrypt X25519 (XDH) key pair generator class
+     */
+    public static final class wcKeyPairGenX25519
+            extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenX25519 object
+         */
+        public wcKeyPairGenX25519() {
+            super(KeyType.WC_X25519);
         }
     }
 }

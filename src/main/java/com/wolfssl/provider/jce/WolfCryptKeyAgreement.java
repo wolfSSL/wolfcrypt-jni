@@ -45,6 +45,7 @@ import java.security.InvalidParameterException;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.ECPrivateKey;
 
+import com.wolfssl.wolfcrypt.Curve25519;
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Ecc;
 
@@ -55,7 +56,8 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
     enum KeyAgreeType {
         WC_DH,
-        WC_ECDH
+        WC_ECDH,
+        WC_X25519
     }
 
     enum EngineState {
@@ -68,6 +70,10 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
     private Dh dh = null;
     private Ecc ecPublic  = null;
     private Ecc ecPrivate = null;
+
+    /* X25519 key agreement objects */
+    private Curve25519 xPrivate = null;
+    private Curve25519 xPublic  = null;
 
     private int primeLen  = 0;
     private int curveSize = 0;
@@ -90,6 +96,11 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             case WC_ECDH:
                 ecPublic  = new Ecc();
                 ecPrivate = new Ecc();
+                break;
+
+            case WC_X25519:
+                xPrivate = new Curve25519();
+                xPublic  = new Curve25519();
                 break;
         };
 
@@ -152,6 +163,31 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 this.ecPublic.publicKeyDecode(pubKey);
 
                 break;
+
+            case WC_X25519:
+                if (!(key instanceof WolfCryptX25519PublicKey)) {
+                    throw new InvalidKeyException(
+                        "Key must be a WolfCryptX25519PublicKey");
+                }
+
+                byte[] xPubRaw =
+                    ((WolfCryptX25519PublicKey) key).getRawPublicKey();
+                if (xPubRaw == null) {
+                    throw new InvalidKeyException(
+                        "X25519 public key has been destroyed");
+                }
+
+                this.xPublic.releaseNativeStruct();
+                this.xPublic = new Curve25519();
+                try {
+                    this.xPublic.importPublic(xPubRaw);
+                } catch (Exception e) {
+                    throw new InvalidKeyException(
+                        "Failed to import X25519 public key: " +
+                        e.getMessage(), e);
+                }
+
+                break;
         };
 
         zeroArray(pubKey);
@@ -179,6 +215,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 case WC_ECDH:
                     secretLen = this.curveSize;
                     tmp = new byte[secretLen];
+                    break;
+                case WC_X25519:
+                    tmp = new byte[Curve25519.CURVE25519_KEY_SIZE];
                     break;
             }
 
@@ -338,6 +377,31 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 } finally {
                     zeroArray(priv);
                 }
+
+                this.state = EngineState.WC_PRIVKEY_DONE;
+
+                break;
+
+            case WC_X25519:
+
+                tmp = this.xPrivate.makeSharedSecret(this.xPublic);
+                if (tmp == null) {
+                    throw new RuntimeException(
+                        "Error creating X25519 shared secret");
+                }
+
+                if ((sharedSecret.length - offset) < tmp.length) {
+                    zeroArray(tmp);
+                    throw new ShortBufferException(
+                        "Output buffer too small for X25519 shared secret");
+                }
+
+                System.arraycopy(tmp, 0, sharedSecret, offset, tmp.length);
+                returnLen = tmp.length;
+
+                /* Reset public key object; private remains loaded. */
+                this.xPublic.releaseNativeStruct();
+                this.xPublic = new Curve25519();
 
                 this.state = EngineState.WC_PRIVKEY_DONE;
 
@@ -605,7 +669,40 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             case WC_ECDH:
                 wcInitECDHParams(key, params);
                 break;
+
+            case WC_X25519:
+                wcInitX25519Params(key);
+                break;
         }
+    }
+
+    /**
+     * Import X25519 private key from a WolfCryptX25519PrivateKey.
+     */
+    private void wcInitX25519Params(Key key) throws InvalidKeyException {
+
+        if (!(key instanceof WolfCryptX25519PrivateKey)) {
+            throw new InvalidKeyException(
+                "Key must be a WolfCryptX25519PrivateKey");
+        }
+
+        WolfCryptX25519PrivateKey xKey = (WolfCryptX25519PrivateKey) key;
+        byte[] scalar = xKey.getRawScalar();
+        if (scalar == null) {
+            throw new InvalidKeyException("Key has been destroyed");
+        }
+
+        try {
+            this.xPrivate.releaseNativeStruct();
+            this.xPrivate = new Curve25519();
+            this.xPrivate.importPrivateOnly(scalar);
+        } catch (Exception e) {
+            zeroArray(scalar);
+            throw new InvalidKeyException(
+                "Failed to import X25519 private key: " + e.getMessage(), e);
+        }
+
+        zeroArray(scalar);
     }
 
     @Override
@@ -652,6 +749,8 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 return "DH";
             case WC_ECDH:
                 return "ECDH";
+            case WC_X25519:
+                return "X25519";
             default:
                 return "None";
         }
@@ -679,6 +778,14 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
                     if (this.ecPrivate != null)
                         this.ecPrivate.releaseNativeStruct();
+                    break;
+
+                case WC_X25519:
+                    if (this.xPublic != null)
+                        this.xPublic.releaseNativeStruct();
+
+                    if (this.xPrivate != null)
+                        this.xPrivate.releaseNativeStruct();
                     break;
             }
 
@@ -708,6 +815,18 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
          */
         public wcECDH() {
             super(KeyAgreeType.WC_ECDH);
+        }
+    }
+
+    /**
+     * wolfJCE X25519 (XDH) key agreement class
+     */
+    public static final class wcX25519 extends WolfCryptKeyAgreement {
+        /**
+         * Create new wcX25519 object
+         */
+        public wcX25519() {
+            super(KeyAgreeType.WC_X25519);
         }
     }
 }
