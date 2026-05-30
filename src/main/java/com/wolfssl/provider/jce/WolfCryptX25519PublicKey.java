@@ -150,6 +150,10 @@ public class WolfCryptX25519PublicKey implements XECPublicKey, Destroyable {
      * The MSB of the last byte is cleared per RFC 7748.
      */
     static byte[] bigIntegerToX25519Bytes(BigInteger u) {
+        if (u.signum() < 0) {
+            throw new IllegalArgumentException(
+                "X25519 u-coordinate must be non-negative");
+        }
         byte[] uBytes = u.toByteArray();
         /* strip possible leading sign byte */
         if (uBytes.length > 0 && uBytes[0] == 0x00) {

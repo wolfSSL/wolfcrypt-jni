@@ -156,6 +156,15 @@ public class WolfCryptEdDSAPublicKey implements EdECPublicKey, Destroyable {
         BigInteger y = point.getY();
         boolean xOdd = point.isXOdd();
 
+        if (y.signum() < 0) {
+            throw new IllegalArgumentException(
+                "Ed25519 y-coordinate must be non-negative");
+        }
+        if (y.bitLength() > 255) {
+            throw new IllegalArgumentException(
+                "Ed25519 y-coordinate exceeds field size (must be < 2^255)");
+        }
+
         /* Convert y (big-endian BigInteger) to 32-byte little-endian */
         byte[] yBytes = y.toByteArray();
         /* strip possible leading sign byte */

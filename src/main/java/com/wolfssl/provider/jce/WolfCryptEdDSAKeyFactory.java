@@ -127,7 +127,11 @@ public class WolfCryptEdDSAKeyFactory extends KeyFactorySpi {
                     throw new InvalidKeySpecException(
                         "Key encoding is not available (key may be destroyed)");
                 }
-                return specClass.cast(new PKCS8EncodedKeySpec(encoded));
+                try {
+                    return specClass.cast(new PKCS8EncodedKeySpec(encoded));
+                } finally {
+                    Arrays.fill(encoded, (byte) 0);
+                }
 
             } else if (specClass == EdECPrivateKeySpec.class) {
                 java.util.Optional<byte[]> bytesOpt = edPriv.getBytes();
@@ -135,9 +139,14 @@ public class WolfCryptEdDSAKeyFactory extends KeyFactorySpi {
                     throw new InvalidKeySpecException(
                         "Private key bytes not available (key may be destroyed)");
                 }
-                return specClass.cast(
-                    new EdECPrivateKeySpec(NamedParameterSpec.ED25519,
-                        bytesOpt.get()));
+                byte[] bytes = bytesOpt.get();
+                try {
+                    return specClass.cast(
+                        new EdECPrivateKeySpec(NamedParameterSpec.ED25519,
+                            bytes));
+                } finally {
+                    Arrays.fill(bytes, (byte) 0);
+                }
 
             } else {
                 throw new InvalidKeySpecException(

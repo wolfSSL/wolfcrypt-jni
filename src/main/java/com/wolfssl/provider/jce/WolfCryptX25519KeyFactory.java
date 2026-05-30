@@ -126,7 +126,11 @@ public class WolfCryptX25519KeyFactory extends KeyFactorySpi {
                     throw new InvalidKeySpecException(
                         "Key encoding not available (key may be destroyed)");
                 }
-                return specClass.cast(new PKCS8EncodedKeySpec(encoded));
+                try {
+                    return specClass.cast(new PKCS8EncodedKeySpec(encoded));
+                } finally {
+                    Arrays.fill(encoded, (byte) 0);
+                }
 
             } else if (specClass == XECPrivateKeySpec.class) {
                 java.util.Optional<byte[]> scalarOpt = xPriv.getScalar();
@@ -134,9 +138,14 @@ public class WolfCryptX25519KeyFactory extends KeyFactorySpi {
                     throw new InvalidKeySpecException(
                         "Private scalar not available (key may be destroyed)");
                 }
-                return specClass.cast(
-                    new XECPrivateKeySpec(NamedParameterSpec.X25519,
-                        scalarOpt.get()));
+                byte[] scalar = scalarOpt.get();
+                try {
+                    return specClass.cast(
+                        new XECPrivateKeySpec(NamedParameterSpec.X25519,
+                            scalar));
+                } finally {
+                    Arrays.fill(scalar, (byte) 0);
+                }
 
             } else {
                 throw new InvalidKeySpecException(
