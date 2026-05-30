@@ -32,6 +32,7 @@ import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECParameterSpec;
 
 import java.math.BigInteger;
+import java.util.Arrays;
 
 import java.security.InvalidKeyException;
 import java.security.SignatureException;
@@ -318,12 +319,55 @@ public class WolfCryptSignature extends SignatureSpi {
 
         switch (this.keyType) {
 
-            case WC_RSA:
+            case WC_RSA: {
+                BigInteger biN, biP, biQ;
 
                 /* import private PKCS#8 */
                 this.rsa.decodePrivateKeyPKCS8(encodedKey);
 
+                /* export raw CRT parameters to validate key consistency */
+                int keySize = this.rsa.getEncryptSize();
+                byte[] n = new byte[keySize];
+                byte[] e = new byte[keySize];
+                byte[] d = new byte[keySize];
+                byte[] p = new byte[keySize];
+                byte[] q = new byte[keySize];
+                byte[] dP = new byte[keySize];
+                byte[] dQ = new byte[keySize];
+                byte[] u = new byte[keySize];
+                long[] nSz = new long[]{keySize};
+                long[] eSz = new long[]{keySize};
+                long[] dSz = new long[]{keySize};
+                long[] pSz = new long[]{keySize};
+                long[] qSz = new long[]{keySize};
+                long[] dPSz = new long[]{keySize};
+                long[] dQSz = new long[]{keySize};
+                long[] uSz = new long[]{keySize};
+
+                try {
+                    this.rsa.exportRawPrivateKey(n, nSz, e, eSz, d, dSz,
+                        p, pSz, q, qSz, dP, dPSz, dQ, dQSz, u, uSz);
+
+                    biN = new BigInteger(1, Arrays.copyOf(n, (int)nSz[0]));
+                    biP = new BigInteger(1, Arrays.copyOf(p, (int)pSz[0]));
+                    biQ = new BigInteger(1, Arrays.copyOf(q, (int)qSz[0]));
+
+                    if (!biN.equals(biP.multiply(biQ))) {
+                        throw new InvalidKeyException(
+                            "RSA private key modulus n does not equal p * q");
+                    }
+                } finally {
+                    /* Zero sensitive CRT components regardless of outcome */
+                    zeroArray(d);
+                    zeroArray(p);
+                    zeroArray(q);
+                    zeroArray(dP);
+                    zeroArray(dQ);
+                    zeroArray(u);
+                }
+
                 break;
+            }
 
             case WC_ECDSA:
 
