@@ -84,6 +84,7 @@ public class WolfCryptEdDSASignature extends SignatureSpi {
             try {
                 ed = new Ed25519();
                 ed.importPrivateOnly(seed);
+                ed.makePublic();
             } catch (WolfCryptException e) {
                 releaseKey();
                 throw new InvalidKeyException(

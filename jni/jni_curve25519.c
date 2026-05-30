@@ -174,8 +174,9 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
         ret = BAD_FUNC_ARG;
     } else {
         /* detect, and later skip, leading zero byte */
-        ret = wc_curve25519_import_private_raw(priv, privSz, pub,
-                                               pubSz, curve25519);
+        ret = wc_curve25519_import_private_raw_ex(priv, privSz, pub,
+                                               pubSz, curve25519,
+                                               EC25519_LITTLE_ENDIAN);
     }
 
     if (ret != 0)
@@ -212,7 +213,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
         ret = BAD_FUNC_ARG;
     } else {
         /* detect, and later skip, leading zero byte */
-        ret = wc_curve25519_import_private(priv, privSz, curve25519);
+        ret = wc_curve25519_import_private_ex(priv, privSz, curve25519,
+                                              EC25519_LITTLE_ENDIAN);
     }
 
     if (ret != 0)
@@ -246,8 +248,13 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
     if (!curve25519 || !pub) {
         ret = BAD_FUNC_ARG;
     } else {
-        /* detect, and later skip, leading zero byte */
-        ret = wc_curve25519_import_public(pub, pubSz, curve25519);
+        /* RFC 7748 §5: mask bit 255 (MSB of last byte) of u-coordinate.
+         * wolfSSL fingerprinting check rejects keys with this bit set.
+         * This masking is safe and mandated by the RFC. */
+        if (pubSz > 0)
+            pub[pubSz - 1] &= 0x7f;
+        ret = wc_curve25519_import_public_ex(pub, pubSz, curve25519,
+                                             EC25519_LITTLE_ENDIAN);
     }
 
     if (ret != 0)
@@ -295,7 +302,8 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1private(
     }
     XMEMSET(output, 0, outputSz);
 
-    ret = wc_curve25519_export_private_raw(curve25519, output, &outputSz);
+    ret = wc_curve25519_export_private_raw_ex(curve25519, output, &outputSz,
+                                              EC25519_LITTLE_ENDIAN);
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
@@ -360,7 +368,8 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1public (
     }
     XMEMSET(output, 0, outputSz);
 
-    ret = wc_curve25519_export_public(curve25519, output, &outputSz);
+    ret = wc_curve25519_export_public_ex(curve25519, output, &outputSz,
+                                         EC25519_LITTLE_ENDIAN);
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
@@ -429,7 +438,8 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1make_1shared_1secret(
     }
     XMEMSET(output, 0, outputSz);
 
-    ret = wc_curve25519_shared_secret(curve25519, pub, output, &outputSz);
+    ret = wc_curve25519_shared_secret_ex(curve25519, pub, output, &outputSz,
+                                         EC25519_LITTLE_ENDIAN);
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);

@@ -83,6 +83,7 @@ public class Ed25519 extends NativeStruct {
     private native void wc_ed25519_free();
     private native void wc_ed25519_make_key(Rng rng, int size);
     private native void wc_ed25519_check_key();
+    private native void wc_ed25519_make_public();
     private native void wc_ed25519_import_private(byte[] privKey, byte[] key);
     private native void wc_ed25519_import_private_only(byte[] privKey);
     private native void wc_ed25519_import_public(byte[] privKey);
@@ -198,6 +199,24 @@ public class Ed25519 extends NativeStruct {
 
         synchronized (pointerLock) {
             wc_ed25519_check_key();
+        }
+    }
+
+    /**
+     * Derive and store the Ed25519 public key from the loaded private key.
+     * Must be called after importPrivateOnly() before signing.
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object fails to initialize or has been
+     *         released.
+     */
+    public void makePublic()
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+
+        synchronized (pointerLock) {
+            wc_ed25519_make_public();
         }
     }
 

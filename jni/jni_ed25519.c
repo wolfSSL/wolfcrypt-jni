@@ -173,6 +173,34 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1check_1key(
 #endif
 }
 
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1make_1public(
+    JNIEnv* env, jobject this)
+{
+#ifdef HAVE_ED25519
+    int ret = 0;
+    ed25519_key* ed25519 = (ed25519_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        return;
+    }
+
+    /* Write the derived public key directly into key->p so that sign_msg
+     * can access it (sign_msg reads from key->p at hash step). This
+     * matches the internal call in wc_ed25519_make_key:
+     *   wc_ed25519_make_public(key, key->p, ED25519_PUB_KEY_SIZE). */
+    ret = (!ed25519)
+        ? BAD_FUNC_ARG
+        : wc_ed25519_make_public(ed25519, ed25519->p, ED25519_PUB_KEY_SIZE);
+
+    if (ret != 0)
+        throwWolfCryptExceptionFromError(env, ret);
+
+    LogStr("wc_ed25519_make_public(ed25519=%p) = %d\n", ed25519, ret);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1private
   (JNIEnv* env, jobject this, jbyteArray priv_object, jbyteArray pub_object)
 {

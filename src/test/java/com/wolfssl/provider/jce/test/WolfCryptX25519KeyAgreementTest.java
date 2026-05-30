@@ -47,7 +47,7 @@ import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 /**
  * JUnit4 tests for WolfCryptKeyAgreement X25519 (XDH).
  *
- * RFC 7748 Section 6.1 test vector used for correctness verification.
+ * RFC 8037, Section A.6 test vector used for correctness verification.
  */
 public class WolfCryptX25519KeyAgreementTest {
 
@@ -95,27 +95,28 @@ public class WolfCryptX25519KeyAgreementTest {
     }
 
     /*
-     * RFC 7748 Section 6.1 — X25519 Diffie-Hellman test vector.
+     * RFC 8037, Section A.6 — X25519 Diffie-Hellman test vector.
+     * (Also cited in RFC 7748; canonical vectors per Wycheproof tcId 102.)
      * All values are 32-byte little-endian (raw X25519 wire format).
      */
     private static final byte[] RFC_ALICE_PRIV = hex(
         "77076d0a7318a57d3c16c17251b26645" +
-        "df91ef6f5eacc0aee9eefb22e65fc54e");
+        "df4c2f87ebc0992ab177fba51db92c2a");
     private static final byte[] RFC_ALICE_PUB = hex(
         "8520f0098930a754748b7ddcb43ef75a" +
         "0dbf3a0d26381af4eba4a98eaa9b4e6a");
     private static final byte[] RFC_BOB_PRIV = hex(
         "5dab087e624a8a4b79e17f8b83800ee6" +
-        "6f3bb1292618b6fd1c268f061c90d7fd");
+        "6f3bb1292618b6fd1c2f8b27ff88e0eb");
     private static final byte[] RFC_BOB_PUB = hex(
-        "de9edb7d7b7dc1b4d35b61c2ece43527" +
-        "3cf1cfa7673a7ee35f19c7ddc4d7b1bf");
+        "de9edb7d7b7dc1b4d35b61c2ece43537" +
+        "3f8343c85b78674dadfc7e146f882b4f");
     private static final byte[] RFC_SHARED = hex(
         "4a5d9d5ba4ce2de1728e3bf480350f25" +
         "e07e21c947d19e3376f09b3c1e161742");
 
     /**
-     * RFC 7748 §6.1: Alice computes shared secret using her private key and
+     * RFC 8037 §A.6: Alice computes shared secret using her private key and
      * Bob's public key; result must equal the known shared secret.
      */
     @Test
@@ -133,12 +134,12 @@ public class WolfCryptX25519KeyAgreementTest {
         ka.doPhase(bobPub, true);
         byte[] shared = ka.generateSecret();
 
-        assertArrayEquals("RFC 7748 §6.1 Alice-side shared secret mismatch",
+        assertArrayEquals("RFC 8037 §A.6 Alice-side shared secret mismatch",
             RFC_SHARED, shared);
     }
 
     /**
-     * RFC 7748 §6.1: Bob computes shared secret using his private key and
+     * RFC 8037 §A.6: Bob computes shared secret using his private key and
      * Alice's public key; result must equal the known shared secret.
      */
     @Test
@@ -156,7 +157,7 @@ public class WolfCryptX25519KeyAgreementTest {
         ka.doPhase(alicePub, true);
         byte[] shared = ka.generateSecret();
 
-        assertArrayEquals("RFC 7748 §6.1 Bob-side shared secret mismatch",
+        assertArrayEquals("RFC 8037 §A.6 Bob-side shared secret mismatch",
             RFC_SHARED, shared);
     }
 

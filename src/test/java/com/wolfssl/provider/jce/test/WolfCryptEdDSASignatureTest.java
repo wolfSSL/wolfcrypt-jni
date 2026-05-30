@@ -117,11 +117,12 @@ public class WolfCryptEdDSASignatureTest {
     }
 
     /*
-     * RFC 8032 Section 6 — Test Vector 1 (empty message)
+     * draft-josefsson-eddsa-ed25519-02 §6 — Test Vector 1 (empty message)
+     * (also cited as RFC 8032 §6; vectors from IETF draft)
      */
     private static final byte[] TV1_SEED = hex(
         "9d61b19deffd5a60ba844af492ec2cc4" +
-        "4449c5697b326919703bac031cae3d55");
+        "4449c5697b326919703bac031cae7f60");
     private static final byte[] TV1_PUB = hex(
         "d75a980182b10ab7d54bfed3c964073a" +
         "0ee172f3daa62325af021a68f707511a");
