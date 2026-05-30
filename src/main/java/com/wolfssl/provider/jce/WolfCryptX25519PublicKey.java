@@ -328,6 +328,20 @@ public class WolfCryptX25519PublicKey implements XECPublicKey, Destroyable {
                 throw new InvalidObjectException(
                     "Invalid deserialized X25519 public key state");
             }
+            if (!Arrays.equals(
+                    Arrays.copyOf(spkiEncoded, SPKI_PREFIX.length),
+                    SPKI_PREFIX)) {
+                throw new InvalidObjectException(
+                    "SPKI prefix invalid in deserialized X25519 public key");
+            }
+            if (!Arrays.equals(
+                    Arrays.copyOfRange(spkiEncoded,
+                        SPKI_PREFIX.length, SPKI_TOTAL_LEN),
+                    rawKey)) {
+                throw new InvalidObjectException(
+                    "SPKI encoding inconsistent with rawKey in " +
+                    "deserialized X25519 public key");
+            }
         }
     }
 }

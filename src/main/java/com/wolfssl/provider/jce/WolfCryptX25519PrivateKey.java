@@ -278,6 +278,20 @@ public class WolfCryptX25519PrivateKey implements XECPrivateKey, Destroyable {
                 throw new InvalidObjectException(
                     "Invalid deserialized X25519 private key state");
             }
+            if (!Arrays.equals(
+                    Arrays.copyOf(pkcs8Encoded, PKCS8_PREFIX.length),
+                    PKCS8_PREFIX)) {
+                throw new InvalidObjectException(
+                    "PKCS#8 prefix invalid in deserialized X25519 private key");
+            }
+            if (!Arrays.equals(
+                    Arrays.copyOfRange(pkcs8Encoded,
+                        PKCS8_PREFIX.length, PKCS8_TOTAL_LEN),
+                    scalar)) {
+                throw new InvalidObjectException(
+                    "PKCS#8 encoding inconsistent with scalar in " +
+                    "deserialized X25519 private key");
+            }
         }
     }
 }

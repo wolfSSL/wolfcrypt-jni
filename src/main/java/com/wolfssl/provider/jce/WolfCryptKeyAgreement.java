@@ -182,6 +182,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 try {
                     this.xPublic.importPublic(xPubRaw);
                 } catch (Exception e) {
+                    /* Reset to empty state so object remains usable. */
+                    this.xPublic.releaseNativeStruct();
+                    this.xPublic = new Curve25519();
                     throw new InvalidKeyException(
                         "Failed to import X25519 public key: " +
                         e.getMessage(), e);
@@ -697,6 +700,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             this.xPrivate = new Curve25519();
             this.xPrivate.importPrivateOnly(scalar);
         } catch (Exception e) {
+            /* Reset to empty state so object remains usable. */
+            this.xPrivate.releaseNativeStruct();
+            this.xPrivate = new Curve25519();
             throw new InvalidKeyException(
                 "Failed to import X25519 private key: " + e.getMessage(), e);
         } finally {

@@ -280,6 +280,20 @@ public class WolfCryptEdDSAPrivateKey implements EdECPrivateKey, Destroyable {
                 throw new InvalidObjectException(
                     "Invalid deserialized Ed25519 private key state");
             }
+            if (!Arrays.equals(
+                    Arrays.copyOf(pkcs8Encoded, PKCS8_PREFIX.length),
+                    PKCS8_PREFIX)) {
+                throw new InvalidObjectException(
+                    "PKCS#8 prefix invalid in deserialized Ed25519 private key");
+            }
+            if (!Arrays.equals(
+                    Arrays.copyOfRange(pkcs8Encoded,
+                        PKCS8_PREFIX.length, PKCS8_TOTAL_LEN),
+                    seed)) {
+                throw new InvalidObjectException(
+                    "PKCS#8 encoding inconsistent with seed in " +
+                    "deserialized Ed25519 private key");
+            }
         }
     }
 }

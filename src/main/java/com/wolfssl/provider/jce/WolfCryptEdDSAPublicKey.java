@@ -345,6 +345,20 @@ public class WolfCryptEdDSAPublicKey implements EdECPublicKey, Destroyable {
                 throw new InvalidObjectException(
                     "Invalid deserialized Ed25519 public key state");
             }
+            if (!Arrays.equals(
+                    Arrays.copyOf(spkiEncoded, SPKI_PREFIX.length),
+                    SPKI_PREFIX)) {
+                throw new InvalidObjectException(
+                    "SPKI prefix invalid in deserialized Ed25519 public key");
+            }
+            if (!Arrays.equals(
+                    Arrays.copyOfRange(spkiEncoded,
+                        SPKI_PREFIX.length, SPKI_TOTAL_LEN),
+                    rawKey)) {
+                throw new InvalidObjectException(
+                    "SPKI encoding inconsistent with rawKey in " +
+                    "deserialized Ed25519 public key");
+            }
         }
     }
 }
