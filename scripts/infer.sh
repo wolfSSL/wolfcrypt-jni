@@ -112,7 +112,14 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSecretKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSignature.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptUtil.java \
-    src/main/java/com/wolfssl/provider/jce/WolfSSLKeyStore.java
+    src/main/java/com/wolfssl/provider/jce/WolfSSLKeyStore.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptEdDSAKeyFactory.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptEdDSAPrivateKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptEdDSAPublicKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptEdDSASignature.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptX25519KeyFactory.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptX25519PrivateKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptX25519PublicKey.java
 
 RETVAL=$?
 

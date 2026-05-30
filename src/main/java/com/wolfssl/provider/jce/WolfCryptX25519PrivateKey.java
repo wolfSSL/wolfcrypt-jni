@@ -23,6 +23,7 @@ package com.wolfssl.provider.jce;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Optional;
 import java.security.interfaces.XECPrivateKey;
@@ -225,17 +226,26 @@ public class WolfCryptX25519PrivateKey implements XECPrivateKey, Destroyable {
             return false;
         }
         WolfCryptX25519PrivateKey other = (WolfCryptX25519PrivateKey) obj;
+
+        /* Snapshot each key's encoded form under its own lock to avoid ABBA
+         * deadlock. Compare outside both locks using constant-time equality
+         * to reduce timing side-channel exposure for private key material. */
+        byte[] thisEncoded;
+        byte[] otherEncoded;
+
         synchronized (stateLock) {
             if (destroyed) {
                 return false;
             }
-            synchronized (other.stateLock) {
-                if (other.destroyed) {
-                    return false;
-                }
-                return Arrays.equals(this.pkcs8Encoded, other.pkcs8Encoded);
-            }
+            thisEncoded = pkcs8Encoded.clone();
         }
+        synchronized (other.stateLock) {
+            if (other.destroyed) {
+                return false;
+            }
+            otherEncoded = other.pkcs8Encoded.clone();
+        }
+        return MessageDigest.isEqual(thisEncoded, otherEncoded);
     }
 
     @Override

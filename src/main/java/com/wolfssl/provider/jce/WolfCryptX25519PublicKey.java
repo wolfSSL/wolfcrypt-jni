@@ -285,17 +285,25 @@ public class WolfCryptX25519PublicKey implements XECPublicKey, Destroyable {
             return false;
         }
         WolfCryptX25519PublicKey other = (WolfCryptX25519PublicKey) obj;
+
+        /* Snapshot each key's encoded form under its own lock to avoid
+         * ABBA deadlock. */
+        byte[] thisEncoded;
+        byte[] otherEncoded;
+
         synchronized (stateLock) {
             if (destroyed) {
                 return false;
             }
-            synchronized (other.stateLock) {
-                if (other.destroyed) {
-                    return false;
-                }
-                return Arrays.equals(this.spkiEncoded, other.spkiEncoded);
-            }
+            thisEncoded = spkiEncoded.clone();
         }
+        synchronized (other.stateLock) {
+            if (other.destroyed) {
+                return false;
+            }
+            otherEncoded = other.spkiEncoded.clone();
+        }
+        return Arrays.equals(thisEncoded, otherEncoded);
     }
 
     @Override

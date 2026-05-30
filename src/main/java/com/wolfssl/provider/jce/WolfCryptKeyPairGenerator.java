@@ -36,6 +36,7 @@ import java.security.spec.KeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.ECGenParameterSpec;
+import java.security.spec.NamedParameterSpec;
 import java.security.spec.RSAKeyGenParameterSpec;
 import java.security.spec.RSAPrivateCrtKeySpec;
 import java.security.spec.RSAPublicKeySpec;
@@ -429,6 +430,36 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
                 break;
 
+            case WC_ED25519:
+
+                if (!(params instanceof NamedParameterSpec)) {
+                    throw new InvalidAlgorithmParameterException(
+                        "Ed25519 requires NamedParameterSpec");
+                }
+                if (!((NamedParameterSpec) params).getName()
+                        .equalsIgnoreCase("Ed25519")) {
+                    throw new InvalidAlgorithmParameterException(
+                        "Only Ed25519 is supported, got: " +
+                        ((NamedParameterSpec) params).getName());
+                }
+                /* Key size is fixed; no state update needed. */
+                break;
+
+            case WC_X25519:
+
+                if (!(params instanceof NamedParameterSpec)) {
+                    throw new InvalidAlgorithmParameterException(
+                        "X25519 requires NamedParameterSpec");
+                }
+                if (!((NamedParameterSpec) params).getName()
+                        .equalsIgnoreCase("X25519")) {
+                    throw new InvalidAlgorithmParameterException(
+                        "Only X25519 is supported, got: " +
+                        ((NamedParameterSpec) params).getName());
+                }
+                /* Key size is fixed; no state update needed. */
+                break;
+
             default:
                 throw new RuntimeException(
                     "Unsupported algorithm for key generation");
@@ -699,28 +730,32 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
             case WC_ED25519: {
 
                 Ed25519 ed = new Ed25519();
+                byte[] privSeed = null;
 
-                synchronized (rngLock) {
-                    ed.makeKey(this.rng, Ed25519.ED25519_KEY_SIZE);
+                try {
+                    synchronized (rngLock) {
+                        ed.makeKey(this.rng, Ed25519.ED25519_KEY_SIZE);
+                    }
+
+                    privSeed = ed.exportPrivateOnly();
+                    byte[] pubBytes = ed.exportPublic();
+
+                    if (privSeed == null || pubBytes == null) {
+                        throw new RuntimeException(
+                            "Failed to export Ed25519 key material");
+                    }
+
+                    WolfCryptEdDSAPrivateKey edPriv =
+                        new WolfCryptEdDSAPrivateKey(privSeed);
+                    WolfCryptEdDSAPublicKey edPub =
+                        new WolfCryptEdDSAPublicKey(pubBytes);
+
+                    pair = new KeyPair(edPub, edPriv);
+
+                } finally {
+                    zeroArray(privSeed);
+                    ed.releaseNativeStruct();
                 }
-
-                byte[] privSeed = ed.exportPrivateOnly();
-                byte[] pubBytes  = ed.exportPublic();
-                ed.releaseNativeStruct();
-
-                if (privSeed == null || pubBytes == null) {
-                    throw new RuntimeException(
-                        "Failed to export Ed25519 key material");
-                }
-
-                WolfCryptEdDSAPrivateKey edPriv =
-                    new WolfCryptEdDSAPrivateKey(privSeed);
-                WolfCryptEdDSAPublicKey edPub =
-                    new WolfCryptEdDSAPublicKey(pubBytes);
-
-                zeroArray(privSeed);
-
-                pair = new KeyPair(edPub, edPriv);
 
                 log("generated Ed25519 KeyPair");
 
@@ -730,28 +765,32 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
             case WC_X25519: {
 
                 Curve25519 x25519 = new Curve25519();
+                byte[] privScalar = null;
 
-                synchronized (rngLock) {
-                    x25519.makeKey(this.rng, Curve25519.CURVE25519_KEY_SIZE);
+                try {
+                    synchronized (rngLock) {
+                        x25519.makeKey(this.rng, Curve25519.CURVE25519_KEY_SIZE);
+                    }
+
+                    privScalar = x25519.exportPrivate();
+                    byte[] pubBytes = x25519.exportPublic();
+
+                    if (privScalar == null || pubBytes == null) {
+                        throw new RuntimeException(
+                            "Failed to export X25519 key material");
+                    }
+
+                    WolfCryptX25519PrivateKey xPriv =
+                        new WolfCryptX25519PrivateKey(privScalar);
+                    WolfCryptX25519PublicKey xPub =
+                        new WolfCryptX25519PublicKey(pubBytes);
+
+                    pair = new KeyPair(xPub, xPriv);
+
+                } finally {
+                    zeroArray(privScalar);
+                    x25519.releaseNativeStruct();
                 }
-
-                byte[] privScalar = x25519.exportPrivate();
-                byte[] pubBytes    = x25519.exportPublic();
-                x25519.releaseNativeStruct();
-
-                if (privScalar == null || pubBytes == null) {
-                    throw new RuntimeException(
-                        "Failed to export X25519 key material");
-                }
-
-                WolfCryptX25519PrivateKey xPriv =
-                    new WolfCryptX25519PrivateKey(privScalar);
-                WolfCryptX25519PublicKey xPub =
-                    new WolfCryptX25519PublicKey(pubBytes);
-
-                zeroArray(privScalar);
-
-                pair = new KeyPair(xPub, xPriv);
 
                 log("generated X25519 KeyPair");
 
