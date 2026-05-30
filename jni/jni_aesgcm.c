@@ -416,3 +416,225 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
 #endif
 }
 
+/*
+ * Initialize AES-GCM streaming encryption.
+ * Key must already be loaded via wc_AesGcmSetKey. This call sets the IV
+ * and prepares internal streaming state (WOLFSSL_AESGCM_STREAM).
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncryptInitStreaming
+  (JNIEnv* env, jobject this, jbyteArray ivArr)
+{
+#if !defined(NO_AES) && defined(HAVE_AESGCM) && defined(WOLFSSL_AESGCM_STREAM)
+    int ret = 0;
+    Aes* aes = NULL;
+    const byte* iv = NULL;
+    word32 ivSz = 0;
+
+    aes = (Aes*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        return;
+    }
+
+    if (ivArr != NULL) {
+        iv = (const byte*)(*env)->GetByteArrayElements(env, ivArr, NULL);
+        ivSz = (*env)->GetArrayLength(env, ivArr);
+    }
+
+    if (iv == NULL || ivSz == 0) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    /*
+     * Pass NULL key (key already loaded via wc_AesGcmSetKey).
+     * wc_AesGcmEncryptInit only sets key when key != NULL.
+     */
+    if (ret == 0) {
+        ret = wc_AesGcmEncryptInit(aes, NULL, 0, iv, ivSz);
+    }
+
+    if (ivArr != NULL) {
+        (*env)->ReleaseByteArrayElements(env, ivArr, (jbyte*)iv, JNI_ABORT);
+    }
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_AesGcmEncryptInit(aes = %p, ivSz = %d)\n", aes, ivSz);
+#else
+    (void)this;
+    (void)ivArr;
+    throwNotCompiledInException(env);
+#endif
+}
+
+/*
+ * Streaming AES-GCM encrypt update: encrypt plaintext and/or process AAD.
+ * inputArr may be NULL or empty (AAD-only call).
+ * authInArr may be NULL (no AAD for this call).
+ * Returns a jbyteArray of length inputArr.length containing ciphertext.
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncryptUpdateStreaming
+  (JNIEnv* env, jobject this, jbyteArray inputArr, jbyteArray authInArr)
+{
+#if !defined(NO_AES) && defined(HAVE_AESGCM) && defined(WOLFSSL_AESGCM_STREAM)
+    int ret = 0;
+    Aes* aes = NULL;
+    const byte* in = NULL;
+    const byte* authIn = NULL;
+    word32 inLen = 0;
+    word32 authInSz = 0;
+    byte* out = NULL;
+    jbyteArray outArr = NULL;
+
+    aes = (Aes*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        return NULL;
+    }
+
+    if (inputArr != NULL) {
+        in = (const byte*)(*env)->GetByteArrayElements(env, inputArr, NULL);
+        inLen = (*env)->GetArrayLength(env, inputArr);
+        if ((inLen > 0) && (in == NULL)) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+    if ((ret == 0) && (authInArr != NULL)) {
+        authIn = (const byte*)(*env)->GetByteArrayElements(env,
+            authInArr, NULL);
+        authInSz = (*env)->GetArrayLength(env, authInArr);
+        if ((authInSz > 0) && (authIn == NULL)) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if ((ret == 0) && (inLen > 0)) {
+        out = (byte*)XMALLOC(inLen, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (out == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(out, 0, inLen);
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_AesGcmEncryptUpdate(aes, out, in, inLen, authIn, authInSz);
+    }
+
+    if (ret == 0) {
+        outArr = (*env)->NewByteArray(env, (jsize)inLen);
+        if (outArr == NULL) {
+            ret = MEMORY_E;
+        }
+        else if (inLen > 0) {
+            (*env)->SetByteArrayRegion(env, outArr, 0, (jsize)inLen,
+                (jbyte*)out);
+            if ((*env)->ExceptionOccurred(env)) {
+                (*env)->ExceptionDescribe(env);
+                (*env)->ExceptionClear(env);
+                (*env)->DeleteLocalRef(env, outArr);
+                outArr = NULL;
+                ret = -1;
+            }
+        }
+    }
+
+    if (inputArr != NULL) {
+        (*env)->ReleaseByteArrayElements(env, inputArr, (jbyte*)in, JNI_ABORT);
+    }
+    if (authInArr != NULL) {
+        (*env)->ReleaseByteArrayElements(env, authInArr, (jbyte*)authIn,
+            JNI_ABORT);
+    }
+    if (out != NULL) {
+        XFREE(out, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
+    LogStr("wc_AesGcmEncryptUpdate(aes = %p, inLen = %d, authInSz = %d)\n",
+        aes, inLen, authInSz);
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+        return NULL;
+    }
+
+    return outArr;
+
+#else
+    (void)this;
+    (void)inputArr;
+    (void)authInArr;
+    throwNotCompiledInException(env);
+    return NULL;
+#endif
+}
+
+/*
+ * Finalize AES-GCM streaming encryption and generate authentication tag.
+ * Returns a jbyteArray of length tagLen containing the authentication tag.
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncryptFinalStreaming
+  (JNIEnv* env, jobject this, jint tagLen)
+{
+#if !defined(NO_AES) && defined(HAVE_AESGCM) && defined(WOLFSSL_AESGCM_STREAM)
+    int ret = 0;
+    Aes* aes = NULL;
+    byte* tag = NULL;
+    jbyteArray tagArr = NULL;
+
+    aes = (Aes*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        return NULL;
+    }
+
+    if (tagLen <= 0 || tagLen > AES_BLOCK_SIZE) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return NULL;
+    }
+
+    tag = (byte*)XMALLOC((word32)tagLen, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (tag == NULL) {
+        throwWolfCryptExceptionFromError(env, MEMORY_E);
+        return NULL;
+    }
+    XMEMSET(tag, 0, (word32)tagLen);
+
+    ret = wc_AesGcmEncryptFinal(aes, tag, (word32)tagLen);
+
+    if (ret == 0) {
+        tagArr = (*env)->NewByteArray(env, tagLen);
+        if (tagArr == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            (*env)->SetByteArrayRegion(env, tagArr, 0, tagLen, (jbyte*)tag);
+            if ((*env)->ExceptionOccurred(env)) {
+                (*env)->ExceptionDescribe(env);
+                (*env)->ExceptionClear(env);
+                (*env)->DeleteLocalRef(env, tagArr);
+                tagArr = NULL;
+                ret = -1;
+            }
+        }
+    }
+
+    XFREE(tag, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+
+    LogStr("wc_AesGcmEncryptFinal(aes = %p, tagLen = %d)\n", aes, tagLen);
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+        return NULL;
+    }
+
+    return tagArr;
+
+#else
+    (void)this;
+    (void)tagLen;
+    throwNotCompiledInException(env);
+    return NULL;
+#endif
+}
+
