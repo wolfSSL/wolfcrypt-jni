@@ -504,6 +504,12 @@ public final class WolfCryptProvider extends Provider {
                 put("Alg.Alias.Cipher.RSA/ECB/OAEPWithSHA1AndMGF1Padding",
                     "RSA/ECB/OAEPWithSHA-1AndMGF1Padding");
             }
+
+            /* OAEP AlgorithmParameters */
+            if (FeatureDetect.RsaOaepEnabled()) {
+                put("AlgorithmParameters.OAEP",
+                    "com.wolfssl.provider.jce.WolfCryptOaepParameters");
+            }
         }
 
         /* KeyAgreement */
