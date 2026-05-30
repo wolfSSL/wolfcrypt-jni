@@ -154,6 +154,10 @@ public class WolfCryptX25519PublicKey implements XECPublicKey, Destroyable {
             throw new IllegalArgumentException(
                 "X25519 u-coordinate must be non-negative");
         }
+        if (u.bitLength() > 255) {
+            throw new IllegalArgumentException(
+                "X25519 u-coordinate exceeds field size (must be < 2^255)");
+        }
         byte[] uBytes = u.toByteArray();
         /* strip possible leading sign byte */
         if (uBytes.length > 0 && uBytes[0] == 0x00) {

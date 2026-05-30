@@ -399,8 +399,15 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                         "Output buffer too small for X25519 shared secret");
                 }
 
-                System.arraycopy(tmp, 0, sharedSecret, offset, tmp.length);
-                returnLen = tmp.length;
+                try {
+                    System.arraycopy(tmp, 0, sharedSecret, offset, tmp.length);
+                    returnLen = tmp.length;
+                } finally {
+                    /* Zero secret immediately; outer zeroArray(tmp) is
+                     * a safe no-op after this because tmp is nulled. */
+                    zeroArray(tmp);
+                    tmp = null;
+                }
 
                 /* Reset public key object; private remains loaded. */
                 this.xPublic.releaseNativeStruct();
