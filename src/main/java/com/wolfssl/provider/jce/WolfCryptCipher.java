@@ -58,6 +58,7 @@ import java.security.interfaces.RSAPublicKey;
 
 import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.AesEcb;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.AesCtr;
 import com.wolfssl.wolfcrypt.AesOfb;
 import com.wolfssl.wolfcrypt.AesGcm;
@@ -135,6 +136,7 @@ public class WolfCryptCipher extends CipherSpi {
     /* RSA-OAEP parameters */
     private int oaepHashType = 0;
     private int oaepMgf = 0;
+    private OAEPParameterSpec oaepSpec = null;
 
     /* for debug logging */
     private String algString;
@@ -145,6 +147,12 @@ public class WolfCryptCipher extends CipherSpi {
     private AlgorithmParameterSpec storedSpec = null;
     private byte[] iv = null;
 
+    /* Maximum plaintext size for AEAD modes (GCM/CCM).
+     * GCM counter is 32 bits; NIST SP 800-38D allows up to
+     * (2^32 - 2) * 16 bytes. We limit to Integer.MAX_VALUE to
+     * prevent counter wrap and OOM from unbounded buffering. */
+    private static final int AEAD_MAX_PLAINTEXT = Integer.MAX_VALUE;
+
     /* AES-GCM/CCM tag length (bytes), default to 128 bits */
     private int gcmTagLen = 16;
 
@@ -154,8 +162,18 @@ public class WolfCryptCipher extends CipherSpi {
     /* Has update/final been called yet, gates setting of AAD for GCM */
     private boolean operationStarted = false;
 
-    /* Has this Cipher been inintialized? */
+    /* Has this Cipher been initialized? */
     private boolean cipherInitialized = false;
+
+    /* Has engineDoFinal() been called without re-init? Prevents IV reuse. */
+    private boolean finalized = false;
+
+    /* Streaming GCM encrypt state (WOLFSSL_AESGCM_STREAM) */
+    private boolean gcmStreamingActive = false;
+    private boolean gcmAadPassed = false;
+    private long gcmBytesEncrypted = 0L;
+    /* NIST SP 800-38D: max plaintext = (2^32 - 2) * 16 bytes per session */
+    private static final long GCM_MAX_PLAINTEXT_BYTES = 0xFFFFFFFEL * 16L;
 
     /* buffered data from update calls */
     private byte[] buffered = new byte[0];
@@ -201,6 +219,8 @@ public class WolfCryptCipher extends CipherSpi {
     private void initOaepParams() {
         this.oaepHashType = WolfCrypt.WC_HASH_TYPE_SHA256;
         this.oaepMgf = Rsa.WC_MGF1SHA1;
+        this.oaepSpec = new OAEPParameterSpec("SHA-256", "MGF1",
+            MGF1ParameterSpec.SHA256, PSource.PSpecified.DEFAULT);
     }
 
     /**
@@ -211,6 +231,8 @@ public class WolfCryptCipher extends CipherSpi {
     private void initOaepParamsSha1() {
         this.oaepHashType = WolfCrypt.WC_HASH_TYPE_SHA;
         this.oaepMgf = Rsa.WC_MGF1SHA1;
+        this.oaepSpec = new OAEPParameterSpec("SHA-1", "MGF1",
+            MGF1ParameterSpec.SHA1, PSource.PSpecified.DEFAULT);
     }
 
     /**
@@ -335,6 +357,9 @@ public class WolfCryptCipher extends CipherSpi {
                     "are not supported");
             }
         }
+
+        /* Store spec for AlgorithmParameters retrieval */
+        this.oaepSpec = spec;
 
         /* Set OAEP hash type */
         this.oaepHashType = hashNameToWolfCryptType(spec.getDigestAlgorithm());
@@ -739,6 +764,11 @@ public class WolfCryptCipher extends CipherSpi {
                     break;
             }
 
+            if (params == null && this.oaepSpec != null) {
+                params = AlgorithmParameters.getInstance("OAEP");
+                params.init(this.oaepSpec);
+            }
+
         } catch (NoSuchAlgorithmException |
                  InvalidParameterSpecException e) {
             /* Return null if parameter creation fails */
@@ -1052,8 +1082,20 @@ public class WolfCryptCipher extends CipherSpi {
         wolfCryptSetDirection(opmode);
         wolfCryptSetIV(spec, random);
         wolfCryptSetKey(key);
+        this.finalized = false;
         this.operationStarted = false;
         this.cipherInitialized = true;
+
+        /* Initialize streaming GCM encrypt if available */
+        this.gcmStreamingActive = false;
+        this.gcmAadPassed = false;
+        this.gcmBytesEncrypted = 0L;
+        if (cipherMode == CipherMode.WC_GCM &&
+            direction == OpMode.WC_ENCRYPT &&
+            FeatureDetect.AesGcmStreamEnabled()) {
+            this.aesGcm.encryptInitStreaming(this.iv);
+            this.gcmStreamingActive = true;
+        }
     }
 
     @Override
@@ -1152,12 +1194,16 @@ public class WolfCryptCipher extends CipherSpi {
         }
 
         /* AES-GCM, AES-CCM, and AES-CTS keep all data buffered until
-         * final() call. wolfJCE does not support streaming GCM/CCM yet.
-         * CTS requires the entire message for ciphertext stealing. */
+         * final() call. Streaming GCM encrypt bypasses this. CCM and CTS
+         * always buffer (CCM requires total length upfront, CTS needs full
+         * message for ciphertext stealing). */
         if (cipherType == CipherType.WC_AES &&
             (cipherMode == CipherMode.WC_GCM ||
              cipherMode == CipherMode.WC_CCM ||
              cipherMode == CipherMode.WC_CTS)) {
+            if (gcmStreamingActive) {
+                return false;
+            }
             return true;
         }
 
@@ -1192,7 +1238,35 @@ public class WolfCryptCipher extends CipherSpi {
                 "Input buffer length smaller than inputOffset + len");
         }
 
+        if (len > 0 && (cipherMode == CipherMode.WC_GCM ||
+            cipherMode == CipherMode.WC_CCM)) {
+            if ((buffered.length + len) > AEAD_MAX_PLAINTEXT) {
+                throw new IllegalStateException(
+                    "AEAD plaintext exceeds maximum size of " +
+                    AEAD_MAX_PLAINTEXT + " bytes");
+            }
+        }
+
         this.operationStarted = true;
+
+        /* Streaming GCM encrypt: process data immediately, skip buffering */
+        if (gcmStreamingActive) {
+            if (len > 0 && gcmBytesEncrypted + len > GCM_MAX_PLAINTEXT_BYTES) {
+                throw new IllegalStateException(
+                    "AES-GCM plaintext exceeds NIST SP 800-38D limit of " +
+                    GCM_MAX_PLAINTEXT_BYTES + " bytes");
+            }
+            byte[] aadForUpdate = gcmAadPassed ? null : this.aadData;
+            gcmAadPassed = true;
+            byte[] inputSlice = (len > 0) ?
+                Arrays.copyOfRange(input, inputOffset, inputOffset + len) : null;
+            byte[] ct = this.aesGcm.encryptUpdateStreaming(inputSlice,
+                aadForUpdate);
+            if (len > 0) {
+                gcmBytesEncrypted += len;
+            }
+            return (ct != null) ? ct : new byte[0];
+        }
 
         if ((buffered.length + len) == 0) {
             /* no data to process */
@@ -1389,16 +1463,51 @@ public class WolfCryptCipher extends CipherSpi {
             case WC_AES:
                 if (cipherMode == CipherMode.WC_GCM) {
                     if (this.direction == OpMode.WC_ENCRYPT) {
-                        byte[] tag = new byte[this.gcmTagLen];
-                        tmpOut = this.aesGcm.encrypt(tmpIn, this.iv, tag,
+                        if (gcmStreamingActive) {
+                            /* Streaming path: all prior data was encrypted in
+                             * update calls. Handle any remaining plaintext and
+                             * generate the authentication tag. */
+                            if (!gcmAadPassed && this.aadData != null) {
+                                /* AAD not yet submitted — pass it now */
+                                this.aesGcm.encryptUpdateStreaming(null,
                                     this.aadData);
+                                gcmAadPassed = true;
+                            }
+                            byte[] finalCt = null;
+                            if (tmpIn.length > 0) {
+                                if (gcmBytesEncrypted + tmpIn.length >
+                                    GCM_MAX_PLAINTEXT_BYTES) {
+                                    throw new IllegalBlockSizeException(
+                                        "AES-GCM plaintext exceeds NIST " +
+                                        "SP 800-38D limit of " +
+                                        GCM_MAX_PLAINTEXT_BYTES + " bytes");
+                                }
+                                finalCt = this.aesGcm.encryptUpdateStreaming(
+                                    tmpIn, null);
+                                gcmBytesEncrypted += tmpIn.length;
+                            }
+                            byte[] tag = this.aesGcm.encryptFinalStreaming(
+                                this.gcmTagLen);
+                            int ctLen = (finalCt != null) ? finalCt.length : 0;
+                            tmpOut = new byte[ctLen + tag.length];
+                            if (ctLen > 0) {
+                                System.arraycopy(finalCt, 0, tmpOut, 0, ctLen);
+                            }
+                            System.arraycopy(tag, 0, tmpOut, ctLen, tag.length);
+                        } else {
+                            byte[] tag = new byte[this.gcmTagLen];
+                            tmpOut = this.aesGcm.encrypt(tmpIn, this.iv, tag,
+                                        this.aadData);
 
-                        /* Concatenate auth tag to end of ciphertext */
-                        byte[] totalOut = new byte[tmpOut.length + tag.length];
-                        System.arraycopy(tmpOut, 0, totalOut, 0, tmpOut.length);
-                        System.arraycopy(tag, 0, totalOut, tmpOut.length,
-                                         tag.length);
-                        tmpOut = totalOut;
+                            /* Concatenate auth tag to end of ciphertext */
+                            byte[] totalOut =
+                                new byte[tmpOut.length + tag.length];
+                            System.arraycopy(tmpOut, 0, totalOut, 0,
+                                tmpOut.length);
+                            System.arraycopy(tag, 0, totalOut, tmpOut.length,
+                                             tag.length);
+                            tmpOut = totalOut;
+                        }
                     }
                     else {
                         /* Case where input is only the authentication tag,
@@ -1498,7 +1607,12 @@ public class WolfCryptCipher extends CipherSpi {
                         cipherMode != CipherMode.WC_CTR &&
                         cipherMode != CipherMode.WC_CTS &&
                         cipherMode != CipherMode.WC_OFB) {
-                        tmpOut = Aes.unPadPKCS7(tmpOut, Aes.BLOCK_SIZE);
+                        try {
+                            tmpOut = Aes.unPadPKCS7(tmpOut, Aes.BLOCK_SIZE);
+                        } catch (WolfCryptException e) {
+                            throw new BadPaddingException(
+                                "Invalid PKCS5/7 padding");
+                        }
                     }
                 }
 
@@ -1514,7 +1628,12 @@ public class WolfCryptCipher extends CipherSpi {
                 if (tmpOut != null && tmpOut.length > 0) {
                     if (this.direction == OpMode.WC_DECRYPT &&
                         this.paddingType == PaddingType.WC_PKCS5) {
-                        tmpOut = Des3.unPadPKCS7(tmpOut, Des3.BLOCK_SIZE);
+                        try {
+                            tmpOut = Des3.unPadPKCS7(tmpOut, Des3.BLOCK_SIZE);
+                        } catch (WolfCryptException e) {
+                            throw new BadPaddingException(
+                                "Invalid PKCS5/7 padding");
+                        }
                     }
                 }
 
@@ -1621,6 +1740,17 @@ public class WolfCryptCipher extends CipherSpi {
             this.operationStarted = false;
             this.cipherInitialized = true;
 
+            /* Re-initialize streaming GCM encrypt if available */
+            this.gcmStreamingActive = false;
+            this.gcmAadPassed = false;
+            this.gcmBytesEncrypted = 0L;
+            if (cipherMode == CipherMode.WC_GCM &&
+                direction == OpMode.WC_ENCRYPT &&
+                FeatureDetect.AesGcmStreamEnabled()) {
+                this.aesGcm.encryptInitStreaming(this.iv);
+                this.gcmStreamingActive = true;
+            }
+
         } catch (InvalidKeyException e) {
             throw new RuntimeException(e.getMessage());
         } catch (InvalidAlgorithmParameterException e) {
@@ -1635,6 +1765,11 @@ public class WolfCryptCipher extends CipherSpi {
         throws IllegalStateException {
 
         byte output[];
+
+        if (this.finalized) {
+            throw new IllegalStateException(
+                "Cipher has already been finalized, must re-init");
+        }
 
         if (!this.cipherInitialized) {
             throw new IllegalStateException(
@@ -1692,6 +1827,11 @@ public class WolfCryptCipher extends CipherSpi {
 
         byte tmpOut[];
 
+        if (this.finalized) {
+            throw new IllegalStateException(
+                "Cipher has already been finalized, must re-init");
+        }
+
         if (!this.cipherInitialized) {
             throw new IllegalStateException(
                 "Cipher has not been initialized yet");
@@ -1745,6 +1885,11 @@ public class WolfCryptCipher extends CipherSpi {
         throws IllegalStateException, IllegalBlockSizeException,
                BadPaddingException {
 
+        if (this.finalized) {
+            throw new IllegalStateException(
+                "Cipher has already been finalized, must re-init");
+        }
+
         if (!this.cipherInitialized) {
             throw new IllegalStateException(
                 "Cipher has not been initialized yet");
@@ -1753,7 +1898,11 @@ public class WolfCryptCipher extends CipherSpi {
         log("final (offset: " + inputOffset + ", len: " + inputLen +
             ", buffered: " + buffered.length + ")");
 
-        return wolfCryptFinal(input, inputOffset, inputLen);
+        try {
+            return wolfCryptFinal(input, inputOffset, inputLen);
+        } finally {
+            this.finalized = true;
+        }
     }
 
     @Override
@@ -1763,6 +1912,11 @@ public class WolfCryptCipher extends CipherSpi {
                IllegalBlockSizeException, BadPaddingException {
 
         byte tmpOut[];
+
+        if (this.finalized) {
+            throw new IllegalStateException(
+                "Cipher has already been finalized, must re-init");
+        }
 
         if (!this.cipherInitialized) {
             throw new IllegalStateException(
@@ -1789,7 +1943,11 @@ public class WolfCryptCipher extends CipherSpi {
                 (output.length - outputOffset));
         }
 
-        tmpOut = wolfCryptFinal(input, inputOffset, inputLen);
+        try {
+            tmpOut = wolfCryptFinal(input, inputOffset, inputLen);
+        } finally {
+            this.finalized = true;
+        }
 
         if (output.length - outputOffset < tmpOut.length) {
             throw new ShortBufferException(
@@ -1913,6 +2071,11 @@ public class WolfCryptCipher extends CipherSpi {
         byte[] encodedKey = null;
         byte[] wcBuf;
 
+        if (this.finalized) {
+            throw new IllegalStateException(
+                "Cipher has already been finalized, must re-init");
+        }
+
         if (key == null) {
             throw new InvalidKeyException(
                 "Key to be wrapped must not be null");
@@ -1941,6 +2104,11 @@ public class WolfCryptCipher extends CipherSpi {
             NoSuchAlgorithmException {
 
         byte[] unwrappedKey;
+
+        if (this.finalized) {
+            throw new IllegalStateException(
+                "Cipher has already been finalized, must re-init");
+        }
 
         if (wrappedKey == null || wrappedKey.length == 0) {
             throw new InvalidKeyException(
