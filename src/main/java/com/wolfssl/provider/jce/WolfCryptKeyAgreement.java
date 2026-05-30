@@ -47,6 +47,7 @@ import java.security.interfaces.ECPrivateKey;
 
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Ecc;
+import com.wolfssl.wolfcrypt.WolfCryptException;
 
 /**
  * wolfCrypt JCE Key Agreement wrapper
@@ -70,6 +71,8 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
     private Ecc ecPrivate = null;
 
     private int primeLen  = 0;
+    private byte[] dhParamP = null;
+    private byte[] dhParamG = null;
     private int curveSize = 0;
     private String curveName = null;
 
@@ -127,10 +130,37 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                         "Key must be of type DHPublicKey");
                 }
 
-                pubKey = ((DHPublicKey)key).getY().toByteArray();
+                DHPublicKey dhPubKey = (DHPublicKey)key;
+
+                pubKey = dhPubKey.getY().toByteArray();
                 if (pubKey == null) {
                     throw new InvalidKeyException(
                         "Failed to get DH public key from Key object");
+                }
+
+                if (this.dhParamP == null || this.dhParamG == null) {
+                    throw new InvalidKeyException(
+                        "DH private key not initialized with parameters");
+                }
+
+                BigInteger privP = new BigInteger(this.dhParamP);
+                BigInteger privG = new BigInteger(this.dhParamG);
+                BigInteger pubPBig = dhPubKey.getParams().getP();
+                BigInteger pubGBig = dhPubKey.getParams().getG();
+
+                if (!privP.equals(pubPBig) || !privG.equals(pubGBig)) {
+                    throw new InvalidKeyException(
+                        "DH public key parameters do not match " +
+                        "private key parameters, cannot generate " +
+                        "shared secret");
+                }
+
+                try {
+                    this.dh.checkPublicKey(pubKey);
+                } catch (WolfCryptException e) {
+                    throw new InvalidKeyException(
+                        "DH public key value is invalid for the " +
+                        "given group parameters", e);
                 }
 
                 this.dh.setPublicKey(pubKey);
@@ -149,7 +179,37 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                         "Failed to get ECC public key from Key object");
                 }
 
-                this.ecPublic.publicKeyDecode(pubKey);
+                try {
+                    this.ecPublic.publicKeyDecode(pubKey);
+                } catch (WolfCryptException e) {
+                    throw new InvalidKeyException(
+                        "EC public key could not be decoded", e);
+                }
+
+                try {
+                    this.ecPublic.checkKey();
+                } catch (WolfCryptException e) {
+                    throw new InvalidKeyException(
+                        "EC public key point is not on the curve", e);
+                }
+
+                /* Verify the public key curve matches the private key curve.
+                 * A curve mismatch (e.g. secp224r1 public against secp256r1
+                 * private) is caught here so the caller sees InvalidKeyException
+                 * rather than a WolfCryptException from makeSharedSecret. */
+                try {
+                    int pubCurveId  = this.ecPublic.getCurveId();
+                    int privCurveId = this.ecPrivate.getCurveId();
+                    if (pubCurveId != privCurveId) {
+                        throw new InvalidKeyException(
+                            "EC public key curve does not match private key " +
+                            "curve (public curveId=" + pubCurveId +
+                            ", private curveId=" + privCurveId + ")");
+                    }
+                } catch (WolfCryptException e) {
+                    throw new InvalidKeyException(
+                        "Failed to validate EC key curve compatibility", e);
+                }
 
                 break;
         };
@@ -303,7 +363,13 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
             case WC_ECDH:
 
-                tmp = this.ecPrivate.makeSharedSecret(this.ecPublic);
+                try {
+                    tmp = this.ecPrivate.makeSharedSecret(this.ecPublic);
+                } catch (WolfCryptException e) {
+                    throw new IllegalStateException(
+                        "Native ECDH shared secret generation failed: " +
+                        e.getMessage(), e);
+                }
                 if (tmp == null) {
                     throw new RuntimeException("Error when creating ECDH " +
                             "shared secret");
@@ -451,6 +517,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
                 this.dh.setParams(paramP, paramG);
 
+                this.dhParamP = paramP;
+                this.dhParamG = paramG;
+
                 primeLen = paramP.length;
 
                 /* prime may have leading zero */
@@ -478,6 +547,9 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         }
 
         this.dh.setParams(paramP, paramG);
+
+        this.dhParamP = paramP;
+        this.dhParamG = paramG;
 
         primeLen = paramP.length;
 
@@ -577,11 +649,22 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 "ECC curve is null, please check algorithm parameters");
         }
 
+        /* Release and recreate native structs to support re-initialization.
+         * JCE requires KeyAgreement.init() to be callable multiple times. */
+        if (this.ecPrivate != null) {
+            this.ecPrivate.releaseNativeStruct();
+        }
+        this.ecPrivate = new Ecc();
+        if (this.ecPublic != null) {
+            this.ecPublic.releaseNativeStruct();
+        }
+        this.ecPublic = new Ecc();
+
         privKeyBytes = ecKey.getS().toByteArray();
 
         try {
             this.ecPrivate.importPrivateOnCurve(privKeyBytes,
-                null, this.curveName);
+                    null, this.curveName);
         } finally {
             zeroArray(privKeyBytes);
         }
