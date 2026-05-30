@@ -303,9 +303,16 @@ public class WolfCryptECKeyFactory extends KeyFactorySpi {
                     "ECParameterSpec cannot be null");
             }
 
-            /* Validate ECParameterSpec is supported by wolfCrypt,
-             * throws WolfCryptException if invalid */
-            WolfCryptECParameterSpec.validateParameters(keySpec.getParams());
+            /* Validate ECParameterSpec is supported by wolfCrypt.
+             * validateParameters throws IllegalArgumentException (unchecked)
+             * when the curve is not recognized; wrap it as InvalidKeySpecException
+             * so callers see a GeneralSecurityException. */
+            try {
+                WolfCryptECParameterSpec.validateParameters(keySpec.getParams());
+            } catch (IllegalArgumentException e) {
+                throw new InvalidKeySpecException(
+                    "Unsupported curve parameters: " + e.getMessage(), e);
+            }
 
             /* Get curve name from ECParameterSpec */
             try {
@@ -560,9 +567,16 @@ public class WolfCryptECKeyFactory extends KeyFactorySpi {
                     "ECParameterSpec cannot be null");
             }
 
-            /* Validate ECParameterSpec is supported by wolfCrypt,
-             * throws WolfCryptException if invalid */
-            WolfCryptECParameterSpec.validateParameters(keySpec.getParams());
+            /* Validate ECParameterSpec is supported by wolfCrypt.
+             * validateParameters throws IllegalArgumentException (unchecked)
+             * when the curve is not recognized; wrap it as InvalidKeySpecException
+             * so callers see a GeneralSecurityException. */
+            try {
+                WolfCryptECParameterSpec.validateParameters(keySpec.getParams());
+            } catch (IllegalArgumentException e) {
+                throw new InvalidKeySpecException(
+                    "Unsupported curve parameters: " + e.getMessage(), e);
+            }
 
             /* Get curve name from ECParameterSpec */
             try {
