@@ -72,7 +72,11 @@ public class WolfCryptX25519KeyFactory extends KeyFactorySpi {
                 throw new InvalidKeySpecException(
                     "X25519 private scalar must be 32 bytes");
             }
-            return new WolfCryptX25519PrivateKey(scalar);
+            try {
+                return new WolfCryptX25519PrivateKey(scalar);
+            } finally {
+                Arrays.fill(scalar, (byte) 0);
+            }
 
         } else {
             throw new InvalidKeySpecException(
@@ -191,7 +195,12 @@ public class WolfCryptX25519KeyFactory extends KeyFactorySpi {
             java.util.Optional<byte[]> scalarOpt =
                 ((XECPrivateKey) key).getScalar();
             if (scalarOpt.isPresent()) {
-                return new WolfCryptX25519PrivateKey(scalarOpt.get());
+                byte[] raw = scalarOpt.get();
+                try {
+                    return new WolfCryptX25519PrivateKey(raw);
+                } finally {
+                    Arrays.fill(raw, (byte) 0);
+                }
             }
             throw new InvalidKeyException(
                 "Cannot translate XECPrivateKey: no encoding available");

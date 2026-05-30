@@ -73,7 +73,11 @@ public class WolfCryptEdDSAKeyFactory extends KeyFactorySpi {
                 throw new InvalidKeySpecException(
                     "Ed25519 private key bytes must be 32 bytes");
             }
-            return new WolfCryptEdDSAPrivateKey(bytes);
+            try {
+                return new WolfCryptEdDSAPrivateKey(bytes);
+            } finally {
+                Arrays.fill(bytes, (byte) 0);
+            }
 
         } else {
             throw new InvalidKeySpecException(
@@ -189,11 +193,16 @@ public class WolfCryptEdDSAKeyFactory extends KeyFactorySpi {
                     Arrays.fill(encoded, (byte) 0);
                 }
             }
-            /* Fall back to EdECPrivateKeySpec if getEncoded() returns null */
+            /* Fall back to raw seed bytes if getEncoded() returns null */
             java.util.Optional<byte[]> bytesOpt =
                 ((EdECPrivateKey) key).getBytes();
             if (bytesOpt.isPresent()) {
-                return new WolfCryptEdDSAPrivateKey(bytesOpt.get());
+                byte[] raw = bytesOpt.get();
+                try {
+                    return new WolfCryptEdDSAPrivateKey(raw);
+                } finally {
+                    Arrays.fill(raw, (byte) 0);
+                }
             }
             throw new InvalidKeyException(
                 "Cannot translate EdECPrivateKey: no encoding available");

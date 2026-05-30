@@ -697,12 +697,11 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             this.xPrivate = new Curve25519();
             this.xPrivate.importPrivateOnly(scalar);
         } catch (Exception e) {
-            zeroArray(scalar);
             throw new InvalidKeyException(
                 "Failed to import X25519 private key: " + e.getMessage(), e);
+        } finally {
+            zeroArray(scalar);
         }
-
-        zeroArray(scalar);
     }
 
     @Override

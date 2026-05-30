@@ -22,6 +22,7 @@
 package com.wolfssl.provider.jce;
 
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.security.MessageDigest;
 import java.util.Arrays;
@@ -63,7 +64,7 @@ public class WolfCryptX25519PrivateKey implements XECPrivateKey, Destroyable {
      *     04 22            OCTET STRING, 34 bytes (PrivateKey)
      *       04 20          OCTET STRING, 32 bytes (scalar)
      */
-    static final byte[] PKCS8_PREFIX = {
+    private static final byte[] PKCS8_PREFIX = {
         0x30, 0x2e,
         0x02, 0x01, 0x00,
         0x30, 0x05,
@@ -72,7 +73,7 @@ public class WolfCryptX25519PrivateKey implements XECPrivateKey, Destroyable {
         0x04, 0x20
     };
 
-    static final int PKCS8_TOTAL_LEN = PKCS8_PREFIX.length + 32; /* 48 */
+    private static final int PKCS8_TOTAL_LEN = PKCS8_PREFIX.length + 32; /* 48 */
 
     /**
      * Create WolfCryptX25519PrivateKey from a raw 32-byte X25519 scalar.
@@ -270,5 +271,13 @@ public class WolfCryptX25519PrivateKey implements XECPrivateKey, Destroyable {
         throws IOException, ClassNotFoundException {
         in.defaultReadObject();
         stateLock = new Object();
+        if (!destroyed) {
+            if (scalar == null || scalar.length != 32 ||
+                pkcs8Encoded == null ||
+                pkcs8Encoded.length != PKCS8_TOTAL_LEN) {
+                throw new InvalidObjectException(
+                    "Invalid deserialized X25519 private key state");
+            }
+        }
     }
 }

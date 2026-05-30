@@ -22,6 +22,7 @@
 package com.wolfssl.provider.jce;
 
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -61,7 +62,7 @@ public class WolfCryptX25519PublicKey implements XECPublicKey, Destroyable {
      *     03 21            BIT STRING, 33 bytes
      *       00             0 unused bits
      */
-    static final byte[] SPKI_PREFIX = {
+    private static final byte[] SPKI_PREFIX = {
         0x30, 0x2a,
         0x30, 0x05,
         0x06, 0x03, 0x2b, 0x65, 0x6e,
@@ -69,7 +70,7 @@ public class WolfCryptX25519PublicKey implements XECPublicKey, Destroyable {
         0x00
     };
 
-    static final int SPKI_TOTAL_LEN = SPKI_PREFIX.length + 32; /* 44 */
+    private static final int SPKI_TOTAL_LEN = SPKI_PREFIX.length + 32; /* 44 */
 
     /**
      * Create WolfCryptX25519PublicKey from raw 32-byte X25519 public key.
@@ -320,5 +321,13 @@ public class WolfCryptX25519PublicKey implements XECPublicKey, Destroyable {
         throws IOException, ClassNotFoundException {
         in.defaultReadObject();
         stateLock = new Object();
+        if (!destroyed) {
+            if (rawKey == null || rawKey.length != 32 ||
+                spkiEncoded == null ||
+                spkiEncoded.length != SPKI_TOTAL_LEN) {
+                throw new InvalidObjectException(
+                    "Invalid deserialized X25519 public key state");
+            }
+        }
     }
 }

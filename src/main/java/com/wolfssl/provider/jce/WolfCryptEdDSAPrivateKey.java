@@ -22,6 +22,7 @@
 package com.wolfssl.provider.jce;
 
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.security.MessageDigest;
 import java.util.Arrays;
@@ -63,7 +64,7 @@ public class WolfCryptEdDSAPrivateKey implements EdECPrivateKey, Destroyable {
      *     04 22            OCTET STRING, 34 bytes (PrivateKey)
      *       04 20          OCTET STRING, 32 bytes (seed)
      */
-    static final byte[] PKCS8_PREFIX = {
+    private static final byte[] PKCS8_PREFIX = {
         0x30, 0x2e,
         0x02, 0x01, 0x00,
         0x30, 0x05,
@@ -72,7 +73,7 @@ public class WolfCryptEdDSAPrivateKey implements EdECPrivateKey, Destroyable {
         0x04, 0x20
     };
 
-    static final int PKCS8_TOTAL_LEN = PKCS8_PREFIX.length + 32; /* 48 */
+    private static final int PKCS8_TOTAL_LEN = PKCS8_PREFIX.length + 32; /* 48 */
 
     /**
      * Create WolfCryptEdDSAPrivateKey from a raw 32-byte Ed25519 seed.
@@ -272,5 +273,13 @@ public class WolfCryptEdDSAPrivateKey implements EdECPrivateKey, Destroyable {
         throws IOException, ClassNotFoundException {
         in.defaultReadObject();
         stateLock = new Object();
+        if (!destroyed) {
+            if (seed == null || seed.length != 32 ||
+                pkcs8Encoded == null ||
+                pkcs8Encoded.length != PKCS8_TOTAL_LEN) {
+                throw new InvalidObjectException(
+                    "Invalid deserialized Ed25519 private key state");
+            }
+        }
     }
 }
