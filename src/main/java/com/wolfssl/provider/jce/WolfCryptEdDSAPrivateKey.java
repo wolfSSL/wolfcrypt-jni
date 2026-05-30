@@ -231,9 +231,10 @@ public class WolfCryptEdDSAPrivateKey implements EdECPrivateKey, Destroyable {
 
         /* Snapshot each key's encoded form under its own lock to avoid ABBA
          * deadlock. Compare outside both locks using constant-time equality
-         * to reduce timing side-channel exposure for private key material. */
+         * to reduce timing side-channel exposure for private key material.
+         * Copies are zeroed in finally to limit exposure on the heap. */
         byte[] thisEncoded;
-        byte[] otherEncoded;
+        byte[] otherEncoded = null;
 
         synchronized (stateLock) {
             if (destroyed) {
@@ -241,13 +242,20 @@ public class WolfCryptEdDSAPrivateKey implements EdECPrivateKey, Destroyable {
             }
             thisEncoded = pkcs8Encoded.clone();
         }
-        synchronized (other.stateLock) {
-            if (other.destroyed) {
-                return false;
+        try {
+            synchronized (other.stateLock) {
+                if (other.destroyed) {
+                    return false;
+                }
+                otherEncoded = other.pkcs8Encoded.clone();
             }
-            otherEncoded = other.pkcs8Encoded.clone();
+            return MessageDigest.isEqual(thisEncoded, otherEncoded);
+        } finally {
+            Arrays.fill(thisEncoded, (byte) 0);
+            if (otherEncoded != null) {
+                Arrays.fill(otherEncoded, (byte) 0);
+            }
         }
-        return MessageDigest.isEqual(thisEncoded, otherEncoded);
     }
 
     @Override

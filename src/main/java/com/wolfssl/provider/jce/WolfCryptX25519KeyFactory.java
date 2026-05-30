@@ -21,6 +21,7 @@
 
 package com.wolfssl.provider.jce;
 
+import java.util.Arrays;
 import java.security.Key;
 import java.security.KeyFactorySpi;
 import java.security.InvalidKeyException;
@@ -57,6 +58,10 @@ public class WolfCryptX25519KeyFactory extends KeyFactorySpi {
             } catch (IllegalArgumentException e) {
                 throw new InvalidKeySpecException(
                     "Invalid X25519 PKCS#8 key: " + e.getMessage(), e);
+            } finally {
+                if (der != null) {
+                    Arrays.fill(der, (byte) 0);
+                }
             }
 
         } else if (keySpec instanceof XECPrivateKeySpec) {
@@ -179,6 +184,8 @@ public class WolfCryptX25519KeyFactory extends KeyFactorySpi {
                 } catch (IllegalArgumentException e) {
                     throw new InvalidKeyException(
                         "Cannot translate XECPrivateKey: " + e.getMessage(), e);
+                } finally {
+                    Arrays.fill(encoded, (byte) 0);
                 }
             }
             java.util.Optional<byte[]> scalarOpt =
