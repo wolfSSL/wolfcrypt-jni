@@ -1265,7 +1265,9 @@ public class WolfCryptCipher extends CipherSpi {
             byte[] aadForUpdate = gcmAadPassed ? null : this.aadData;
             gcmAadPassed = true;
             byte[] inputSlice = (len > 0) ?
-                Arrays.copyOfRange(input, inputOffset, inputOffset + len) : null;
+                Arrays.copyOfRange(
+                    input, inputOffset, inputOffset + len) :
+                null;
             byte[] ct = this.aesGcm.encryptUpdateStreaming(inputSlice,
                 aadForUpdate);
             if (len > 0) {
@@ -1936,11 +1938,7 @@ public class WolfCryptCipher extends CipherSpi {
         log("final (offset: " + inputOffset + ", len: " + inputLen +
             ", buffered: " + buffered.length + ")");
 
-        try {
-            return wolfCryptFinal(input, inputOffset, inputLen);
-        } finally {
-            this.finalized = true;
-        }
+        return wolfCryptFinal(input, inputOffset, inputLen);
     }
 
     @Override
@@ -1981,11 +1979,7 @@ public class WolfCryptCipher extends CipherSpi {
                 (output.length - outputOffset));
         }
 
-        try {
-            tmpOut = wolfCryptFinal(input, inputOffset, inputLen);
-        } finally {
-            this.finalized = true;
-        }
+        tmpOut = wolfCryptFinal(input, inputOffset, inputLen);
 
         if (output.length - outputOffset < tmpOut.length) {
             throw new ShortBufferException(

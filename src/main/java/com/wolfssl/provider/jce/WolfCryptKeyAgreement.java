@@ -197,7 +197,8 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
 
                 /* Verify the public key curve matches the private key curve.
                  * A curve mismatch (e.g. secp224r1 public against secp256r1
-                 * private) is caught here so the caller sees InvalidKeyException
+                 * private) is caught here so the caller sees
+                 * InvalidKeyException
                  * rather than a WolfCryptException from makeSharedSecret. */
                 try {
                     int pubCurveId  = this.ecPublic.getCurveId();
