@@ -4,9 +4,9 @@ on:
   workflow_call:
     inputs:
       ant_version:
-        description: 'Apache Ant version to use'
+        description: 'Apache Ant version, or "latest" for current release'
         required: false
-        default: '1.10.16'
+        default: 'latest'
         type: string
       platform_toolset:
         description: 'Visual Studio platform toolset (auto-detect if not specified)'
@@ -77,13 +77,38 @@ jobs:
       - name: Setup Apache Ant
         run: |
           $antVersion = "${{ inputs.ant_version }}"
+
+          # dlcdn.apache.org only hosts current releases. Resolve "latest"
+          # (or an empty input) to the highest version it currently lists,
+          # so CI never breaks when a pinned version is moved to the archive.
+          if ([string]::IsNullOrWhiteSpace($antVersion) -or
+              $antVersion -eq "latest") {
+            Write-Output "Resolving current Apache Ant version..."
+            $binIndex = "https://dlcdn.apache.org/ant/binaries/"
+            $page = Invoke-WebRequest -Uri $binIndex
+            $antVersion = @([regex]::Matches($page.Content,
+              'apache-ant-(\d+\.\d+\.\d+)-bin\.zip') |
+              ForEach-Object { $_.Groups[1].Value } |
+              Sort-Object { [version]$_ } -Unique)[-1]
+            if ([string]::IsNullOrWhiteSpace($antVersion)) {
+              throw "Could not determine current Apache Ant version"
+            }
+          }
           Write-Output "Setting up Apache Ant $antVersion..."
 
-          $antUrl = "https://dlcdn.apache.org/ant/binaries/apache-ant-$antVersion-bin.zip"
           $antDir = "C:\apache-ant-$antVersion"
+          # Try the CDN first, then the permanent archive as a fallback so an
+          # explicitly pinned (older) version still resolves.
+          $primaryUrl = "https://dlcdn.apache.org/ant/binaries/apache-ant-$antVersion-bin.zip"
+          $archiveUrl = "https://archive.apache.org/dist/ant/binaries/apache-ant-$antVersion-bin.zip"
 
-          Write-Output "Downloading from: $antUrl"
-          Invoke-WebRequest -Uri $antUrl -OutFile "ant.zip"
+          try {
+            Write-Output "Downloading from: $primaryUrl"
+            Invoke-WebRequest -Uri $primaryUrl -OutFile "ant.zip" -ErrorAction Stop
+          } catch {
+            Write-Output "Primary failed, falling back to: $archiveUrl"
+            Invoke-WebRequest -Uri $archiveUrl -OutFile "ant.zip" -ErrorAction Stop
+          }
           Expand-Archive -Path "ant.zip" -DestinationPath "C:\"
           echo "ANT_HOME=$antDir" >> $env:GITHUB_ENV
           echo "$antDir\bin" >> $env:GITHUB_PATH
