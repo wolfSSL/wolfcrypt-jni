@@ -305,13 +305,16 @@ public class WolfCryptECKeyFactory extends KeyFactorySpi {
 
             /* Validate ECParameterSpec is supported by wolfCrypt.
              * validateParameters throws IllegalArgumentException (unchecked)
-             * when the curve is not recognized; wrap it as InvalidKeySpecException
-             * so callers see a GeneralSecurityException. */
+             * when the curve is not recognized; wrap it as
+             * InvalidKeySpecException so callers see a
+             * GeneralSecurityException. */
             try {
-                WolfCryptECParameterSpec.validateParameters(keySpec.getParams());
+                WolfCryptECParameterSpec.validateParameters(
+                    keySpec.getParams());
             } catch (IllegalArgumentException e) {
                 throw new InvalidKeySpecException(
-                    "Unsupported curve parameters: " + e.getMessage(), e);
+                    "Unsupported curve parameters: " +
+                    e.getMessage(), e);
             }
 
             /* Get curve name from ECParameterSpec */
@@ -569,13 +572,16 @@ public class WolfCryptECKeyFactory extends KeyFactorySpi {
 
             /* Validate ECParameterSpec is supported by wolfCrypt.
              * validateParameters throws IllegalArgumentException (unchecked)
-             * when the curve is not recognized; wrap it as InvalidKeySpecException
-             * so callers see a GeneralSecurityException. */
+             * when the curve is not recognized; wrap it as
+             * InvalidKeySpecException so callers see a
+             * GeneralSecurityException. */
             try {
-                WolfCryptECParameterSpec.validateParameters(keySpec.getParams());
+                WolfCryptECParameterSpec.validateParameters(
+                    keySpec.getParams());
             } catch (IllegalArgumentException e) {
                 throw new InvalidKeySpecException(
-                    "Unsupported curve parameters: " + e.getMessage(), e);
+                    "Unsupported curve parameters: " +
+                    e.getMessage(), e);
             }
 
             /* Get curve name from ECParameterSpec */

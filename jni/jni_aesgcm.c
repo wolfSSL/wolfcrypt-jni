@@ -421,8 +421,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
  * Key must already be loaded via wc_AesGcmSetKey. This call sets the IV
  * and prepares internal streaming state (WOLFSSL_AESGCM_STREAM).
  */
-JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncryptInitStreaming
-  (JNIEnv* env, jobject this, jbyteArray ivArr)
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncryptInitStreaming(
+    JNIEnv* env, jobject this, jbyteArray ivArr)
 {
 #if !defined(NO_AES) && defined(HAVE_AESGCM) && defined(WOLFSSL_AESGCM_STREAM)
     int ret = 0;
@@ -474,8 +475,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncryptInitSt
  * authInArr may be NULL (no AAD for this call).
  * Returns a jbyteArray of length inputArr.length containing ciphertext.
  */
-JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncryptUpdateStreaming
-  (JNIEnv* env, jobject this, jbyteArray inputArr, jbyteArray authInArr)
+JNIEXPORT jbyteArray JNICALL
+Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncryptUpdateStreaming(
+    JNIEnv* env, jobject this, jbyteArray inputArr,
+    jbyteArray authInArr)
 {
 #if !defined(NO_AES) && defined(HAVE_AESGCM) && defined(WOLFSSL_AESGCM_STREAM)
     int ret = 0;
@@ -574,8 +577,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
  * Finalize AES-GCM streaming encryption and generate authentication tag.
  * Returns a jbyteArray of length tagLen containing the authentication tag.
  */
-JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncryptFinalStreaming
-  (JNIEnv* env, jobject this, jint tagLen)
+JNIEXPORT jbyteArray JNICALL
+Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncryptFinalStreaming(
+    JNIEnv* env, jobject this, jint tagLen)
 {
 #if !defined(NO_AES) && defined(HAVE_AESGCM) && defined(WOLFSSL_AESGCM_STREAM)
     int ret = 0;

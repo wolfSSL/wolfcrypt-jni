@@ -290,7 +290,8 @@ public class AesGcm extends NativeStruct {
      * WOLFSSL_AESGCM_STREAM.
      *
      * @param iv IV for AES-GCM operation
-     * @throws WolfCryptException if native operation fails or feature not compiled in
+     * @throws WolfCryptException if native operation fails or
+     *         feature not compiled in
      * @throws IllegalStateException if key not loaded or object released
      */
     public synchronized void encryptInitStreaming(byte[] iv)
