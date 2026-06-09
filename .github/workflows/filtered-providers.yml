@@ -1,0 +1,168 @@
+name: Filtered Providers
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      jdk_distro:
+        required: true
+        type: string
+      jdk_version:
+        required: true
+        type: string
+
+jobs:
+  filtered_providers:
+    runs-on: ${{ inputs.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download junit-4.13.2.jar
+        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar
+      - name: Download hamcrest-all-1.3.jar
+        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/org/hamcrest/hamcrest-all/1.3/hamcrest-all-1.3.jar
+
+      - name: Setup java
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ inputs.jdk_distro }}
+          java-version: ${{ inputs.jdk_version }}
+
+      - name: Set JUNIT_HOME
+        run: |
+          echo "JUNIT_HOME=$GITHUB_WORKSPACE/junit" >> "$GITHUB_ENV"
+
+      # The filtered-providers sources are pure Java
+      # (com.wolfssl.security.providers.*) and the tests exercise JDK
+      # Sun-provider filtering, not the wolfCrypt JNI library, so no native
+      # wolfSSL / JNI build is required here. The main (native) test suite
+      # is skipped via -Dmain.tests.skip=true, to make this test run more
+      # quickly.
+      #
+      # On JDK 8 the filtered providers are unsupported: the ant targets
+      # no-op and the Maven profile stays inactive. The JDK 8 matrix leg
+      # verifies that skip path (build succeeds, no filtered artifacts).
+      # JDK 8 ant/Maven *native* builds are covered by the main CI jobs.
+
+      # ----- Ant: build the ServiceLoader-ready jar and run the tests -----
+      - name: ant examples-filtered-providers
+        run: ant examples-filtered-providers
+
+      - name: ant test-filtered-providers
+        run: ant test-filtered-providers
+
+      # ----- Maven: tests + classified jar (auto-skips on Java 8) ---------
+      - name: mvn test (filtered-providers tests only)
+        run: mvn test -Dmain.tests.skip=true
+
+      - name: mvn package (filtered-providers tests + jars)
+        run: mvn package -Dmain.tests.skip=true
+
+      # ----- Verify the ant-built jar (classes + copier + ServiceLoader) ---
+      - name: Verify ant filtered-providers.jar contents
+        if: inputs.jdk_version != '8'
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR=lib/filtered-providers/filtered-providers.jar
+          echo "Ant jar: $JAR"
+          jar tf "$JAR"
+          fail=0
+          for entry in \
+            "com/wolfssl/security/providers/FilteredSun.class" \
+            "com/wolfssl/security/providers/FilteredSunEC.class" \
+            "com/wolfssl/security/providers/FilteredSunRsaSign.class" \
+            "com/wolfssl/security/providers/ProviderServiceCopier.class" \
+            "META-INF/services/java.security.Provider"; do
+            if jar tf "$JAR" | grep -qx "$entry"; then
+              echo "OK : present -> $entry"
+            else
+              echo "ERR: missing -> $entry"; fail=1
+            fi
+          done
+          if jar tf "$JAR" | grep -qE '^com/wolfssl/wolfcrypt/.*\.class$'; then
+            echo "ERR: wolfCrypt classes leaked into ant jar"; fail=1
+          fi
+          [ "$fail" -eq 0 ] || { echo "FAILURE: ant jar verification"; exit 1; }
+          echo "SUCCESS: ant jar verification passed"
+
+      # ----- Verify the Maven classified jar (classes + ServiceLoader) -----
+      - name: Verify Maven filtered-providers jar contents
+        if: inputs.jdk_version != '8'
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR=$(ls target/wolfcrypt-jni-*-filtered-providers.jar)
+          echo "Maven jar: $JAR"
+          jar tf "$JAR"
+          fail=0
+          for entry in \
+            "com/wolfssl/security/providers/FilteredSun.class" \
+            "com/wolfssl/security/providers/FilteredSunEC.class" \
+            "com/wolfssl/security/providers/FilteredSunRsaSign.class" \
+            "com/wolfssl/security/providers/ProviderServiceCopier.class" \
+            "META-INF/services/java.security.Provider"; do
+            if jar tf "$JAR" | grep -qx "$entry"; then
+              echo "OK : present -> $entry"
+            else
+              echo "ERR: missing -> $entry"; fail=1
+            fi
+          done
+          if jar tf "$JAR" | grep -qE '^com/wolfssl/wolfcrypt/.*\.class$'; then
+            echo "ERR: wolfCrypt classes leaked into Maven classified jar"; fail=1
+          fi
+          [ "$fail" -eq 0 ] || { echo "FAILURE: Maven jar verification"; exit 1; }
+          echo "SUCCESS: Maven jar verification passed"
+
+      # ----- Verify the default Maven jar keeps wolfJCE registration -------
+      - name: Verify default Maven jar has no filtered-provider leak
+        if: inputs.jdk_version != '8'
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR=$(ls target/wolfcrypt-jni-*.jar | grep -v filtered-providers)
+          echo "Maven jar: $JAR"
+          fail=0
+          if jar tf "$JAR" | grep -qE '^com/wolfssl/security/providers/'; then
+            echo "ERR: filtered-provider classes leaked into default jar"
+            fail=1
+          fi
+          if ! unzip -p "$JAR" META-INF/services/java.security.Provider | \
+              grep -qx "com.wolfssl.provider.jce.WolfCryptProvider"; then
+            echo "ERR: wolfJCE ServiceLoader registration missing/clobbered"
+            fail=1
+          fi
+          [ "$fail" -eq 0 ] || { echo "FAILURE: default jar check"; exit 1; }
+          echo "SUCCESS: default jar verification passed"
+
+      # ----- Java 8: verify the skip path leaves no filtered artifacts -----
+      - name: Verify Java 8 skip path (no filtered artifacts)
+        if: inputs.jdk_version == '8'
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail=0
+          if [ -e lib/filtered-providers/filtered-providers.jar ]
+          then
+            echo "ERR: ant built filtered-providers.jar on Java 8"; fail=1
+          fi
+          if ls target/wolfcrypt-jni-*-filtered-providers.jar 2>/dev/null
+          then
+            echo "ERR: Maven built filtered-providers jar on Java 8"; fail=1
+          fi
+          JAR=$(ls target/wolfcrypt-jni-*.jar)
+          if jar tf "$JAR" | grep -qE '^com/wolfssl/security/providers/'; then
+            echo "ERR: filtered-provider classes in default jar on Java 8"
+            fail=1
+          fi
+          [ "$fail" -eq 0 ] || { echo "FAILURE: Java 8 skip check"; exit 1; }
+          echo "SUCCESS: Java 8 skip path verified"
+
+      - name: Show logs on failure
+        if: failure() || cancelled()
+        run: |
+          cat build/reports/*.txt 2>/dev/null || echo "No ant test reports"
+          cat target/surefire-reports/*.txt 2>/dev/null || echo "No surefire reports"
+

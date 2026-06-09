@@ -172,6 +172,21 @@ jobs:
       jdk_version: ${{ matrix.jdk_version }}
       wolfssl_configure: ${{ matrix.wolfssl_configure }}
 
+  # --------------- Filtered providers (native-free) -----------------
+  # Build/test the filtered-providers ant targets and Maven profile.
+  # JDK 8 added to verify it skips building filtered providers.
+  filtered-providers:
+    strategy:
+      matrix:
+        os: [ 'ubuntu-latest' ]
+        jdk_version: [ '8', '11', '17', '21', '24', '25' ]
+    name: Filtered Providers (${{ matrix.os }} Zulu JDK ${{ matrix.jdk_version }})
+    uses: ./.github/workflows/filtered-providers.yml
+    with:
+      os: ${{ matrix.os }}
+      jdk_distro: "zulu"
+      jdk_version: ${{ matrix.jdk_version }}
+
   # ----------------- Windows Visual Studio build --------------------
   windows-build:
     uses: ./.github/workflows/windows-vs.yml

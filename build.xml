@@ -2,6 +2,7 @@
 <project name="wolfcrypt-jni"
          default="build"
          basedir="."
+         xmlns:if="ant:if"
          xmlns:unless="ant:unless" >
 
     <description>
@@ -34,6 +35,12 @@
     <property name="examples.build.dir" value="examples/build" />
     <property name="examples.provider.dir" value="examples/provider" />
     <property name="examples.provider.build.dir" value="examples/build/provider" />
+    <property name="examples.filtered.dir" value="examples/filtered-providers/src" />
+    <property name="examples.filtered.build.dir" value="examples/build/filtered-providers" />
+    <property name="filtered.test.build.dir" value="build/test-filtered-providers" />
+    <!-- final filtered-providers.jar location; subdirectory of lib/ so the
+         jar stays out of the *.jar classpath glob over lib/ itself -->
+    <property name="filtered.lib.dir" value="lib/filtered-providers" />
 
     <property name="junit4" value="junit-4.13.2.jar" />
     <property name="hamcrest-core" value="hamcrest-all-1.3.jar" />
@@ -59,6 +66,14 @@
                 <equals arg1="${ant.java.version}" arg2="1.8"/>
             </or>
         </not>
+    </condition>
+
+    <!-- Detect Java 22+ for filtered-providers EC module flags. SunEC moved
+        from the jdk.crypto.ec module into java.base in JDK 22 (JDK-8308398;
+        jdk.crypto.ec remains as an empty, deprecated module), so EC
+        add-opens/add-exports targets differ. -->
+    <condition property="isJava22Plus">
+        <javaversion atleast="22"/>
     </condition>
 
     <!-- Detect if running on Windows host -->
@@ -94,7 +109,10 @@
         <delete dir="${test.build.dir}" />
         <delete dir="${build.dir}" />
         <delete dir="${examples.provider.build.dir}" />
+        <delete dir="${examples.filtered.build.dir}" />
         <delete dir="${examples.build.dir}" />
+        <delete dir="${filtered.test.build.dir}" />
+        <delete dir="${filtered.lib.dir}" />
         <delete dir="${reports.dir}" />
         <delete failonerror="false">
             <fileset dir="${lib.dir}" includes="wolfcrypt-jni.jar" />
@@ -307,6 +325,103 @@
         </javac>
     </target>
 
+    <!-- Build filtered Sun/SunEC/SunRsaSign provider examples, package them
+        (plus their ServiceLoader registration) into filtered-providers.jar.
+        Java 9+ only, no-op on Java 8. -->
+    <target name="examples-filtered-providers" if="isJava9Plus"
+        description="Build filtered-providers examples + jar (Java 9+ only)">
+        <mkdir dir="${examples.filtered.build.dir}/classes" />
+        <javac
+            srcdir="${examples.filtered.dir}"
+            destdir="${examples.filtered.build.dir}/classes"
+            source="9"
+            target="9"
+            includeantruntime="false">
+            <compilerarg value="-Xlint:-options"/>
+        </javac>
+        <mkdir dir="${filtered.lib.dir}" />
+        <jar jarfile="${filtered.lib.dir}/filtered-providers.jar">
+            <fileset dir="${examples.filtered.build.dir}/classes"
+                     includes="**/*.class" />
+            <fileset dir="${examples.filtered.dir}"
+                     includes="META-INF/services/**" />
+        </jar>
+    </target>
+
+    <!-- Compile and run filtered-providers JUnit tests. Java 9+ only.
+        Forks from repo root so the relative example cert path resolves. -->
+    <target name="test-filtered-providers" if="isJava9Plus"
+        depends="examples-filtered-providers"
+        description="Compile and run filtered-providers tests (Java 9+ only)">
+
+        <!-- Select the correct SunEC module-access flags for the running
+             JDK. SunEC moved from jdk.crypto.ec into java.base in
+             JDK 22. -->
+        <property name="filtered.ec.flags" unless:set="isJava22Plus"
+            value="--add-modules=jdk.crypto.ec --add-exports=jdk.crypto.ec/sun.security.ec=ALL-UNNAMED --add-opens=jdk.crypto.ec/sun.security.ec=ALL-UNNAMED" />
+        <property name="filtered.ec.flags" if:set="isJava22Plus"
+            value="--add-exports=java.base/sun.security.ec=ALL-UNNAMED --add-opens=java.base/sun.security.ec=ALL-UNNAMED" />
+
+        <delete dir="${filtered.test.build.dir}" />
+        <mkdir dir="${filtered.test.build.dir}" />
+        <mkdir dir="${reports.dir}" />
+
+        <javac
+            srcdir="${test.dir}"
+            destdir="${filtered.test.build.dir}"
+            source="9"
+            target="9"
+            includeantruntime="false">
+            <include name="com/wolfssl/security/providers/test/*Test.java" />
+            <!-- shared TestRule used by the filtered-providers tests -->
+            <include name="com/wolfssl/wolfcrypt/test/TimedTestWatcher.java" />
+            <classpath>
+                <pathelement
+                    location="${filtered.lib.dir}/filtered-providers.jar" />
+                <fileset dir="${env.JUNIT_HOME}">
+                    <include name="${junit4}" />
+                </fileset>
+            </classpath>
+            <compilerarg value="-Xlint:-options" />
+            <compilerarg value="-Xlint:-path" />
+        </javac>
+
+        <junit printsummary="yes"
+            showoutput="yes"
+            haltonfailure="yes"
+            fork="true">
+
+            <!-- SunEC module flags (JDK-version specific) -->
+            <jvmarg line="${filtered.ec.flags}"/>
+            <!-- Stable java.base flags (all JDK majors) -->
+            <jvmarg value="--add-opens=java.base/java.security=ALL-UNNAMED"/>
+            <jvmarg value="--add-opens=java.base/sun.security.provider=ALL-UNNAMED"/>
+            <jvmarg value="--add-opens=java.base/sun.security.util=ALL-UNNAMED"/>
+            <jvmarg value="--add-opens=java.base/sun.security.rsa=ALL-UNNAMED"/>
+
+            <classpath>
+                <pathelement
+                    location="${filtered.lib.dir}/filtered-providers.jar" />
+                <pathelement location="${filtered.test.build.dir}" />
+                <fileset dir="${env.JUNIT_HOME}">
+                    <include name="${junit4}"/>
+                    <include name="${hamcrest-core}"/>
+                    <include name="${ant-junit4}"/>
+                </fileset>
+            </classpath>
+
+            <formatter type="plain" />
+            <formatter type="xml" />
+
+            <batchtest fork="yes" todir="${reports.dir}">
+                <fileset dir="${test.dir}">
+                    <include name="com/wolfssl/security/providers/test/*Test.java" />
+                </fileset>
+            </batchtest>
+
+        </junit>
+    </target>
+
     <!-- compile JNI/JCE test classes, depending on how 'ant build' was run -->
     <target name="build-test" depends="set-build-debug, debug-javac-flags">
 
@@ -322,6 +437,9 @@
             classpathref="classpath"
             includeantruntime="false">
             <exclude name="com/wolfssl/provider/jce/test/**" unless="jar.includes.jce"/>
+            <!-- filtered-providers tests are Java 9+ and build/run only via
+                 the dedicated test-filtered-providers target -->
+            <exclude name="com/wolfssl/security/providers/test/**"/>
             <compilerarg value="-Xlint:-options" />
             <compilerarg value="-Xlint:-path" />
         </javac>
@@ -493,6 +611,11 @@
             </batchtest>
 
         </junit>
+
+        <!-- Also run the filtered-providers tests (pure Java, separate
+             JUnit invocation with its own JVM module flags). No-op on
+             Java 8. -->
+        <antcall target="test-filtered-providers"/>
     </target>
 
     <!--<target name="build" depends="jar-jce, sign, sign-alt, javah, javadoc"-->
@@ -527,11 +650,11 @@
         description="Build library JAR (JNI classes ONLY)">
     </target>
 
-    <target name="build-jce-debug" depends="set-build-debug, jar-jce, sign, sign-alt, javah, javadoc, examples-jce"
+    <target name="build-jce-debug" depends="set-build-debug, jar-jce, sign, sign-alt, javah, javadoc, examples-jce, examples-filtered-providers"
         description="Build library JAR (JNI + JCE classes)">
     </target>
 
-    <target name="build-jce-release" depends="set-build-release, jar-jce, sign, sign-alt, javah, javadoc, examples-jce"
+    <target name="build-jce-release" depends="set-build-release, jar-jce, sign, sign-alt, javah, javadoc, examples-jce, examples-filtered-providers"
         description="Build library JAR (JNI + JCE classes)">
     </target>
 
