@@ -11,6 +11,11 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Set to true to skip the main (native JNI/JCE) test suite while
+             still running the filtered-providers tests (ex: in CI env
+             without a compiled wolfSSL/wolfCrypt library:
+             mvn test -Dmain.tests.skip=true -->
+        <main.tests.skip>false</main.tests.skip>
     </properties>
 
 	<dependencies>
@@ -48,6 +53,12 @@
 				<configuration>
 					<source>1.8</source>
 					<target>1.8</target>
+					<!-- filtered-providers tests are Java 9+, build/run only
+					     under the filtered-providers profile, which
+					     auto-activates on JDK 9+ (skipped on Java 8) -->
+					<testExcludes>
+						<testExclude>com/wolfssl/security/providers/test/**</testExclude>
+					</testExcludes>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -56,7 +67,20 @@
                 <version>3.1.2</version>
 				<configuration>
 					<argLine>-Djava.library.path=./lib:/usr/lib/jni</argLine>
+					<excludes>
+						<exclude>com/wolfssl/security/providers/test/**</exclude>
+					</excludes>
 				</configuration>
+				<executions>
+					<!-- The main suite can be skipped independently of the
+					     filtered-providers tests (see main.tests.skip). -->
+					<execution>
+						<id>default-test</id>
+						<configuration>
+							<skip>${main.tests.skip}</skip>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -99,6 +123,182 @@
                                         <compileSourceRoot>${project.basedir}/src/java9</compileSourceRoot>
                                     </compileSourceRoots>
                                     <multiReleaseOutput>false</multiReleaseOutput>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- Select SunEC module-access flags by JDK. SunEC moved from the
+             jdk.crypto.ec module into java.base in JDK 22 (JDK-8308398;
+             jdk.crypto.ec remains as an empty, deprecated module). These
+             activate by JDK and only define a property consumed by the
+             filtered-providers profile's surefire argLine. -->
+        <profile>
+            <id>filtered-ec-flags-pre22</id>
+            <activation>
+                <jdk>(,22)</jdk>
+            </activation>
+            <properties>
+                <filtered.ec.flags>--add-modules=jdk.crypto.ec --add-exports=jdk.crypto.ec/sun.security.ec=ALL-UNNAMED --add-opens=jdk.crypto.ec/sun.security.ec=ALL-UNNAMED</filtered.ec.flags>
+            </properties>
+        </profile>
+        <profile>
+            <id>filtered-ec-flags-22plus</id>
+            <activation>
+                <jdk>[22,)</jdk>
+            </activation>
+            <properties>
+                <filtered.ec.flags>--add-exports=java.base/sun.security.ec=ALL-UNNAMED --add-opens=java.base/sun.security.ec=ALL-UNNAMED</filtered.ec.flags>
+            </properties>
+        </profile>
+
+        <!-- Filtered Sun security providers
+            (com.wolfssl.security.providers.FilteredSun*). Activates
+            automatically on JDK 9+ (and skipped on Java 8, where the providers
+            are not supported), so users never have to opt in or out.
+            'mvn package' builds the classified filtered-providers jar and
+            'mvn test' runs both the main suite and the filtered-providers
+            tests on any supported JDK. -->
+        <profile>
+            <id>filtered-providers</id>
+            <activation>
+                <jdk>[9,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <!-- Compile filtered-providers sources at release 9, and
+                        re-open testExcludes so the providers tests compile
+                        under this profile. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>3.11.0</version>
+                        <configuration>
+                            <testExcludes combine.self="override"/>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>compile-filtered-providers</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <release>9</release>
+                                    <compileSourceRoots>
+                                        <compileSourceRoot>${project.basedir}/examples/filtered-providers/src</compileSourceRoot>
+                                    </compileSourceRoots>
+                                    <multiReleaseOutput>false</multiReleaseOutput>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Run filtered-providers tests as an additional
+                         surefire execution, separate from default-test (the
+                         main suite), because they need their own JVM module
+                         flags: the JDK-selected EC flags plus the stable
+                         java.base add-opens. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>3.1.2</version>
+                        <executions>
+                            <execution>
+                                <id>filtered-providers-test</id>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                                <configuration>
+                                    <!-- Run on the classpath (unnamed module),
+                                         not the module path. wolfcrypt-jni's
+                                         module-info would otherwise place the
+                                         providers in module
+                                         com.wolfssl.wolfcrypt, where the
+                                         ALL-UNNAMED add-opens below would not
+                                         reach them. The providers ship as a
+                                         plain classpath jar in real
+                                         deployments, which this matches. -->
+                                    <useModulePath>false</useModulePath>
+                                    <argLine>${filtered.ec.flags} --add-opens=java.base/java.security=ALL-UNNAMED --add-opens=java.base/sun.security.provider=ALL-UNNAMED --add-opens=java.base/sun.security.util=ALL-UNNAMED --add-opens=java.base/sun.security.rsa=ALL-UNNAMED</argLine>
+                                    <excludes combine.self="override"/>
+                                    <includes>
+                                        <include>com/wolfssl/security/providers/test/**</include>
+                                    </includes>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Assemble the standalone filtered-providers jar
+                         contents (provider classes + META-INF/services
+                         ServiceLoader registration) in a dedicated directory.
+                         The services file must NOT be copied into
+                         target/classes, where it would collide with wolfJCE's
+                         own META-INF/services/java.security.Provider from
+                         src/main/resources. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>assemble-filtered-providers-jar-dir</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/filtered-providers-classes</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.build.outputDirectory}</directory>
+                                            <includes>
+                                                <include>com/wolfssl/security/providers/**</include>
+                                            </includes>
+                                        </resource>
+                                        <resource>
+                                            <directory>${project.basedir}/examples/filtered-providers/src</directory>
+                                            <includes>
+                                                <include>META-INF/services/java.security.Provider</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Keep the default wolfcrypt-jni.jar free of the
+                         providers (in target/classes under this profile)
+                         and output a separate classified jar from the
+                         assembled directory above (provider classes plus
+                         ServiceLoader registration). -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <version>3.4.1</version>
+                        <executions>
+                            <execution>
+                                <id>default-jar</id>
+                                <configuration>
+                                    <excludes>
+                                        <exclude>com/wolfssl/security/providers/**</exclude>
+                                    </excludes>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>filtered-providers-jar</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>filtered-providers</classifier>
+                                    <classesDirectory>${project.build.directory}/filtered-providers-classes</classesDirectory>
                                 </configuration>
                             </execution>
                         </executions>

@@ -112,7 +112,11 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSecretKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSignature.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptUtil.java \
-    src/main/java/com/wolfssl/provider/jce/WolfSSLKeyStore.java
+    src/main/java/com/wolfssl/provider/jce/WolfSSLKeyStore.java \
+    examples/filtered-providers/src/com/wolfssl/security/providers/FilteredSun.java \
+    examples/filtered-providers/src/com/wolfssl/security/providers/FilteredSunEC.java \
+    examples/filtered-providers/src/com/wolfssl/security/providers/FilteredSunRsaSign.java \
+    examples/filtered-providers/src/com/wolfssl/security/providers/ProviderServiceCopier.java
 
 RETVAL=$?
 

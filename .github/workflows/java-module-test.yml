@@ -150,7 +150,9 @@ jobs:
           echo "Building with Maven..."
           mvn package -DskipTests -q
           echo ""
-          MAVEN_JAR=$(ls target/wolfcrypt-jni-*.jar)
+          # Exclude the filtered-providers classified jar, also built by
+          # 'mvn package' on JDK 9+
+          MAVEN_JAR=$(ls target/wolfcrypt-jni-*.jar | grep -v filtered-providers)
           echo "Maven JAR: $MAVEN_JAR"
           echo ""
           echo "Checking for module-info.class in Maven-built JAR..."

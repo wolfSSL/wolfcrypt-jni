@@ -36,6 +36,11 @@ android {
     }
     sourceSets {
         main.java.srcDirs += '../../../src/main/java'
+        /* The FilteredSun* providers wrap desktop-JDK Sun providers
+         * (sun.security.*), which do not exist on Android. Exclude their
+         * tests, pulled in via the androidTest symlink to the shared
+         * src/test/java tree, from the instrumented test build. */
+        androidTest.java.exclude 'com/wolfssl/security/providers/test/**'
     }
     namespace 'com.example.wolfssl'
 }
