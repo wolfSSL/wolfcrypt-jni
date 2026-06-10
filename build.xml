@@ -1,0 +1,739 @@
+<?xml version="1.0"?>
+<project name="wolfcrypt-jni"
+         default="build"
+         basedir="."
+         xmlns:if="ant:if"
+         xmlns:unless="ant:unless" >
+
+    <description>
+        wolfCrypt JNI is a Java wrapper for the wolfCrypt lightweight
+        crypto library. wolfJCE is a JCE provider that wraps the wolfCrypt
+        cryptography library.
+
+        This build file requires JUnit for running provided JUnit tests.
+        JUnit can be downloaded from: http:/www.junit.org/
+
+        When running JUnit tests, this package will look for JUnit at:
+        $JUNIT_HOME/junit.jar
+    </description>
+
+    <!-- versioning/manifest properties -->
+    <property name="implementation.vendor"  value="wolfSSL Inc." />
+    <property name="implementation.title"   value="wolfCrypt JNI" />
+    <property name="implementation.version" value="1.10" />
+
+    <!-- set properties for this build -->
+    <property name="src.dir" value="src/main/java/" />
+    <property name="src.java9.dir" value="src/java9/" />
+    <property name="jni.dir" value="jni/include/" />
+    <property name="lib.dir" value="lib/" />
+    <property name="build.dir" value="build" />
+    <property name="doc.dir" value="docs/javadoc" />
+    <property name="test.dir" value="src/test/java/" />
+    <property name="test.build.dir" value="build/test" />
+    <property name="reports.dir" value="build/reports" />
+    <property name="examples.build.dir" value="examples/build" />
+    <property name="examples.provider.dir" value="examples/provider" />
+    <property name="examples.provider.build.dir" value="examples/build/provider" />
+    <property name="examples.filtered.dir" value="examples/filtered-providers/src" />
+    <property name="examples.filtered.build.dir" value="examples/build/filtered-providers" />
+    <property name="filtered.test.build.dir" value="build/test-filtered-providers" />
+    <!-- final filtered-providers.jar location; subdirectory of lib/ so the
+         jar stays out of the *.jar classpath glob over lib/ itself -->
+    <property name="filtered.lib.dir" value="lib/filtered-providers" />
+
+    <property name="junit4" value="junit-4.13.2.jar" />
+    <property name="hamcrest-core" value="hamcrest-all-1.3.jar" />
+    <property name="ant-junit4" value="ant/ant-junit4.jar" />
+    <property name="jce.debug" value="false" />
+
+    <!-- compatible defaults -->
+    <property name="java.source" value="1.8" />
+    <property name="java.target" value="1.8" />
+
+    <!-- property file for code signing -->
+    <property file="codeSigning.properties" />
+
+    <property environment="env" />
+
+    <!-- Detect Java 9+ for module-info.java compilation -->
+    <condition property="isJava9Plus">
+        <not>
+            <or>
+                <equals arg1="${ant.java.version}" arg2="1.5"/>
+                <equals arg1="${ant.java.version}" arg2="1.6"/>
+                <equals arg1="${ant.java.version}" arg2="1.7"/>
+                <equals arg1="${ant.java.version}" arg2="1.8"/>
+            </or>
+        </not>
+    </condition>
+
+    <!-- Detect Java 22+ for filtered-providers EC module flags. SunEC moved
+        from the jdk.crypto.ec module into java.base in JDK 22 (JDK-8308398;
+        jdk.crypto.ec remains as an empty, deprecated module), so EC
+        add-opens/add-exports targets differ. -->
+    <condition property="isJava22Plus">
+        <javaversion atleast="22"/>
+    </condition>
+
+    <!-- Detect if running on Windows host -->
+    <condition property="isWindows">
+        <os family="windows" />
+    </condition>
+
+    <!-- check if javac nativeheaderdir is available -->
+    <condition property="have-nativeheaderdir">
+        <and>
+            <antversion atleast="1.9.8"/>
+            <not>
+                <or>
+                    <equals arg1="${ant.java.version}" arg2="1.5"/>
+                    <equals arg1="${ant.java.version}" arg2="1.6"/>
+                    <equals arg1="${ant.java.version}" arg2="1.7"/>
+                </or>
+            </not>
+        </and>
+    </condition>
+
+    <!-- classpath to compiled wolfcrypt-jni.jar, for running tests -->
+    <path id="classpath">
+        <fileset dir="${lib.dir}" includes="*.jar">
+            <include name="wolfcrypt-jni.jar" />
+        </fileset>
+        <fileset dir="${env.JUNIT_HOME}">
+            <include name="${junit4}" />
+        </fileset>
+    </path>
+
+    <target name="clean">
+        <delete dir="${test.build.dir}" />
+        <delete dir="${build.dir}" />
+        <delete dir="${examples.provider.build.dir}" />
+        <delete dir="${examples.filtered.build.dir}" />
+        <delete dir="${examples.build.dir}" />
+        <delete dir="${filtered.test.build.dir}" />
+        <delete dir="${filtered.lib.dir}" />
+        <delete dir="${reports.dir}" />
+        <delete failonerror="false">
+            <fileset dir="${lib.dir}" includes="wolfcrypt-jni.jar" />
+        </delete>
+        <delete includeemptydirs="true" failonerror="false">
+            <fileset dir="${doc.dir}" includes="**/*"/>
+        </delete>
+    </target>
+
+    <!-- set javac flags: debug jar, no optimization, all debug symbols -->
+    <target name="debug-javac-flags" if="jni.build.type.debug">
+        <property name="java.debug" value="true" />
+        <property name="java.debuglevel" value="source,lines,vars" />
+        <property name="java.deprecation" value="true" />
+        <property name="java.optimize" value="true" />
+        <property name="java.source" value="${java.source}" />
+        <property name="java.target" value="${java.target}" />
+    </target>
+
+    <!-- set javac flags: release, no debug, optimize -->
+    <target name="release-javac-flags" if="jni.build.type.release">
+        <property name="java.debug" value="false" />
+        <property name="java.debuglevel" value="none" />
+        <property name="java.deprecation" value="true" />
+        <property name="java.optimize" value="true" />
+        <property name="java.source" value="${java.source}" />
+        <property name="java.target" value="${java.target}" />
+    </target>
+
+    <target name="init" depends="clean, debug-javac-flags, release-javac-flags">
+        <mkdir dir="${build.dir}" />
+        <mkdir dir="${lib.dir}" />
+        <mkdir dir="${doc.dir}" />
+        <mkdir dir="${test.build.dir}" />
+        <mkdir dir="${reports.dir}" />
+        <mkdir dir="${examples.provider.build.dir}" />
+    </target>
+
+    <!-- compile all JNI and JCE source files -->
+    <target name="compile-nativeheaderdir" if="have-nativeheaderdir" depends="init">
+        <javac
+            srcdir="${src.dir}"
+            destdir="${build.dir}"
+            nativeheaderdir="${jni.dir}"
+            debug="${java.debug}"
+            debuglevel="${java.debuglevel}"
+            deprecation="${java.deprecation}"
+            optimize="${java.optimize}"
+            source="${java.source}"
+            target="${java.target}"
+            classpathref="classpath"
+            includeantruntime="false">
+            <compilerarg value="-Xlint:-options" />
+        </javac>
+        <!-- Copy resources to build directory for ServiceLoader -->
+        <copy todir="${build.dir}" failonerror="false">
+            <fileset dir="src/main/resources" includes="**/*" />
+        </copy>
+    </target>
+    <target name="compile-javah" unless="have-nativeheaderdir" depends="init">
+        <javac
+            srcdir="${src.dir}"
+            destdir="${build.dir}"
+            debug="${java.debug}"
+            debuglevel="${java.debuglevel}"
+            deprecation="${java.deprecation}"
+            optimize="${java.optimize}"
+            source="${java.source}"
+            target="${java.target}"
+            classpathref="classpath"
+            includeantruntime="false">
+            <compilerarg value="-Xlint:-options" />
+        </javac>
+        <!-- Copy resources to build directory for ServiceLoader -->
+        <copy todir="${build.dir}" failonerror="false">
+            <fileset dir="src/main/resources" includes="**/*" />
+        </copy>
+    </target>
+
+    <!-- Compile module-info.java for Java 9+ module support.
+         Only runs when building with Java 9 or later. When building with
+         Java 8 or earlier, this target is skipped and the resulting JAR
+         will be a standard (non-modular) JAR file. -->
+    <target name="compile-module-info" if="isJava9Plus"
+            description="Compile module-info.java for Java 9+ (skipped on Java 8)">
+        <javac srcdir="${src.java9.dir}"
+               destdir="${build.dir}"
+               release="9"
+               modulepath="${build.dir}"
+               includeantruntime="false">
+            <include name="module-info.java"/>
+        </javac>
+        <echo message="Compiled module-info.java for Java 9+ module support"/>
+    </target>
+
+    <!-- create JAR with ONLY JNI classes, not to be used with JCE -->
+    <target name="jar-jni" depends="compile-nativeheaderdir, compile-javah, compile-module-info">
+        <jar jarfile="${lib.dir}/wolfcrypt-jni.jar">
+            <manifest>
+                <attribute name="Implementation-Title"
+                           value="${implementation.title}" />
+                <attribute name="Implementation-Version"
+                           value="${implementation.version}" />
+                <attribute name="Implementation-Vendor"
+                           value="${implementation.vendor}" />
+            </manifest>
+            <fileset dir="${build.dir}">
+                <include name="com/wolfssl/wolfcrypt/*.class"/>
+                <include name="module-info.class"/>
+            </fileset>
+        </jar>
+    </target>
+
+    <!-- create JAR with JNI and JCE classes, use this when wanting JCE -->
+    <target name="jar-jce" depends="compile-nativeheaderdir, compile-javah, compile-module-info">
+        <jar jarfile="${lib.dir}/wolfcrypt-jni.jar" basedir="${build.dir}">
+            <manifest>
+                <attribute name="Implementation-Title"
+                           value="${implementation.title}" />
+                <attribute name="Implementation-Version"
+                           value="${implementation.version}" />
+                <attribute name="Implementation-Vendor"
+                           value="${implementation.vendor}" />
+            </manifest>
+        </jar>
+        <echo unless:set="sign.alias">NOTICE: Skipping JAR signing, codeSigning.properties not found</echo>
+    </target>
+
+    <!-- sign jar, necessary for Oracle JDK -->
+    <target name="sign" if="sign.alias" depends="jar-jce">
+        <echo>Signing JAR with PRIMARY signature</echo>
+        <signjar
+            alias="${sign.alias}"
+            keystore="${sign.keystore}"
+            storepass="${sign.storepass}"
+            tsaurl="${sign.tsaurl}" >
+            <path>
+                <fileset dir="${lib.dir}" includes="wolfcrypt-jni.jar" />
+            </path>
+        </signjar>
+    </target>
+
+    <!-- allow 2nd alternate signature, for legacy JCE deployments -->
+    <target name="sign-alt" if="sign.alias2" depends="jar-jce">
+        <echo>Signing JAR with SECONDARY signature</echo>
+        <signjar
+            alias="${sign.alias2}"
+            keystore="${sign.keystore2}"
+            storepass="${sign.storepass2}"
+            tsaurl="${sign.tsaurl2}" >
+            <path>
+                <fileset dir="${lib.dir}" includes="wolfcrypt-jni.jar" />
+            </path>
+        </signjar>
+    </target>
+
+    <!-- detect if JNI class files have been compiled yet, set property -->
+    <target name="jni-class-detect">
+        <available file="${build.dir}/com/wolfssl/wolfcrypt/WolfCrypt.class"
+                   property="jni.classes.present"/>
+    </target>
+
+    <!-- NOTE: depends on either jar-jni or jar-jce targets -->
+    <target name="javah" if="jni.classes.present" unless="have-nativeheaderdir"
+        depends="jni-class-detect"
+        description="Generate javah headers">
+        <javah destdir="${jni.dir}" force="yes" classpathref="classpath">
+            <class name="com.wolfssl.wolfcrypt.WolfCrypt" />
+            <class name="com.wolfssl.wolfcrypt.FeatureDetect" />
+            <class name="com.wolfssl.wolfcrypt.Fips" />
+            <class name="com.wolfssl.wolfcrypt.NativeStruct" />
+            <class name="com.wolfssl.wolfcrypt.Aes" />
+            <class name="com.wolfssl.wolfcrypt.Des3" />
+            <class name="com.wolfssl.wolfcrypt.Logging" />
+            <class name="com.wolfssl.wolfcrypt.Md5" />
+            <class name="com.wolfssl.wolfcrypt.Sha" />
+            <class name="com.wolfssl.wolfcrypt.Sha256" />
+            <class name="com.wolfssl.wolfcrypt.Sha384" />
+            <class name="com.wolfssl.wolfcrypt.Sha512" />
+            <class name="com.wolfssl.wolfcrypt.Hmac" />
+            <class name="com.wolfssl.wolfcrypt.Rng" />
+            <class name="com.wolfssl.wolfcrypt.Rsa" />
+            <class name="com.wolfssl.wolfcrypt.Dh" />
+            <class name="com.wolfssl.wolfcrypt.Ecc" />
+            <class name="com.wolfssl.wolfcrypt.Ed25519" />
+            <class name="com.wolfssl.wolfcrypt.Curve25519" />
+            <class name="com.wolfssl.wolfcrypt.Chacha" />
+            <class name="com.wolfssl.wolfcrypt.WolfCryptError" />
+            <class name="com.wolfssl.wolfcrypt.Asn" />
+        </javah>
+    </target>
+
+    <target name="javadoc" description="Generate Javadocs">
+        <javadoc sourcepath="${src.dir}" destdir="${doc.dir}" />
+    </target>
+
+    <target name="examples-jce" description="Build JCE Examples">
+        <javac
+            srcdir="${examples.provider.dir}"
+            destdir="${examples.provider.build.dir}"
+            debug="${java.debug}"
+            debuglevel="${java.debuglevel}"
+            deprecation="${java.deprecation}"
+            optimize="${java.optimize}"
+            source="${java.source}"
+            target="${java.target}"
+            classpathref="classpath"
+            includeantruntime="false">
+            <compilerarg value="-Xlint:-options"/>
+        </javac>
+    </target>
+
+    <!-- Build filtered Sun/SunEC/SunRsaSign provider examples, package them
+        (plus their ServiceLoader registration) into filtered-providers.jar.
+        Java 9+ only, no-op on Java 8. -->
+    <target name="examples-filtered-providers" if="isJava9Plus"
+        description="Build filtered-providers examples + jar (Java 9+ only)">
+        <mkdir dir="${examples.filtered.build.dir}/classes" />
+        <javac
+            srcdir="${examples.filtered.dir}"
+            destdir="${examples.filtered.build.dir}/classes"
+            source="9"
+            target="9"
+            includeantruntime="false">
+            <compilerarg value="-Xlint:-options"/>
+        </javac>
+        <mkdir dir="${filtered.lib.dir}" />
+        <jar jarfile="${filtered.lib.dir}/filtered-providers.jar">
+            <fileset dir="${examples.filtered.build.dir}/classes"
+                     includes="**/*.class" />
+            <fileset dir="${examples.filtered.dir}"
+                     includes="META-INF/services/**" />
+        </jar>
+    </target>
+
+    <!-- Compile and run filtered-providers JUnit tests. Java 9+ only.
+        Forks from repo root so the relative example cert path resolves. -->
+    <target name="test-filtered-providers" if="isJava9Plus"
+        depends="examples-filtered-providers"
+        description="Compile and run filtered-providers tests (Java 9+ only)">
+
+        <!-- Select the correct SunEC module-access flags for the running
+             JDK. SunEC moved from jdk.crypto.ec into java.base in
+             JDK 22. -->
+        <property name="filtered.ec.flags" unless:set="isJava22Plus"
+            value="--add-modules=jdk.crypto.ec --add-exports=jdk.crypto.ec/sun.security.ec=ALL-UNNAMED --add-opens=jdk.crypto.ec/sun.security.ec=ALL-UNNAMED" />
+        <property name="filtered.ec.flags" if:set="isJava22Plus"
+            value="--add-exports=java.base/sun.security.ec=ALL-UNNAMED --add-opens=java.base/sun.security.ec=ALL-UNNAMED" />
+
+        <delete dir="${filtered.test.build.dir}" />
+        <mkdir dir="${filtered.test.build.dir}" />
+        <mkdir dir="${reports.dir}" />
+
+        <javac
+            srcdir="${test.dir}"
+            destdir="${filtered.test.build.dir}"
+            source="9"
+            target="9"
+            includeantruntime="false">
+            <include name="com/wolfssl/security/providers/test/*Test.java" />
+            <!-- shared TestRule used by the filtered-providers tests -->
+            <include name="com/wolfssl/wolfcrypt/test/TimedTestWatcher.java" />
+            <classpath>
+                <pathelement
+                    location="${filtered.lib.dir}/filtered-providers.jar" />
+                <fileset dir="${env.JUNIT_HOME}">
+                    <include name="${junit4}" />
+                </fileset>
+            </classpath>
+            <compilerarg value="-Xlint:-options" />
+            <compilerarg value="-Xlint:-path" />
+        </javac>
+
+        <junit printsummary="yes"
+            showoutput="yes"
+            haltonfailure="yes"
+            fork="true">
+
+            <!-- SunEC module flags (JDK-version specific) -->
+            <jvmarg line="${filtered.ec.flags}"/>
+            <!-- Stable java.base flags (all JDK majors) -->
+            <jvmarg value="--add-opens=java.base/java.security=ALL-UNNAMED"/>
+            <jvmarg value="--add-opens=java.base/sun.security.provider=ALL-UNNAMED"/>
+            <jvmarg value="--add-opens=java.base/sun.security.util=ALL-UNNAMED"/>
+            <jvmarg value="--add-opens=java.base/sun.security.rsa=ALL-UNNAMED"/>
+
+            <classpath>
+                <pathelement
+                    location="${filtered.lib.dir}/filtered-providers.jar" />
+                <pathelement location="${filtered.test.build.dir}" />
+                <fileset dir="${env.JUNIT_HOME}">
+                    <include name="${junit4}"/>
+                    <include name="${hamcrest-core}"/>
+                    <include name="${ant-junit4}"/>
+                </fileset>
+            </classpath>
+
+            <formatter type="plain" />
+            <formatter type="xml" />
+
+            <batchtest fork="yes" todir="${reports.dir}">
+                <fileset dir="${test.dir}">
+                    <include name="com/wolfssl/security/providers/test/*Test.java" />
+                </fileset>
+            </batchtest>
+
+        </junit>
+    </target>
+
+    <!-- compile JNI/JCE test classes, depending on how 'ant build' was run -->
+    <target name="build-test" depends="set-build-debug, debug-javac-flags">
+
+        <javac
+            srcdir="${test.dir}"
+            destdir="${test.build.dir}"
+            debug="${java.debug}"
+            debuglevel="${java.debuglevel}"
+            deprecation="${java.depreciation}"
+            optimize="${java.optimize}"
+            source="${java.source}"
+            target="${java.target}"
+            classpathref="classpath"
+            includeantruntime="false">
+            <exclude name="com/wolfssl/provider/jce/test/**" unless="jar.includes.jce"/>
+            <!-- filtered-providers tests are Java 9+ and build/run only via
+                 the dedicated test-filtered-providers target -->
+            <exclude name="com/wolfssl/security/providers/test/**"/>
+            <compilerarg value="-Xlint:-options" />
+            <compilerarg value="-Xlint:-path" />
+        </javac>
+
+    </target>
+
+    <!-- Set property to indicate Windows platform (Win32, x86) -->
+    <target name="setup-win32-debug">
+        <property name="ant.test.platform" value="Win32"/>
+        <property name="lib.win.dir" value="IDE/WIN/DLL Debug/Win32/"/>
+        <property name="lib.wolfssl.win.dir" value="../wolfssl/DLL Debug/Win32"/>
+    </target>
+    <target name="setup-win32-release">
+        <property name="ant.test.platform" value="Win32"/>
+        <property name="lib.win.dir" value="IDE/WIN/DLL Release/Win32/"/>
+        <property name="lib.wolfssl.win.dir" value="../wolfssl/DLL Release/Win32"/>
+    </target>
+
+    <target name="setup-win64-debug">
+        <property name="ant.test.platform" value="x64"/>
+        <property name="lib.win.dir" value="IDE/WIN/DLL Debug/x64/"/>
+        <property name="lib.wolfssl.win.dir" value="../wolfssl/DLL Debug/x64"/>
+    </target>
+    <target name="setup-win64-release">
+        <property name="ant.test.platform" value="x64"/>
+        <property name="lib.win.dir" value="IDE/WIN/DLL Release/x64/"/>
+        <property name="lib.wolfssl.win.dir" value="../wolfssl/DLL Release/x64"/>
+    </target>
+
+    <target name="setup-win32-debug-fips">
+        <property name="ant.test.platform" value="Win32"/>
+        <property name="lib.win.dir" value="IDE/WIN/DLL Debug FIPS/Win32/"/>
+        <property name="lib.wolfssl.win.dir" value="../wolfssl/IDE/WIN10/DLL Debug/Win32"/>
+    </target>
+    <target name="setup-win32-release-fips">
+        <property name="ant.test.platform" value="Win32"/>
+        <property name="lib.win.dir" value="IDE/WIN/DLL Release FIPS/Win32/"/>
+        <property name="lib.wolfssl.win.dir" value="../wolfssl/IDE/WIN10/DLL Release/Win32"/>
+    </target>
+    <target name="setup-win64-debug-fips">
+        <property name="ant.test.platform" value="x64"/>
+        <property name="lib.win.dir" value="IDE/WIN/DLL Debug FIPS/x64/"/>
+        <property name="lib.wolfssl.win.dir" value="../wolfssl/IDE/WIN10/DLL Debug/x64"/>
+    </target>
+    <target name="setup-win64-release-fips">
+        <property name="ant.test.platform" value="x64"/>
+        <property name="lib.win.dir" value="IDE/WIN/DLL Release FIPS/x64/"/>
+        <property name="lib.wolfssl.win.dir" value="../wolfssl/IDE/WIN10/DLL Release/x64"/>
+    </target>
+
+    <!-- Windows ant test targets, should be used in place of 'ant test' -->
+    <!-- Windows 32-bit -->
+    <target name="test-win32-debug" depends="setup-win32-debug, test"
+            description="Run JUnit tests on Windows x86/32-bit DLL Debug">
+    </target>
+    <target name="test-win32-release" depends="setup-win32-release, test"
+            description="Run JUnit tests on Windows x86/32-bit DLL Release">
+    </target>
+
+    <!-- Windows x64 -->
+    <target name="test-win64-debug" depends="setup-win64-debug, test"
+            description="Run JUnit tests on Windows x64/64-bit DLL Debug">
+    </target>
+    <target name="test-win64-release" depends="setup-win64-release, test"
+            description="Run JUnit tests on Windows x64/64-bit DLL Release">
+    </target>
+
+    <!-- Windows FIPS 140-2/140-3 -->
+    <target name="test-win32-debug-fips" depends="setup-win32-debug-fips, test"
+            description="Run JUnit tests on Windows x86/32-bit DLL FIPS Debug">
+    </target>
+    <target name="test-win32-release-fips" depends="setup-win32-release-fips, test"
+            description="Run JUnit tests on Windows x86/32-bit DLL FIPS Release">
+    </target>
+    <target name="test-win64-debug-fips" depends="setup-win64-debug-fips, test"
+            description="Run JUnit tests on Windows x64/64-bit DLL FIPS Debug">
+    </target>
+    <target name="test-win64-release-fips" depends="setup-win64-release-fips, test"
+            description="Run JUnit tests on Windows x64/64-bit DLL FIPS Release">
+    </target>
+
+    <!-- Print usage if plain 'ant test' called on Windows -->
+    <target name="antTestWindowsCheck">
+      <condition property="antTestCalledIncorrect">
+        <and>
+          <equals arg1="${isWindows}" arg2="true"/>
+          <equals arg1="${ant.project.invoked-targets}" arg2="test"/>
+        </and>
+      </condition>
+
+      <fail message="Please see usage instructions below" if="antTestCalledIncorrect">
+        wolfCrypt JNI and JCE: JUnit Test Usage on Windows
+        ---------------------------------------------------------------------------->
+        Run one of the following ant test targets for Windows use:
+        Normal wolfSSL (non-FIPS):
+            ant test-win32-debug         |  Run JUnit tests for Windows 32-bit Debug build
+            ant test-win32-release       |  Run JUnit tests for Windows 32-bit Release build
+            ant test-win64-debug         |  Run JUnit tests for Windows 64-bit Debug build
+            ant test-win64-release       |  Run JUnit tests for Windows 64-bit Release build
+
+        wolfSSL FIPS 140-2 / 140-3:
+            ant test-win32-debug-fips    |  Run JUnit tests for Windows 32-bit Debug FIPS build
+            ant test-win32-release-fips  |  Run JUnit tests for Windows 32-bit Release FIPS build
+            ant test-win64-debug-fips    |  Run JUnit tests for Windows 64-bit Debug FIPS build
+            ant test-win64-release-fips  |  Run JUnit tests for Windows 64-bit Release FIPS build
+        ----------------------------------------------------------------------------
+      </fail>
+    </target>
+
+    <!-- Primary ant test target, called direct on Linux/OSX
+         or from test-win32/test-win64 on Windows -->
+    <target name="test" description="Compile and run JUnit tests" depends="antTestWindowsCheck">
+
+        <!-- detect if compiled JAR includes JCE or not -->
+        <whichresource property="jar.includes.jce"
+            class="com.wolfssl.provider.jce.WolfCryptProvider">
+            <classpath>
+                <path>
+                    <fileset dir="${lib.dir}" includes="*.jar">
+                        <include name="wolfcrypt-jni.jar" />
+                    </fileset>
+                </path>
+            </classpath>
+        </whichresource>
+
+        <!-- delete and re-create test build directory -->
+        <delete dir="${test.build.dir}" />
+        <mkdir dir="${test.build.dir}" />
+        <mkdir dir="${reports.dir}" />
+
+        <!-- build classes of JUnit tests, if needed -->
+        <antcall target="build-test"/>
+
+        <echo unless:set="jar.includes.jce">NOTE: JCE classes not detected, only running JUnit tests for JNI</echo>
+
+        <!-- run JUnit tests -->
+        <junit printsummary="yes"
+            showoutput="yes"
+            haltonfailure="yes"
+            fork="true">
+
+            <jvmarg value="-Djava.library.path=$JAVA_HOME/bin${path.separator}${lib.dir}${path.separator}${lib.win.dir}${path.separator}${lib.wolfssl.win.dir}"/>
+
+            <classpath>
+                <pathelement location="${lib.dir}/wolfcrypt-jni.jar" />
+                <pathelement location="${test.build.dir}" />
+                <fileset dir="${env.JUNIT_HOME}">
+                    <include name="${junit4}"/>
+                    <include name="${hamcrest-core}"/>
+                    <include name="${ant-junit4}"/>
+                </fileset>
+            </classpath>
+
+            <formatter type="plain" />
+            <formatter type="xml" />
+
+            <sysproperty key="sun.boot.library.path" value="$JAVA_HOME/bin:${lib.dir}" />
+            <sysproperty key="wolfjce.debug" value="${jce.debug}" />
+            <env key="LD_LIBRARY_PATH" path="${env.LD_LIBRARY_PATH}:{lib.dir}:/usr/local/lib" />
+            <env key="CLASSPATH" path="${env.LD_LIBRARY_PATH}:${env.JUNIT_HOME}/${junit4}" />
+
+            <batchtest fork="yes" todir="${reports.dir}">
+                <fileset dir="${test.dir}">
+                    <!--<include name="**/*TestSuite.java" />-->
+                    <include name="com/wolfssl/wolfcrypt/test/*TestSuite.java" />
+                    <include name="com/wolfssl/wolfcrypt/test/fips/*TestSuite.java" />
+                    <include if="jar.includes.jce" name="com/wolfssl/provider/jce/test/*TestSuite.java" />
+                </fileset>
+            </batchtest>
+
+        </junit>
+
+        <!-- Also run the filtered-providers tests (pure Java, separate
+             JUnit invocation with its own JVM module flags). No-op on
+             Java 8. -->
+        <antcall target="test-filtered-providers"/>
+    </target>
+
+    <!--<target name="build" depends="jar-jce, sign, sign-alt, javah, javadoc"-->
+    <target name="build" description="Choice to build JNI or JCE">
+        <echo>wolfCrypt JNI and JCE</echo>
+        <echo>----------------------------------------------------------------------------</echo>
+        <echo>USAGE:</echo>
+        <echo>Run one of the following targets with ant:</echo>
+        <echo>    build-jni-debug    |  builds debug JAR with only wolfCrypt JNI classes</echo>
+        <echo>    build-jni-release  |  builds release JAR with only wolfCrypt JNI classes</echo>
+        <echo>    build-jce-debug    |  builds debug JAR with JNI and JCE classes</echo>
+        <echo>    build-jce-release  |  builds release JAR with JNI and JCE classes</echo>
+        <echo>----------------------------------------------------------------------------</echo>
+        <fail message="Please see usage instructions above."/>
+    </target>
+
+    <!-- set property to indicate DEBUG/RELEASE build -->
+    <target name="set-build-debug">
+        <property name="jni.build.type.debug" value="TRUE"/>
+    </target>
+
+    <target name="set-build-release">
+        <property name="jni.build.type.release" value="TRUE"/>
+    </target>
+
+    <!-- main build targets -->
+    <target name="build-jni-debug" depends="set-build-debug, jar-jni, javah, javadoc"
+        description="Build library JAR (JNI classes ONLY)">
+    </target>
+
+    <target name="build-jni-release" depends="set-build-release, jar-jni, javah, javadoc"
+        description="Build library JAR (JNI classes ONLY)">
+    </target>
+
+    <target name="build-jce-debug" depends="set-build-debug, jar-jce, sign, sign-alt, javah, javadoc, examples-jce, examples-filtered-providers"
+        description="Build library JAR (JNI + JCE classes)">
+    </target>
+
+    <target name="build-jce-release" depends="set-build-release, jar-jce, sign, sign-alt, javah, javadoc, examples-jce, examples-filtered-providers"
+        description="Build library JAR (JNI + JCE classes)">
+    </target>
+
+    <!-- SpotBugs Static Analysis:
+         Run with 'ant spotbugs' to generate report.
+         Requires SPOTBUGS_HOME environment variable to be set.
+         Download from: https://spotbugs.github.io/
+         Report generated at: build/reports/spotbugs.html -->
+
+    <!-- Only define SpotBugs task if SPOTBUGS_HOME is set -->
+    <condition property="spotbugs.available">
+        <and>
+            <isset property="env.SPOTBUGS_HOME"/>
+            <available
+                file="${env.SPOTBUGS_HOME}/lib/spotbugs-ant.jar"/>
+        </and>
+    </condition>
+
+    <!-- Check if Java version is 11+ (required by SpotBugs 4.8+) -->
+    <condition property="spotbugs.java.compatible">
+        <not>
+            <or>
+                <equals arg1="${ant.java.version}" arg2="1.5"/>
+                <equals arg1="${ant.java.version}" arg2="1.6"/>
+                <equals arg1="${ant.java.version}" arg2="1.7"/>
+                <equals arg1="${ant.java.version}" arg2="1.8"/>
+                <equals arg1="${ant.java.version}" arg2="9"/>
+                <equals arg1="${ant.java.version}" arg2="10"/>
+            </or>
+        </not>
+    </condition>
+
+    <target name="spotbugs-taskdef" if="spotbugs.available">
+        <taskdef
+            resource="edu/umd/cs/findbugs/anttask/tasks.properties">
+            <classpath>
+                <fileset dir="${env.SPOTBUGS_HOME}/lib"
+                         includes="*.jar"/>
+            </classpath>
+        </taskdef>
+    </target>
+
+    <target name="spotbugs-check">
+        <fail unless="spotbugs.java.compatible">
+SpotBugs requires Java 11 or later to run.
+
+Current Java version: ${ant.java.version}
+
+To fix this, run ant with Java 11+:
+  export JAVA_HOME=/path/to/jdk11
+  ant spotbugs
+        </fail>
+        <fail unless="spotbugs.available">
+SpotBugs not found. Please set SPOTBUGS_HOME.
+
+To install SpotBugs:
+  1. Download from https://spotbugs.github.io/
+  2. Extract (e.g., /opt/spotbugs-4.8.6)
+  3. Set SPOTBUGS_HOME=/opt/spotbugs-4.8.6
+  4. Run 'ant spotbugs'
+        </fail>
+    </target>
+
+    <target name="spotbugs"
+        depends="build-jce-debug, spotbugs-check, spotbugs-taskdef"
+        description="Run SpotBugs static analysis">
+        <mkdir dir="${reports.dir}"/>
+        <spotbugs home="${env.SPOTBUGS_HOME}"
+                  output="html"
+                  outputFile="${reports.dir}/spotbugs.html"
+                  effort="max"
+                  reportLevel="medium"
+                  excludeFilter="spotbugs-exclude.xml"
+                  failOnError="false">
+            <sourcePath path="${src.dir}"/>
+            <class location="${lib.dir}/wolfcrypt-jni.jar"/>
+        </spotbugs>
+        <echo message="SpotBugs report: ${reports.dir}/spotbugs.html"/>
+    </target>
+
+</project>
+

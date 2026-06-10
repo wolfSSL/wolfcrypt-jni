@@ -1,0 +1,56 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdk 33
+    defaultConfig {
+        applicationId "com.example.wolfssl"
+        /* Min SDK should stay at 24 to detect if we try to use newer APIs
+         * than were available in that Android SDK. We have users who are still
+         on SDK 24 (ref ZD 18311) */
+        minSdkVersion 24
+        targetSdkVersion 33
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments notClass: 'com.wolfssl.wolfcrypt.test.WolfCryptTestSuite,com.wolfssl.provider.jce.test.WolfJCETestSuite,com.wolfssl.wolfcrypt.test.fips.WolfCryptFipsTestSuite'
+        externalNativeBuild {
+            cmake {
+                cppFlags ""
+            }
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+        }
+    }
+    sourceSets {
+        main.java.srcDirs += '../../../src/main/java'
+        /* The FilteredSun* providers wrap desktop-JDK Sun providers
+         * (sun.security.*), which do not exist on Android. Exclude their
+         * tests, pulled in via the androidTest symlink to the shared
+         * src/test/java tree, from the instrumented test build. */
+        androidTest.java.exclude 'com/wolfssl/security/providers/test/**'
+    }
+    namespace 'com.example.wolfssl'
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}

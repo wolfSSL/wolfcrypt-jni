@@ -1,0 +1,793 @@
+
+## wolfCrypt JCE Provider
+
+The wolfCrypt JCE Provider is currently set up to be compiled together into
+the same JAR file as the normal wolfcrypt-jni classes.
+
+The wolfCrypt JCE Provider is located in the following package:
+
+    com.wolfssl.wolfcrypt.jce.provider
+
+Compiling the JCE provider is done using the same instructions as
+wolfcrypt-jni. Follow direction in the README.md for compiling the package,
+but make sure to use one of the following "ant" build targets:
+
+    build-jce-debug
+    build-jce-release
+
+This JCE provider has been tested on OSX (Oracle JVM), Linux (OpenJDK),
+and Android platforms.
+
+Pre-compiled and signed wolfCrypt JNI/JCE JAR's are included with the stable
+releases of the JCE provider. See below for more details.
+
+### System and Security Property Support
+---------
+
+wolfJCE supports the following System and Security properties for behavior
+customization and debugging.
+
+#### Security Property Support
+
+The following Java Security properties can be set in the `java.security`
+file for JCE provider customization:
+
+| Security Property | Default | To Enable | Description |
+| --- | --- | --- | --- |
+| wolfjce.wks.iterationCount | 210,000 | Numeric | PBKDF2 iteration count (10,000 minimum) |
+| wolfjce.wks.maxCertChainLength | 100 | Integer | Max cert chain length |
+| wolfjce.keystore.kekCacheEnabled | false | true | Enable KEK caching in WKS KeyStore for performance |
+| wolfjce.keystore.kekCacheTtlSec | 300 | Integer | KEK cache TTL in seconds (1 second minimum) |
+| wolfjce.mapJKStoWKS | UNSET | true | Register fake JKS KeyStore service mapped to WKS |
+| wolfjce.mapPKCS12toWKS | UNSET | true | Register fake PKCS12 KeyStore service mapped to WKS |
+
+**wolfjce.mapJKStoWKS** - this Security property should be used with caution.
+When enabled, this will register a "JKS" KeyStore type in wolfJCE, which means
+calling applications using `KeyStore.getInstance("JKS")` will get a KeyStore
+implementation from wolfJCE. BUT, this KeyStore type will actually be a
+WolfSSLKeyStore (WKS) type internally. Loading actual JKS files will fail.
+This can be helpful when FIPS compliance is required, but existing code gets
+a JKS KeyStore instance - and this assumes the caller has the flexibility to
+actually load a real WKS KeyStore file into this KeyStore object. If this
+property is being set at runtime programatically, the wolfJCE provider services
+will need to be refreshed / reloaded, by doing:
+
+```
+WolfCryptProvider prov = (WolfCryptProvider)Security.getProvider("wolfJCE");
+prov.refreshServices();
+```
+
+**wolfjce.mapPKCS12toWKS** - this Security property should be used with caution.
+When enabled, this will register a "PKCS12" KeyStore type in wolfJCE, which
+means calling applications using `KeyStore.getInstance("PKCS12")` will get a
+KeyStore implementation from wolfJCE. BUT, this KeyStore type will actually be a
+WolfSSLKeyStore (WKS) type internally. Loading actual PKCS12 files will fail.
+This can be helpful when FIPS compliance is required, but existing code gets
+a PKCS12 KeyStore instance - and this assumes the caller has the flexibility to
+actually load a real WKS KeyStore file into this KeyStore object. If this
+property is being set at runtime programatically, the wolfJCE provider services
+will need to be refreshed / reloaded, by doing:
+
+```
+WolfCryptProvider prov = (WolfCryptProvider)Security.getProvider("wolfJCE");
+prov.refreshServices();
+```
+
+**wolfjce.keystore.kekCacheEnabled** - this Security property enables KEK (Key
+Encryption Key) caching in the WKS KeyStore to improve performance when making
+repeated `getKey()` calls. When disabled (default), each `getKey()` call
+performs full PBKDF2 key derivation. When enabled, derived keys are cached in
+memory with configurable TTL. The cache is automatically cleared on entry
+deletion, overwrite, KeyStore reload, and TTL expiration. For manual cleanup,
+call `clearCache()` on the KeyStore instance:
+
+```
+/* Enable KEK caching with 10 minute TTL */
+Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
+Security.setProperty("wolfjce.keystore.kekCacheTtlSec", "600");
+
+KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+/* ... use KeyStore ... */
+
+/* Explicitly clear cached keys when done (optional) */
+if (store instanceof com.wolfssl.provider.jce.WolfSSLKeyStore) {
+    ((com.wolfssl.provider.jce.WolfSSLKeyStore) store).clearCache();
+}
+```
+
+Security Considerations: Cached derived keys remain in memory for the TTL
+duration. Only enable in trusted environments where performance benefits
+outweigh increased memory exposure.
+
+#### System Property Support
+
+The following Java System properties can be set on the command line or
+programatically for JCE provider customization:
+
+| System Property | Default | To Enable | Description |
+| --- | --- | --- | --- |
+| wolfjce.debug | "false" | "true" | Enable wolfJCE debug logging |
+| wolfjce.ioTimeout | UNSET | Integer (seconds) | I/O timeout for OCSP and CRL HTTP operations (0-3600) |
+
+**wolfjce.ioTimeout** - sets the I/O timeout (in seconds) used by native wolfSSL
+for HTTP-based OCSP lookups and CRL fetching. Wraps native `wolfIO_SetTimeout()`.
+Requires native wolfSSL to be compiled with `HAVE_IO_TIMEOUT`. Valid values are
+0 to 3600 inclusive (1 hour). A value of 0 disables the timeout (default
+behavior). If the property is not set, no timeout is applied. This
+property is read during `PKIXRevocationChecker.init()`, which occurs at
+certificate path validation time. This means the property can be set or changed
+after provider registration and will be picked up on the next validation.
+Invalid values (non-numeric, negative, exceeding 3600) will cause revocation
+checker initialization to fail with `CertPathValidatorException`. This property
+replaces the Sun-specific `com.sun.security.ocsp.timeout` and
+`com.sun.security.crl.timeout` properties (which use milliseconds) with a single
+wolfJCE-specific property in seconds that applies to both OCSP and CRL operations.
+
+### Algorithm Support:
+---------
+
+The JCE provider currently supports the following algorithms:
+
+    MessageDigest Class
+        MD5
+        SHA-1
+        SHA-224
+            OID: 2.16.840.1.101.3.4.2.4
+        SHA-256
+            OID: 2.16.840.1.101.3.4.2.1
+        SHA-384
+            OID: 2.16.840.1.101.3.4.2.2
+        SHA-512
+            OID: 2.16.840.1.101.3.4.2.3
+        SHA3-224
+        SHA3-256
+        SHA3-384
+        SHA3-512
+
+    SecureRandom Class
+        DEFAULT (maps to HashDRBG)
+        HashDRBG (aliased also as: Hash_DRBG, DRBG)
+
+    Cipher Class
+        AES/CBC/NoPadding
+            Aliases: AES_128/CBC/NoPadding, AES_192/CBC/NoPadding, AES_256/CBC/NoPadding
+            OIDs: 2.16.840.1.101.3.4.1.2, 2.16.840.1.101.3.4.1.22, 2.16.840.1.101.3.4.1.42
+        AES/CBC/PKCS5Padding
+        AES/CTS/NoPadding
+        AES/CCM/NoPadding
+        AES/CTR/NoPadding
+        AES/ECB/NoPadding
+            Aliases: AES_128/ECB/NoPadding, AES_192/ECB/NoPadding, AES_256/ECB/NoPadding
+            OIDs: 2.16.840.1.101.3.4.1.1, 2.16.840.1.101.3.4.1.21, 2.16.840.1.101.3.4.1.41
+        AES/ECB/PKCS5Padding (aliased also as: AES)
+        AES/GCM/NoPadding
+        AES/OFB/NoPadding
+            Aliases: AES_128/OFB/NoPadding, AES_192/OFB/NoPadding, AES_256/OFB/NoPadding
+            OIDs: 2.16.840.1.101.3.4.1.3, 2.16.840.1.101.3.4.1.23, 2.16.840.1.101.3.4.1.43
+        DESede/CBC/NoPadding
+        RSA
+        RSA/ECB/PKCS1Padding
+        RSA/ECB/OAEPWithSHA-256AndMGF1Padding
+            Alias: RSA/ECB/OAEPWithSHA256AndMGF1Padding
+        RSA/ECB/OAEPWithSHA-1AndMGF1Padding
+            Alias: RSA/ECB/OAEPWithSHA1AndMGF1Padding
+
+    Mac Class
+        AESCMAC (aliased also as: AES-CMAC)
+        AESGMAC (aliased also as: AES-GMAC)
+        HmacMD5
+        HmacSHA1
+            OID: 1.2.840.113549.2.7
+        HmacSHA224
+            OID: 1.2.840.113549.2.8
+        HmacSHA256
+            OID: 1.2.840.113549.2.9
+        HmacSHA384
+            OID: 1.2.840.113549.2.10
+        HmacSHA512
+            OID: 1.2.840.113549.2.11
+        HmacSHA3-224
+        HmacSHA3-256
+        HmacSHA3-384
+        HmacSHA3-512
+
+    Signature Class
+        MD5withRSA
+        SHA1withRSA
+        SHA224withRSA
+        SHA256withRSA
+        SHA384withRSA
+        SHA512withRSA
+        SHA3-224withRSA
+        SHA3-256withRSA
+        SHA3-384withRSA
+        SHA3-512withRSA
+        RSASSA-PSS
+        SHA224withRSA/PSS
+        SHA256withRSA/PSS
+        SHA384withRSA/PSS
+        SHA512withRSA/PSS
+        SHA1withECDSA
+        SHA224withECDSA
+        SHA256withECDSA
+        SHA384withECDSA
+        SHA512withECDSA
+        SHA3-224withECDSA
+        SHA3-256withECDSA
+        SHA3-384withECDSA
+        SHA3-512withECDSA
+        SHA256withECDSAinP1363Format
+        SHA384withECDSAinP1363Format
+        SHA512withECDSAinP1363Format
+        SHA3-256withECDSAinP1363Format
+        SHA3-384withECDSAinP1363Format
+        SHA3-512withECDSAinP1363Format
+
+    KeyAgreement Class
+        DiffieHellman
+        DH
+        ECDH
+
+    KeyGenerator
+        AES
+        HmacSHA1
+        HmacSHA224
+        HmacSHA256
+        HmacSHA384
+        HmacSHA512
+        HmacSHA3-224
+        HmacSHA3-256
+        HmacSHA3-384
+        HmacSHA3-512
+
+    KeyPairGenerator Class
+        RSA
+        RSASSA-PSS
+        EC
+        DH
+
+    KeyFactory
+        RSA
+        EC
+        DH (aliases: DiffieHellman, 1.2.840.113549.1.3.1)
+
+    CertPathValidator Class
+        PKIX (with PKIXRevocationChecker via getRevocationChecker())
+
+    CertPathBuilder Class
+        PKIX
+
+    SecretKeyFactory
+        PBKDF2WithHmacSHA1
+        PBKDF2WithHmacSHA224
+        PBKDF2WithHmacSHA256
+        PBKDF2WithHmacSHA384
+        PBKDF2WithHmacSHA512
+        PBKDF2WithHmacSHA3-224
+        PBKDF2WithHmacSHA3-256
+        PBKDF2WithHmacSHA3-384
+        PBKDF2WithHmacSHA3-512
+
+    KeyStore
+        WKS
+
+    AlgorithmParameters
+        AES
+        DH
+        GCM
+        RSASSA-PSS
+
+    AlgorithmParameterGenerator
+        DH
+
+### SecureRandom.getInstanceStrong()
+
+When registered as the highest priority security provider, wolfJCE will provide
+`SecureRandom` with the underlying `HashDRBG` algorithm.
+
+Java applications can alternatively call the `SecureRandom.getInstanceStrong()`
+API to get a "known strong SecureRandom implementation". To provide this
+with wolfJCE, the `java.security` file needs to be modified by setting the
+`securerandom.strongAlgorithms` property to:
+
+```
+securerandom.strongAlgorithms=HashDRBG:wolfJCE
+```
+
+Note that the `securerandom.source` property in `java.security` has no affect
+on the wolfJCE provider.
+
+### WolfSSLKeyStore (WKS) Implementation Details and Usage
+
+wolfJCE implements one custom KeyStore class named WolfSSLKeyStore, represented
+as "WKS". If wolfJCE has been installed as a Security provider, this KeyStore
+can be used with:
+
+```
+KeyStore store = KeyStore.getInstance("WKS");
+```
+
+#### Algorithm Use and FIPS 140-2 / 140-3 Compatibility
+
+The WKS KeyStore has been designed to be compatible with wolfCrypt
+FIPS 140-2 and 140-3.
+
+PrivateKey and SecretKey objects stored are protected inside the KeyStore
+using AES-CBC-256 with HMAC-SHA512 in an Encrypt-then-MAC manner. PKCS#5
+PBKDF2-HMAC-SHA512 is used to generate 96 bytes of key material which is split
+between a 32-byte AES-CBC-256 key and 64-byte HMAC-SHA512 key.
+
+PBKDF2 salt is 16 bytes, randomly generated for each key storage operation
+PBKDF2 iteration count defaults to 210,000 (current OWASP recommendation), but
+is user overridable with wolfjce.wks.iterationCount Security property in
+java.security file. User password is converted from char[] to byte[] using
+UTF-8, consistent with how SunJCE uses UTF-8 for PBKDF2 SecretKeyFactory.
+AES-CBC IV is randomly generated for each key storage operation
+
+This KeyStore uses a different format that is not directly compatible with
+existing formats (ex: JKS, PKCS12, etc). Other KeyStore types will need to be
+converted over to WKS KeyStore objects for FIPS compliant use with wolfCrypt
+FIPS 140-2/3.
+
+#### Stored Object Compatibility
+
+The WKS KeyStore supports storage of PrivateKey, Certificate, and
+SecretKey objects.
+
+#### Converting Other KeyStore Formats to WKS
+
+The Java `keytool` application can be used to convert between KeyStore formats.
+This can be easily used to convert a JKS KeyStore into a WKS format KeyStore.
+
+The following example command would convert a KeyStore in JKS format named
+`server.jks` to a KeyStore in WKS format named `server.wks`:
+
+```
+keytool -importkeystore -srckeystore server.jks -destkeystore server.wks \
+    -srcstoretype JKS -deststoretype WKS \
+    -srcstorepass "pass" -deststorepass "pass" \
+    -provider com.wolfssl.provider.jce.WolfCryptProvider \
+    --providerpath /path/to/wolfcrypt-jni.jar
+```
+
+Additionally, wolfJCE provides a utility method `WolfCryptUtil.convertKeyStoreToWKS()` 
+that can be used programmatically to convert KeyStore formats. This method
+supports converting from JKS, PKCS12, and WKS formats to WKS format. When
+converting from WKS to WKS, the method efficiently returns the same input
+stream without performing any conversion.
+
+The method automatically detects the input KeyStore format and handles the
+conversion appropriately. It supports the following features:
+
+- Automatic format detection (WKS, JKS, PKCS12)
+- Preservation of all certificates and keys from the source KeyStore
+- Support for both key entries (with certificate chains) and certificate-only entries
+- Efficient handling of WKS input (returns same stream)
+- Proper stream handling with mark/reset support for large KeyStores
+
+**FIPS NOTE:** This utility method will call Sun provider code for JKS
+and PKCS12. This means that if using wolfCrypt FIPS, these calls will make
+calls into non-FIPS compliant cryptography for the conversion. Please take
+this into consideration when being used in a FIPS compliant environment.
+
+Example usage:
+
+```java
+import com.wolfssl.provider.jce.WolfCryptUtil;
+import java.io.InputStream;
+import java.security.KeyStore;
+
+/* Load your source KeyStore (JKS, PKCS12, or WKS) */
+InputStream sourceStream = ...;
+char[] password = "your_password".toCharArray();
+
+/* Convert to WKS format, fail on insert errors */
+InputStream wksStream = WolfCryptUtil.convertKeyStoreToWKS(sourceStream, password, true);
+
+/* Load the converted WKS KeyStore */
+KeyStore wksStore = KeyStore.getInstance("WKS", "wolfJCE");
+wksStore.load(wksStream, password);
+```
+
+The method respects the Security properties `wolfjce.mapJKStoWKS` and 
+`wolfjce.mapPKCS12toWKS` when performing conversions. If these properties are
+set to "true", the method will use reflection to find the Sun provider
+implementations for JKS and PKCS12 to use for conversion.
+
+To list entries inside a WKS keystore using the `keytool`, a command
+similar to the following can be used (with the `-list` option):
+
+```
+keytool -list -provider com.wolfssl.provider.jce.WolfCryptProvider \
+    --providerpath /path/to/wolfcrypt-jni.jar \
+    -storetype WKS -storepass "pass" -keystore server.wks
+```
+
+If running the above commands gives an error about the native wolfcryptjni
+shared library not being found, you may need to add the library location
+to `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (Mac OSX), ie:
+
+```
+export LD_LIBRARY_PATH=/path/to/libwolfcryptjni.so:$LD_LIBRARY_PATH
+```
+
+#### Converting System cacerts to WKS Format KeyStore
+
+For FIPS compatibility, users who do not want to use non-wolfSSL KeyStore
+implementations (ex: JKS) may need to convert the system cacerts or
+jssecacerts KeyStore to WKS format. This can be done using the keytool
+command as described above (default password for cacerts is 'changeit'), or
+the helper script located in this package at:
+
+```
+examples/certs/systemcerts/system-cacerts-to-wks.sh
+```
+
+This is a shell script that takes no arguments. It tries to detect the
+location of the active Java installation and converts `cacerts` and/or
+`jssecacerts` to WKS format if they are found. Converted KeyStores are placed
+under the same directory as the script, specifically:
+
+```
+examples/certs/systemcerts/cacerts.wks
+examples/certs/systemcerts/jssecacerts.wks
+```
+
+#### Design Notes
+
+More complete design documentation can be found in
+[docs/WolfSSLKeyStore.md](./docs/design/WolfSSLKeyStore.md).
+
+### Example / Test Code
+---------
+
+JUnit test code can act as a good usage reference, and is located under the
+`./src/test/java/com/wolfssl/provider/jce/test/` directory for each wolfJCE
+engine class.
+
+There are some JCE examples located under the `examples/provider` directory,
+including:
+
+**ProviderTest**
+
+This is an example that prints out all Security providers that are registered
+in the system. It then programatically registers wolfJCE as the highest-level
+provider and prints out the list again.
+
+This example will be built when using the following ant targets:
+
+```
+$ ant build-jce-debug
+$ ant build-jce-release
+```
+
+The example can then be run using:
+
+```
+$ ./examples/provider/ProviderTest.sh
+```
+
+**CryptoBenchmark**
+
+This example benchmarks the performance of cryptographic operations using the
+wolfJCE provider. It tests AES-CBC with 256-bit key encryption/decryption
+operations.
+
+Build and run:
+
+```
+# From wolfcrypt-jni root directory
+make                      # Build native library
+ant build-jce-release     # Build JCE JAR
+
+# Run benchmark
+./examples/provider/CryptoBenchmark.sh
+```
+
+This script requires for `JAVA_HOME` to be set.
+
+For Bouncy Castle comparison testing:
+
+CryptoBenchmark.sh will prompt with the following:
+
+```
+Would you like to download Bouncy Castle JARs? (y/n)
+```
+
+If you respond with 'y', the script will download the Bouncy Castle JARs and
+run the benchmark with Bouncy Castle. At the end of the benchmark, the script
+will prompt whether or not to remove the Bouncy Castle JAR files.
+
+If you prefer to download the JARs manually, follow the instructions below:
+
+Visit [bouncy-castle-java](https://www.bouncycastle.org/download/bouncy-castle-java/)
+
+Download:
+
+```
+bcprov-jdk18on-1.79.jar # Bouncy Castle Provider
+bctls-jdk18on-1.79.jar  # Bouncy Castle DTLS/TLS API/JSSE Provider
+```
+
+Copy jar files to wolfcrypt-jni/lib/:
+
+```
+cp bcprov-jdk18on-1.79.jar wolfcrypt-jni/lib
+cp bctls-jdk18on-1.79.jar wolfcrypt-jni/lib
+```
+
+### JAR Code Signing
+---------
+
+The Oracle JDK/JVM requires that JCE providers who implement several of the
+classes above be signed by a code signing certificate issued by Oracle.
+
+Full details on obtaining a JCE Code Signing Certifciate can be found here:
+
+http://www.oracle.com/technetwork/java/javase/tech/getcodesigningcertificate-361306.html
+
+For instructions on signing the "wolfcrypt-jni.jar" file generated by the
+ant build system, please see the main README.md included in this package.
+
+### Using a Pre-Signed JAR File
+
+wolfSSL (company) has it's own set of code signing certificates from Oracle
+that allow wolfJCE to be authenticated in the Oracle JDK.  With each release
+of wolfJCE, wolfSSL ships a couple pre-signed versions of the
+'wolfcrypt-jni.jar", located at:
+
+wolfcrypt-jni-X.X.X/lib/signed/debug/wolfcrypt-jni.jar
+wolfcrypt-jni-X.X.X/lib/signed/release/wolfcrypt-jni.jar
+
+This pre-signed JAR can be used with the JUnit tests, without having to
+re-compile the Java source files.  To run the JUnit tests against this
+JAR file:
+
+$ cd wolfcrypt-jni-X.X.X
+$ cp ./lib/signed/release/wolfcrypt-jni.jar ./lib
+$ ant test
+
+### CertPathValidator (PKIX) Implementation Notes
+---------
+
+wolfJCE provides a PKIX CertPathValidator implementation that supports
+certificate path validation with revocation checking via OCSP and CRL.
+
+#### Date Override with PKIXParameters.setDate()
+
+The `PKIXParameters.setDate()` method allows applications to validate
+certificate paths as if the current date were the specified date. This is
+useful for testing or validating certificates at a specific point in time.
+
+wolfJCE supports `PKIXParameters.setDate()` for **certificate validity
+checking**. When a date override is set, certificates will be validated
+against that date rather than the current system time.
+
+**Note:** The date override only applies to certificate validity checking,
+not to OCSP response validation. OCSP responses are always validated against
+the current system time by wolfSSL. This means that preloaded OCSP responses
+(via `PKIXRevocationChecker.setOcspResponses()`) must have current/valid
+thisUpdate and nextUpdate dates. Historical OCSP responses with expired dates
+cannot be used, even with a date override.
+
+#### TrustAnchor Name Constraints
+
+Name constraints specified directly on a TrustAnchor (via the
+`TrustAnchor(X509Certificate, byte[])` constructor) are not supported.
+wolfJCE throws `InvalidAlgorithmParameterException` if any TrustAnchor in
+PKIXParameters has name constraints set. This matches SunJCE behavior.
+
+Applications should use TrustAnchors without explicit name constraints; if
+name constraint enforcement is needed, the constraints should be embedded in
+the trust anchor certificate itself.
+
+### CertPathBuilder (PKIX) Implementation Notes
+---------
+
+wolfJCE provides a PKIX CertPathBuilder implementation that builds and
+validates certificate chains using native wolfSSL's
+`wolfSSL_X509_verify_cert()` function.
+
+#### Native Chain Building with Backtracking
+
+The CertPathBuilder uses native wolfSSL `X509_STORE` APIs for certificate chain
+building. This provides automatic backtracking when a candidate issuer fails
+verification. wolfSSL will try alternative issuers until a valid path is found
+or all possibilities are exhausted.
+
+#### Usage Example
+
+```java
+/* Load certificates */
+X509Certificate targetCert = ...;
+X509Certificate intermediateCert = ...;
+X509Certificate rootCACert = ...;
+
+/* Set up trust anchors */
+Set<TrustAnchor> anchors = new HashSet<>();
+anchors.add(new TrustAnchor(rootCACert, null));
+
+/* Set up CertStore with available certificates */
+Collection<Certificate> certs = new ArrayList<>();
+certs.add(targetCert);
+certs.add(intermediateCert);
+CertStore certStore = CertStore.getInstance("Collection",
+    new CollectionCertStoreParameters(certs));
+
+/* Configure parameters */
+X509CertSelector selector = new X509CertSelector();
+selector.setCertificate(targetCert);
+PKIXBuilderParameters params = new PKIXBuilderParameters(anchors, selector);
+params.setRevocationEnabled(false);
+params.addCertStore(certStore);
+
+/* Build certificate path */
+CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", "wolfJCE");
+PKIXCertPathBuilderResult result = (PKIXCertPathBuilderResult) cpb.build(params);
+
+CertPath certPath = result.getCertPath();
+TrustAnchor trustAnchor = result.getTrustAnchor();
+```
+
+#### Supported Features
+
+- RSA and ECC certificate chains
+- Multiple intermediate certificates
+- Multiple trust anchors (correct one selected automatically)
+- Multiple CertStores
+- `maxPathLength` constraint enforcement
+- Target certificate selection by certificate or subject name
+- Target certificate as trust anchor (returns empty path)
+
+#### Date Override with PKIXBuilderParameters.setDate()
+
+The `PKIXBuilderParameters.setDate()` method allows applications to validate
+certificate paths as if the current date were the specified date. This is
+useful for testing with expired certificates or validating certificates at a
+specific point in time.
+
+wolfJCE supports `PKIXBuilderParameters.setDate()` for certificate validity
+checking during chain verification. When a date override is set:
+
+1. Date validation is skipped when adding certificates to the internal store
+2. The custom date is used during chain verification via wolfSSL's
+   `wolfSSL_X509_verify_cert()` function
+
+This allows testing with expired certificates by specifying a date when the
+certificates were valid.
+
+**Note:** See "CertPathBuilder Certificate Date Validation Timing" in the
+"Behavior Discrepancies with SunJCE" section for details on how this differs
+from SunJCE behavior.
+
+#### Limitations
+
+- **TrustAnchor Name Constraints**: Name constraints on TrustAnchors are not
+  supported. An `InvalidAlgorithmParameterException` is thrown if any
+  TrustAnchor has name constraints set.
+- **Policy Processing**: Certificate policy processing is not supported.
+  `PKIXCertPathBuilderResult.getPolicyTree()` returns null.
+- **Revocation Checking**: Revocation checking during path building is not
+  currently integrated. Use `CertPathValidator` with `PKIXRevocationChecker`
+  for revocation checking after path building.
+
+### Behavior Discrepancies with SunJCE
+---------
+
+#### Cipher PKCS5Padding `doFinal()` Output Buffer Size Requirement
+
+When using the Cipher class with PKCS5Padding mode, the output buffer size
+required for some calls to `doFinal()` may be larger than SunJCE.
+
+SunJCE has the ability to save the internal AES/3DES algorithm state, do the
+decrypt operation to see how much padding was applied, then restore the state
+to where it was before the decrypt happened in order to throw a
+ShortBufferException back to the user for a precise output buffer size
+restriction requirement.
+
+Native wolfSSL does not have the ability to save and restore the internal
+AES/3DES state, so wolfJCE has to be more conservative in the output buffer
+size it requires for `doFinal()` calls. wolfJCE will require the output buffer
+size to be equal to the incoming ciphertext size (plus any buffered data held
+internally), which essentially includes the plaintext that will be decrypted
+plus the padding bytes.
+
+This descrepancy should not be an issue, since `doFinal()` returns the
+actual number of bytes written to the output buffer, so applications can use
+that to know the true output size in the output buffer returned.
+
+#### PKIXRevocationChecker `PREFER_CRLS` Check Order
+
+When using `PKIXRevocationChecker` with the `PREFER_CRLS` option and fallback
+enabled (i.e., `NO_FALLBACK` is not set), the SunJCE implementation checks
+CRL first, then falls back to OCSP if CRL checking fails.
+
+wolfJCE cannot replicate this exact order due to how native wolfSSL handles
+CRL checking. The wolfSSL CertManager does not expose a separate API to
+explicitly check CRLs - instead, CRL checking happens automatically during
+certificate chain verification (`wolfSSL_CertManagerVerifyBuffer()`). This
+verification occurs after the `PKIXRevocationChecker.check()` method returns.
+
+As a result, when `PREFER_CRLS` is set with fallback enabled:
+- **SunJCE**: CRL first, then OCSP fallback
+- **wolfJCE**: OCSP runs in `check()`, CRL runs during cert verification
+
+Both revocation methods are still checked when fallback is enabled, but the
+order differs. In practice, if either method determines the certificate is
+revoked, validation will fail. The difference only affects behavior when one
+method succeeds and the other would have failed (e.g., OCSP unreachable but
+CRL available).
+
+#### Indirect CRL Not Supported
+
+Native wolfSSL does not support indirect CRLs. An indirect CRL is a CRL signed
+by a different entity than the certificate issuer, identified by the Issuing
+Distribution Point (IDP) extension with the `indirectCRL` flag set to TRUE.
+
+wolfSSL matches CRLs to certificates by comparing the CRL issuer hash with the
+certificate's issuer hash. For indirect CRLs, these hashes are different (the
+certificate was issued by one CA, but the CRL is signed by a separate CRL
+issuer entity), so wolfSSL will not find a matching CRL for the certificate.
+
+As a result, certificates that should be detected as revoked via an indirect
+CRL will pass validation in wolfJCE. The certificate chain verification
+succeeds because no matching CRL is found (from wolfSSL's perspective, there
+is simply no CRL available for that certificate).
+
+If this behavior is needed, please submit a feature request to
+support@wolfssl.com.
+
+#### Name Constraints with RegisteredID Not Supported
+
+Native wolfSSL validates Name Constraints for email (rfc822Name), DNS, and
+directory name types, but does not enforce name constraints for registeredID
+(RID) types. If a CA certificate contains a Name Constraint that excludes or
+permits specific registeredID values, certificates with subjectAltName entries
+of type registeredID will not be validated against these constraints.
+
+As a result, certificates that should be rejected due to a registeredID name
+constraint violation will pass validation in wolfJCE.
+
+If this behavior is needed, please submit a feature request to
+support@wolfssl.com.
+
+#### CertPathBuilder Certificate Date Validation Timing
+
+When building certificate paths, SunJCE and wolfJCE differ in **when**
+certificate date validation occurs:
+
+**SunJCE behavior:**
+- Trust anchors are loaded without date validation
+- Date validation occurs only during path verification
+- The date from `PKIXBuilderParameters.getDate()` (or current time if not set)
+  is used for all date checks
+
+**wolfJCE behavior:**
+- Native wolfSSL validates certificate dates when certificates are added to
+  the internal `X509_STORE` via `wolfSSL_X509_STORE_add_cert()`
+- This validation uses the current system time, not a custom date
+- If no custom date is specified via `PKIXBuilderParameters.setDate()`,
+  certificates are validated against the current system time at both add time
+  and verification time
+- If a custom date is specified, wolfJCE skips date validation at add time
+  and performs date validation during chain verification using the custom date
+
+**Practical impact:**
+- Without a date override: Expired certificates will be rejected when added
+  to the store (stricter than SunJCE)
+- With a date override: Behavior matches SunJCE - expired certificates can be
+  added and will be validated against the custom date during verification
+
+This difference exists because wolfSSL's `wolfSSL_X509_STORE_add_cert()`
+function validates certificate dates at addition time and does not support
+passing a custom validation date. The wolfJCE implementation works around
+this by skipping add-time validation when a custom date is specified.
+
+### Support
+---------
+
+Please email support@wolfssl.com with any questions or feedback.
+
+The wolfJCE User Manual (PDF), available from the wolfSSL website contains
+additional details on using the wolfCrypt JCE provider.
+

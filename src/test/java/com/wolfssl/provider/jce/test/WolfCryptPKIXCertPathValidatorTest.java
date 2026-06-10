@@ -1,0 +1,2106 @@
+/* wolfCryptPKIXCertPathValidatorTest.java
+ *
+ * Copyright (C) 2006-2026 wolfSSL Inc.
+ *
+ * This file is part of wolfSSL.
+ *
+ * wolfSSL is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * wolfSSL is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
+ */
+
+package com.wolfssl.provider.jce.test;
+
+import static org.junit.Assert.*;
+import org.junit.Assume;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
+import org.junit.Test;
+import org.junit.BeforeClass;
+
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.InputStream;
+import java.io.IOException;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.security.Security;
+import java.security.Provider;
+import java.security.KeyStore;
+import java.security.PublicKey;
+import java.security.KeyStoreException;
+import java.security.NoSuchProviderException;
+import java.security.NoSuchAlgorithmException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
+import java.security.cert.CertificateFactory;
+import java.security.cert.CertPath;
+import java.security.cert.CertPathValidator;
+import java.security.cert.CertPathValidatorResult;
+import java.security.cert.PKIXParameters;
+import java.security.cert.PKIXCertPathValidatorResult;
+import java.security.cert.CertificateException;
+import java.security.cert.CertPathValidatorException;
+import java.security.cert.CertPathValidatorException.BasicReason;
+import java.security.cert.TrustAnchor;
+import java.security.cert.X509CertSelector;
+import java.security.cert.CRL;
+import java.security.cert.CertStore;
+import java.security.cert.CollectionCertStoreParameters;
+import java.lang.IllegalArgumentException;
+import java.util.Date;
+import java.util.Calendar;
+
+import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.provider.jce.WolfCryptProvider;
+import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
+
+public class WolfCryptPKIXCertPathValidatorTest {
+
+    protected String provider = "wolfJCE";
+
+    /* Example KeyStore file paths */
+    protected static String jksCaServerRSA2048 = null;
+    protected static String jksCaServerECC256 = null;
+
+    /* Example KeyStore type */
+    protected static String keyStoreType = "JKS";
+
+    /* Example KeyStore password */
+    protected static String keyStorePass = "wolfsslpassword";
+
+    /* Example Certificate file paths */
+    protected static String serverCertDer    = null; /* server-cert.der */
+    protected static String serverEccDer     = null; /* server-ecc.der */
+    protected static String clientCertDer    = null; /* client-cert.der */
+    protected static String clientEccCertDer = null; /* client-ecc-cert.der */
+    protected static String caCertDer        = null; /* ca-cert.der */
+    protected static String caEccCertDer     = null; /* ca-ecc-cert.der */
+    protected static String crlDer           = null; /* crl.der */
+
+    /* RSA-based cert chain with intermediates:
+     * server/peer: server-int-cert.pem/der
+     * intermediate CA 2: ca-int2-cert.pem/der
+     * intermediate CA 1: ca-int-cert.pem/der
+     * root CA: ca-cert.pem */
+    protected static String intRsaServerCertDer = null;
+    protected static String intRsaInt2CertDer   = null;
+    protected static String intRsaInt1CertDer   = null;
+
+    /* ECC-based cert chain with intermediates:
+     * server/peer: server-int-ecc-cert.pem/der
+     * intermediate CA 2: ca-in2-ecc-cert.pem/der
+     * intermediate CA 1: ca-int-ecc-cert.pem/der
+     * root CA: ca-ecc-cert.pem */
+    protected static String intEccServerCertDer = null;
+    protected static String intEccInt2CertDer   = null;
+    protected static String intEccInt1CertDer   = null;
+
+    /**
+     * Test if this environment is Android.
+     * @return true if Android, otherwise false
+     */
+    private static boolean isAndroid() {
+        if (System.getProperty("java.runtime.name").contains("Android")) {
+            return true;
+        }
+        return false;
+    }
+
+    @Rule(order = Integer.MIN_VALUE)
+    public TestRule testWatcher = TimedTestWatcher.create();
+
+    /* Rule to check if cert files are available, skips tests if not. */
+    @Rule(order = Integer.MIN_VALUE + 1)
+    public TestRule certFilesAvailable = new TestRule() {
+        @Override
+        public Statement apply(final Statement base,
+                               Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    File f = new File(jksCaServerRSA2048);
+                    Assume.assumeTrue("Test cert files not available: " +
+                        jksCaServerRSA2048, f.exists());
+                    base.evaluate();
+                }
+            };
+        }
+    };
+
+    @BeforeClass
+    public static void testSetupAndProviderInstallation()
+        throws Exception, NoSuchProviderException {
+
+        String certPre = "";
+        String jksExt = ".jks";
+
+        System.out.println("JCE WolfCryptPKIXCertPathValidator Class");
+
+        /* Install wolfJCE provider at runtime */
+        Security.insertProviderAt(new WolfCryptProvider(), 1);
+
+        Provider p = Security.getProvider("wolfJCE");
+        assertNotNull(p);
+
+        if (isAndroid()) {
+            /* On Android, example certs/keys/KeyStores are on SD card */
+            certPre = "/data/local/tmp/";
+
+            /* On Android, KeyStore files are .bks and type is BKS */
+            jksExt = ".bks";
+            keyStoreType = "BKS";
+        }
+
+        /* Set paths to example certs/keys/KeyStores */
+        jksCaServerRSA2048 =
+            certPre.concat("examples/certs/ca-server-rsa-2048").concat(jksExt);
+        jksCaServerECC256  =
+            certPre.concat("examples/certs/ca-server-ecc-256").concat(jksExt);
+
+        serverCertDer =
+            certPre.concat("examples/certs/server-cert.der");
+        serverEccDer =
+            certPre.concat("examples/certs/server-ecc.der");
+        caCertDer =
+            certPre.concat("examples/certs/ca-cert.der");
+
+        clientCertDer =
+            certPre.concat("examples/certs/client-cert.der");
+        clientEccCertDer =
+            certPre.concat("examples/certs/client-ecc-cert.der");
+        caEccCertDer =
+            certPre.concat("examples/certs/ca-ecc-cert.der");
+
+        intRsaServerCertDer =
+            certPre.concat("examples/certs/intermediate/server-int-cert.pem");
+        intRsaInt1CertDer =
+            certPre.concat("examples/certs/intermediate/ca-int-cert.pem");
+        intRsaInt2CertDer =
+            certPre.concat("examples/certs/intermediate/ca-int2-cert.pem");
+
+        intEccServerCertDer =
+            certPre.concat("examples/certs/intermediate/server-int-ecc-cert.der");
+        intEccInt1CertDer =
+            certPre.concat("examples/certs/intermediate/ca-int-ecc-cert.der");
+        intEccInt2CertDer =
+            certPre.concat("examples/certs/intermediate/ca-int2-ecc-cert.der");
+
+        crlDer =
+            certPre.concat("examples/certs/crl/crl.der");
+    }
+
+    /**
+     * Create KeyStore object from KeyStore file (.jks/.bks).
+     * @param KeyStore file to load into new object
+     */
+    private KeyStore createKeyStoreFromFile(String file, String jksPass)
+        throws IllegalArgumentException, FileNotFoundException,
+               KeyStoreException, IOException, NoSuchAlgorithmException,
+               CertificateException {
+
+        KeyStore store = null;
+        InputStream stream = null;
+
+        if (file == null) {
+            throw new IllegalArgumentException(
+                "Input file is null when creating KeyStore");
+        }
+
+        stream = new FileInputStream(file);
+        store = KeyStore.getInstance(keyStoreType);
+        store.load(stream, jksPass.toCharArray());
+        stream.close();
+
+        return store;
+    }
+
+    private void checkPKIXCertPathValidatorResult(
+        CertPathValidatorResult result, X509Certificate expectedAnchor,
+        PublicKey expectedPublicKey) {
+
+        PKIXCertPathValidatorResult pResult = null;
+        TrustAnchor anchor = null;
+        PublicKey pubKey = null;
+
+        /* Check not null and of type PKIXCertPathValidatorResult */
+        assertNotNull(result);
+        assertTrue(result instanceof PKIXCertPathValidatorResult);
+        pResult = (PKIXCertPathValidatorResult)result;
+
+        /* Check TrustAnchor matches expected */
+        anchor = pResult.getTrustAnchor();
+        assertNotNull(anchor);
+        assertNotNull(anchor.getTrustedCert());
+        assertEquals(anchor.getTrustedCert(), expectedAnchor);
+
+        /* Check PolicyTree matches expected - TODO */
+        /* PolicyNode policyTree = null;
+         * policyTree = pResult.getPolicyTree();
+         * assertNotNull(policyTree); */
+
+        /* Check PublicKey returned matches expected leaf cert */
+        pubKey = pResult.getPublicKey();
+        assertNotNull(pubKey);
+        assertEquals(pubKey, expectedPublicKey);
+    }
+
+    @Test
+    public void testSingleCertValidateRSA()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException, Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate serverCert = null;
+        List<Certificate> certList = new ArrayList<>();
+        X509Certificate caCert = null;
+        PublicKey certPubKey = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Create X509Certificate from CA cert for TrustAnchor result compare */
+        fis = new FileInputStream(caCertDer);
+        caCert = (X509Certificate)certFactory.generateCertificate(fis);
+        fis.close();
+
+        /* Import server-cert.der into Certificate object */
+        fis = new FileInputStream(serverCertDer);
+        serverCert = certFactory.generateCertificate(fis);
+        certPubKey = serverCert.getPublicKey(); /* for comparison later */
+        certList.add(serverCert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Disable revocation, fails with SUN. Missing CRL in cert? */
+        params.setRevocationEnabled(false);
+
+        /* Validate cert chain, throws CertPathValidatorException on error */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+        CertPathValidatorResult result = cpv.validate(path, params);
+
+        checkPKIXCertPathValidatorResult(result, caCert, certPubKey);
+    }
+
+    /**
+     * Test that setting the target cert constraints with
+     * PKIXParameters.setTargetCertConstraints() passes with correct cert
+     * and fails with wrong cert.
+     */
+    @Test
+    public void testSingleCertValidateRSAWithCertConstraints()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException, Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate serverCert = null;
+        List<Certificate> certList = new ArrayList<>();
+        X509Certificate caCert = null;
+        PublicKey certPubKey = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Create X509Certificate from CA cert for TrustAnchor result compare */
+        fis = new FileInputStream(caCertDer);
+        caCert = (X509Certificate)certFactory.generateCertificate(fis);
+        fis.close();
+
+        /* Import server-cert.der into Certificate object */
+        fis = new FileInputStream(serverCertDer);
+        serverCert = certFactory.generateCertificate(fis);
+        certPubKey = serverCert.getPublicKey(); /* for comparison later */
+        certList.add(serverCert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Disable revocation, fails with SUN. Missing CRL in cert? */
+        params.setRevocationEnabled(false);
+
+        /* Add some cert constraints, should pass */
+        X509CertSelector selector = new X509CertSelector();
+        selector.setCertificate((X509Certificate)serverCert);
+        params.setTargetCertConstraints(selector);
+
+        /* Validate cert chain, throws CertPathValidatorException on error */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+        CertPathValidatorResult result = cpv.validate(path, params);
+
+        checkPKIXCertPathValidatorResult(result, caCert, certPubKey);
+
+        /* Invalid cert constraints should cause failure */
+        fis = new FileInputStream(clientCertDer); /* wrong cert */
+        serverCert = certFactory.generateCertificate(fis);
+        fis.close();
+        selector.setCertificate((X509Certificate)serverCert);
+        params.setTargetCertConstraints(selector);
+
+        try {
+            result = cpv.validate(path, params);
+        } catch (CertPathValidatorException e) {
+            /* expected */
+        }
+    }
+
+    /**
+     * Test that enabling revocation checking support works when CRL is loaded
+     * and fails when CRL is not.
+     */
+    @Test
+    public void testSingleCertValidateRSAWithCRL()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException, Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate serverCert = null;
+        List<Certificate> certList = new ArrayList<>();
+        X509Certificate caCert = null;
+        PublicKey certPubKey = null;
+
+        /* For CRL use */
+        CRL crl = null;
+        CertStore crlStore = null;
+        Collection<CRL> crls = null;
+        List<CertStore> certStores = null;
+
+        if (!WolfCrypt.CrlEnabled()) {
+            /* Native CRL not enabled, skip CRL test */
+            System.out.println("CertPathValidator CRL test skipped, " +
+                "CRL not compiled in");
+            return;
+        }
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Create X509Certificate from CA cert for TrustAnchor result compare */
+        fis = new FileInputStream(caCertDer);
+        caCert = (X509Certificate)certFactory.generateCertificate(fis);
+        fis.close();
+
+        /* Import server-cert.der into Certificate object */
+        fis = new FileInputStream(serverCertDer);
+        serverCert = certFactory.generateCertificate(fis);
+        certPubKey = serverCert.getPublicKey(); /* for comparison later */
+        certList.add(serverCert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Load CRL into PKIXParameters for use in verification
+         * crl.der matches ca-cert.der, which is the root for server-cert.der */
+        certStores = new ArrayList<>();
+        crls = new HashSet<>();
+        fis = new FileInputStream(crlDer);
+        crl = certFactory.generateCRL(fis);
+        fis.close();
+        crls.add(crl);
+        crlStore = CertStore.getInstance("Collection",
+            new CollectionCertStoreParameters(crls));
+        certStores.add(crlStore);
+        params.setCertStores(certStores);
+        params.setRevocationEnabled(true);
+
+        /* Add some cert constraints, should pass */
+        X509CertSelector selector = new X509CertSelector();
+        selector.setCertificate((X509Certificate)serverCert);
+        params.setTargetCertConstraints(selector);
+
+        /* Validate cert chain, throws CertPathValidatorException on error */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+        CertPathValidatorResult result = cpv.validate(path, params);
+
+        checkPKIXCertPathValidatorResult(result, caCert, certPubKey);
+
+        /* Verification with revocation enabled, but no CRL loaded
+         * should fail */
+
+        params.setCertStores(null);
+        params.setRevocationEnabled(true);
+        try {
+            result = cpv.validate(path, params);
+        } catch (CertPathValidatorException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testSingleCertValidateRSAFailure()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException, Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate clientCert = null;
+        List<Certificate> certList = new ArrayList<>();
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Import client-cert.der into Certificate object */
+        certFactory = CertificateFactory.getInstance("X.509");
+        fis = new FileInputStream(clientCertDer);
+        clientCert = certFactory.generateCertificate(fis);
+        certList.add(clientCert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Disable revocation, fails with SUN. Missing CRL in cert? */
+        params.setRevocationEnabled(false);
+
+        /* Validate cert chain, throws CertPathValidatorException on error */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+        try {
+            cpv.validate(path, params);
+
+            fail("CertPathValidator.validate() should fail when mismatched " +
+                 "cert and TrustAnchors");
+        } catch (CertPathValidatorException e) {
+            /* expected */
+        }
+    }
+
+    /**
+     * Test validate succeeds on a certificate chain with two intermediate
+     * CAs in between peer and root.
+     *
+     * Chain (RSA-based):
+     *     Root CA (ca-cert.der)
+     *         Intermediate CA 1 (ca-int-cert.der)
+     *             Intermediate CA 1 (ca-int2-cert.der)
+     *                 Peer (server-cert.der)
+     */
+    @Test
+    public void testCertChainValidateRSA()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException, Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = new ArrayList<>();
+        X509Certificate caCert = null;
+        PublicKey certPubKey = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain, going from peer to last intermediate */
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Create X509Certificate from CA cert for TrustAnchor result compare */
+        fis = new FileInputStream(caCertDer);
+        caCert = (X509Certificate)certFactory.generateCertificate(fis);
+        fis.close();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(intRsaServerCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certPubKey = cert.getPublicKey(); /* for expected comparison later */
+        certList.add(cert);
+        fis.close();
+
+        /* Intermediate CA 2 */
+        fis = new FileInputStream(intRsaInt2CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Intermediate CA 1 */
+        fis = new FileInputStream(intRsaInt1CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Disable revocation, fails with SUN. Missing CRL in cert? */
+        params.setRevocationEnabled(false);
+
+        /* Validate cert chain, throws CertPathValidatorException on error */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+        CertPathValidatorResult result = cpv.validate(path, params);
+
+        checkPKIXCertPathValidatorResult(result, caCert, certPubKey);
+    }
+
+    /**
+     * Test validate fails on an out-of-order certificate chain with two
+     * intermediate CAs in between peer and root.
+     *
+     * Correct Chain (RSA-based):
+     *     Root CA (ca-cert.der)
+     *         Intermediate CA 1 (ca-int-cert.der)
+     *             Intermediate CA 2 (ca-int2-cert.der)
+     *                 Peer (server-cert.der)
+     *
+     * Out of Order Chain (RSA-based) - incorrect:
+     *     Root CA (ca-cert.der)
+     *         Intermediate CA 2 (ca-int2-cert.der)
+     *             Intermediate CA 1 (ca-int-cert.der)
+     *                 Peer (server-cert.der)
+     */
+    @Test
+    public void testCertChainValidateRSAFailureOutOfOrder()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException, Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = new ArrayList<>();
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain, going from peer to last intermediate */
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Server/peer cert */
+        fis = new FileInputStream(intRsaServerCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Intermediate CA 1 (out of order, should be last) */
+        fis = new FileInputStream(intRsaInt1CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Intermediate CA 2 (out of order, should be middle) */
+        fis = new FileInputStream(intRsaInt2CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Disable revocation, fails with SUN. Missing CRL in cert? */
+        params.setRevocationEnabled(false);
+
+        /* Validate cert chain, throws CertPathValidatorException on error */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("Expected out of order cert chain to fail");
+
+        } catch (CertPathValidatorException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testSingleCertValidateECC()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException, Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate serverCert = null;
+        List<Certificate> certList = new ArrayList<>();
+        X509Certificate caCert = null;
+        PublicKey certPubKey = null;
+
+        /* Use example KeyStore that verifies server-ecc.der */
+        store = createKeyStoreFromFile(jksCaServerECC256, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Create X509Certificate from CA cert for TrustAnchor result compare */
+        fis = new FileInputStream(caEccCertDer);
+        caCert = (X509Certificate)certFactory.generateCertificate(fis);
+        fis.close();
+
+        /* Import server-ecc.der into Certificate object */
+        fis = new FileInputStream(serverEccDer);
+        serverCert = certFactory.generateCertificate(fis);
+        certPubKey = serverCert.getPublicKey(); /* for comparison later */
+        certList.add(serverCert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Disable revocation, fails with SUN. Missing CRL in cert? */
+        params.setRevocationEnabled(false);
+
+        /* Validate cert chain, throws CertPathValidatorException on error */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+        CertPathValidatorResult result = cpv.validate(path, params);
+
+        checkPKIXCertPathValidatorResult(result, caCert, certPubKey);
+    }
+
+    @Test
+    public void testSingleCertValidateECCFailure()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException, Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate clientCert = null;
+        List<Certificate> certList = new ArrayList<>();
+
+        /* Use example KeyStore that verifies server-ecc.der */
+        store = createKeyStoreFromFile(jksCaServerECC256, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Import client-ecc-cert.der into Certificate object */
+        certFactory = CertificateFactory.getInstance("X.509");
+        fis = new FileInputStream(clientEccCertDer);
+        clientCert = certFactory.generateCertificate(fis);
+        certList.add(clientCert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Disable revocation, fails with SUN. Missing CRL in cert? */
+        params.setRevocationEnabled(false);
+
+        /* Validate cert chain, throws CertPathValidatorException on error */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("CertPathValidator.validate() should fail when mismatched " +
+                 "cert and TrustAnchors");
+        } catch (CertPathValidatorException e) {
+            /* expected */
+        }
+    }
+
+    /**
+     * Test validate succeeds on a certificate chain with two intermediate
+     * CAs in between peer and root.
+     *
+     * Chain (ECC-based):
+     *     Root CA (ca-ecc-cert.der)
+     *         Intermediate CA 1 (ca-int-ecc-cert.der)
+     *             Intermediate CA 1 (ca-int2-ecc-cert.der)
+     *                 Peer (server-ecc.der)
+     */
+    @Test
+    public void testCertChainValidateECC()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException, Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = new ArrayList<>();
+        X509Certificate caCert = null;
+        PublicKey certPubKey = null;
+
+        /* Use example KeyStore that verifies server-ecc.der */
+        store = createKeyStoreFromFile(jksCaServerECC256, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain, going from peer to last intermediate */
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Create X509Certificate from CA cert for TrustAnchor result compare */
+        fis = new FileInputStream(caEccCertDer);
+        caCert = (X509Certificate)certFactory.generateCertificate(fis);
+        fis.close();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(intEccServerCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certPubKey = cert.getPublicKey(); /* for comparison later */
+        certList.add(cert);
+        fis.close();
+
+        /* Intermediate CA 2 */
+        fis = new FileInputStream(intEccInt2CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Intermediate CA 1 */
+        fis = new FileInputStream(intEccInt1CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Disable revocation, fails with SUN. Missing CRL in cert? */
+        params.setRevocationEnabled(false);
+
+        /* Validate cert chain, throws CertPathValidatorException on error */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+        CertPathValidatorResult result = cpv.validate(path, params);
+
+        checkPKIXCertPathValidatorResult(result, caCert, certPubKey);
+    }
+
+    /**
+     * Test validate succeeds on a certificate chain with two intermediate
+     * CAs in between peer and root.
+     *
+     * Correct Chain (ECC-based):
+     *     Root CA (ca-ecc-cert.der)
+     *         Intermediate CA 1 (ca-int-ecc-cert.der)
+     *             Intermediate CA 2 (ca-int2-ecc-cert.der)
+     *                 Peer (server-ecc.der)
+     * Out of Order Chain (ECC-based) - invalid:
+     *     Root CA (ca-ecc-cert.der)
+     *         Intermediate CA 2 (ca-int2-ecc-cert.der)
+     *             Intermediate CA 1 (ca-int-ecc-cert.der)
+     *                 Peer (server-ecc.der)
+     */
+    @Test
+    public void testCertChainValidateECCFailureOutOfOrder()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException, Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = new ArrayList<>();
+
+
+        /* Use example KeyStore that verifies server-ecc.der */
+        store = createKeyStoreFromFile(jksCaServerECC256, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain, going from peer to last intermediate */
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Server/peer cert */
+        fis = new FileInputStream(intEccServerCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Intermediate CA 1 (out of order, should be last) */
+        fis = new FileInputStream(intEccInt1CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Intermediate CA 2 (out of order, should be middle) */
+        fis = new FileInputStream(intEccInt2CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Disable revocation, fails with SUN. Missing CRL in cert? */
+        params.setRevocationEnabled(false);
+
+        /* Validate cert chain, throws CertPathValidatorException on error */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("Expected out of order cert chain to fail");
+
+        } catch (CertPathValidatorException e) {
+            /* expected */
+        }
+    }
+
+    /**
+     * Test that date override works with valid historical date.
+     * Uses RSA cert chain and sets validation date to a time when the
+     * certificates were valid.
+     */
+    @Test
+    public void testDateOverrideWithValidHistoricalDate() throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(serverCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        X509Certificate x509Cert = (X509Certificate)cert;
+        Date notBefore = x509Cert.getNotBefore();
+        Date notAfter = x509Cert.getNotAfter();
+
+        /* Create date that is within cert validity period */
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(notBefore);
+        cal.add(Calendar.DAY_OF_MONTH, 30);
+        Date validDate = cal.getTime();
+
+        /* Ensure our test date is within validity */
+        if (validDate.before(notBefore) || validDate.after(notAfter)) {
+            throw new Exception(
+                "Test setup error: validDate not within cert validity");
+        }
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Set override date to valid historical date */
+        params.setDate(validDate);
+
+        /* Validate cert chain, should succeed with date override */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        CertPathValidatorResult result = cpv.validate(path, params);
+        assertNotNull("CertPathValidatorResult should not be null", result);
+    }
+
+    /**
+     * Test that date override rejects cert when date is before notBefore.
+     */
+    @Test
+    public void testDateOverrideRejectsDateBeforeNotBefore()
+        throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(serverCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        X509Certificate x509Cert = (X509Certificate)cert;
+        Date notBefore = x509Cert.getNotBefore();
+
+        /* Create date that is before cert notBefore */
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(notBefore);
+        cal.add(Calendar.DAY_OF_MONTH, -30);
+        Date tooEarlyDate = cal.getTime();
+
+        /* Ensure our test date is before notBefore */
+        if (!tooEarlyDate.before(notBefore)) {
+            throw new Exception(
+                "Test setup error: tooEarlyDate not before notBefore");
+        }
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Set override date to date before cert is valid */
+        params.setDate(tooEarlyDate);
+
+        /* Validate cert chain, should fail */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("Expected validation to fail with date before notBefore");
+        } catch (CertPathValidatorException e) {
+            /* Expected - date is before certificate validity */
+        }
+    }
+
+    /**
+     * Test that date override rejects cert when date is after notAfter.
+     */
+    @Test
+    public void testDateOverrideRejectsDateAfterNotAfter()
+        throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(serverCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        X509Certificate x509Cert = (X509Certificate)cert;
+        Date notAfter = x509Cert.getNotAfter();
+
+        /* Create date that is after cert notAfter */
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(notAfter);
+        cal.add(Calendar.DAY_OF_MONTH, 30);
+        Date tooLateDate = cal.getTime();
+
+        /* Ensure our test date is after notAfter */
+        if (!tooLateDate.after(notAfter)) {
+            throw new Exception(
+                "Test setup error: tooLateDate not after notAfter");
+        }
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Set override date to date after cert expired */
+        params.setDate(tooLateDate);
+
+        /* Validate cert chain, should fail */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("Expected validation to fail with date after notAfter");
+        } catch (CertPathValidatorException e) {
+            /* Expected - date is after certificate expiration */
+        }
+    }
+
+    /**
+     * Test date override with ECC certificate chain.
+     */
+    @Test
+    public void testDateOverrideWithECCCerts()
+        throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies server-ecc.der */
+        store = createKeyStoreFromFile(jksCaServerECC256, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(serverEccDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        X509Certificate x509Cert = (X509Certificate)cert;
+        Date notBefore = x509Cert.getNotBefore();
+        Date notAfter = x509Cert.getNotAfter();
+
+        /* Create date that is within cert validity period */
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(notBefore);
+        cal.add(Calendar.DAY_OF_MONTH, 30);
+        Date validDate = cal.getTime();
+
+        /* Ensure our test date is within validity */
+        if (validDate.before(notBefore) || validDate.after(notAfter)) {
+            throw new Exception(
+                "Test setup error: validDate not within cert validity");
+        }
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Set override date to valid historical date */
+        params.setDate(validDate);
+
+        /* Validate cert chain, should succeed with date override */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        CertPathValidatorResult result = cpv.validate(path, params);
+        assertNotNull(
+            "CertPathValidatorResult should not be null with ECC certs",
+            result);
+    }
+
+    /**
+     * Test date override with intermediate certificate chain.
+     * Ensures date override applies to all certs in chain.
+     */
+    @Test
+    public void testDateOverrideWithIntermediateCerts()
+        throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies intermediate chain */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain with intermediates */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(intRsaServerCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Get validity dates from server cert */
+        X509Certificate x509Cert = (X509Certificate)cert;
+        Date notBefore = x509Cert.getNotBefore();
+        Date notAfter = x509Cert.getNotAfter();
+
+        /* Intermediate CA 2 */
+        fis = new FileInputStream(intRsaInt2CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Intermediate CA 1 */
+        fis = new FileInputStream(intRsaInt1CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Create date that is within cert validity period */
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(notBefore);
+        cal.add(Calendar.DAY_OF_MONTH, 30);
+        Date validDate = cal.getTime();
+
+        /* Ensure our test date is within validity */
+        if (validDate.before(notBefore) || validDate.after(notAfter)) {
+            throw new Exception(
+                "Test setup error: validDate not within cert validity");
+        }
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Set override date */
+        params.setDate(validDate);
+
+        /* Validate cert chain with intermediates */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        CertPathValidatorResult result = cpv.validate(path, params);
+        assertNotNull(
+            "CertPathValidatorResult should not be null with " +
+            "intermediate certs", result);
+    }
+
+    /**
+     * Test that validation without date override still works normally.
+     * This ensures our implementation doesn't break existing behavior.
+     */
+    @Test
+    public void testValidationWithoutDateOverride()
+        throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(serverCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Do not set override date - should use current system time */
+
+        /* Validate cert chain */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        CertPathValidatorResult result = cpv.validate(path, params);
+        /* If certs are currently valid, this succeeds */
+        assertNotNull(
+            "CertPathValidatorResult should not be null", result);
+    }
+
+    /**
+     * Test that findTrustAnchor() uses date override when searching for
+     * matching trust anchor.
+     */
+    @Test
+    public void testFindTrustAnchorWithDateOverride() throws Exception {
+
+        CertificateFactory certFactory = null;
+        FileInputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = null;
+        KeyStore store = null;
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain */
+        certFactory = CertificateFactory.getInstance("X.509");
+        certList = new ArrayList<Certificate>();
+
+        /* Server/peer cert */
+        fis = new FileInputStream(serverCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        X509Certificate x509Cert = (X509Certificate)cert;
+        Date notBefore = x509Cert.getNotBefore();
+        Date notAfter = x509Cert.getNotAfter();
+
+        /* Create date that is within cert validity period */
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(notBefore);
+        cal.add(Calendar.DAY_OF_MONTH, 30);
+        Date validDate = cal.getTime();
+
+        /* Ensure our test date is within validity */
+        if (validDate.before(notBefore) || validDate.after(notAfter)) {
+            throw new Exception(
+                "Test setup error: validDate not within cert validity");
+        }
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        /* Set override date - this tests that findTrustAnchor() respects it */
+        params.setDate(validDate);
+
+        /* Validate cert chain */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        CertPathValidatorResult result = cpv.validate(path, params);
+        assertNotNull("CertPathValidatorResult should not be null", result);
+
+        /* Verify we got a non-null trust anchor (regression test) */
+        assertTrue("Result should be PKIXCertPathValidatorResult",
+            result instanceof PKIXCertPathValidatorResult);
+        PKIXCertPathValidatorResult pkixResult =
+            (PKIXCertPathValidatorResult)result;
+        assertNotNull("TrustAnchor must not be null (findTrustAnchor " +
+            "must use date override)", pkixResult.getTrustAnchor());
+    }
+
+    @Test
+    public void testAlgorithmConstraintsRejectsSHA256() throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        X509Certificate clientCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath path = null;
+        CertPathValidator validator = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load wolfSSL CA certificate (uses SHA256withRSA) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Load wolfSSL client certificate (uses SHA256withRSA) */
+            fis = new FileInputStream(clientCertDer);
+            clientCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Set SHA256 as disabled algorithm to test constraint checking */
+            Security.setProperty("jdk.certpath.disabledAlgorithms", "SHA256");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Create CertPath with client cert */
+            List<Certificate> certList = new ArrayList<Certificate>();
+            certList.add(clientCert);
+            path = cf.generateCertPath(certList);
+
+            /* Validate - should fail with ALGORITHM_CONSTRAINED since
+             * SHA256 is disabled */
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            try {
+                validator.validate(path, params);
+                fail("Expected CertPathValidatorException for SHA256 " +
+                     "disabled algorithm");
+            } catch (CertPathValidatorException cpve) {
+                /* Expected exception, verify reason is ALGORITHM_CONSTRAINED */
+                assertEquals("Expected BasicReason.ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testAlgorithmConstraintsRejectsRSA() throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        X509Certificate clientCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath path = null;
+        CertPathValidator validator = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load wolfSSL CA certificate (uses RSA public key) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Load wolfSSL client certificate (uses RSA public key) */
+            fis = new FileInputStream(clientCertDer);
+            clientCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Set RSA as disabled algorithm to test public key constraint */
+            Security.setProperty("jdk.certpath.disabledAlgorithms", "RSA");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Create CertPath with client cert */
+            List<Certificate> certList = new ArrayList<Certificate>();
+            certList.add(clientCert);
+            path = cf.generateCertPath(certList);
+
+            /* Validate - should fail with ALGORITHM_CONSTRAINED since
+             * RSA is disabled */
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            try {
+                validator.validate(path, params);
+                fail("Expected CertPathValidatorException for RSA " +
+                     "disabled algorithm");
+            } catch (CertPathValidatorException cpve) {
+                /* Expected exception, verify reason is ALGORITHM_CONSTRAINED */
+                assertEquals("Expected BasicReason.ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testAlgorithmConstraintsRejectsSmallKeySize()
+        throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        X509Certificate clientCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath path = null;
+        CertPathValidator validator = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load wolfSSL CA certificate (uses 2048-bit RSA key) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Load wolfSSL client certificate (uses 2048-bit RSA key) */
+            fis = new FileInputStream(clientCertDer);
+            clientCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Set minimum RSA key size to 4096 bits, which will reject
+             * our 2048-bit certificate */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 4096");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Create CertPath with client cert */
+            List<Certificate> certList = new ArrayList<Certificate>();
+            certList.add(clientCert);
+            path = cf.generateCertPath(certList);
+
+            /* Validate - should fail with ALGORITHM_CONSTRAINED since
+             * key size is too small */
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            try {
+                validator.validate(path, params);
+                fail("Expected CertPathValidatorException for RSA key " +
+                     "size constraint");
+            } catch (CertPathValidatorException cpve) {
+                /* Expected exception, verify reason is ALGORITHM_CONSTRAINED */
+                assertEquals("Expected BasicReason.ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testAlgorithmConstraintsWithSHAVariant() throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        X509Certificate clientCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath path = null;
+        CertPathValidator validator = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load wolfSSL CA certificate (uses SHA256withRSA) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Load wolfSSL client certificate (uses SHA256withRSA) */
+            fis = new FileInputStream(clientCertDer);
+            clientCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Set SHA-256 (hyphenated variant) as disabled algorithm.
+             * Should still match SHA256withRSA signature algorithm due to
+             * variant handling */
+            Security.setProperty("jdk.certpath.disabledAlgorithms", "SHA-256");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Create CertPath with client cert */
+            List<Certificate> certList = new ArrayList<Certificate>();
+            certList.add(clientCert);
+            path = cf.generateCertPath(certList);
+
+            /* Validate - should fail with ALGORITHM_CONSTRAINED since
+             * SHA-256 variant should match SHA256 in certificate */
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            try {
+                validator.validate(path, params);
+                fail("Expected CertPathValidatorException for SHA-256 " +
+                     "disabled algorithm variant");
+            } catch (CertPathValidatorException cpve) {
+                /* Expected exception, verify reason is ALGORITHM_CONSTRAINED */
+                assertEquals("Expected BasicReason.ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    /**
+     * Test that revocation checking fails with UNDETERMINED_REVOCATION_STATUS
+     * when revocation is enabled but no CRLs are available and no
+     * PKIXRevocationChecker is registered for OCSP.
+     */
+    @Test
+    public void testRevocationEnabledNoCRLsFailsWithUndeterminedStatus()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, NoSuchProviderException,
+               Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate serverCert = null;
+        List<Certificate> certList = new ArrayList<>();
+
+        if (!WolfCrypt.CrlEnabled()) {
+            /* Native CRL not enabled, skip test */
+            System.out.println("CertPathValidator revocation status test " +
+                "skipped, CRL not compiled in");
+            return;
+        }
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Import server-cert.der into Certificate object */
+        fis = new FileInputStream(serverCertDer);
+        serverCert = certFactory.generateCertificate(fis);
+        certList.add(serverCert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Enable revocation checking but DO NOT add any CRLs or
+         * PKIXRevocationChecker. This should cause validation to fail
+         * with UNDETERMINED_REVOCATION_STATUS. */
+        params.setRevocationEnabled(true);
+        params.setCertStores(null);
+
+        /* Validate cert chain, should fail */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("Expected CertPathValidatorException with " +
+                 "UNDETERMINED_REVOCATION_STATUS when revocation is enabled " +
+                 "but no CRLs or OCSP checker is available");
+
+        } catch (CertPathValidatorException e) {
+            /* Expected - verify reason is UNDETERMINED_REVOCATION_STATUS */
+            assertEquals("Expected BasicReason.UNDETERMINED_REVOCATION_STATUS",
+                BasicReason.UNDETERMINED_REVOCATION_STATUS, e.getReason());
+        }
+    }
+
+    /**
+     * Test that revocation checking fails with UNDETERMINED_REVOCATION_STATUS
+     * when revocation is enabled and CertStores exist but contain no CRLs.
+     */
+    @Test
+    public void testRevocationEnabledEmptyCertStoreFailsWithUndeterminedStatus()
+        throws FileNotFoundException, KeyStoreException, IOException,
+               NoSuchAlgorithmException, CertificateException,
+               InvalidAlgorithmParameterException, NoSuchProviderException,
+               Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate serverCert = null;
+        List<Certificate> certList = new ArrayList<>();
+        CertStore emptyCertStore = null;
+        List<CertStore> certStores = null;
+
+        if (!WolfCrypt.CrlEnabled()) {
+            /* Native CRL not enabled, skip test */
+            System.out.println("CertPathValidator revocation status test " +
+                "skipped, CRL not compiled in");
+            return;
+        }
+
+        /* Use example KeyStore that verifies server-cert.der */
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        /* Import server-cert.der into Certificate object */
+        fis = new FileInputStream(serverCertDer);
+        serverCert = certFactory.generateCertificate(fis);
+        certList.add(serverCert);
+        fis.close();
+
+        /* Create PKIXParameters with trusted KeyStore */
+        PKIXParameters params = new PKIXParameters(store);
+
+        /* Enable revocation checking with empty CertStore (no CRLs).
+         * This should cause validation to fail with
+         * UNDETERMINED_REVOCATION_STATUS. */
+        params.setRevocationEnabled(true);
+
+        /* Create empty CertStore */
+        Collection<CRL> emptyCrls = new HashSet<>();
+        emptyCertStore = CertStore.getInstance("Collection",
+            new CollectionCertStoreParameters(emptyCrls));
+        certStores = new ArrayList<>();
+        certStores.add(emptyCertStore);
+        params.setCertStores(certStores);
+
+        /* Validate cert chain, should fail */
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(path, params);
+            fail("Expected CertPathValidatorException with " +
+                 "UNDETERMINED_REVOCATION_STATUS when revocation is enabled " +
+                 "but CertStore contains no CRLs");
+
+        } catch (CertPathValidatorException e) {
+            /* Expected - verify reason is UNDETERMINED_REVOCATION_STATUS */
+            assertEquals("Expected BasicReason.UNDETERMINED_REVOCATION_STATUS",
+                BasicReason.UNDETERMINED_REVOCATION_STATUS, e.getReason());
+        }
+    }
+
+    /**
+     * Test that zero-length cert paths are valid per RFC 5280. This occurs
+     * when CertPathBuilder determines the trust anchor itself is the target.
+     */
+    @Test
+    public void testZeroLengthCertPath()
+        throws CertificateException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException, CertPathValidatorException,
+               NoSuchProviderException {
+
+        FileInputStream fis = null;
+        X509Certificate caCert = null;
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+
+        /* Use CA cert from examples as trust anchor */
+        try {
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+        } catch (Exception e) {
+            fail("Failed to load CA cert: " + e.getMessage());
+        }
+
+        /* Create trust anchor from CA cert */
+        TrustAnchor anchor = new TrustAnchor(caCert, null);
+        Set<TrustAnchor> anchors = new HashSet<>();
+        anchors.add(anchor);
+
+        /* Create empty cert path (zero-length) */
+        List<Certificate> emptyCertList = new ArrayList<>();
+        CertPath emptyPath = cf.generateCertPath(emptyCertList);
+        assertEquals(0, emptyPath.getCertificates().size());
+
+        /* Create PKIXParameters with the trust anchor */
+        PKIXParameters params = new PKIXParameters(anchors);
+        params.setRevocationEnabled(false);
+
+        /* Validate zero-length path - should succeed */
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+        PKIXCertPathValidatorResult result =
+            (PKIXCertPathValidatorResult)cpv.validate(emptyPath, params);
+
+        /* Verify result contains trust anchor and its public key */
+        assertNotNull(result);
+        assertNotNull(result.getTrustAnchor());
+        assertEquals(anchor.getTrustedCert(),
+            result.getTrustAnchor().getTrustedCert());
+        assertNotNull(result.getPublicKey());
+        assertEquals(caCert.getPublicKey(), result.getPublicKey());
+    }
+
+    /**
+     * Test that zero-length cert path with TrustAnchor that has no
+     * certificate throws CertPathValidatorException.
+     */
+    @Test
+    public void testZeroLengthCertPathAnchorNoCertificate()
+        throws CertificateException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException, NoSuchProviderException {
+
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+
+        /* Create empty cert path (zero-length) */
+        List<Certificate> emptyCertList = new ArrayList<>();
+        CertPath emptyPath = cf.generateCertPath(emptyCertList);
+
+        /* Load CA cert to get its name and public key */
+        FileInputStream fis = null;
+        X509Certificate caCert = null;
+        try {
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+        } catch (Exception e) {
+            fail("Failed to load CA cert: " + e.getMessage());
+        }
+
+        /* Create TrustAnchor without certificate (using CA name and key).
+         * This is valid for normal cert paths but not for zero-length
+         * paths where we need to return the anchor's certificate. */
+        TrustAnchor anchorWithoutCert = new TrustAnchor(
+            caCert.getSubjectX500Principal(), caCert.getPublicKey(), null);
+        Set<TrustAnchor> anchors = new HashSet<>();
+        anchors.add(anchorWithoutCert);
+
+        PKIXParameters params = new PKIXParameters(anchors);
+        params.setRevocationEnabled(false);
+
+        /* Validate zero-length path with anchor that has no cert */
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+
+        try {
+            cpv.validate(emptyPath, params);
+            fail("Expected CertPathValidatorException for zero-length " +
+                 "path with TrustAnchor that has no certificate");
+        } catch (CertPathValidatorException e) {
+            assertTrue("Exception message should mention no certificate",
+                e.getMessage().contains("no certificate"));
+        }
+    }
+
+    /**
+     * Test that trust anchor public key constraints are enforced when
+     * validating a normal (non-empty) cert path.
+     */
+    @Test
+    public void testTrustAnchorKeyConstraintsOnNormalPath()
+        throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        X509Certificate clientCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath path = null;
+        CertPathValidator validator = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty("jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load wolfSSL CA cert (2048-bit RSA key) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            try {
+                caCert = (X509Certificate)cf.generateCertificate(fis);
+            } finally {
+                fis.close();
+            }
+
+            /* Load wolfSSL client cert (2048-bit RSA key) */
+            fis = new FileInputStream(clientCertDer);
+            try {
+                clientCert = (X509Certificate)cf.generateCertificate(fis);
+            } finally {
+                fis.close();
+            }
+
+            /* Set minimum RSA key size to 4096 bits. The client
+             * cert (in the path) will fail first since it is
+             * checked before the trust anchor. Use a constraint
+             * that only affects key size to verify trust anchor
+             * checking also works in normal path flow. */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 4096");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Create CertPath with client cert */
+            List<Certificate> certList = new ArrayList<Certificate>();
+            certList.add(clientCert);
+            path = cf.generateCertPath(certList);
+
+            /* Validate - should fail because key size is too
+             * small (either path cert or trust anchor) */
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            try {
+                validator.validate(path, params);
+                fail("Expected CertPathValidatorException " +
+                     "for RSA key size constraint");
+            } catch (CertPathValidatorException cpve) {
+                assertEquals(
+                    "Expected ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    /**
+     * Test that trust anchor public key constraints are enforced when
+     * validating a zero-length cert path (trust anchor is the target
+     * certificate).
+     */
+    @Test
+    public void testTrustAnchorKeyConstraintsOnZeroLengthPath()
+        throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        TrustAnchor anchor = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath emptyPath = null;
+        CertPathValidator validator = null;
+        FileInputStream fis = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty("jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Load CA cert (2048-bit RSA key) */
+            cf = CertificateFactory.getInstance("X.509");
+            fis = new FileInputStream(caCertDer);
+            caCert = (X509Certificate)cf.generateCertificate(fis);
+            fis.close();
+
+            /* Set minimum RSA key size to 4096 bits */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 4096");
+
+            /* Setup trust anchor with CA cert */
+            anchor = new TrustAnchor(caCert, null);
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(anchor);
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Create zero-length (empty) CertPath */
+            emptyPath = cf.generateCertPath(new ArrayList<Certificate>());
+
+            /* Validate - should fail because trust anchor
+             * key size is too small */
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            try {
+                validator.validate(emptyPath, params);
+                fail("Expected CertPathValidatorException for trust anchor " +
+                     "RSA key size constraint on zero-length path");
+            } catch (CertPathValidatorException cpve) {
+                assertEquals("Expected ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Close any open file streams */
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    /* Ignore close errors */
+                }
+            }
+
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+}
+
