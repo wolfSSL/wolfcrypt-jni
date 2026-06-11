@@ -51,6 +51,30 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getECDSAk
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getML_DSA_LEVEL2k
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getML_1DSA_1LEVEL2k
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getML_DSA_LEVEL3k
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getML_1DSA_1LEVEL3k
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getML_DSA_LEVEL5k
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getML_1DSA_1LEVEL5k
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
  * Method:    getMD5h
  * Signature: ()I
  */

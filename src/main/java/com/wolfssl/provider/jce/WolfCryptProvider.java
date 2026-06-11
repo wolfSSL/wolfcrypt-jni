@@ -318,6 +318,29 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.AlgorithmParameters.OID.1.2.840.113549.1.1.10", "RSASSA-PSS");
         }
 
+        /* ML-DSA (FIPS 204) Signature support */
+        if (FeatureDetect.MlDsaEnabled()) {
+            /* Generic alias accepts any of the three ML-DSA parameter sets */
+            put("Signature.ML-DSA",
+                "com.wolfssl.provider.jce.WolfCryptMlDsaSignature$wcMlDsa");
+
+            /* Per-level aliases */
+            put("Signature.ML-DSA-44",
+                "com.wolfssl.provider.jce.WolfCryptMlDsaSignature$wcMlDsa44");
+            put("Signature.ML-DSA-65",
+                "com.wolfssl.provider.jce.WolfCryptMlDsaSignature$wcMlDsa65");
+            put("Signature.ML-DSA-87",
+                "com.wolfssl.provider.jce.WolfCryptMlDsaSignature$wcMlDsa87");
+
+            /* OID aliases (FIPS 204: 2.16.840.1.101.3.4.3.17/18/19) */
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.17", "ML-DSA-44");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.17", "ML-DSA-44");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.18", "ML-DSA-65");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.18", "ML-DSA-65");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.19", "ML-DSA-87");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.19", "ML-DSA-87");
+        }
+
         /* Mac */
         if (FeatureDetect.HmacMd5Enabled()) {
             put("Mac.HmacMD5",
@@ -591,6 +614,34 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenDH");
             put("Alg.Alias.KeyPairGenerator.DiffieHellman", "DH");
         }
+        if (FeatureDetect.MlDsaEnabled()) {
+            /* Generic alias: defaults to ML-DSA-65, level overridable via
+             * initialize(NamedParameterSpec) / WolfPQCParameterSpec. */
+            put("KeyPairGenerator.ML-DSA",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenMlDsa");
+
+            /* Per-level aliases */
+            put("KeyPairGenerator.ML-DSA-44",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenMlDsa44");
+            put("KeyPairGenerator.ML-DSA-65",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenMlDsa65");
+            put("KeyPairGenerator.ML-DSA-87",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenMlDsa87");
+
+            /* OID aliases */
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.17",
+                "ML-DSA-44");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.17",
+                "ML-DSA-44");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.18",
+                "ML-DSA-65");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.18",
+                "ML-DSA-65");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.19",
+                "ML-DSA-87");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.19",
+                "ML-DSA-87");
+        }
 
 
         /* CertPathValidator */
@@ -668,6 +719,27 @@ public final class WolfCryptProvider extends Provider {
             put("KeyFactory.RSA",
                 "com.wolfssl.provider.jce.WolfCryptRSAKeyFactory");
             put("Alg.Alias.KeyFactory.1.2.840.113549.1.1.1", "RSA");
+        }
+        if (FeatureDetect.MlDsaEnabled()) {
+            put("KeyFactory.ML-DSA",
+                "com.wolfssl.provider.jce.WolfCryptMlDsaKeyFactory");
+            /* Per-set factories reject keys of a different parameter set,
+             * matching JDK 24+ SunJCE NamedKeyFactory behavior */
+            put("KeyFactory.ML-DSA-44",
+                "com.wolfssl.provider.jce.WolfCryptMlDsaKeyFactory$wcMlDsa44");
+            put("KeyFactory.ML-DSA-65",
+                "com.wolfssl.provider.jce.WolfCryptMlDsaKeyFactory$wcMlDsa65");
+            put("KeyFactory.ML-DSA-87",
+                "com.wolfssl.provider.jce.WolfCryptMlDsaKeyFactory$wcMlDsa87");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.17", "ML-DSA-44");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.17",
+                "ML-DSA-44");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.18", "ML-DSA-65");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.18",
+                "ML-DSA-65");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.19", "ML-DSA-87");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.19",
+                "ML-DSA-87");
         }
 
         /* KeyStore */

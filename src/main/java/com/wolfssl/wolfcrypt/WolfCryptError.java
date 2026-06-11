@@ -180,6 +180,8 @@ public enum WolfCryptError {
     PBKDF2_KAT_FIPS_E   (-165),
     /** Error for private/public key mismatch */
     WC_KEY_MISMATCH_E   (-166),
+    /** ML-DSA Known Answer Test failure */
+    ML_DSA_KAT_FIPS_E   (-167),
 
     /** ECC input argument of wrong type */
     ECC_BAD_ARG_E       (-170),
@@ -479,6 +481,8 @@ public enum WolfCryptError {
     ALREADY_E            (-1007),
     /** Sequence counter would overflow */
     SEQ_OVERFLOW_E       (-1008),
+    /** ML-DSA Pairwise Consistency Test failure */
+    ML_DSA_PCT_E         (-1016),
 
     /** Update this to indicate last error */
     WC_LAST_E            (-1008),

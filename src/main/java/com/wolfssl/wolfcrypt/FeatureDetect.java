@@ -383,6 +383,50 @@ public class FeatureDetect {
     public static native boolean WolfSSLPublicMpEnabled();
 
     /**
+     * Tests if ML-KEM (FIPS 203) is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled (WOLFSSL_HAVE_MLKEM), otherwise false if not
+     *         compiled in.
+     */
+    public static native boolean MlKemEnabled();
+
+    /**
+     * Tests if ML-DSA (FIPS 204, formerly Dilithium) is compiled into the
+     * native wolfSSL library.
+     *
+     * @return true if enabled (HAVE_DILITHIUM), otherwise false if not
+     *         compiled in.
+     */
+    public static native boolean MlDsaEnabled();
+
+    /**
+     * Tests if SLH-DSA (FIPS 205) is compiled into the native wolfSSL
+     * library.
+     *
+     * @return true if enabled (WOLFSSL_HAVE_SLHDSA), otherwise false if not
+     *         compiled in.
+     */
+    public static native boolean SlhDsaEnabled();
+
+    /**
+     * Tests if LMS/HSS (RFC 8554) is compiled into the native wolfSSL
+     * library.
+     *
+     * @return true if enabled (WOLFSSL_HAVE_LMS), otherwise false if not
+     *         compiled in.
+     */
+    public static native boolean LmsEnabled();
+
+    /**
+     * Tests if XMSS/XMSS^MT (RFC 8391) is compiled into the native wolfSSL
+     * library.
+     *
+     * @return true if enabled (WOLFSSL_HAVE_XMSS), otherwise false if not
+     *         compiled in.
+     */
+    public static native boolean XmssEnabled();
+
+    /**
      * Loads JNI library.
      *
      * The native library is expected to be called "wolfcryptjni", and must be

@@ -24,6 +24,7 @@
 #elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
+#include <wolfssl/version.h>
 #include <wolfssl/wolfcrypt/asn.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
@@ -63,6 +64,74 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getECDSAk
   (JNIEnv* env, jclass class)
 {
     return ECDSAk;
+}
+
+/* ML-DSA Key_Sum enum values:
+ *   - Not present in native wolfSSL before 5.7.4, return 0 to indicate
+ *     not available (Java callers treat 0 as unsupported).
+ *   - wolfSSL 5.7.4 - 5.9.1 releases define ML_DSA_LEVEL2k/3k/5k as
+ *     enum constants.
+ *   - Newer wolfSSL renames these to ML_DSA_44k/65k/87k and keeps
+ *     ML_DSA_LEVELxk only as legacy macro aliases, disabled by
+ *     WOLFSSL_NO_DILITHIUM_LEGACY_NAMES and slated for removal. */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getML_1DSA_1LEVEL2k
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#if (LIBWOLFSSL_VERSION_HEX < 0x05007004)
+    return 0;
+#elif defined(ML_DSA_LEVEL2k)
+    /* legacy macro alias for ML_DSA_44k */
+    return ML_DSA_LEVEL2k;
+#elif defined(WOLFSSL_NO_DILITHIUM_LEGACY_NAMES) || \
+      (LIBWOLFSSL_VERSION_HEX > 0x05009001)
+    /* legacy names disabled or removed, use final FIPS 204 name */
+    return ML_DSA_44k;
+#else
+    /* wolfSSL 5.7.4 - 5.9.1 enum constant */
+    return ML_DSA_LEVEL2k;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getML_1DSA_1LEVEL3k
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#if (LIBWOLFSSL_VERSION_HEX < 0x05007004)
+    return 0;
+#elif defined(ML_DSA_LEVEL3k)
+    /* legacy macro alias for ML_DSA_65k */
+    return ML_DSA_LEVEL3k;
+#elif defined(WOLFSSL_NO_DILITHIUM_LEGACY_NAMES) || \
+      (LIBWOLFSSL_VERSION_HEX > 0x05009001)
+    /* legacy names disabled or removed, use final FIPS 204 name */
+    return ML_DSA_65k;
+#else
+    /* wolfSSL 5.7.4 - 5.9.1 enum constant */
+    return ML_DSA_LEVEL3k;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getML_1DSA_1LEVEL5k
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#if (LIBWOLFSSL_VERSION_HEX < 0x05007004)
+    return 0;
+#elif defined(ML_DSA_LEVEL5k)
+    /* legacy macro alias for ML_DSA_87k */
+    return ML_DSA_LEVEL5k;
+#elif defined(WOLFSSL_NO_DILITHIUM_LEGACY_NAMES) || \
+      (LIBWOLFSSL_VERSION_HEX > 0x05009001)
+    /* legacy names disabled or removed, use final FIPS 204 name */
+    return ML_DSA_87k;
+#else
+    /* wolfSSL 5.7.4 - 5.9.1 enum constant */
+    return ML_DSA_LEVEL5k;
+#endif
 }
 
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature__Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2JI(

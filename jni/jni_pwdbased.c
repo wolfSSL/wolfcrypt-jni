@@ -26,6 +26,7 @@
 #elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
+#include <wolfssl/version.h>
 
 #include <wolfssl/wolfcrypt/pwdbased.h>
 #include <com_wolfssl_wolfcrypt_Pwdbased.h>
