@@ -36,6 +36,7 @@ import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyStoreSpi;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.security.NoSuchAlgorithmException;
@@ -68,6 +69,8 @@ import javax.security.auth.DestroyFailedException;
 
 import com.wolfssl.wolfcrypt.Asn;
 import com.wolfssl.wolfcrypt.Aes;
+import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.MlDsa;
 import com.wolfssl.wolfcrypt.Pwdbased;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfSSLCertManager;
@@ -1147,11 +1150,13 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
                 p8Spec = new PKCS8EncodedKeySpec(plainKey);
 
-                algoId = Asn.getPkcs8AlgoID(plainKey);
-                if (algoId == 0) {
-                    throw new UnrecoverableKeyException(
-                        "Unable to parse PKCS#8 algorithm ID from " +
-                        "unprotected key");
+                try {
+                    algoId = Asn.getPkcs8AlgoID(plainKey);
+                } catch (WolfCryptException wce) {
+                    /* Reset to zero for possible ML-DSA PKCS#8 fallback below.
+                     * Older wolfSSL can throw ASN_PARSE_E from
+                     * ToTraditional_ex() */
+                    algoId = 0;
                 }
 
                 /* Prefer wolfJCE KeyFactory by name for RSA/EC, fall back to
@@ -1165,10 +1170,24 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     keyFact = KeyFactory.getInstance("RSASSA-PSS");
                 } else if (algoId == Asn.ECDSAk) {
                     keyFact = WolfCryptUtil.getKeyFactoryPreferWolfJCE("EC");
+                } else if (algoId != 0 &&
+                    (algoId == Asn.ML_DSA_LEVEL2k ||
+                     algoId == Asn.ML_DSA_LEVEL3k ||
+                     algoId == Asn.ML_DSA_LEVEL5k)) {
+                    keyFact = getMlDsaKeyFactory();
+                } else if (algoId == 0 && FeatureDetect.MlDsaEnabled()) {
+                    /* Fallback for older native wolfSSL, getPkcs8AlgoID
+                     * returned 0 because native ToTraditional_ex() did not
+                     * recognize ML-DSA OIDs. Let the ML-DSA KeyFactory
+                     * validate, generatePrivate() below throws for
+                     * non-ML-DSA DER (avoids a redundant pre-parse of
+                     * the same PKCS#8). */
+                    log("using ML-DSA fallback for older native wolfSSL");
+                    keyFact = getMlDsaKeyFactory();
                 } else {
                     throw new NoSuchAlgorithmException(
-                        "Only RSA, RSASSA-PSS, and EC private key " +
-                        "encoding supported: " + algoId);
+                        "Only RSA, RSASSA-PSS, EC, and ML-DSA private " +
+                        "key encoding supported: " + algoId);
                 }
 
                 try {
@@ -1468,12 +1487,139 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         }
         try {
             match = X509CheckPrivateKey(derCert, pkcs8Key);
+            if (!match && isMlDsaAlgorithmName(key.getAlgorithm())) {
+                /* Older native wolfSSL versions could return NULL from
+                 * EVP_PKCS82PKEY(), causing X509CheckPrivateKey() to return
+                 * false even when cert and key do match. Fall back to Java
+                 * match using MlDsa JNI (derive SPKI from private key and
+                 * compare to the cert encoded SubjectPublicKeyInfo. */
+                log("X509CheckPrivateKey returned false for ML-DSA key, " +
+                    "trying Java-side match");
+                match = mlDsaCertMatchesPrivateKey(cert, pkcs8Key);
+            }
             if (!match) {
                 throw new KeyStoreException("X509Certificate does not match " +
                     "provided private key");
             }
         } finally {
             Arrays.fill(pkcs8Key, (byte)0);
+        }
+    }
+
+    /**
+     * Java fallback for cert/private key match when native
+     * {@code X509CheckPrivateKey} can't handle ML-DSA (older native wolfSSL,
+     * wolfSSL_EVP_PKCS82PKEY() returns NULL for ML-DSA OIDs).
+     *
+     * <p>Imports the PKCS#8 private into a wolfJCE MlDsa, exports the derived
+     * public as X.509 SubjectPublicKeyInfo DER, and compares bytes against the
+     * cert's public key encoding. ML-DSA SPKI DER is canonical, so byte
+     * equality is safe.</p>
+     */
+    private boolean mlDsaCertMatchesPrivateKey(X509Certificate cert,
+        byte[] pkcs8Key) {
+
+        PublicKey certPub = null;
+        MlDsa key = null;
+        byte[] certSpki = null;
+        byte[] derivedSpki = null;
+
+        if (!FeatureDetect.MlDsaEnabled()) {
+            return false;
+        }
+
+        certPub = cert.getPublicKey();
+        if (certPub == null ||
+            !isMlDsaAlgorithmName(certPub.getAlgorithm())) {
+            return false;
+        }
+
+        certSpki = certPub.getEncoded();
+        if (certSpki == null) {
+            return false;
+        }
+
+        try {
+            try {
+                /* Level auto-detected from PKCS#8 DER. */
+                key = new MlDsa();
+                key.importPrivateKeyDer(pkcs8Key);
+            }
+            catch (WolfCryptException e) {
+                /* Older native wolfSSL pre PR 10310 without auto-detect.
+                 * Derive level explicitly (try each FIPS 204 level internally),
+                 * then import with that level. */
+                if (key != null) {
+                    key.releaseNativeStruct();
+                    key = null;
+                }
+                key = new MlDsa(
+                    MlDsa.parseAndValidateMlDsaPrivateKeyDer(pkcs8Key));
+                key.importPrivateKeyDer(pkcs8Key);
+            }
+            derivedSpki = key.exportPublicKeyDer(true);
+            return Arrays.equals(certSpki, derivedSpki);
+        }
+        catch (WolfCryptException e) {
+            return false;
+        }
+        finally {
+            if (key != null) {
+                key.releaseNativeStruct();
+            }
+        }
+    }
+
+    /**
+     * Check if a JCA algorithm name identifies ML-DSA.
+     *
+     * Accepts the family name, the FIPS 204 parameter-set names, and the
+     * raw OID strings that pre-JDK-24 CertificateFactory implementations
+     * return from getAlgorithm() for algorithms they do not recognize.
+     *
+     * @param algo algorithm name from Key.getAlgorithm(), may be null
+     *
+     * @return true if the name identifies an ML-DSA key, otherwise false
+     */
+    private static boolean isMlDsaAlgorithmName(String algo) {
+
+        if (algo == null) {
+            return false;
+        }
+
+        return algo.equalsIgnoreCase("ML-DSA") ||
+               algo.equalsIgnoreCase("ML-DSA-44") ||
+               algo.equalsIgnoreCase("ML-DSA-65") ||
+               algo.equalsIgnoreCase("ML-DSA-87") ||
+               algo.equals("2.16.840.1.101.3.4.3.17") ||
+               algo.equals("2.16.840.1.101.3.4.3.18") ||
+               algo.equals("2.16.840.1.101.3.4.3.19");
+    }
+
+    /**
+     * Get a KeyFactory for ML-DSA, preferring the wolfJCE provider.
+     *
+     * ML-DSA PKCS#8 produced by native wolfCrypt wc_Dilithium_KeyToDer()
+     * currently uses a version 1 encoding with a bundled publicKey
+     * attribute, which the JDK 24+ SunJCE strict PKCS#8 parser rejects
+     * ("publicKey seen in v1"). A generic KeyFactory.getInstance() lookup
+     * can therefore resolve to a provider unable to parse keys stored by
+     * this KeyStore when wolfJCE is not the highest-priority provider.
+     * Prefer wolfJCE explicitly and fall back to a generic lookup when
+     * wolfJCE is not registered by name in the Security provider list.
+     *
+     * @return KeyFactory for ML-DSA
+     *
+     * @throws NoSuchAlgorithmException if no provider supports ML-DSA
+     */
+    private static KeyFactory getMlDsaKeyFactory()
+        throws NoSuchAlgorithmException {
+
+        try {
+            return KeyFactory.getInstance("ML-DSA", "wolfJCE");
+        } catch (NoSuchProviderException | NoSuchAlgorithmException e) {
+            /* wolfJCE not registered by name (or built without ML-DSA) */
+            return KeyFactory.getInstance("ML-DSA");
         }
     }
 

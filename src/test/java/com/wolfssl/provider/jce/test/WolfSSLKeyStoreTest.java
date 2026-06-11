@@ -47,6 +47,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.FileNotFoundException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.Security;
 import java.security.Provider;
@@ -70,8 +71,12 @@ import java.security.spec.InvalidKeySpecException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
+import java.util.Base64;
+
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.provider.jce.WolfSSLKeyStore;
+import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.MlDsa;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class WolfSSLKeyStoreTest {
@@ -145,6 +150,22 @@ public class WolfSSLKeyStoreTest {
     private static Certificate[] eccServerChain = null; /* ECC chain */
     private static Certificate[] invalidChain = null;
 
+    /* ML-DSA (FIPS 204) self-signed test keys/certs from native
+     * wolfssl/certs/mldsa/. Loaded only if FeatureDetect.MlDsaEnabled()
+     * is true. */
+    private static String mldsa44KeyPem = null;
+    private static String mldsa65KeyPem = null;
+    private static String mldsa87KeyPem = null;
+    private static String mldsa44CertPem = null;
+    private static String mldsa65CertPem = null;
+    private static String mldsa87CertPem = null;
+    private static PrivateKey   serverKeyMlDsa44  = null;
+    private static PrivateKey   serverKeyMlDsa65  = null;
+    private static PrivateKey   serverKeyMlDsa87  = null;
+    private static Certificate  serverCertMlDsa44 = null;
+    private static Certificate  serverCertMlDsa65 = null;
+    private static Certificate  serverCertMlDsa87 = null;
+
     /* Example .jks KeyStore file paths */
     private static String clientJKS = null;          /* client.jks */
 
@@ -165,6 +186,13 @@ public class WolfSSLKeyStoreTest {
     private static String caServerWKS = null;        /* ca-server.wks */
     private static String caServerRsa2048WKS = null; /* ca-server-rsa-2048.wks */
     private static String caServerEcc256WKS = null;  /* ca-server-ecc-256.wks */
+    /* ML-DSA WKS keystore paths (built by BuildMlDsaKeystores helper). */
+    private static String serverMlDsa44WKS = null;   /* server-mldsa44.wks */
+    private static String serverMlDsa65WKS = null;   /* server-mldsa65.wks */
+    private static String serverMlDsa87WKS = null;   /* server-mldsa87.wks */
+    private static String caMlDsa44WKS     = null;   /* ca-mldsa44.wks */
+    private static String caMlDsa65WKS     = null;   /* ca-mldsa65.wks */
+    private static String caMlDsa87WKS     = null;   /* ca-mldsa87.wks */
 
     /* Class wide SecureRandom for use, only initialize once */
     private SecureRandom rand = new SecureRandom();
@@ -248,6 +276,44 @@ public class WolfSSLKeyStoreTest {
         key = kf.generatePrivate(spec);
 
         return key;
+    }
+
+    /**
+     * Load a PKCS#8 PEM file and return as a PrivateKey for the given
+     * algorithm. Used for ML-DSA test keys from native wolfssl/certs/mldsa/,
+     * which ship as PEM only.
+     *
+     * @param pemFilePath path to PEM file
+     * @param alg algorithm name (e.g. "ML-DSA")
+     *
+     * @return new PrivateKey
+     *
+     * @throws Exception on read / decode / KeyFactory error
+     */
+    private static PrivateKey pemFileToPrivateKey(String pemFilePath,
+        String alg) throws Exception {
+
+        File f = new File(pemFilePath);
+        if (!f.exists()) {
+            throw new IOException("PEM file not found: " + pemFilePath);
+        }
+
+        String pem = new String(Files.readAllBytes(f.toPath()),
+            StandardCharsets.US_ASCII);
+        int begin = pem.indexOf("-----BEGIN");
+        int end   = pem.indexOf("-----END");
+        if (begin < 0 || end < 0) {
+            throw new IllegalArgumentException(
+                "PEM headers not found in: " + pemFilePath);
+        }
+
+        int contentStart = pem.indexOf('\n', begin) + 1;
+        String b64 = pem.substring(contentStart, end).replaceAll("\\s", "");
+        byte[] der = Base64.getDecoder().decode(b64);
+
+        KeyFactory kf = KeyFactory.getInstance(alg);
+
+        return kf.generatePrivate(new PKCS8EncodedKeySpec(der));
     }
 
     /**
@@ -353,6 +419,34 @@ public class WolfSSLKeyStoreTest {
         invalidChain[1] = tmpCert;
         tmpCert = certFileToCertificate(intRsaInt1CertDer);
         invalidChain[2] = tmpCert;
+
+        /* Load ML-DSA self-signed test certs + keys if ML-DSA compiled in.
+         * Native wolfssl/certs/mldsa/ ships PEM only (no DER PKCS#8), use
+         * pemFileToPrivateKey(). */
+        if (FeatureDetect.MlDsaEnabled()) {
+            File mlDsa44KeyFile = new File(mldsa44KeyPem);
+            if (mlDsa44KeyFile.exists()) {
+                try {
+                    serverKeyMlDsa44 =
+                        pemFileToPrivateKey(mldsa44KeyPem, "ML-DSA");
+                    serverKeyMlDsa65 =
+                        pemFileToPrivateKey(mldsa65KeyPem, "ML-DSA");
+                    serverKeyMlDsa87 =
+                        pemFileToPrivateKey(mldsa87KeyPem, "ML-DSA");
+                    serverCertMlDsa44 = certFileToCertificate(mldsa44CertPem);
+                    serverCertMlDsa65 = certFileToCertificate(mldsa65CertPem);
+                    serverCertMlDsa87 = certFileToCertificate(mldsa87CertPem);
+                }
+                catch (Exception e) {
+                    serverKeyMlDsa44 = null;
+                    serverKeyMlDsa65 = null;
+                    serverKeyMlDsa87 = null;
+                    serverCertMlDsa44 = null;
+                    serverCertMlDsa65 = null;
+                    serverCertMlDsa87 = null;
+                }
+            }
+        }
     }
 
     @BeforeClass
@@ -448,6 +542,32 @@ public class WolfSSLKeyStoreTest {
             certPre.concat("examples/certs/ca-server-rsa-2048.wks");
         caServerEcc256WKS =
             certPre.concat("examples/certs/ca-server-ecc-256.wks");
+
+        /* ML-DSA test material paths */
+        mldsa44KeyPem  =
+            certPre.concat("examples/certs/mldsa/mldsa44-key.pem");
+        mldsa65KeyPem  =
+            certPre.concat("examples/certs/mldsa/mldsa65-key.pem");
+        mldsa87KeyPem  =
+            certPre.concat("examples/certs/mldsa/mldsa87-key.pem");
+        mldsa44CertPem =
+            certPre.concat("examples/certs/mldsa/mldsa44-cert.pem");
+        mldsa65CertPem =
+            certPre.concat("examples/certs/mldsa/mldsa65-cert.pem");
+        mldsa87CertPem =
+            certPre.concat("examples/certs/mldsa/mldsa87-cert.pem");
+        serverMlDsa44WKS =
+            certPre.concat("examples/certs/server-mldsa44.wks");
+        serverMlDsa65WKS =
+            certPre.concat("examples/certs/server-mldsa65.wks");
+        serverMlDsa87WKS =
+            certPre.concat("examples/certs/server-mldsa87.wks");
+        caMlDsa44WKS =
+            certPre.concat("examples/certs/ca-mldsa44.wks");
+        caMlDsa65WKS =
+            certPre.concat("examples/certs/ca-mldsa65.wks");
+        caMlDsa87WKS =
+            certPre.concat("examples/certs/ca-mldsa87.wks");
 
         /* Test if file exists. Skip tests gracefully if cert files not
          * available (eg running on Android). */
@@ -3033,6 +3153,245 @@ public class WolfSSLKeyStoreTest {
             assertNotNull(signer.sign());
         } finally {
             scope.close();
+        }
+    }
+
+    private void assumeMlDsaAvailable() {
+        Assume.assumeTrue("ML-DSA not compiled in native wolfSSL",
+            FeatureDetect.MlDsaEnabled());
+        Assume.assumeNotNull("ML-DSA test PEM files not available "
+            + "(see examples/certs/mldsa/)",
+            serverKeyMlDsa44, serverKeyMlDsa65, serverKeyMlDsa87);
+    }
+
+    private void assumeMlDsaWksAvailable() {
+        assumeMlDsaAvailable();
+        File f = new File(serverMlDsa44WKS);
+        Assume.assumeTrue(
+            "ML-DSA WKS files not available (run update-jks-wks.sh): "
+            + serverMlDsa44WKS, f.exists());
+    }
+
+    /**
+     * Store a single ML-DSA private key and self-signed cert at each param
+     * level (44/65/87), retrieve, verify objects match.
+     */
+    @Test
+    public void testStoreSingleKeyAndCertMlDsa() throws Exception {
+
+        assumeMlDsaAvailable();
+
+        PrivateKey[]  keys  = { serverKeyMlDsa44, serverKeyMlDsa65,
+                                serverKeyMlDsa87 };
+        Certificate[] certs = { serverCertMlDsa44, serverCertMlDsa65,
+                                serverCertMlDsa87 };
+        String[] names = { "ML-DSA-44", "ML-DSA-65", "ML-DSA-87" };
+
+        for (int i = 0; i < 3; i++) {
+            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+            store.setKeyEntry("mldsaCert", keys[i], storePass.toCharArray(),
+                new Certificate[]{ certs[i] });
+            assertEquals(names[i], 1, store.size());
+
+            PrivateKey keyOut = (PrivateKey) store.getKey("mldsaCert",
+                storePass.toCharArray());
+            assertNotNull(names[i] + " key", keyOut);
+            assertEquals(names[i] + " key roundtrip", keys[i], keyOut);
+
+            Certificate certOut = store.getCertificate("mldsaCert");
+            assertNotNull(names[i] + " cert", certOut);
+            assertEquals(names[i] + " cert roundtrip", certs[i], certOut);
+        }
+    }
+
+    /**
+     * Setting an ML-DSA private key with a non-matching cert (different
+     * parameter set) must be rejected by setKeyEntry.
+     */
+    @Test
+    public void testMlDsaKeyCertMismatchRejected() throws Exception {
+
+        assumeMlDsaAvailable();
+
+        /* ML-DSA-44 private + ML-DSA-87 cert (mismatch) */
+        KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+        store.load(null, storePass.toCharArray());
+        try {
+            store.setKeyEntry("bad", serverKeyMlDsa44, storePass.toCharArray(),
+                new Certificate[]{ serverCertMlDsa87 });
+            fail("setKeyEntry should reject ML-DSA-44 key + ML-DSA-87 cert");
+        }
+        catch (KeyStoreException e) {
+            /* expected */
+        }
+        assertEquals(0, store.size());
+
+        /* ML-DSA-65 private + RSA cert: cross-algorithm mismatch */
+        store = KeyStore.getInstance(storeType, storeProvider);
+        store.load(null, storePass.toCharArray());
+        try {
+            store.setKeyEntry("bad", serverKeyMlDsa65, storePass.toCharArray(),
+                new Certificate[]{ serverCertRsa });
+            fail("setKeyEntry should reject ML-DSA-65 key + RSA cert");
+        }
+        catch (KeyStoreException e) {
+            /* expected */
+        }
+        assertEquals(0, store.size());
+    }
+
+    /**
+     * Set ML-DSA cert as a trust anchor (no private key). Verify
+     * getCertificate returns the same cert and getCertificateAlias
+     * can look it up by value.
+     */
+    @Test
+    public void testStoreSingleCertOnlyMlDsa() throws Exception {
+
+        assumeMlDsaAvailable();
+
+        KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+        store.load(null, storePass.toCharArray());
+        store.setCertificateEntry("trustMlDsa65", serverCertMlDsa65);
+        assertEquals(1, store.size());
+        assertTrue(store.isCertificateEntry("trustMlDsa65"));
+        assertFalse(store.isKeyEntry("trustMlDsa65"));
+
+        Certificate out = store.getCertificate("trustMlDsa65");
+        assertEquals(serverCertMlDsa65, out);
+        assertEquals("trustMlDsa65",
+            store.getCertificateAlias(serverCertMlDsa65));
+    }
+
+    /**
+     * Store ML-DSA entries, then engineStore to a byte buffer, load back,
+     * and verify keys and certs round-trip. Exercises the WKS on-disk format
+     * with ML-DSA payloads.
+     */
+    @Test
+    public void testStoreLoadByteBufferMlDsa() throws Exception {
+
+        assumeMlDsaAvailable();
+
+        KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+        store.load(null, storePass.toCharArray());
+        store.setKeyEntry("k44", serverKeyMlDsa44, storePass.toCharArray(),
+            new Certificate[]{ serverCertMlDsa44 });
+        store.setKeyEntry("k65", serverKeyMlDsa65, storePass.toCharArray(),
+            new Certificate[]{ serverCertMlDsa65 });
+        store.setKeyEntry("k87", serverKeyMlDsa87, storePass.toCharArray(),
+            new Certificate[]{ serverCertMlDsa87 });
+        store.setCertificateEntry("trust", serverCertMlDsa65);
+        assertEquals(4, store.size());
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        store.store(baos, storePass.toCharArray());
+        byte[] wksBytes = baos.toByteArray();
+        assertTrue(wksBytes.length > 0);
+
+        KeyStore reload = KeyStore.getInstance(storeType, storeProvider);
+        reload.load(new ByteArrayInputStream(wksBytes),
+            storePass.toCharArray());
+        assertEquals(4, reload.size());
+
+        assertEquals(serverKeyMlDsa44,
+            reload.getKey("k44", storePass.toCharArray()));
+        assertEquals(serverKeyMlDsa65,
+            reload.getKey("k65", storePass.toCharArray()));
+        assertEquals(serverKeyMlDsa87,
+            reload.getKey("k87", storePass.toCharArray()));
+        assertEquals(serverCertMlDsa44, reload.getCertificate("k44"));
+        assertEquals(serverCertMlDsa65, reload.getCertificate("k65"));
+        assertEquals(serverCertMlDsa87, reload.getCertificate("k87"));
+        assertEquals(serverCertMlDsa65, reload.getCertificate("trust"));
+        assertTrue(reload.isCertificateEntry("trust"));
+    }
+
+    /**
+     * Load each prebuilt ML-DSA WKS keystore file from disk (built by
+     * examples/certs/BuildMlDsaKeystores.java), retrieve the key and cert,
+     * verify they can do a Signature round-trip.
+     */
+    @Test
+    public void testLoadMlDsaWKSFromFile() throws Exception {
+
+        assumeMlDsaWksAvailable();
+
+        String[] wksPaths = {
+            serverMlDsa44WKS, serverMlDsa65WKS, serverMlDsa87WKS };
+        String[] aliases  = {
+            "server-mldsa44", "server-mldsa65", "server-mldsa87" };
+        String[] sigAlgs  = { "ML-DSA-44", "ML-DSA-65", "ML-DSA-87" };
+        char[] wksPassword = "wolfsslpassword".toCharArray();
+
+        for (int i = 0; i < 3; i++) {
+            FileInputStream fis = new FileInputStream(wksPaths[i]);
+            KeyStore ks;
+            try {
+                ks = KeyStore.getInstance(storeType, storeProvider);
+                ks.load(fis, wksPassword);
+            }
+            finally {
+                fis.close();
+            }
+
+            PrivateKey priv = (PrivateKey) ks.getKey(aliases[i], wksPassword);
+            assertNotNull(sigAlgs[i] + ": getKey", priv);
+            assertEquals("ML-DSA", priv.getAlgorithm());
+
+            Certificate cert = ks.getCertificate(aliases[i]);
+            assertNotNull(sigAlgs[i] + ": getCertificate", cert);
+            assertEquals("ML-DSA", cert.getPublicKey().getAlgorithm());
+
+            /* Sign + verify with retrieved key */
+            Signature s = Signature.getInstance(sigAlgs[i], "wolfJCE");
+            s.initSign(priv);
+            byte[] msg = ("file-load " + sigAlgs[i]).getBytes();
+            s.update(msg);
+            byte[] sig = s.sign();
+
+            Signature v = Signature.getInstance(sigAlgs[i], "wolfJCE");
+            v.initVerify(cert.getPublicKey());
+            v.update(msg);
+            assertTrue(sigAlgs[i] + ": sign/verify with loaded key",
+                v.verify(sig));
+        }
+    }
+
+    /**
+     * Load each prebuilt CA truststore (ML-DSA cert as trust anchor),
+     * verify isCertificateEntry true and the cert round-trips.
+     */
+    @Test
+    public void testLoadMlDsaCaWKSFromFile() throws Exception {
+
+        assumeMlDsaWksAvailable();
+
+        String[] wksPaths = { caMlDsa44WKS, caMlDsa65WKS, caMlDsa87WKS };
+        String[] aliases  = { "ca-mldsa44", "ca-mldsa65", "ca-mldsa87" };
+        Certificate[] expectedCerts = {
+            serverCertMlDsa44, serverCertMlDsa65, serverCertMlDsa87 };
+        char[] wksPassword = "wolfsslpassword".toCharArray();
+
+        for (int i = 0; i < 3; i++) {
+            FileInputStream fis = new FileInputStream(wksPaths[i]);
+            KeyStore ks;
+            try {
+                ks = KeyStore.getInstance(storeType, storeProvider);
+                ks.load(fis, wksPassword);
+            }
+            finally {
+                fis.close();
+            }
+
+            assertTrue(aliases[i] + ": isCertificateEntry",
+                ks.isCertificateEntry(aliases[i]));
+            assertFalse(aliases[i] + ": isKeyEntry",
+                ks.isKeyEntry(aliases[i]));
+            Certificate out = ks.getCertificate(aliases[i]);
+            assertEquals(aliases[i] + ": cert roundtrip",
+                expectedCerts[i], out);
         }
     }
 }

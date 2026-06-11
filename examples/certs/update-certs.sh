@@ -74,6 +74,24 @@ certList=(
     "rsapss/server-rsapss-priv.der"
 )
 
+# ML-DSA certs/keys are newer than the latest wolfSSL release, copy them only
+# when present so this script keeps working against released wolfSSL cert
+# directories (warn-and-skip instead of abort).
+mldsaCertList=(
+    "mldsa/mldsa44-cert.pem"
+    "mldsa/mldsa44-cert.der"
+    "mldsa/mldsa44-key.pem"
+    "mldsa/mldsa44_pub-spki.der"
+    "mldsa/mldsa65-cert.pem"
+    "mldsa/mldsa65-cert.der"
+    "mldsa/mldsa65-key.pem"
+    "mldsa/mldsa65_pub-spki.der"
+    "mldsa/mldsa87-cert.pem"
+    "mldsa/mldsa87-cert.der"
+    "mldsa/mldsa87-key.pem"
+    "mldsa/mldsa87_pub-spki.der"
+)
+
 for i in ${!certList[@]};
 do
     printf "Updating: ${certList[$i]}\n"
@@ -83,6 +101,22 @@ do
         exit 1
     fi
 done
+
+if [ -d "$CERT_LOCATION/mldsa" ]; then
+    for i in ${!mldsaCertList[@]};
+    do
+        printf "Updating: ${mldsaCertList[$i]}\n"
+        cp $CERT_LOCATION/${mldsaCertList[$i]} ./${mldsaCertList[$i]}
+        if [ $? -ne 0 ]; then
+            printf "Warning: skipped missing ML-DSA cert: "
+            printf "${mldsaCertList[$i]}\n"
+        fi
+    done
+else
+    printf "Notice: $CERT_LOCATION/mldsa not found, skipping ML-DSA\n"
+    printf "certs (provided wolfSSL predates them), keeping existing\n"
+    printf "local copies\n"
+fi
 
 # Generate ca-keyPkcs8.der, used by examples/X509CertificateGeneration.java
 openssl pkcs8 -topk8 -inform DER -outform DER -in ca-key.der -out ca-keyPkcs8.der -nocrypt

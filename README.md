@@ -27,6 +27,14 @@ separate package and repo). If you want the minimal set of requirements needed
 for only wolfJCE, you can use `--enable-keygen --enable-crl`, where
 CRL support is needed to support JCE `CertPathValidator(PKIX)` CRL support.
 
+**Note on ML-DSA (FIPS 204):** ML-DSA support is **not** enabled by
+`--enable-jni` alone. To use the ML-DSA `Signature`, `KeyPairGenerator`,
+and `KeyFactory` services (and ML-DSA keys in the WKS KeyStore), add
+`--enable-mldsa` to the native wolfSSL `./configure` line (the older
+`--enable-dilithium` is an accepted alias), or use `--enable-all` which
+includes it. Without it, wolfJCE compiles and runs normally but the
+ML-DSA services are not registered.
+
 **wolfSSL Standard Build**:
 ```
 $ cd wolfssl-x.x.x

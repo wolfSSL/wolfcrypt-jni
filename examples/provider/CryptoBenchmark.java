@@ -44,6 +44,8 @@ public class CryptoBenchmark {
       "secp384r1", "secp521r1"};
     private static final int[] DH_KEY_SIZES = {2048, 3072, 4096};
     private static final String DH_ALGORITHM = "DH";
+    private static final String[] ML_DSA_LEVELS = {"ML-DSA-44",
+      "ML-DSA-65", "ML-DSA-87"};
 
     /* Benchmark type constants */
     private static final String BENCHMARK_ALL = "all";
@@ -58,6 +60,7 @@ public class CryptoBenchmark {
     private static final String BENCHMARK_SIGNATURE = "signature";
     private static final String BENCHMARK_KEYGEN = "keygen";
     private static final String BENCHMARK_RANDOM = "random";
+    private static final String BENCHMARK_MLDSA = "mldsa";
 
     /**
      * Prints usage instructions for the benchmark tool
@@ -86,6 +89,8 @@ public class CryptoBenchmark {
         System.out.println("  keygen     - Key generator benchmarks");
         System.out.println(
           "  random     - Secure random number generator benchmarks");
+        System.out.println(
+          "  mldsa      - ML-DSA (FIPS 204) key gen/sign/verify benchmarks");
         System.out.println("\nExample: java CryptoBenchmark rsa");
     }
 
@@ -767,6 +772,101 @@ public class CryptoBenchmark {
           finalProviderName, "EC");
     }
 
+    /* ML-DSA (FIPS 204) key gen, sign, and verify benchmark for one parameter
+     * set (level). The level string doubles as the JCE KeyPairGenerator and
+     * Signature algorithm name (e.g. "ML-DSA-65"). */
+    private static void runMlDsaBenchmark(String providerName, String level)
+        throws Exception {
+
+        KeyPairGenerator keyGen;
+        KeyPair keyPair;
+        Signature signature;
+        byte[] testData;
+        byte[] sig;
+        long ops;
+        long startTime;
+        double elapsedTime;
+
+        testData = generateTestData(SMALL_MESSAGE_SIZE);
+
+        keyGen = KeyPairGenerator.getInstance(level, providerName);
+        signature = Signature.getInstance(level, providerName);
+
+        /* Key generation benchmark */
+        TimingResult keyGenResult = runBenchmark(() -> {
+            try {
+                keyGen.generateKeyPair();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        double keyGenOpsPerSec =
+            keyGenResult.operations / keyGenResult.elapsedTime;
+        System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
+            level + " key gen (" + providerName + ")",
+            keyGenResult.operations, keyGenResult.elapsedTime,
+            keyGenOpsPerSec);
+        results.add(new BenchmarkResult(providerName, level + " key gen",
+            keyGenOpsPerSec));
+
+        /* Generate one key pair for sign/verify benchmarks */
+        keyPair = keyGen.generateKeyPair();
+
+        /* Confirm sign/verify works before benchmarking */
+        signature.initSign(keyPair.getPrivate());
+        signature.update(testData);
+        sig = signature.sign();
+
+        for (int i = 0; i < WARMUP_ITERATIONS; i++) {
+            signature.initSign(keyPair.getPrivate());
+            signature.update(testData);
+            signature.sign();
+
+            signature.initVerify(keyPair.getPublic());
+            signature.update(testData);
+            signature.verify(sig);
+        }
+
+        /* Signing benchmark */
+        ops = 0;
+        startTime = System.nanoTime();
+        elapsedTime = 0;
+        do {
+            signature.initSign(keyPair.getPrivate());
+            signature.update(testData);
+            signature.sign();
+            ops++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
+
+        double signOpsPerSec = ops / elapsedTime;
+        System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
+            level + " sign (" + providerName + ")", ops, elapsedTime,
+            signOpsPerSec);
+        results.add(new BenchmarkResult(providerName, level + " sign",
+            signOpsPerSec));
+
+        /* Verification benchmark */
+        ops = 0;
+        startTime = System.nanoTime();
+        elapsedTime = 0;
+        do {
+            signature.initVerify(keyPair.getPublic());
+            signature.update(testData);
+            signature.verify(sig);
+            ops++;
+            elapsedTime = (System.nanoTime() - startTime) / 1_000_000_000.0;
+        } while (elapsedTime < TEST_MIN_TIME_SECONDS);
+
+        double verifyOpsPerSec = ops / elapsedTime;
+        System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
+            level + " verify (" + providerName + ")", ops, elapsedTime,
+            verifyOpsPerSec);
+        results.add(new BenchmarkResult(providerName, level + " verify",
+            verifyOpsPerSec));
+    }
+
     /* Get HMAC algorithms for a specific provider */
     private static Set<String> getHmacAlgorithms(String providerName) {
         return getAlgorithmsForService(providerName, "Mac");
@@ -1203,6 +1303,13 @@ public class CryptoBenchmark {
         }
 
         for (String algorithm : supportedAlgorithms) {
+            /* ML-DSA is benchmarked separately by the dedicated "mldsa"
+             * section (runMlDsaBenchmark), skip it here so the generic
+             * RSA/ECDSA/DSA runner does not report it as unsupported.
+             * Case-insensitive prefix check, locale-independent. */
+            if (algorithm.regionMatches(true, 0, "ML-DSA", 0, 6)) {
+                continue;
+            }
             try {
                 runSignatureBenchmark(algorithm, providerName);
             } catch (Exception e) {
@@ -1788,6 +1895,7 @@ public class CryptoBenchmark {
                     arg.equals(BENCHMARK_SIGNATURE) ||
                     arg.equals(BENCHMARK_KEYGEN) ||
                     arg.equals(BENCHMARK_RANDOM) ||
+                    arg.equals(BENCHMARK_MLDSA) ||
                     arg.equals(BENCHMARK_ALL)) {
                     benchmarkToRun = arg;
                 } else {
@@ -1938,6 +2046,34 @@ public class CryptoBenchmark {
                             System.out.printf(
                               "Failed to benchmark %s with provider %s: %s%n",
                                 curve, provider.getName(), e.getMessage());
+                        }
+                    }
+                }
+            }
+
+            /* Run ML-DSA benchmarks with clean provider setup */
+            if (shouldRunBenchmark(BENCHMARK_MLDSA, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                  + "------------------------------------");
+                System.out.println("ML-DSA Benchmark Results");
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------\n");
+
+                for (Provider provider : providers) {
+                    if (provider instanceof WolfCryptProvider &&
+                      !FeatureDetect.MlDsaEnabled()) {
+                        continue;
+                    }
+                    setupProvidersForTest(provider);
+                    System.out.println("\n" + provider.getName() + ":");
+                    for (String level : ML_DSA_LEVELS) {
+                        try {
+                            runMlDsaBenchmark(provider.getName(), level);
+                        } catch (Exception e) {
+                            System.out.printf(
+                              " %-40s  Not supported: %s%n",
+                              level + " (" + provider.getName() + ")",
+                              e.getMessage());
                         }
                     }
                 }
