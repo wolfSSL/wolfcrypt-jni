@@ -57,6 +57,7 @@ import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
+import com.wolfssl.wolfcrypt.test.Util;
 
 /**
  * JUnit4 test cases for WolfCryptRSAKeyFactory
@@ -161,6 +162,79 @@ public class WolfCryptRSAKeyFactoryTest {
             /* Verify encoded forms match */
             assertArrayEquals(encoded, generated.getEncoded());
         }
+    }
+
+    /* X.509 SubjectPublicKeyInfo encoding of a 512-bit RSA public key using
+     * legacy OIW algorithm OID 1.3.14.3.2.15, as encoded by JDK releases
+     * prior to JDK-8146293. Same encoding used by OpenJDK test
+     * TestRSAOidSupport (JDK-8242897). */
+    private static final String LEGACY_OID_RSA_SPKI =
+        "3058300906052b0e03020f0500034b003048024100d7157c65e8f22557d8" +
+        "a857122cfe85bddfaba3064c21b345e2a7cdd8a6751e519ab861c5109fb8" +
+        "8cce45d161b9817bc0eccdc30fda69e62cc577775f2c1d66bd0203010001";
+
+    /* DER-encoded AlgorithmIdentifier for rsaEncryption
+     * (1.2.840.113549.1.1.1) with NULL parameters */
+    private static final String RSA_ALG_ID_HEX =
+        "300d06092a864886f70d0101010500";
+
+    /* DER-encoded legacy OIW OID 1.3.14.3.2.15 */
+    private static final String OIW_RSA_OID_HEX = "06052b0e03020f";
+
+    /**
+     * Helper method to check if haystack byte array contains needle
+     * byte array as a contiguous subsequence.
+     */
+    private static boolean containsBytes(byte[] haystack, byte[] needle) {
+        for (int i = 0; i <= haystack.length - needle.length; i++) {
+            int j = 0;
+            while (j < needle.length && haystack[i + j] == needle[j]) {
+                j++;
+            }
+            if (j == needle.length) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Test
+    public void testGeneratePublicFromLegacyOidX509Spec()
+        throws Exception {
+
+        if (!rsaKeyFactoryAvailable()) {
+            return;
+        }
+
+        KeyFactory kf = KeyFactory.getInstance("RSA", "wolfJCE");
+        assertNotNull(kf);
+
+        /* Decode X.509 encoding using legacy RSA algorithm OID */
+        X509EncodedKeySpec spec =
+            new X509EncodedKeySpec(Util.h2b(LEGACY_OID_RSA_SPKI));
+        PublicKey generated = kf.generatePublic(spec);
+        assertNotNull(generated);
+        assertTrue(generated instanceof RSAPublicKey);
+
+        RSAPublicKey rsaPub = (RSAPublicKey)generated;
+        assertEquals("RSA", rsaPub.getAlgorithm());
+        assertEquals(512, rsaPub.getModulus().bitLength());
+
+        /* Re-encoded key should use standard rsaEncryption OID, not
+         * contain the legacy OID, and be decodable again */
+        byte[] encoded = rsaPub.getEncoded();
+        assertNotNull(encoded);
+        assertTrue("Re-encoded SPKI should contain rsaEncryption " +
+            "AlgorithmIdentifier",
+            containsBytes(encoded, Util.h2b(RSA_ALG_ID_HEX)));
+        assertFalse("Re-encoded SPKI should not contain legacy OIW OID",
+            containsBytes(encoded, Util.h2b(OIW_RSA_OID_HEX)));
+
+        RSAPublicKey rsaPub2 = (RSAPublicKey)kf.generatePublic(
+            new X509EncodedKeySpec(encoded));
+        assertEquals(rsaPub.getModulus(), rsaPub2.getModulus());
+        assertEquals(rsaPub.getPublicExponent(),
+            rsaPub2.getPublicExponent());
     }
 
     @Test
