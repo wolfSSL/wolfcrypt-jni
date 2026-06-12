@@ -655,6 +655,8 @@ public final class WolfCryptProvider extends Provider {
         if (FeatureDetect.EccEnabled()) {
             put("KeyFactory.EC",
                 "com.wolfssl.provider.jce.WolfCryptECKeyFactory");
+            put("Alg.Alias.KeyFactory.1.2.840.10045.2.1", "EC");
+            put("Alg.Alias.KeyFactory.OID.1.2.840.10045.2.1", "EC");
         }
         if (FeatureDetect.DhEnabled()) {
             put("KeyFactory.DH",
