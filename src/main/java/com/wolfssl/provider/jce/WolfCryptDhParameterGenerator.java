@@ -25,6 +25,7 @@ import java.math.BigInteger;
 import java.security.AlgorithmParameters;
 import java.security.AlgorithmParameterGeneratorSpi;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidParameterException;
 import java.security.SecureRandom;
 import java.security.spec.AlgorithmParameterSpec;
 
@@ -32,6 +33,7 @@ import javax.crypto.spec.DHGenParameterSpec;
 import javax.crypto.spec.DHParameterSpec;
 
 import com.wolfssl.wolfcrypt.Dh;
+import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -59,17 +61,66 @@ public class WolfCryptDhParameterGenerator
     }
 
     /**
+     * Validate requested DH prime size.
+     *
+     * In FIPS mode, only sizes with pre-computed FFDHE groups (RFC 7919:
+     * 2048/3072/4096/6144/8192) are supported. Other sizes would require
+     * dynamic generation via wc_DhGenerateParams(), which has edge case
+     * issues in some FIPS bundles. Simple pass through for non-FIPS builds,
+     * since native filters sizes. Enforced size checking here for FIPS
+     * builds.
+     *
+     * @param size desired prime size in bits
+     *
+     * @throws InvalidParameterException if size is not positive, or is
+     *         not supported in FIPS mode
+     */
+    private static void validateParamSize(int size)
+        throws InvalidParameterException {
+
+        if (size <= 0) {
+            throw new InvalidParameterException(
+                "DH parameter size must be positive: " + size);
+        }
+
+        if (!Fips.enabled) {
+            return;
+        }
+
+        switch (size) {
+            case 2048:
+            case 3072:
+            case 4096:
+            case 6144:
+            case 8192:
+                return;
+            default:
+                break;
+        }
+
+        throw new InvalidParameterException(
+            "Unsupported DH parameter size in FIPS mode: " + size +
+            " bits, supported sizes: 2048, 3072, 4096, 6144, 8192");
+    }
+
+    /**
      * Initialize with desired prime size.
      *
      * The SecureRandom parameter is intentionally ignored;
      * wolfCrypt uses its own internal RNG for DH parameter
      * generation to ensure FIPS-compliant randomness.
      *
-     * @param size desired prime size in bits
+     * @param size desired prime size in bits. In FIPS mode, must be one
+     *        of 2048, 3072, 4096, 6144, or 8192.
      * @param random caller-supplied randomness (ignored)
+     *
+     * @throws InvalidParameterException if size is not supported
      */
     @Override
-    protected void engineInit(int size, SecureRandom random) {
+    protected void engineInit(int size, SecureRandom random)
+        throws InvalidParameterException {
+
+        validateParamSize(size);
         this.size = size;
     }
 
@@ -82,8 +133,8 @@ public class WolfCryptDhParameterGenerator
      *
      * @param genParamSpec DH generation parameters
      * @param random caller-supplied randomness (ignored)
-     * @throws InvalidAlgorithmParameterException if
-     *         genParamSpec is null or not a DHGenParameterSpec
+     * @throws InvalidAlgorithmParameterException if genParamSpec is null, not
+     *         a DHGenParameterSpec, or contains an unsupported prime size
      */
     @Override
     protected void engineInit(AlgorithmParameterSpec genParamSpec,
@@ -101,6 +152,14 @@ public class WolfCryptDhParameterGenerator
         }
 
         DHGenParameterSpec dhGenSpec = (DHGenParameterSpec)genParamSpec;
+
+        try {
+            validateParamSize(dhGenSpec.getPrimeSize());
+
+        } catch (InvalidParameterException e) {
+            throw new InvalidAlgorithmParameterException(e.getMessage(), e);
+        }
+
         this.size = dhGenSpec.getPrimeSize();
         this.exponentSize = dhGenSpec.getExponentSize();
     }
