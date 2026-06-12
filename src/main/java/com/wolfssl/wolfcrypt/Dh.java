@@ -412,13 +412,21 @@ public class Dh extends NativeStruct {
      * 6144, 8192), consider using getNamedDhParams() which uses
      * pre-computed FFDHE parameters from RFC 7919.
      *
+     * Supported modulus sizes depend on the native wolfSSL build. Native
+     * wc_DhGenerateParams() supports the FIPS 186-4 sizes (1024, 2048,
+     * 3072 bits), plus other sizes if built with WOLFSSL_NO_DH186. In FIPS
+     * mode, only the FIPS 186-4 sizes are passed through to native code,
+     * since wc_DhGenerateParams() has edge case issues with other sizes
+     * in some FIPS bundles.
+     *
      * @param rng Initialized Rng object to use for parameter generation
-     * @param modSz Modulus size in bits (e.g., 512, 1024, 2048)
+     * @param modSz Modulus size in bits. In FIPS mode, must be 1024,
+     *        2048, or 3072
      *
      * @return byte array containing [p, g] parameters, or null on error
      *
-     * @throws WolfCryptException if native operation fails or if
-     *         parameter generation is not supported
+     * @throws WolfCryptException if native operation fails, if modSz is
+     *         not supported, or if parameter generation is not supported
      */
     public static byte[][] generateDhParams(Rng rng, int modSz)
         throws WolfCryptException {
@@ -434,6 +442,13 @@ public class Dh extends NativeStruct {
 
         if (modSz <= 0) {
             throw new WolfCryptException("Invalid modulus size: " + modSz);
+        }
+
+        if (Fips.enabled &&
+            modSz != 1024 && modSz != 2048 && modSz != 3072) {
+            throw new WolfCryptException(
+                "Unsupported DH modulus size in FIPS mode: " + modSz +
+                " bits, allowed sizes are 1024, 2048, or 3072 bits");
         }
 
         return wc_DhGenerateParams(rng, modSz);
