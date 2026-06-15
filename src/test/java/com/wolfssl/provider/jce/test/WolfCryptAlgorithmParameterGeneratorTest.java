@@ -37,6 +37,7 @@ import java.security.AlgorithmParameterGenerator;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidParameterException;
 import java.security.NoSuchProviderException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.AlgorithmParameterSpec;
@@ -181,13 +182,67 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
     }
 
     @Test
+    public void testDHParameterGenerationUnsupportedSizesFIPS()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               Exception {
+
+        /* In FIPS mode, sizes without a pre-computed FFDHE group must be
+         * rejected at init() time, before reaching native
+         * wc_DhGenerateParams() */
+        if (!Fips.enabled) {
+            return;
+        }
+
+        int[] unsupportedSizes = { 512, 768, 832, 1024, 1536 };
+
+        for (int size : unsupportedSizes) {
+            AlgorithmParameterGenerator paramGen =
+                AlgorithmParameterGenerator.getInstance("DH", "wolfJCE");
+            assertNotNull(paramGen);
+
+            try {
+                paramGen.init(size);
+                fail("AlgorithmParameterGenerator.init should throw " +
+                     "InvalidParameterException for " + size + "-bit " +
+                     "size in FIPS mode");
+            } catch (InvalidParameterException e) {
+                /* expected */
+            }
+        }
+    }
+
+    @Test
+    public void testDHParameterGenerationNonPositiveSizes()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               Exception {
+
+        /* Non-positive sizes must be rejected at init() time in all
+         * modes */
+        int[] invalidSizes = { 0, -1, -2048 };
+
+        for (int size : invalidSizes) {
+            AlgorithmParameterGenerator paramGen =
+                AlgorithmParameterGenerator.getInstance("DH", "wolfJCE");
+            assertNotNull(paramGen);
+
+            try {
+                paramGen.init(size);
+                fail("AlgorithmParameterGenerator.init should throw " +
+                     "InvalidParameterException for " + size + "-bit size");
+            } catch (InvalidParameterException e) {
+                /* expected */
+            }
+        }
+    }
+
+    @Test
     public void testDHParameterGenerationNonStandardSizes()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                Exception {
 
         /* Test non-standard sizes (requires dynamic generation).
-         * Skip in FIPS mode as FIPS 186-4 only allows 1024, 2048,
-         * and 3072-bit DH parameter generation */
+         * Skip in FIPS mode, non-FFDHE sizes are rejected at init()
+         * time (covered by testDHParameterGenerationUnsupportedSizesFIPS) */
         if (Fips.enabled) {
             return;
         }
@@ -218,10 +273,10 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
             }
             catch (RuntimeException e) {
                 /* Dynamic parameter generation may not be supported for all
-                 * sizes, especially in FIPS builds or when wolfSSL enforces
-                 * minimum parameter sizes. Prime generation for non-standard
-                 * sizes may also fail on resource-constrained devices like
-                 * Android. Skip if generation fails. */
+                 * sizes, especially when wolfSSL enforces minimum parameter
+                 * sizes. Prime generation for non-standard sizes may also
+                 * fail on resource-constrained devices like Android. Skip
+                 * if generation fails. */
                 if (e.getMessage() != null &&
                     (e.getMessage().contains("Bad function argument") ||
                      e.getMessage().contains("prime generation failure"))) {
@@ -374,6 +429,46 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
         assertNotNull(spec);
         assertEquals(2048, spec.getP().bitLength());
         assertEquals(256, spec.getL());
+    }
+
+    @Test
+    public void testDHParameterGenerationWithDHGenParameterSpecInvalidSize()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* Unsupported prime sizes in DHGenParameterSpec should be rejected
+         * at init() time */
+        AlgorithmParameterGenerator paramGen =
+            AlgorithmParameterGenerator.getInstance("DH", "wolfJCE");
+        assertNotNull(paramGen);
+
+        /* Non-positive prime size rejected in all modes */
+        try {
+            DHGenParameterSpec genSpec = new DHGenParameterSpec(0, 0);
+            paramGen.init(genSpec, rand);
+
+            fail("AlgorithmParameterGenerator.init should throw " +
+                 "InvalidAlgorithmParameterException for 0-bit " +
+                 "prime size");
+
+        } catch (InvalidAlgorithmParameterException e) {
+            /* expected */
+        }
+
+        /* In FIPS mode, sizes without an FFDHE group rejected at init() */
+        if (Fips.enabled) {
+            try {
+                DHGenParameterSpec genSpec =
+                    new DHGenParameterSpec(1536, 256);
+                paramGen.init(genSpec, rand);
+
+                fail("AlgorithmParameterGenerator.init should throw " +
+                     "InvalidAlgorithmParameterException for 1536-bit " +
+                     "prime size in FIPS mode");
+
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+        }
     }
 
     @Test
