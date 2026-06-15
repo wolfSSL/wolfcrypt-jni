@@ -49,6 +49,15 @@ public class Asn extends WolfObject {
     public static final int RSAESOAEPk;
     /** ECDSA key value, from asn.h Key_Sum enum */
     public static final int ECDSAk;
+    /** ML-DSA-44 (FIPS 204) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.17. */
+    public static final int ML_DSA_LEVEL2k;
+    /** ML-DSA-65 (FIPS 204) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.18. */
+    public static final int ML_DSA_LEVEL3k;
+    /** ML-DSA-87 (FIPS 204) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.19. */
+    public static final int ML_DSA_LEVEL5k;
 
     /* Hash Sum values, from oid_sum.h Hash_Sum enum */
 
@@ -79,6 +88,9 @@ public class Asn extends WolfObject {
         RSAPSSk = getRSAPSSk();
         RSAESOAEPk = getRSAESOAEPk();
         ECDSAk = getECDSAk();
+        ML_DSA_LEVEL2k = getML_DSA_LEVEL2k();
+        ML_DSA_LEVEL3k = getML_DSA_LEVEL3k();
+        ML_DSA_LEVEL5k = getML_DSA_LEVEL5k();
 
         MD5h = getMD5h();
         SHAh = getSHAh();
@@ -106,6 +118,15 @@ public class Asn extends WolfObject {
 
     /** Return value of native ECDSAk enum */
     private static native int getECDSAk();
+
+    /** Return value of native ML_DSA_LEVEL2k enum */
+    private static native int getML_DSA_LEVEL2k();
+
+    /** Return value of native ML_DSA_LEVEL3k enum */
+    private static native int getML_DSA_LEVEL3k();
+
+    /** Return value of native ML_DSA_LEVEL5k enum */
+    private static native int getML_DSA_LEVEL5k();
 
     /** Return value of native MD5h enum */
     private static native int getMD5h();

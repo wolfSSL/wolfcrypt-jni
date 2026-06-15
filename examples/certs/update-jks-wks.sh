@@ -254,3 +254,42 @@ rm ca-server-ecc-256.wks &> /dev/null
 jks_to_wks "ca-server-ecc-256" "wolfsslpassword"
 printf "done\n"
 
+
+#################### ML-DSA WKS KEYSTORES ####################
+# ML-DSA WKS keystores are built directly via a wolfJCE Java helper
+# rather than keytool, because keytool ML-DSA support requires JDK 24+
+# whereas this approach works on any JDK 8+ with wolfJCE installed.
+
+printf "\nBuilding ML-DSA WKS keystores via wolfJCE helper ...\n"
+
+JAR=../../lib/wolfcrypt-jni.jar
+if [ ! -f "$JAR" ]; then
+    printf "\tSkipping: wolfcrypt-jni.jar not found at $JAR\n"
+    printf "\t(Run 'ant build-jce-debug' first.)\n"
+else
+    rm -f BuildMlDsaKeystores.class
+    javac -cp "$JAR" BuildMlDsaKeystores.java
+    if [ $? -ne 0 ]; then
+        printf "\tFailed to compile BuildMlDsaKeystores.java\n"
+        exit 1
+    fi
+    # Probe for wolfJCE ML-DSA support before deleting the prebuilt
+    # keystores, native wolfSSL may not be compiled with ML-DSA
+    java -cp "$JAR:." \
+        -Djava.library.path=../../lib BuildMlDsaKeystores --check
+    if [ $? -ne 0 ]; then
+        printf "\tSkipping: native wolfSSL lacks ML-DSA support,\n"
+        printf "\tleaving prebuilt ML-DSA keystores in place\n"
+    else
+        rm -f server-mldsa44.wks server-mldsa65.wks server-mldsa87.wks
+        rm -f client-mldsa44.wks client-mldsa65.wks client-mldsa87.wks
+        rm -f ca-mldsa44.wks     ca-mldsa65.wks     ca-mldsa87.wks
+        java -cp "$JAR:." \
+            -Djava.library.path=../../lib BuildMlDsaKeystores
+        if [ $? -ne 0 ]; then
+            printf "\tBuildMlDsaKeystores failed\n"
+            exit 1
+        fi
+    fi
+    rm -f BuildMlDsaKeystores.class
+fi

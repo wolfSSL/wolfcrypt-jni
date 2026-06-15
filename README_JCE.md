@@ -222,6 +222,13 @@ The JCE provider currently supports the following algorithms:
         SHA3-256withECDSAinP1363Format
         SHA3-384withECDSAinP1363Format
         SHA3-512withECDSAinP1363Format
+        ML-DSA (any ML-DSA-44/65/87 key)
+        ML-DSA-44
+            OID: 2.16.840.1.101.3.4.3.17
+        ML-DSA-65
+            OID: 2.16.840.1.101.3.4.3.18
+        ML-DSA-87
+            OID: 2.16.840.1.101.3.4.3.19
 
     KeyAgreement Class
         DiffieHellman
@@ -245,11 +252,19 @@ The JCE provider currently supports the following algorithms:
         RSASSA-PSS
         EC
         DH
+        ML-DSA (defaults to ML-DSA-65, level overridable via init())
+        ML-DSA-44 (alias OID: 2.16.840.1.101.3.4.3.17)
+        ML-DSA-65 (alias OID: 2.16.840.1.101.3.4.3.18)
+        ML-DSA-87 (alias OID: 2.16.840.1.101.3.4.3.19)
 
     KeyFactory
         RSA
         EC
         DH (aliases: DiffieHellman, 1.2.840.113549.1.3.1)
+        ML-DSA
+        ML-DSA-44 (alias OID: 2.16.840.1.101.3.4.3.17)
+        ML-DSA-65 (alias OID: 2.16.840.1.101.3.4.3.18)
+        ML-DSA-87 (alias OID: 2.16.840.1.101.3.4.3.19)
 
     CertPathValidator Class
         PKIX (with PKIXRevocationChecker via getRevocationChecker())
@@ -331,8 +346,10 @@ FIPS 140-2/3.
 
 #### Stored Object Compatibility
 
-The WKS KeyStore supports storage of PrivateKey, Certificate, and
-SecretKey objects.
+The WKS KeyStore supports storage of PrivateKey, Certificate, and SecretKey
+objects. PrivateKey storage includes RSA, ECC, and ML-DSA (FIPS 204) keys.
+ML-DSA key support requires native wolfSSL to be built with ML-DSA enabled
+(see the ML-DSA note in [README.md](./README.md)).
 
 #### Converting Other KeyStore Formats to WKS
 

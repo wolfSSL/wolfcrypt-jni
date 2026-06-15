@@ -28,6 +28,7 @@
 #elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
+#include <wolfssl/version.h>
 
 #include <wolfssl/ssl.h>
 #include <wolfssl/error-ssl.h>
