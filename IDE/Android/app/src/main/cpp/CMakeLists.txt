@@ -375,6 +375,7 @@ add_library(wolfcryptjni SHARED
         ${wolfcryptjni_DIR}/jni/jni_jce_wolfsslkeystore.c
         ${wolfcryptjni_DIR}/jni/jni_logging.c
         ${wolfcryptjni_DIR}/jni/jni_md5.c
+        ${wolfcryptjni_DIR}/jni/jni_mldsa.c
         ${wolfcryptjni_DIR}/jni/jni_native_struct.c
         ${wolfcryptjni_DIR}/jni/jni_pwdbased.c
         ${wolfcryptjni_DIR}/jni/jni_rng.c

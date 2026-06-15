@@ -55,6 +55,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/Logging.java \
     src/main/java/com/wolfssl/wolfcrypt/Md5.java \
     src/main/java/com/wolfssl/wolfcrypt/MessageDigest.java \
+    src/main/java/com/wolfssl/wolfcrypt/MlDsa.java \
     src/main/java/com/wolfssl/wolfcrypt/NativeStruct.java \
     src/main/java/com/wolfssl/wolfcrypt/Pwdbased.java \
     src/main/java/com/wolfssl/wolfcrypt/Rng.java \
@@ -95,6 +96,10 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyGenerator.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyPairGenerator.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMac.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptMlDsaKeyFactory.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptMlDsaPrivateKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptMlDsaPublicKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptMlDsaSignature.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestMd5.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha224.java \
@@ -106,6 +111,8 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPKIXCertPathValidator.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPKIXRevocationChecker.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptProvider.java \
+    src/main/java/com/wolfssl/provider/jce/WolfPQCJdkCompat.java \
+    src/main/java/com/wolfssl/provider/jce/WolfPQCParameterSpec.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPssParameters.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptRandom.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSecretKey.java \
