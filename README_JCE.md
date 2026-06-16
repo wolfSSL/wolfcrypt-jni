@@ -259,7 +259,7 @@ The JCE provider currently supports the following algorithms:
 
     KeyFactory
         RSA
-        EC
+        EC (alias: 1.2.840.10045.2.1)
         DH (aliases: DiffieHellman, 1.2.840.113549.1.3.1)
         ML-DSA
         ML-DSA-44 (alias OID: 2.16.840.1.101.3.4.3.17)

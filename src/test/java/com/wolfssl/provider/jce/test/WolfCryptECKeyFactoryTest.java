@@ -180,6 +180,46 @@ public class WolfCryptECKeyFactoryTest {
     }
 
     @Test
+    public void testECKeyFactoryOidAlias() throws Exception {
+
+        if (!FeatureDetect.EccEnabled()) {
+            return;
+        }
+
+        /* Test that we can get an EC KeyFactory instance using the EC
+         * public key OID, in both plain and OID.-prefixed alias forms */
+        KeyFactory kf = KeyFactory.getInstance("1.2.840.10045.2.1", "wolfJCE");
+        assertNotNull("KeyFactory should not be null", kf);
+        assertEquals("Provider should be wolfJCE", "wolfJCE",
+            kf.getProvider().getName());
+
+        KeyFactory kfPrefixed = KeyFactory.getInstance(
+            "OID.1.2.840.10045.2.1", "wolfJCE");
+        assertNotNull("KeyFactory should not be null", kfPrefixed);
+        assertEquals("Provider should be wolfJCE", "wolfJCE",
+            kfPrefixed.getProvider().getName());
+
+        /* Verify OID-based KeyFactory can convert keys */
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", "wolfJCE");
+        kpg.initialize(new ECGenParameterSpec("secp256r1"));
+        KeyPair kp = kpg.generateKeyPair();
+
+        PublicKey pubKey = kf.generatePublic(
+            new X509EncodedKeySpec(kp.getPublic().getEncoded()));
+        assertNotNull("Converted public key should not be null", pubKey);
+        assertTrue("Should be ECPublicKey", pubKey instanceof ECPublicKey);
+        assertEquals("Converted public key algorithm should be EC",
+            "EC", pubKey.getAlgorithm());
+
+        PrivateKey privKey = kf.generatePrivate(
+            new PKCS8EncodedKeySpec(kp.getPrivate().getEncoded()));
+        assertNotNull("Converted private key should not be null", privKey);
+        assertTrue("Should be ECPrivateKey", privKey instanceof ECPrivateKey);
+        assertEquals("Converted private key algorithm should be EC",
+            "EC", privKey.getAlgorithm());
+    }
+
+    @Test
     public void testPKCS8PrivateKeyConversion() throws Exception {
 
         if (!FeatureDetect.EccEnabled()) {
