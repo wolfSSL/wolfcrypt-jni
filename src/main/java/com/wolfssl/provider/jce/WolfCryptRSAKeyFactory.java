@@ -50,6 +50,22 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
  */
 public class WolfCryptRSAKeyFactory extends KeyFactorySpi {
 
+    /* OIW OID 1.3.14.3.2.15 content bytes. Used as the X.509
+     * SubjectPublicKeyInfo algorithm OID for RSA public keys encoded by JDK
+     * releases prior to JDK-8146293 */
+    private static final byte[] OIW_RSA_OID = {
+        (byte)0x2B, (byte)0x0E, (byte)0x03, (byte)0x02, (byte)0x0F
+    };
+
+    /* DER-encoded AlgorithmIdentifier for rsaEncryption
+     * (1.2.840.113549.1.1.1) with NULL parameters */
+    private static final byte[] RSA_ALG_ID_DER = {
+        (byte)0x30, (byte)0x0D, (byte)0x06, (byte)0x09,
+        (byte)0x2A, (byte)0x86, (byte)0x48, (byte)0x86,
+        (byte)0xF7, (byte)0x0D, (byte)0x01, (byte)0x01,
+        (byte)0x01, (byte)0x05, (byte)0x00
+    };
+
     /**
      * Create new WolfCryptRSAKeyFactory object.
      */
@@ -65,6 +81,105 @@ public class WolfCryptRSAKeyFactory extends KeyFactorySpi {
     private void log(String msg) {
         WolfCryptDebug.log(getClass(), WolfCryptDebug.INFO,
             () -> "[RSA KeyFactory] " + msg);
+    }
+
+    /**
+     * Rewrite legacy RSA algorithm OIDs inside an X.509
+     * SubjectPublicKeyInfo to the standard rsaEncryption OID
+     * (1.2.840.113549.1.1.1).
+     *
+     * RSA public keys encoded by JDK releases prior to JDK-8146293 use OIW
+     * OID 1.3.14.3.2.15 in the AlgorithmIdentifier. Native wolfCrypt only
+     * accepts the rsaEncryption OID, so the AlgorithmIdentifier is replaced
+     * before decoding. This matches SunRsaSign RSA KeyFactory behavior
+     * (JDK-8242897). Keys returned from this KeyFactory will re-encode using
+     * the standard OID.
+     *
+     * @param x509Der DER-encoded X.509 SubjectPublicKeyInfo
+     *
+     * @return DER encoding with AlgorithmIdentifier rewritten to
+     *         rsaEncryption, or the original array if the encoding does not
+     *         use a legacy RSA OID or cannot be parsed
+     */
+    private byte[] normalizeLegacyRsaOid(byte[] x509Der) {
+
+        int idx = 0;
+        int algIdStart = 0;
+        int algIdHeader = 0;
+        int algIdLen = 0;
+        int oidStart = 0;
+        int oidLen = 0;
+        int tailStart = 0;
+        int tailLen = 0;
+        byte[] contents = null;
+
+        if (x509Der == null) {
+            return null;
+        }
+
+        try {
+            /* SubjectPublicKeyInfo: SEQUENCE { AlgorithmIdentifier,
+             * subjectPublicKey BIT STRING }, walk to the AlgorithmIdentifier
+             * algorithm OID */
+            if (x509Der.length < 2 || x509Der[idx] != 0x30) {
+                return x509Der;
+            }
+            idx += 1 + WolfCryptASN1Util.getDERLengthSize(x509Der, 1);
+
+            /* AlgorithmIdentifier SEQUENCE */
+            if (x509Der[idx] != 0x30) {
+                return x509Der;
+            }
+            algIdStart = idx;
+            algIdLen = WolfCryptASN1Util.getDERLength(x509Der, idx + 1);
+            algIdHeader = 1 +
+                WolfCryptASN1Util.getDERLengthSize(x509Der, idx + 1);
+            idx += algIdHeader;
+
+            /* algorithm OBJECT IDENTIFIER */
+            if (x509Der[idx] != 0x06) {
+                return x509Der;
+            }
+            oidLen = WolfCryptASN1Util.getDERLength(x509Der, idx + 1);
+            oidStart = idx + 1 +
+                WolfCryptASN1Util.getDERLengthSize(x509Der, idx + 1);
+
+            /* Compare OID content bytes in place against legacy OIW OID */
+            if (oidLen != OIW_RSA_OID.length ||
+                oidStart + oidLen > x509Der.length) {
+                return x509Der;
+            }
+            for (int i = 0; i < oidLen; i++) {
+                if (x509Der[oidStart + i] != OIW_RSA_OID[i]) {
+                    return x509Der;
+                }
+            }
+
+            /* Rebuild SubjectPublicKeyInfo with rsaEncryption
+             * AlgorithmIdentifier, keeping everything after the original
+             * AlgorithmIdentifier (subjectPublicKey BIT STRING) as is */
+            tailStart = algIdStart + algIdHeader + algIdLen;
+            if (tailStart < 0 || tailStart > x509Der.length) {
+                return x509Der;
+            }
+            tailLen = x509Der.length - tailStart;
+
+            contents = new byte[RSA_ALG_ID_DER.length + tailLen];
+            System.arraycopy(RSA_ALG_ID_DER, 0, contents, 0,
+                RSA_ALG_ID_DER.length);
+            System.arraycopy(x509Der, tailStart, contents,
+                RSA_ALG_ID_DER.length, tailLen);
+
+            log("rewrote legacy RSA OID (1.3.14.3.2.15) in X509 " +
+                "encoding to rsaEncryption");
+
+            return WolfCryptASN1Util.encodeDERSequence(contents);
+
+        } catch (IllegalArgumentException | IndexOutOfBoundsException e) {
+            /* Parsing errors on malformed encodings, leave to native
+             * wolfCrypt error handling */
+            return x509Der;
+        }
     }
 
     /**
@@ -375,6 +490,10 @@ public class WolfCryptRSAKeyFactory extends KeyFactorySpi {
                     "X509EncodedKeySpec contains null encoded key");
             }
 
+            /* Rewrite legacy RSA algorithm OIDs used by older JDK X.509
+             * encodings to standard rsaEncryption OID before native decode */
+            x509Der = normalizeLegacyRsaOid(x509Der);
+
             log("decoding X509 public key, length: " + x509Der.length);
 
             /* Import X509 key into Rsa to validate DER structure */
@@ -386,8 +505,7 @@ public class WolfCryptRSAKeyFactory extends KeyFactorySpi {
 
         } catch (WolfCryptException e) {
             throw new InvalidKeySpecException(
-                "wolfCrypt error during X509 key decode: " + e.getMessage(),
-                e);
+                "wolfCrypt error during X509 key decode: " + e.getMessage(), e);
 
         } finally {
             if (rsa != null) {
