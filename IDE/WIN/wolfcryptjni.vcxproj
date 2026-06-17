@@ -58,6 +58,7 @@
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Hmac_hashType.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Logging.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Md5.h" />
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_MlKem.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_NativeStruct.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Rng.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Rsa.h" />
@@ -98,6 +99,7 @@
     <ClCompile Include="..\..\jni\jni_logging.c" />
     <ClCompile Include="..\..\jni\jni_md5.c" />
     <ClCompile Include="..\..\jni\jni_mldsa.c" />
+    <ClCompile Include="..\..\jni\jni_mlkem.c" />
     <ClCompile Include="..\..\jni\jni_native_struct.c" />
     <ClCompile Include="..\..\jni\jni_pwdbased.c" />
     <ClCompile Include="..\..\jni\jni_rng.c" />

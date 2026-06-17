@@ -642,6 +642,30 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.19",
                 "ML-DSA-87");
         }
+        if (FeatureDetect.MlKemEnabled()) {
+            /* Generic alias: defaults to ML-KEM-768 */
+            put("KeyPairGenerator.ML-KEM",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenMlKem");
+            put("KeyPairGenerator.ML-KEM-512",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenMlKem512");
+            put("KeyPairGenerator.ML-KEM-768",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenMlKem768");
+            put("KeyPairGenerator.ML-KEM-1024",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenMlKem1024");
+            /* OID aliases (RFC 9935, arc 2.16.840.1.101.3.4.4) */
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.4.1",
+                "ML-KEM-512");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.4.1",
+                "ML-KEM-512");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.4.2",
+                "ML-KEM-768");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.4.2",
+                "ML-KEM-768");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.4.3",
+                "ML-KEM-1024");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.4.3",
+                "ML-KEM-1024");
+        }
 
 
         /* CertPathValidator */
@@ -742,6 +766,52 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.19", "ML-DSA-87");
             put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.19",
                 "ML-DSA-87");
+        }
+        if (FeatureDetect.MlKemEnabled()) {
+            put("KeyFactory.ML-KEM",
+                "com.wolfssl.provider.jce.WolfCryptMlKemKeyFactory");
+            put("KeyFactory.ML-KEM-512",
+                "com.wolfssl.provider.jce.WolfCryptMlKemKeyFactory$wcMlKem512");
+            put("KeyFactory.ML-KEM-768",
+                "com.wolfssl.provider.jce.WolfCryptMlKemKeyFactory$wcMlKem768");
+            put("KeyFactory.ML-KEM-1024",
+                "com.wolfssl.provider.jce.WolfCryptMlKemKeyFactory$wcMlKem1024");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.4.1", "ML-KEM-512");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.4.1",
+                "ML-KEM-512");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.4.2", "ML-KEM-768");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.4.2",
+                "ML-KEM-768");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.4.3", "ML-KEM-1024");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.4.3",
+                "ML-KEM-1024");
+        }
+
+        /* KEM (javax.crypto.KEM, JDK 21+). The KEMSpi implementation is only
+         * compiled into the JAR when built on JDK 21 or later, so probe for
+         * both the JDK SPI and our class before registering. On Java 8 this
+         * block is skipped and no KEM service is advertised. */
+        if (FeatureDetect.MlKemEnabled()) {
+            try {
+                Class.forName("javax.crypto.KEMSpi");
+                Class.forName("com.wolfssl.provider.jce.WolfCryptMlKemKem");
+                put("KEM.ML-KEM",
+                    "com.wolfssl.provider.jce.WolfCryptMlKemKem");
+                put("KEM.ML-KEM-512",
+                    "com.wolfssl.provider.jce.WolfCryptMlKemKem$wcMlKem512");
+                put("KEM.ML-KEM-768",
+                    "com.wolfssl.provider.jce.WolfCryptMlKemKem$wcMlKem768");
+                put("KEM.ML-KEM-1024",
+                    "com.wolfssl.provider.jce.WolfCryptMlKemKem$wcMlKem1024");
+                put("Alg.Alias.KEM.2.16.840.1.101.3.4.4.1", "ML-KEM-512");
+                put("Alg.Alias.KEM.OID.2.16.840.1.101.3.4.4.1", "ML-KEM-512");
+                put("Alg.Alias.KEM.2.16.840.1.101.3.4.4.2", "ML-KEM-768");
+                put("Alg.Alias.KEM.OID.2.16.840.1.101.3.4.4.2", "ML-KEM-768");
+                put("Alg.Alias.KEM.2.16.840.1.101.3.4.4.3", "ML-KEM-1024");
+                put("Alg.Alias.KEM.OID.2.16.840.1.101.3.4.4.3", "ML-KEM-1024");
+            } catch (Throwable t) {
+                /* JDK < 21 or KEMSpi class excluded from build, skip KEM */
+            }
         }
 
         /* KeyStore */

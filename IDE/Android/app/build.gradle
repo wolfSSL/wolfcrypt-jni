@@ -36,6 +36,13 @@ android {
     }
     sourceSets {
         main.java.srcDirs += '../../../src/main/java'
+        /* WolfCryptMlKemKem implements javax.crypto.KEMSpi (JDK 21+), an API
+         * Android's class library does not provide. Exclude it from the
+         * Android build, mirroring the JDK 21 gating in build.xml/pom.xml.
+         * The rest of the ML-KEM support (KeyPairGenerator/KeyFactory) still
+         * builds, and WolfCryptProvider registers the KEM service only via
+         * reflection, so its absence is handled gracefully at runtime. */
+        main.java.exclude 'com/wolfssl/provider/jce/WolfCryptMlKemKem.java'
         /* The FilteredSun* providers wrap desktop-JDK Sun providers
          * (sun.security.*), which do not exist on Android. Exclude their
          * tests, pulled in via the androidTest symlink to the shared

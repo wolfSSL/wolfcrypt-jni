@@ -31,6 +31,16 @@ while [ "$1" ]; do
   shift
 done
 
+# javax.crypto.KEMSpi (used by WolfCryptMlKemKem.java) requires JDK 21+.
+# build.xml and pom.xml exclude that source below JDK 21. Mirror that here so
+# this script still runs on Java 8-20. KEM_SRC stays empty on older JDKs (and
+# must remain unquoted below so an empty value expands to zero arguments).
+JAVA_MAJOR=$(javac -version 2>&1 | sed -E 's/^javac ([0-9]+).*/\1/')
+KEM_SRC=""
+if [ "$JAVA_MAJOR" -ge 21 ] 2>/dev/null; then
+    KEM_SRC="src/main/java/com/wolfssl/provider/jce/WolfCryptMlKemKem.java"
+fi
+
 infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/Aes.java \
     src/main/java/com/wolfssl/wolfcrypt/AesCcm.java \
@@ -56,6 +66,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/Md5.java \
     src/main/java/com/wolfssl/wolfcrypt/MessageDigest.java \
     src/main/java/com/wolfssl/wolfcrypt/MlDsa.java \
+    src/main/java/com/wolfssl/wolfcrypt/MlKem.java \
     src/main/java/com/wolfssl/wolfcrypt/NativeStruct.java \
     src/main/java/com/wolfssl/wolfcrypt/Pwdbased.java \
     src/main/java/com/wolfssl/wolfcrypt/Rng.java \
@@ -100,6 +111,11 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMlDsaPrivateKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMlDsaPublicKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMlDsaSignature.java \
+    $KEM_SRC \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptMlKemKeyFactory.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptMlKemPrivateKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptMlKemPublicKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptMlKemUtil.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestMd5.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha224.java \
