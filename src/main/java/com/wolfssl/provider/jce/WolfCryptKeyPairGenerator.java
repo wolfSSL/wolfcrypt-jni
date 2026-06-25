@@ -56,6 +56,7 @@ import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.MlDsa;
+import com.wolfssl.wolfcrypt.MlKem;
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -70,7 +71,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         WC_RSA_PSS,
         WC_ECC,
         WC_DH,
-        WC_ML_DSA
+        WC_ML_DSA,
+        WC_ML_KEM
     }
 
     private KeyType type = null;
@@ -97,6 +99,22 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
      */
     private int mlDsaLockedLevel = 0;
 
+    /**
+     * ML-KEM parameter level ({@link MlKem#ML_KEM_512} / {@code ML_KEM_768} /
+     * {@code ML_KEM_1024}). Set in the constructor and updated by
+     * {@code initialize(AlgorithmParameterSpec)}.
+     */
+    private int mlkemLevel = MlKem.ML_KEM_768;
+
+    /**
+     * For per-level {@code wcKeyPairGenMlKem{512,768,1024}} aliases, the
+     * level is fixed and {@code engineInitialize(AlgorithmParameterSpec)}
+     * must reject mismatching specs. 0 means the generic alias (any level
+     * via spec, defaulting to ML-KEM-768). Set via constructor by per-level
+     * subclasses.
+     */
+    private int mlkemLockedLevel = 0;
+
     private Rng rng = null;
 
     /* Lock around Rng access */
@@ -110,14 +128,15 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     }
 
     /**
-     * Create new WolfCryptKeyPairGenerator, locking the ML-DSA level
-     * for the per-level wcKeyPairGenMlDsa{44,65,87} subclasses.
+     * Create new WolfCryptKeyPairGenerator, optionally locking the parameter
+     * set level for the per-level PQC subclasses (wcKeyPairGenMlDsa{44,65,87}
+     * and wcKeyPairGenMlKem{512,768,1024}).
      *
      * @param type key type to generate
-     * @param mlDsaLockedLevel fixed ML-DSA level for per-level aliases,
+     * @param lockedLevel fixed PQC parameter set level for per-level aliases,
      *        or 0 for the generic alias (any level via spec)
      */
-    private WolfCryptKeyPairGenerator(KeyType type, int mlDsaLockedLevel) {
+    private WolfCryptKeyPairGenerator(KeyType type, int lockedLevel) {
 
         this.type = type;
 
@@ -165,15 +184,24 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
          * pass their fixed level in, the generic alias defaults to
          * ML-DSA-65, matching JDK 24 / JEP 497 default. */
         if (type == KeyType.WC_ML_DSA) {
-            this.mlDsaLockedLevel = mlDsaLockedLevel;
-            this.mlDsaLevel = (mlDsaLockedLevel != 0) ?
-                mlDsaLockedLevel : MlDsa.ML_DSA_65;
+            this.mlDsaLockedLevel = lockedLevel;
+            this.mlDsaLevel = (lockedLevel != 0) ?
+                lockedLevel : MlDsa.ML_DSA_65;
+        }
+
+        /* Set defaults for ML-KEM key generation. Per-level subclasses pass
+         * their fixed level in. The generic alias defaults to ML-KEM-768,
+         * matching the JDK reference implementation default. */
+        if (type == KeyType.WC_ML_KEM) {
+            this.mlkemLockedLevel = lockedLevel;
+            this.mlkemLevel = (lockedLevel != 0) ?
+                lockedLevel : MlKem.ML_KEM_768;
         }
 
         /* Initialize RNG for default key generation if needed. */
         if (type == KeyType.WC_RSA || type == KeyType.WC_RSA_PSS ||
             type == KeyType.WC_ECC || type == KeyType.WC_DH ||
-            type == KeyType.WC_ML_DSA) {
+            type == KeyType.WC_ML_DSA || type == KeyType.WC_ML_KEM) {
 
             synchronized (rngLock) {
                 if (this.rng == null) {
@@ -197,7 +225,19 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
              * WolfPQCParameterSpec via initialize(AlgorithmParameterSpec).
              * Matches JDK 24 / JEP 497 behavior. */
             throw new InvalidParameterException(
-                "ML-DSA does not accept integer key sizes; use " +
+                "ML-DSA does not accept integer key sizes: use " +
+                "initialize(AlgorithmParameterSpec) with a " +
+                "NamedParameterSpec or WolfPQCParameterSpec instead.");
+        }
+
+        if (type == KeyType.WC_ML_KEM) {
+            /* ML-KEM parameter sets (512/768/1024) are selected by a named
+             * parameter spec, not an integer key size. Use a
+             * NamedParameterSpec or WolfPQCParameterSpec via
+             * initialize(AlgorithmParameterSpec), or the parameter-set-
+             * specific KeyPairGenerator name (ML-KEM-512/768/1024). */
+            throw new InvalidParameterException(
+                "ML-KEM does not accept integer key sizes: use " +
                 "initialize(AlgorithmParameterSpec) with a " +
                 "NamedParameterSpec or WolfPQCParameterSpec instead.");
         }
@@ -492,6 +532,52 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
                 this.mlDsaLevel = newLevel;
                 log("init with ML-DSA spec: " + mlDsaName);
+
+                break;
+
+            case WC_ML_KEM:
+
+                int mlkemNewLevel;
+                String mlkemName = null;
+
+                /* Fall back to our own AlgorithmParameterSpec for JDK 8-10 */
+                if (params instanceof WolfPQCParameterSpec) {
+                    mlkemName = ((WolfPQCParameterSpec) params).getName();
+                }
+                /* JDK 11+ uses standard NamedParameterSpec via reflection */
+                else {
+                    mlkemName =
+                        WolfPQCJdkCompat.namedParameterSpecGetName(params);
+                }
+
+                if (mlkemName == null) {
+                    throw new InvalidAlgorithmParameterException(
+                        "ML-KEM params must be a NamedParameterSpec " +
+                        "(JDK 11+) or WolfPQCParameterSpec (JDK 8-10), got: " +
+                        params.getClass().getName());
+                }
+
+                try {
+                    mlkemNewLevel =
+                        WolfPQCJdkCompat.mlkemParamNameToLevel(mlkemName);
+                }
+                catch (IllegalArgumentException e) {
+                    throw new InvalidAlgorithmParameterException(
+                        "Unrecognized ML-KEM parameter set: " + mlkemName);
+                }
+
+                /* Per-level wcKeyPairGenMlKem{512,768,1024} aliases reject
+                 * specs that don't match their locked level. */
+                if (this.mlkemLockedLevel != 0 &&
+                    mlkemNewLevel != this.mlkemLockedLevel) {
+
+                    throw new InvalidAlgorithmParameterException(
+                        "Spec '" + mlkemName + "' does not match the " +
+                        "fixed parameter set for this KeyPairGenerator");
+                }
+
+                this.mlkemLevel = mlkemNewLevel;
+                log("init with ML-KEM spec: " + mlkemName);
 
                 break;
 
@@ -808,6 +894,53 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
                 break;
 
+            case WC_ML_KEM:
+
+                MlKem mlkem = null;
+                byte[] mlkemSeed = null;
+                byte[] mlkemPub  = null;
+                byte[] mlkemPriv = null;
+
+                try {
+                    /* Generate the FIPS 203 seed and derive the key
+                     * deterministically, so the seed is retained for the
+                     * seed and both PKCS#8 output forms (controlled by the
+                     * jdk.mlkem.pkcs8.encoding property). */
+                    synchronized (rngLock) {
+                        mlkemSeed =
+                            this.rng.generateBlock(MlKem.ML_KEM_SEED_SIZE);
+                    }
+
+                    mlkem = new MlKem(this.mlkemLevel);
+                    mlkem.makeKeyFromSeed(mlkemSeed);
+
+                    mlkemPub  = mlkem.exportPublic();
+                    mlkemPriv = mlkem.exportPrivate();
+
+                    WolfCryptMlKemPublicKey mlkemPubKey =
+                        new WolfCryptMlKemPublicKey(this.mlkemLevel, mlkemPub);
+                    WolfCryptMlKemPrivateKey mlkemPrivKey =
+                        new WolfCryptMlKemPrivateKey(this.mlkemLevel, mlkemPriv,
+                            mlkemSeed);
+
+                    pair = new KeyPair(mlkemPubKey, mlkemPrivKey);
+
+                }
+                catch (WolfCryptException e) {
+                    throw new RuntimeException(e);
+                }
+                finally {
+                    zeroArray(mlkemSeed);
+                    zeroArray(mlkemPriv);
+                    if (mlkem != null) {
+                        mlkem.releaseNativeStruct();
+                    }
+                }
+
+                log("generated ML-KEM KeyPair, level " + this.mlkemLevel);
+
+                break;
+
             default:
                 throw new RuntimeException(
                     "Unsupported algorithm for key generation: " + this.type);
@@ -828,6 +961,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 return "DH";
             case WC_ML_DSA:
                 return "ML-DSA";
+            case WC_ML_KEM:
+                return "ML-KEM";
             default:
                 return "None";
         }
@@ -867,7 +1002,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
      * wolfCrypt RSA key pair generator class
      */
     public static final class wcKeyPairGenRSA
-            extends WolfCryptKeyPairGenerator {
+        extends WolfCryptKeyPairGenerator {
         /**
          * Create new wcKeyPairGenRSA object
          */
@@ -880,7 +1015,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
      * wolfCrypt RSASSA-PSS key pair generator class
      */
     public static final class wcKeyPairGenRSAPSS
-            extends WolfCryptKeyPairGenerator {
+        extends WolfCryptKeyPairGenerator {
         /**
          * Create new wcKeyPairGenRSAPSS object
          */
@@ -893,7 +1028,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
      * wolfCrypt ECC key pair generator class
      */
     public static final class wcKeyPairGenECC
-            extends WolfCryptKeyPairGenerator {
+        extends WolfCryptKeyPairGenerator {
         /**
          * Create new wcKeyPairGenECC object
          */
@@ -906,7 +1041,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
      * wolfCrypt DH key pair generator class
      */
     public static final class wcKeyPairGenDH
-            extends WolfCryptKeyPairGenerator {
+        extends WolfCryptKeyPairGenerator {
         /**
          * Create new wcKeyPairGenDH object
          */
@@ -923,7 +1058,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
      * match JDK 24 / JEP 497 behavior.
      */
     public static final class wcKeyPairGenMlDsa
-            extends WolfCryptKeyPairGenerator {
+        extends WolfCryptKeyPairGenerator {
         /**
          * Create new wcKeyPairGenMlDsa object
          */
@@ -936,7 +1071,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
      * wolfCrypt ML-DSA-44 key pair generator.
      */
     public static final class wcKeyPairGenMlDsa44
-            extends WolfCryptKeyPairGenerator {
+        extends WolfCryptKeyPairGenerator {
         /**
          * Create new wcKeyPairGenMlDsa44 object
          */
@@ -949,7 +1084,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
      * wolfCrypt ML-DSA-65 key pair generator.
      */
     public static final class wcKeyPairGenMlDsa65
-            extends WolfCryptKeyPairGenerator {
+        extends WolfCryptKeyPairGenerator {
         /**
          * Create new wcKeyPairGenMlDsa65 object
          */
@@ -962,12 +1097,68 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
      * wolfCrypt ML-DSA-87 key pair generator.
      */
     public static final class wcKeyPairGenMlDsa87
-            extends WolfCryptKeyPairGenerator {
+        extends WolfCryptKeyPairGenerator {
         /**
          * Create new wcKeyPairGenMlDsa87 object
          */
         public wcKeyPairGenMlDsa87() {
             super(KeyType.WC_ML_DSA, MlDsa.ML_DSA_87);
+        }
+    }
+
+    /**
+     * wolfCrypt ML-KEM (FIPS 203) generic key pair generator. Accepts any of
+     * the three ML-KEM parameter sets via
+     * {@code initialize(NamedParameterSpec)} or
+     * {@code initialize(WolfPQCParameterSpec)}. Defaults to ML-KEM-768 so we
+     * match the JDK reference implementation default.
+     */
+    public static final class wcKeyPairGenMlKem
+        extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenMlKem object
+         */
+        public wcKeyPairGenMlKem() {
+            super(KeyType.WC_ML_KEM);
+        }
+    }
+
+    /**
+     * wolfCrypt ML-KEM-512 key pair generator.
+     */
+    public static final class wcKeyPairGenMlKem512
+        extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenMlKem512 object
+         */
+        public wcKeyPairGenMlKem512() {
+            super(KeyType.WC_ML_KEM, MlKem.ML_KEM_512);
+        }
+    }
+
+    /**
+     * wolfCrypt ML-KEM-768 key pair generator.
+     */
+    public static final class wcKeyPairGenMlKem768
+        extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenMlKem768 object
+         */
+        public wcKeyPairGenMlKem768() {
+            super(KeyType.WC_ML_KEM, MlKem.ML_KEM_768);
+        }
+    }
+
+    /**
+     * wolfCrypt ML-KEM-1024 key pair generator.
+     */
+    public static final class wcKeyPairGenMlKem1024
+        extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenMlKem1024 object
+         */
+        public wcKeyPairGenMlKem1024() {
+            super(KeyType.WC_ML_KEM, MlKem.ML_KEM_1024);
         }
     }
 }

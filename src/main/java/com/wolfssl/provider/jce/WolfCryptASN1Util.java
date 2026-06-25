@@ -48,6 +48,9 @@ public class WolfCryptASN1Util {
     static final byte ASN1_CONTEXT_SPECIFIC_2 = (byte)0xa2;
     static final byte ASN1_CONTEXT_SPECIFIC_3 = (byte)0xa3;
 
+    /* ASN.1 Context-Specific Tags (Primitive) */
+    static final byte ASN1_CONTEXT_SPECIFIC_0_PRIMITIVE = (byte)0x80;
+
     /* Hash Algorithm OIDs. No tag/length, just encoded value. */
     private static final byte[] OID_SHA1 =
         { 0x2b, 0x0e, 0x03, 0x02, 0x1a };

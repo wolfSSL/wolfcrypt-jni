@@ -27,8 +27,14 @@ separate package and repo). If you want the minimal set of requirements needed
 for only wolfJCE, you can use `--enable-keygen --enable-crl`, where
 CRL support is needed to support JCE `CertPathValidator(PKIX)` CRL support.
 
-**Note on ML-DSA (FIPS 204):** ML-DSA support is **not** enabled by
-`--enable-jni` alone. To use the ML-DSA `Signature`, `KeyPairGenerator`,
+**Note on ML-KEM (FIPS 203):** ML-KEM support is **not** enabled by default in
+`--enable-jni`. To use the ML-KEM (FIPS 203) support, build wolfSSL with ML-KEM
+enabled by adding `--enable-mlkem` (which defines `WOLFSSL_HAVE_MLKEM`) to the
+./configure line. The `javax.crypto.KEM` service additionally requires
+running on JDK 21 or later. See README\_JCE.md for details.
+
+**Note on ML-DSA (FIPS 204):** ML-DSA support is **not** enabled by default in
+`--enable-jni`. To use the ML-DSA `Signature`, `KeyPairGenerator`,
 and `KeyFactory` services (and ML-DSA keys in the WKS KeyStore), add
 `--enable-mldsa` to the native wolfSSL `./configure` line (the older
 `--enable-dilithium` is an accepted alias), or use `--enable-all` which

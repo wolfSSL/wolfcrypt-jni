@@ -76,6 +76,26 @@
         <javaversion atleast="22"/>
     </condition>
 
+    <!-- Detect Java 21+ for javax.crypto.KEM (KEMSpi) support. The ML-KEM
+        KEM SPI (WolfCryptMlKemKem) and its tests reference javax.crypto.KEM,
+        which only exists on JDK 21+, so they are excluded from compilation
+        on earlier JDKs. The rest of ML-KEM (JNI, KeyPairGenerator,
+        KeyFactory, key classes) remains Java 8 compatible. -->
+    <condition property="isJava21Plus">
+        <javaversion atleast="21"/>
+    </condition>
+
+    <!-- On JDK < 21 the ML-KEM KEM SPI is not compiled (javax.crypto.KEM is
+        JDK 21+), so exclude it from Javadoc too. On JDK 21+ this resolves to
+        a harmless non-matching pattern. -->
+    <condition property="mlkem.kem.javadoc.exclude"
+            value="com/wolfssl/provider/jce/WolfCryptMlKemKem.java"
+            else="com/wolfssl/provider/jce/__mlkem_kem_present__.java">
+        <not>
+            <isset property="isJava21Plus"/>
+        </not>
+    </condition>
+
     <!-- Detect if running on Windows host -->
     <condition property="isWindows">
         <os family="windows" />
@@ -165,6 +185,9 @@
             target="${java.target}"
             classpathref="classpath"
             includeantruntime="false">
+            <!-- ML-KEM KEM SPI needs javax.crypto.KEM (JDK 21+) -->
+            <exclude name="com/wolfssl/provider/jce/WolfCryptMlKemKem.java"
+                unless="isJava21Plus"/>
             <compilerarg value="-Xlint:-options" />
         </javac>
         <!-- Copy resources to build directory for ServiceLoader -->
@@ -184,6 +207,9 @@
             target="${java.target}"
             classpathref="classpath"
             includeantruntime="false">
+            <!-- ML-KEM KEM SPI needs javax.crypto.KEM (JDK 21+) -->
+            <exclude name="com/wolfssl/provider/jce/WolfCryptMlKemKem.java"
+                unless="isJava21Plus"/>
             <compilerarg value="-Xlint:-options" />
         </javac>
         <!-- Copy resources to build directory for ServiceLoader -->
@@ -306,7 +332,12 @@
     </target>
 
     <target name="javadoc" description="Generate Javadocs">
-        <javadoc sourcepath="${src.dir}" destdir="${doc.dir}" />
+        <javadoc destdir="${doc.dir}">
+            <fileset dir="${src.dir}" defaultexcludes="yes">
+                <include name="**/*.java" />
+                <exclude name="${mlkem.kem.javadoc.exclude}" />
+            </fileset>
+        </javadoc>
     </target>
 
     <target name="examples-jce" description="Build JCE Examples">
@@ -321,6 +352,8 @@
             target="${java.target}"
             classpathref="classpath"
             includeantruntime="false">
+            <!-- ML-KEM example uses javax.crypto.KEM (JDK 21+) -->
+            <exclude name="MlKemExample.java" unless="isJava21Plus"/>
             <compilerarg value="-Xlint:-options"/>
         </javac>
     </target>

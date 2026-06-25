@@ -54,6 +54,7 @@ import org.junit.runners.Suite.SuiteClasses;
     Ed25519Test.class,
     Curve25519Test.class,
     MlDsaTest.class,
+    MlKemTest.class,
     WolfObjectTest.class,
     WolfSSLCertManagerOCSPTest.class,
     WolfSSLX509StoreCtxTest.class,
