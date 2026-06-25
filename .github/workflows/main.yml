@@ -144,6 +144,38 @@ jobs:
       jdk_version: ${{ matrix.jdk_version }}
       wolfssl_configure: ${{ matrix.wolfssl_configure }}
 
+  # ----------------------- LMS / HSS (RFC 8554) ------------------------
+  # LMS/HSS is verify-only in wolfJCE and requires wolfSSL to be built with
+  # --enable-lms. It is not pulled in by --enable-all, so it is enabled
+  # explicitly. The --enable-lms option is comma-separated and selects the
+  # build variant and hash/parameter families:
+  #   (default)      SHA-256/256 parameter sets, sign + verify
+  #   verify-only    -> WOLFSSL_LMS_VERIFY_ONLY  (wolfJCE production posture)
+  #   small          -> WOLFSSL_WC_LMS_SMALL     (low-memory, slower codepath)
+  #   sha256-192     -> WOLFSSL_LMS_SHA256_192   (RFC 9858 SHA-256/192 sets)
+  #   shake256       -> WOLFSSL_LMS_SHAKE256     (RFC 9858 SHAKE256 sets)
+  # The LMS JUnit tests skip per hash family not compiled in (the JNI import
+  # returns NOT_COMPILED_IN), so each permutation runs the KATs it can and
+  # skips the rest. SHAKE parameter sets additionally require --enable-sha3.
+  linux-zulu-lms:
+    strategy:
+      matrix:
+        os: [ 'ubuntu-latest', 'macos-latest' ]
+        jdk_version: [ '11', '21', '24' ]
+        wolfssl_configure:
+          - '--enable-jni --enable-lms'
+          - '--enable-jni --enable-lms=verify-only'
+          - '--enable-jni --enable-lms=verify-only,small'
+          - '--enable-jni --enable-lms=sha256-192,shake256 --enable-sha3'
+          - '--enable-jni --enable-all --enable-lms'
+    name: ${{ matrix.os }} (Zulu JDK ${{ matrix.jdk_version }}, ${{ matrix.wolfssl_configure }})
+    uses: ./.github/workflows/linux-common.yml
+    with:
+      os: ${{ matrix.os }}
+      jdk_distro: "zulu"
+      jdk_version: ${{ matrix.jdk_version }}
+      wolfssl_configure: ${{ matrix.wolfssl_configure }}
+
   # ------------------ Facebook Infer static analysis -------------------
   # Run Facebook infer over PR code, only running on Linux with one
   # JDK/version for now.

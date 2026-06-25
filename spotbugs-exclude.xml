@@ -144,6 +144,11 @@
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
     </Match>
     <Match>
+        <Class name="com.wolfssl.wolfcrypt.Lms"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
         <Class name="com.wolfssl.wolfcrypt.Md5"/>
         <Method name="&lt;init&gt;"/>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
@@ -220,6 +225,11 @@
     </Match>
     <Match>
         <Class name="com.wolfssl.provider.jce.WolfCryptECPublicKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptLmsPublicKey"/>
         <Method name="&lt;init&gt;"/>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
     </Match>
