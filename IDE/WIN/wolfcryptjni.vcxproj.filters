@@ -185,6 +185,9 @@
     <ClCompile Include="..\..\jni\jni_hmac.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\jni\jni_lms.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\jni\jni_logging.c">
       <Filter>Source Files</Filter>
     </ClCompile>

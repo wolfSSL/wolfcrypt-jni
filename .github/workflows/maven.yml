@@ -42,13 +42,17 @@ jobs:
         run: |
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$GITHUB_WORKSPACE/build-dir/lib" >> "$GITHUB_ENV"
 
-      # Only copy appropriate makefile for platform currently being tested
+      # Only copy appropriate makefile for platform currently being tested.
+      # Use 'cat > ' rather than 'cp': macOS runners intermittently fail 'cp'
+      # with "fcopyfile failed: Illegal byte sequence" when copyfile() tries to
+      # replicate the source's extended attributes (e.g. com.apple.provenance).
+      # Redirecting content copies only the file data and avoids that path.
       - name: Copy makefile
         run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
-              cp makefile.linux makefile
+              cat makefile.linux > makefile
           elif [ "$RUNNER_OS" == "macOS" ]; then
-              cp makefile.macosx makefile
+              cat makefile.macosx > makefile
           else
             echo "$RUNNER_OS not supported"
             exit 1
