@@ -98,6 +98,30 @@
          Automatically activates when building with JDK 9 or later.
          Compiles module-info.java and includes it in the JAR. -->
     <profiles>
+        <!-- On JDK < 21, exclude the ML-KEM KEM SPI from compilation and its
+             tests from build/run. javax.crypto.KEM (KEMSpi) is JDK 21+ only;
+             the rest of ML-KEM (JNI, KeyPairGenerator, KeyFactory, key
+             classes) remains Java 8 compatible. -->
+        <profile>
+            <id>mlkem-kem-below-jdk21</id>
+            <activation>
+                <jdk>(,21)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>3.11.0</version>
+                        <configuration>
+                            <excludes>
+                                <exclude>com/wolfssl/provider/jce/WolfCryptMlKemKem.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>java9-module</id>
             <activation>

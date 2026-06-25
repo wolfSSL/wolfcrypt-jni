@@ -26,6 +26,7 @@ import java.lang.reflect.Method;
 import java.security.spec.AlgorithmParameterSpec;
 
 import com.wolfssl.wolfcrypt.MlDsa;
+import com.wolfssl.wolfcrypt.MlKem;
 
 /**
  * JDK reflection helpers for PQC named parameter specs.
@@ -172,6 +173,36 @@ final class WolfPQCJdkCompat {
         }
         throw new IllegalArgumentException(
             "Unknown ML-DSA parameter-set name: " + name);
+    }
+
+    /**
+     * Map a canonical ML-KEM parameter-set name (ie: {@code "ML-KEM-768"})
+     * to the corresponding {@link MlKem} level constant. Comparison is
+     * case-insensitive.
+     *
+     * @param name parameter-set name
+     *
+     * @return one of {@link MlKem#ML_KEM_512}, {@link MlKem#ML_KEM_768},
+     *         {@link MlKem#ML_KEM_1024}
+     *
+     * @throws IllegalArgumentException on unrecognized name
+     */
+    static int mlkemParamNameToLevel(String name) {
+
+        if (name == null) {
+            throw new IllegalArgumentException("name is null");
+        }
+        if (name.equalsIgnoreCase("ML-KEM-512")) {
+            return MlKem.ML_KEM_512;
+        }
+        if (name.equalsIgnoreCase("ML-KEM-768")) {
+            return MlKem.ML_KEM_768;
+        }
+        if (name.equalsIgnoreCase("ML-KEM-1024")) {
+            return MlKem.ML_KEM_1024;
+        }
+        throw new IllegalArgumentException(
+            "Unknown ML-KEM parameter-set name: " + name);
     }
 
     /**
