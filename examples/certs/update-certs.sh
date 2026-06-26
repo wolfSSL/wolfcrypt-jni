@@ -92,6 +92,12 @@ mldsaCertList=(
     "mldsa/mldsa87_pub-spki.der"
 )
 
+# XMSS/XMSS^MT (RFC 8391) verify-only test cert.
+# See examples/certs/xmss/README for how it was generated.
+xmssCertList=(
+    "xmss/xmss_root_cert.der"
+)
+
 for i in ${!certList[@]};
 do
     printf "Updating: ${certList[$i]}\n"
@@ -114,6 +120,22 @@ if [ -d "$CERT_LOCATION/mldsa" ]; then
     done
 else
     printf "Notice: $CERT_LOCATION/mldsa not found, skipping ML-DSA\n"
+    printf "certs (provided wolfSSL predates them), keeping existing\n"
+    printf "local copies\n"
+fi
+
+if [ -d "$CERT_LOCATION/xmss" ]; then
+    for i in ${!xmssCertList[@]};
+    do
+        printf "Updating: ${xmssCertList[$i]}\n"
+        cp $CERT_LOCATION/${xmssCertList[$i]} ./${xmssCertList[$i]}
+        if [ $? -ne 0 ]; then
+            printf "Warning: skipped missing XMSS cert: "
+            printf "${xmssCertList[$i]}\n"
+        fi
+    done
+else
+    printf "Notice: $CERT_LOCATION/xmss not found, skipping XMSS\n"
     printf "certs (provided wolfSSL predates them), keeping existing\n"
     printf "local copies\n"
 fi

@@ -25,6 +25,7 @@
     #include <wolfssl/options.h>
 #endif
 #include <jni.h>
+#include <wolfssl/version.h>
 #include <wolfssl/wolfcrypt/types.h>
 #include <wolfcrypt_jni_debug.h>
 
@@ -671,7 +672,9 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_XmssEnabled
 {
     (void)env;
     (void)jcl;
-#ifdef WOLFSSL_HAVE_XMSS
+    /* wolfJCE verify-only XMSS support depends on wc_XmssKey_ImportPubRaw_ex(),
+     * added in wolfSSL 5.9.2. */
+#if defined(WOLFSSL_HAVE_XMSS) && (LIBWOLFSSL_VERSION_HEX >= 0x05009002)
     return JNI_TRUE;
 #else
     return JNI_FALSE;
