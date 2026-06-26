@@ -341,6 +341,23 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.19", "ML-DSA-87");
         }
 
+        /* XMSS / XMSS^MT (RFC 8391) Signature support (verify-only). A single
+         * implementation handles both, the parameter set is derived from the
+         * imported public key. */
+        if (FeatureDetect.XmssEnabled()) {
+            put("Signature.XMSS",
+                "com.wolfssl.provider.jce.WolfCryptXmssSignature");
+            put("Signature.XMSSMT",
+                "com.wolfssl.provider.jce.WolfCryptXmssSignature");
+
+            /* OID aliases (RFC 9802: id-alg-xmss-hashsig 1.3.6.1.5.5.7.6.34,
+             * id-alg-xmssmt-hashsig 1.3.6.1.5.5.7.6.35) */
+            put("Alg.Alias.Signature.1.3.6.1.5.5.7.6.34", "XMSS");
+            put("Alg.Alias.Signature.OID.1.3.6.1.5.5.7.6.34", "XMSS");
+            put("Alg.Alias.Signature.1.3.6.1.5.5.7.6.35", "XMSSMT");
+            put("Alg.Alias.Signature.OID.1.3.6.1.5.5.7.6.35", "XMSSMT");
+        }
+
         /* Mac */
         if (FeatureDetect.HmacMd5Enabled()) {
             put("Mac.HmacMD5",
@@ -812,6 +829,24 @@ public final class WolfCryptProvider extends Provider {
             } catch (Throwable t) {
                 /* JDK < 21 or KEMSpi class excluded from build, skip KEM */
             }
+        }
+
+        /* XMSS / XMSS^MT (RFC 8391) KeyFactory (verify-only). X.509 public-key
+         * handling only, private keys are not supported. A single
+         * implementation handles both, the parameter set is derived from the
+         * encoded public key. */
+        if (FeatureDetect.XmssEnabled()) {
+            put("KeyFactory.XMSS",
+                "com.wolfssl.provider.jce.WolfCryptXmssKeyFactory");
+            put("KeyFactory.XMSSMT",
+                "com.wolfssl.provider.jce.WolfCryptXmssKeyFactory");
+
+            /* OID aliases (RFC 9802: id-alg-xmss-hashsig 1.3.6.1.5.5.7.6.34,
+             * id-alg-xmssmt-hashsig 1.3.6.1.5.5.7.6.35) */
+            put("Alg.Alias.KeyFactory.1.3.6.1.5.5.7.6.34", "XMSS");
+            put("Alg.Alias.KeyFactory.OID.1.3.6.1.5.5.7.6.34", "XMSS");
+            put("Alg.Alias.KeyFactory.1.3.6.1.5.5.7.6.35", "XMSSMT");
+            put("Alg.Alias.KeyFactory.OID.1.3.6.1.5.5.7.6.35", "XMSSMT");
         }
 
         /* KeyStore */

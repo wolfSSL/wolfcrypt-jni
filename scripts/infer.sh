@@ -85,6 +85,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/WolfSSLCertManager.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfSSLCertManagerVerifyCallback.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfSSLX509StoreCtx.java \
+    src/main/java/com/wolfssl/wolfcrypt/Xmss.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptAesParameters.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptASN1Util.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptCipher.java \
@@ -135,6 +136,10 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSecretKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSignature.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptUtil.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptXmssKeyFactory.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptXmssPublicKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptXmssSignature.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptXmssUtil.java \
     src/main/java/com/wolfssl/provider/jce/WolfSSLKeyStore.java \
     examples/filtered-providers/src/com/wolfssl/security/providers/FilteredSun.java \
     examples/filtered-providers/src/com/wolfssl/security/providers/FilteredSunEC.java \

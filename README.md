@@ -41,6 +41,20 @@ and `KeyFactory` services (and ML-DSA keys in the WKS KeyStore), add
 includes it. Without it, wolfJCE compiles and runs normally but the
 ML-DSA services are not registered.
 
+**Note on XMSS/XMSS^MT (RFC 8391):** XMSS support requires **wolfSSL 5.9.2 or
+later** and is **not** enabled by `--enable-jni` alone. To use the XMSS and
+XMSSMT `Signature` and `KeyFactory` services, add `--enable-xmss` to the native
+wolfSSL `./configure` line. XMSS is **not** pulled in by `--enable-all`, so a
+full build still needs it added explicitly, for example
+`--enable-all --enable-xmss`. SHAKE-based parameter sets additionally require
+`--enable-sha3`. The 5.9.2 minimum comes from the raw public-key import path
+(`wc_XmssKey_ImportPubRaw_ex()`), which was added in wolfSSL 5.9.2. wolfJCE
+provides XMSS/XMSS^MT signature **verification** and X.509 public-key handling
+only. Key generation and signing are not supported, since stateful hash-based
+signing belongs in hardware (NIST SP 800-208). When `--enable-xmss` is missing
+or the native wolfSSL is older than 5.9.2, wolfJCE still compiles and runs
+normally but the XMSS services are not registered.
+
 **wolfSSL Standard Build**:
 ```
 $ cd wolfssl-x.x.x

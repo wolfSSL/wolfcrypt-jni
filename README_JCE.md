@@ -229,6 +229,10 @@ The JCE provider currently supports the following algorithms:
             OID: 2.16.840.1.101.3.4.3.18
         ML-DSA-87
             OID: 2.16.840.1.101.3.4.3.19
+        XMSS (verify-only)
+            OID: 1.3.6.1.5.5.7.6.34
+        XMSSMT (verify-only)
+            OID: 1.3.6.1.5.5.7.6.35
 
     KeyAgreement Class
         DiffieHellman
@@ -273,6 +277,8 @@ The JCE provider currently supports the following algorithms:
         ML-KEM-512 (alias OID: 2.16.840.1.101.3.4.4.1)
         ML-KEM-768 (alias OID: 2.16.840.1.101.3.4.4.2)
         ML-KEM-1024 (alias OID: 2.16.840.1.101.3.4.4.3)
+        XMSS (verify-only, alias OID: 1.3.6.1.5.5.7.6.34)
+        XMSSMT (verify-only, alias OID: 1.3.6.1.5.5.7.6.35)
 
     KEM Class (javax.crypto.KEM, requires JDK 21 or later)
         ML-KEM
