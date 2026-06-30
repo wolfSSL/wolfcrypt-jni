@@ -29,7 +29,7 @@ OBJ_LIST  = jni_fips.o jni_native_struct.o jni_pwdbased.o jni_aes.o \
 			jni_wolfcrypt.o jni_wolfssl_cert_manager.o \
 			jni_wolfssl_x509_store_ctx.o jni_jce_wolfsslkeystore.o \
 			jni_mldsa.o \
-			jni_mlkem.o jni_xmss.o jni_lms.o
+			jni_mlkem.o jni_xmss.o jni_lms.o jni_slhdsa.o
 OBJS      = $(patsubst %,$(OUT_PATH)/%,$(OBJ_LIST))
 TARGET    = $(OUT_PATH)/libwolfcryptjni.dylib
 

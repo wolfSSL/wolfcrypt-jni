@@ -119,15 +119,17 @@ public class RsaTest {
      * Helper to make an RSA key, retrying on transient PRIME_GEN_E up to
      * {@link #MAKE_KEY_MAX_ATTEMPTS} times. Any other error, or a PRIME_GEN_E
      * on the final attempt, is propagated. Each attempt uses a fresh key.
+     *
+     * @return new Rsa object holding the generated key, caller must
+     *         release with releaseNativeStruct()
      */
-    private void makeKeyWithRetry(int size, long e, Rng rng) {
+    private Rsa makeKeyWithRetry(int size, long e, Rng rng) {
 
         for (int i = 0; i < MAKE_KEY_MAX_ATTEMPTS; i++) {
             Rsa key = new Rsa();
             try {
                 key.makeKey(size, e, rng);
-                key.releaseNativeStruct();
-                return;
+                return key;
             } catch (WolfCryptException ex) {
                 key.releaseNativeStruct();
                 if (ex.getError() == WolfCryptError.PRIME_GEN_E &&
@@ -138,6 +140,9 @@ public class RsaTest {
                 throw ex;
             }
         }
+
+        /* Not reachable, the loop always returns or throws */
+        throw new IllegalStateException("RSA makeKey retry loop exited");
     }
 
     @Test
@@ -146,20 +151,19 @@ public class RsaTest {
         /* FIPS after 2425 doesn't allow 1024-bit RSA key gen */
         if ((Fips.enabled && Fips.fipsVersion < 5) ||
             (!Fips.enabled && Rsa.RSA_MIN_SIZE <= 1024)) {
-            makeKeyWithRetry(1024, 65537, rng);
+            makeKeyWithRetry(1024, 65537, rng).releaseNativeStruct();
         }
 
-        makeKeyWithRetry(2048, 65537, rng);
-        makeKeyWithRetry(3072, 65537, rng);
-        makeKeyWithRetry(4096, 65537, rng);
+        makeKeyWithRetry(2048, 65537, rng).releaseNativeStruct();
+        makeKeyWithRetry(3072, 65537, rng).releaseNativeStruct();
+        makeKeyWithRetry(4096, 65537, rng).releaseNativeStruct();
     }
 
     @Test
     public void testDerExportImportSignVerify() {
 
         /* generate new 2048-bit key */
-        Rsa key = new Rsa();
-        key.makeKey(2048, 65537, rng);
+        Rsa key = makeKeyWithRetry(2048, 65537, rng);
 
         /* export key to DER */
         byte[] rsaDer = key.exportPrivateDer();
@@ -306,8 +310,7 @@ public class RsaTest {
         key.releaseNativeStruct();
 
         /* Test that generated key encodes without error */
-        key = new Rsa();
-        key.makeKey(1024, 65537, rng);
+        key = makeKeyWithRetry(1024, 65537, rng);
         pkcs8 = key.privateKeyEncodePKCS8();
         assertTrue(pkcs8 != null);
         assertTrue(pkcs8.length != 0);
@@ -1369,11 +1372,10 @@ public class RsaTest {
             return;
         }
 
-        Rsa key = new Rsa();
         Rng rng = new Rng();
         rng.init();
 
-        key.makeKey(2048, 65537, rng);
+        Rsa key = makeKeyWithRetry(2048, 65537, rng);
 
         String message = "Comprehensive MGF testing";
 
@@ -1453,11 +1455,10 @@ public class RsaTest {
             return;
         }
 
-        Rsa key = new Rsa();
         Rng rng = new Rng();
         rng.init();
 
-        key.makeKey(2048, 65537, rng);
+        Rsa key = makeKeyWithRetry(2048, 65537, rng);
 
         String message = "Error condition testing";
         byte[] digest = sha256(message.getBytes());
@@ -1506,11 +1507,10 @@ public class RsaTest {
             return;
         }
 
-        Rsa key = new Rsa();
         Rng rng = new Rng();
         rng.init();
 
-        key.makeKey(2048, 65537, rng);
+        Rsa key = makeKeyWithRetry(2048, 65537, rng);
 
         String message = "Individual MGF testing";
 

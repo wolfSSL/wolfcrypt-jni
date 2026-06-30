@@ -61,6 +61,14 @@ jobs:
               continue
             fi
 
+            # Skip certificate/key files. These carry encoded key material
+            # and OpenSSL text dumps (long Issuer/Subject lines) that cannot
+            # be wrapped
+            if [[ "$file" =~ \.(pem|der)$ ]]; then
+              echo "Skipping $file (certificate/key file)"
+              continue
+            fi
+
             echo "Checking: $file"
 
             # Get added lines with actual file line numbers and check their length

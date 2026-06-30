@@ -222,6 +222,44 @@ public class WolfCryptLmsKeyFactoryTest {
         assertArrayEquals(noParams.getEncoded(), withNull.getEncoded());
     }
 
+    /* Both SPKI body forms are accepted: RFC 9708 with the raw key directly
+     * in the BIT STRING, and RFC 8708 with an inner OCTET STRING wrapping
+     * it. Both normalize to the canonical RFC 9708 encoding, so getEncoded()
+     * and getKeySpec() output can differ from the bytes a caller passed in. */
+    @Test
+    public void wrappedFormNormalizesToUnwrapped() throws Exception {
+        assumeEnabled();
+
+        KeyFactory kf = KeyFactory.getInstance("LMS", "wolfJCE");
+        PublicKey unwrapped = importTc1Key(kf);
+        byte[] canonical = unwrapped.getEncoded();
+
+        /* BIT STRING carries OCTET STRING { raw key } instead of the raw
+         * key directly. */
+        byte[] algId = tlv(0x30, HSS_LMS_OID);
+        byte[] bitString = tlv(0x03, concat(new byte[] { 0x00 },
+            tlv(0x04, RFC8554_TC1_PK)));
+        final byte[] spkiWrapped = tlv(0x30, concat(algId, bitString));
+
+        PublicKey wrapped =
+            kf.generatePublic(new X509EncodedKeySpec(spkiWrapped));
+
+        assertEquals(unwrapped, wrapped);
+        assertArrayEquals(canonical, wrapped.getEncoded());
+
+        /* getKeySpec() of a foreign key holding the wrapped encoding also
+         * returns the canonical unwrapped form: keys are normalized
+         * through translateKey(), not passed through byte-for-byte. */
+        PublicKey foreign = new PublicKey() {
+            public String getAlgorithm() { return "HSS/LMS"; }
+            public String getFormat() { return "X.509"; }
+            public byte[] getEncoded() { return spkiWrapped.clone(); }
+        };
+        X509EncodedKeySpec spec =
+            kf.getKeySpec(foreign, X509EncodedKeySpec.class);
+        assertArrayEquals(canonical, spec.getEncoded());
+    }
+
     @Test
     public void privateKeySpecRejected() throws Exception {
         assumeEnabled();

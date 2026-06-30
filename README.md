@@ -63,6 +63,16 @@ JDK SUN provider: it registers the LMS `Signature` (verification) and
 `KeyFactory` (public-key) services. wolfJCE does not generate LMS keys or sign,
 since stateful hash-based signing belongs in hardware (NIST SP 800-208).
 
+**Note on SLH-DSA (FIPS 205):** SLH-DSA support is **not** enabled by default
+in `--enable-jni`. To use the SLH-DSA `Signature`, `KeyPairGenerator`, and
+`KeyFactory` services (and SLH-DSA keys in the WKS KeyStore), add
+`--enable-slhdsa` to the native wolfSSL `./configure` line. The parameter-set
+families are selected by the configure value: `--enable-slhdsa` builds the six
+SHAKE sets, and `--enable-slhdsa=yes,sha2` builds all twelve and is the
+recommended configuration for SHA2 parameter-set support (the
+`SLH-DSA-SHA2-128f` default lives in the SHA2 family). Without SLH-DSA, wolfJCE
+compiles and runs normally but the SLH-DSA services are not registered.
+
 **wolfSSL Standard Build**:
 ```
 $ cd wolfssl-x.x.x

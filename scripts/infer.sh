@@ -78,6 +78,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/Sha384.java \
     src/main/java/com/wolfssl/wolfcrypt/Sha512.java \
     src/main/java/com/wolfssl/wolfcrypt/Sha3.java \
+    src/main/java/com/wolfssl/wolfcrypt/SlhDsa.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfCrypt.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfCryptError.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfCryptException.java \
@@ -90,6 +91,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptAesParameters.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptASN1Util.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptCipher.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptContextParameterSpec.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptDebug.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptDhParameterGenerator.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptDhParameters.java \
@@ -111,7 +113,6 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptLmsKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptLmsPublicKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptLmsSignature.java \
-    src/main/java/com/wolfssl/provider/jce/WolfCryptLmsUtil.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMac.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMlDsaKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMlDsaPrivateKey.java \
@@ -140,11 +141,15 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSecretKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSecretKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptSignature.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptSlhDsaKeyFactory.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptSlhDsaPrivateKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptSlhDsaPublicKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptSlhDsaSignature.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptSpkiUtil.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptUtil.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptXmssKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptXmssPublicKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptXmssSignature.java \
-    src/main/java/com/wolfssl/provider/jce/WolfCryptXmssUtil.java \
     src/main/java/com/wolfssl/provider/jce/WolfSSLKeyStore.java \
     examples/filtered-providers/src/com/wolfssl/security/providers/FilteredSun.java \
     examples/filtered-providers/src/com/wolfssl/security/providers/FilteredSunEC.java \

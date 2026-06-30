@@ -367,6 +367,169 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.Signature.OID.1.2.840.113549.1.9.16.3.17", "LMS");
         }
 
+        /* SLH-DSA (FIPS 205) Signature support */
+        if (FeatureDetect.SlhDsaEnabled()) {
+            /* Generic alias accepts any of the SLH-DSA parameter sets */
+            put("Signature.SLH-DSA",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsa");
+
+            /* Per-parameter-set aliases */
+            put("Signature.SLH-DSA-SHA2-128s",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsaSha2_128s");
+            put("Signature.SLH-DSA-SHA2-128f",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsaSha2_128f");
+            put("Signature.SLH-DSA-SHA2-192s",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsaSha2_192s");
+            put("Signature.SLH-DSA-SHA2-192f",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsaSha2_192f");
+            put("Signature.SLH-DSA-SHA2-256s",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsaSha2_256s");
+            put("Signature.SLH-DSA-SHA2-256f",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsaSha2_256f");
+            put("Signature.SLH-DSA-SHAKE-128s",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsaShake_128s");
+            put("Signature.SLH-DSA-SHAKE-128f",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsaShake_128f");
+            put("Signature.SLH-DSA-SHAKE-192s",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsaShake_192s");
+            put("Signature.SLH-DSA-SHAKE-192f",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsaShake_192f");
+            put("Signature.SLH-DSA-SHAKE-256s",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsaShake_256s");
+            put("Signature.SLH-DSA-SHAKE-256f",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcSlhDsaShake_256f");
+
+            /* OID aliases (FIPS 205: 2.16.840.1.101.3.4.3.20-.31) */
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.20",
+                "SLH-DSA-SHA2-128s");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.20",
+                "SLH-DSA-SHA2-128s");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.21",
+                "SLH-DSA-SHA2-128f");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.21",
+                "SLH-DSA-SHA2-128f");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.22",
+                "SLH-DSA-SHA2-192s");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.22",
+                "SLH-DSA-SHA2-192s");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.23",
+                "SLH-DSA-SHA2-192f");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.23",
+                "SLH-DSA-SHA2-192f");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.24",
+                "SLH-DSA-SHA2-256s");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.24",
+                "SLH-DSA-SHA2-256s");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.25",
+                "SLH-DSA-SHA2-256f");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.25",
+                "SLH-DSA-SHA2-256f");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.26",
+                "SLH-DSA-SHAKE-128s");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.26",
+                "SLH-DSA-SHAKE-128s");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.27",
+                "SLH-DSA-SHAKE-128f");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.27",
+                "SLH-DSA-SHAKE-128f");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.28",
+                "SLH-DSA-SHAKE-192s");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.28",
+                "SLH-DSA-SHAKE-192s");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.29",
+                "SLH-DSA-SHAKE-192f");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.29",
+                "SLH-DSA-SHAKE-192f");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.30",
+                "SLH-DSA-SHAKE-256s");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.30",
+                "SLH-DSA-SHAKE-256s");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.31",
+                "SLH-DSA-SHAKE-256f");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.31",
+                "SLH-DSA-SHAKE-256f");
+
+            /* HashSLH-DSA (pre-hash, FIPS 205 Section 10.2.2). Keys are
+             * regular SLH-DSA keys, only the signature algorithm differs,
+             * so only Signature services are registered. */
+            put("Signature.HASH-SLH-DSA",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsa");
+            put("Signature.SLH-DSA-SHA2-128s-WITH-SHA256",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsaSha2_128sWithSha256");
+            put("Signature.SLH-DSA-SHA2-128f-WITH-SHA256",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsaSha2_128fWithSha256");
+            put("Signature.SLH-DSA-SHA2-192s-WITH-SHA512",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsaSha2_192sWithSha512");
+            put("Signature.SLH-DSA-SHA2-192f-WITH-SHA512",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsaSha2_192fWithSha512");
+            put("Signature.SLH-DSA-SHA2-256s-WITH-SHA512",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsaSha2_256sWithSha512");
+            put("Signature.SLH-DSA-SHA2-256f-WITH-SHA512",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsaSha2_256fWithSha512");
+            put("Signature.SLH-DSA-SHAKE-128s-WITH-SHAKE128",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsaShake_128sWithShake128");
+            put("Signature.SLH-DSA-SHAKE-128f-WITH-SHAKE128",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsaShake_128fWithShake128");
+            put("Signature.SLH-DSA-SHAKE-192s-WITH-SHAKE256",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsaShake_192sWithShake256");
+            put("Signature.SLH-DSA-SHAKE-192f-WITH-SHAKE256",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsaShake_192fWithShake256");
+            put("Signature.SLH-DSA-SHAKE-256s-WITH-SHAKE256",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsaShake_256sWithShake256");
+            put("Signature.SLH-DSA-SHAKE-256f-WITH-SHAKE256",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaSignature$wcHashSlhDsaShake_256fWithShake256");
+
+            /* HashSLH-DSA OID aliases (FIPS 205: 2.16.840.1.101.3.4.3.35-.46) */
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.35",
+                "SLH-DSA-SHA2-128s-WITH-SHA256");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.35",
+                "SLH-DSA-SHA2-128s-WITH-SHA256");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.36",
+                "SLH-DSA-SHA2-128f-WITH-SHA256");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.36",
+                "SLH-DSA-SHA2-128f-WITH-SHA256");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.37",
+                "SLH-DSA-SHA2-192s-WITH-SHA512");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.37",
+                "SLH-DSA-SHA2-192s-WITH-SHA512");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.38",
+                "SLH-DSA-SHA2-192f-WITH-SHA512");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.38",
+                "SLH-DSA-SHA2-192f-WITH-SHA512");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.39",
+                "SLH-DSA-SHA2-256s-WITH-SHA512");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.39",
+                "SLH-DSA-SHA2-256s-WITH-SHA512");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.40",
+                "SLH-DSA-SHA2-256f-WITH-SHA512");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.40",
+                "SLH-DSA-SHA2-256f-WITH-SHA512");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.41",
+                "SLH-DSA-SHAKE-128s-WITH-SHAKE128");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.41",
+                "SLH-DSA-SHAKE-128s-WITH-SHAKE128");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.42",
+                "SLH-DSA-SHAKE-128f-WITH-SHAKE128");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.42",
+                "SLH-DSA-SHAKE-128f-WITH-SHAKE128");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.43",
+                "SLH-DSA-SHAKE-192s-WITH-SHAKE256");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.43",
+                "SLH-DSA-SHAKE-192s-WITH-SHAKE256");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.44",
+                "SLH-DSA-SHAKE-192f-WITH-SHAKE256");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.44",
+                "SLH-DSA-SHAKE-192f-WITH-SHAKE256");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.45",
+                "SLH-DSA-SHAKE-256s-WITH-SHAKE256");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.45",
+                "SLH-DSA-SHAKE-256s-WITH-SHAKE256");
+            put("Alg.Alias.Signature.2.16.840.1.101.3.4.3.46",
+                "SLH-DSA-SHAKE-256f-WITH-SHAKE256");
+            put("Alg.Alias.Signature.OID.2.16.840.1.101.3.4.3.46",
+                "SLH-DSA-SHAKE-256f-WITH-SHAKE256");
+        }
+
         /* Mac */
         if (FeatureDetect.HmacMd5Enabled()) {
             put("Mac.HmacMD5",
@@ -668,6 +831,87 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.19",
                 "ML-DSA-87");
         }
+        if (FeatureDetect.SlhDsaKeyGenEnabled()) {
+            /* Generic alias: defaults to SLH-DSA-SHA2-128f, parameter set
+             * overridable via initialize(NamedParameterSpec). */
+            put("KeyPairGenerator.SLH-DSA",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsa");
+
+            put("KeyPairGenerator.SLH-DSA-SHA2-128s",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsaSha2_128s");
+            put("KeyPairGenerator.SLH-DSA-SHA2-128f",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsaSha2_128f");
+            put("KeyPairGenerator.SLH-DSA-SHA2-192s",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsaSha2_192s");
+            put("KeyPairGenerator.SLH-DSA-SHA2-192f",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsaSha2_192f");
+            put("KeyPairGenerator.SLH-DSA-SHA2-256s",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsaSha2_256s");
+            put("KeyPairGenerator.SLH-DSA-SHA2-256f",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsaSha2_256f");
+            put("KeyPairGenerator.SLH-DSA-SHAKE-128s",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsaShake_128s");
+            put("KeyPairGenerator.SLH-DSA-SHAKE-128f",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsaShake_128f");
+            put("KeyPairGenerator.SLH-DSA-SHAKE-192s",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsaShake_192s");
+            put("KeyPairGenerator.SLH-DSA-SHAKE-192f",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsaShake_192f");
+            put("KeyPairGenerator.SLH-DSA-SHAKE-256s",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsaShake_256s");
+            put("KeyPairGenerator.SLH-DSA-SHAKE-256f",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenSlhDsaShake_256f");
+
+            /* OID aliases (FIPS 205: 2.16.840.1.101.3.4.3.20-.31) */
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.20",
+                "SLH-DSA-SHA2-128s");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.20",
+                "SLH-DSA-SHA2-128s");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.21",
+                "SLH-DSA-SHA2-128f");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.21",
+                "SLH-DSA-SHA2-128f");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.22",
+                "SLH-DSA-SHA2-192s");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.22",
+                "SLH-DSA-SHA2-192s");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.23",
+                "SLH-DSA-SHA2-192f");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.23",
+                "SLH-DSA-SHA2-192f");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.24",
+                "SLH-DSA-SHA2-256s");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.24",
+                "SLH-DSA-SHA2-256s");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.25",
+                "SLH-DSA-SHA2-256f");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.25",
+                "SLH-DSA-SHA2-256f");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.26",
+                "SLH-DSA-SHAKE-128s");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.26",
+                "SLH-DSA-SHAKE-128s");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.27",
+                "SLH-DSA-SHAKE-128f");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.27",
+                "SLH-DSA-SHAKE-128f");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.28",
+                "SLH-DSA-SHAKE-192s");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.28",
+                "SLH-DSA-SHAKE-192s");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.29",
+                "SLH-DSA-SHAKE-192f");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.29",
+                "SLH-DSA-SHAKE-192f");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.30",
+                "SLH-DSA-SHAKE-256s");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.30",
+                "SLH-DSA-SHAKE-256s");
+            put("Alg.Alias.KeyPairGenerator.2.16.840.1.101.3.4.3.31",
+                "SLH-DSA-SHAKE-256f");
+            put("Alg.Alias.KeyPairGenerator.OID.2.16.840.1.101.3.4.3.31",
+                "SLH-DSA-SHAKE-256f");
+        }
         if (FeatureDetect.MlKemEnabled()) {
             /* Generic alias: defaults to ML-KEM-768 */
             put("KeyPairGenerator.ML-KEM",
@@ -792,6 +1036,85 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.19", "ML-DSA-87");
             put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.19",
                 "ML-DSA-87");
+        }
+        if (FeatureDetect.SlhDsaEnabled()) {
+            put("KeyFactory.SLH-DSA",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory");
+
+            put("KeyFactory.SLH-DSA-SHA2-128s",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory$wcSlhDsaSha2_128s");
+            put("KeyFactory.SLH-DSA-SHA2-128f",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory$wcSlhDsaSha2_128f");
+            put("KeyFactory.SLH-DSA-SHA2-192s",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory$wcSlhDsaSha2_192s");
+            put("KeyFactory.SLH-DSA-SHA2-192f",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory$wcSlhDsaSha2_192f");
+            put("KeyFactory.SLH-DSA-SHA2-256s",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory$wcSlhDsaSha2_256s");
+            put("KeyFactory.SLH-DSA-SHA2-256f",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory$wcSlhDsaSha2_256f");
+            put("KeyFactory.SLH-DSA-SHAKE-128s",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory$wcSlhDsaShake_128s");
+            put("KeyFactory.SLH-DSA-SHAKE-128f",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory$wcSlhDsaShake_128f");
+            put("KeyFactory.SLH-DSA-SHAKE-192s",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory$wcSlhDsaShake_192s");
+            put("KeyFactory.SLH-DSA-SHAKE-192f",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory$wcSlhDsaShake_192f");
+            put("KeyFactory.SLH-DSA-SHAKE-256s",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory$wcSlhDsaShake_256s");
+            put("KeyFactory.SLH-DSA-SHAKE-256f",
+                "com.wolfssl.provider.jce.WolfCryptSlhDsaKeyFactory$wcSlhDsaShake_256f");
+
+            /* OID aliases (FIPS 205: 2.16.840.1.101.3.4.3.20-.31) */
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.20",
+                "SLH-DSA-SHA2-128s");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.20",
+                "SLH-DSA-SHA2-128s");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.21",
+                "SLH-DSA-SHA2-128f");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.21",
+                "SLH-DSA-SHA2-128f");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.22",
+                "SLH-DSA-SHA2-192s");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.22",
+                "SLH-DSA-SHA2-192s");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.23",
+                "SLH-DSA-SHA2-192f");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.23",
+                "SLH-DSA-SHA2-192f");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.24",
+                "SLH-DSA-SHA2-256s");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.24",
+                "SLH-DSA-SHA2-256s");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.25",
+                "SLH-DSA-SHA2-256f");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.25",
+                "SLH-DSA-SHA2-256f");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.26",
+                "SLH-DSA-SHAKE-128s");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.26",
+                "SLH-DSA-SHAKE-128s");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.27",
+                "SLH-DSA-SHAKE-128f");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.27",
+                "SLH-DSA-SHAKE-128f");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.28",
+                "SLH-DSA-SHAKE-192s");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.28",
+                "SLH-DSA-SHAKE-192s");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.29",
+                "SLH-DSA-SHAKE-192f");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.29",
+                "SLH-DSA-SHAKE-192f");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.30",
+                "SLH-DSA-SHAKE-256s");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.30",
+                "SLH-DSA-SHAKE-256s");
+            put("Alg.Alias.KeyFactory.2.16.840.1.101.3.4.3.31",
+                "SLH-DSA-SHAKE-256f");
+            put("Alg.Alias.KeyFactory.OID.2.16.840.1.101.3.4.3.31",
+                "SLH-DSA-SHAKE-256f");
         }
         if (FeatureDetect.MlKemEnabled()) {
             put("KeyFactory.ML-KEM",

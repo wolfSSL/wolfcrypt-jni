@@ -159,6 +159,11 @@
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
     </Match>
     <Match>
+        <Class name="com.wolfssl.wolfcrypt.SlhDsa"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
         <Class name="com.wolfssl.wolfcrypt.MlKem"/>
         <Method name="&lt;init&gt;"/>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
@@ -254,6 +259,16 @@
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
     </Match>
     <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptSlhDsaPrivateKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptSlhDsaPublicKey"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
         <Class name="com.wolfssl.provider.jce.WolfCryptMlKemPrivateKey"/>
         <Method name="&lt;init&gt;"/>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
@@ -315,6 +330,11 @@
     </Match>
     <Match>
         <Class name="com.wolfssl.provider.jce.WolfPQCParameterSpec"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptContextParameterSpec"/>
         <Method name="&lt;init&gt;"/>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
     </Match>

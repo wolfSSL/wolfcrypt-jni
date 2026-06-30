@@ -175,6 +175,17 @@ public class WolfSSLKeyStoreTest {
      * examples/certs/xmss/. Loaded only if FeatureDetect.XmssEnabled(). */
     private static String xmssRootCertDer = null;
 
+    /* SLH-DSA self-signed root certs/keys from wolfssl/certs/slhdsa/. Loaded
+     * only if FeatureDetect.SlhDsaEnabled() is true. */
+    private static String slhDsaSha2KeyPem   = null;
+    private static String slhDsaSha2CertPem  = null;
+    private static String slhDsaShakeKeyPem  = null;
+    private static String slhDsaShakeCertPem = null;
+    private static PrivateKey  keySlhDsaSha2   = null;
+    private static Certificate certSlhDsaSha2  = null;
+    private static PrivateKey  keySlhDsaShake  = null;
+    private static Certificate certSlhDsaShake = null;
+
     /* Example .jks KeyStore file paths */
     private static String clientJKS = null;          /* client.jks */
 
@@ -507,6 +518,32 @@ public class WolfSSLKeyStoreTest {
                 }
             }
         }
+
+        /* Load SLH-DSA self-signed test certs/keys if SLH-DSA compiled in. */
+        if (FeatureDetect.SlhDsaEnabled()) {
+            if (new File(slhDsaSha2KeyPem).exists()) {
+                try {
+                    keySlhDsaSha2 =
+                        pemFileToPrivateKey(slhDsaSha2KeyPem, "SLH-DSA");
+                    certSlhDsaSha2 = certFileToCertificate(slhDsaSha2CertPem);
+                }
+                catch (Exception e) {
+                    keySlhDsaSha2 = null;
+                    certSlhDsaSha2 = null;
+                }
+            }
+            if (new File(slhDsaShakeKeyPem).exists()) {
+                try {
+                    keySlhDsaShake =
+                        pemFileToPrivateKey(slhDsaShakeKeyPem, "SLH-DSA");
+                    certSlhDsaShake = certFileToCertificate(slhDsaShakeCertPem);
+                }
+                catch (Exception e) {
+                    keySlhDsaShake = null;
+                    certSlhDsaShake = null;
+                }
+            }
+        }
     }
 
     @BeforeClass
@@ -633,6 +670,16 @@ public class WolfSSLKeyStoreTest {
             certPre.concat("examples/certs/ca-mldsa65.wks");
         caMlDsa87WKS =
             certPre.concat("examples/certs/ca-mldsa87.wks");
+
+        /* SLH-DSA test material paths */
+        slhDsaSha2KeyPem = certPre.concat(
+            "examples/certs/slhdsa/root-slhdsa-sha2-128s-priv.pem");
+        slhDsaSha2CertPem = certPre.concat(
+            "examples/certs/slhdsa/root-slhdsa-sha2-128s.pem");
+        slhDsaShakeKeyPem = certPre.concat(
+            "examples/certs/slhdsa/root-slhdsa-shake-128s-priv.pem");
+        slhDsaShakeCertPem = certPre.concat(
+            "examples/certs/slhdsa/root-slhdsa-shake-128s.pem");
 
         /* Test if file exists. Skip tests gracefully if cert files not
          * available (eg running on Android). */
@@ -3238,6 +3285,14 @@ public class WolfSSLKeyStoreTest {
             serverKeyMlDsa44, serverKeyMlDsa65, serverKeyMlDsa87);
     }
 
+    private void assumeSlhDsaAvailable() {
+        Assume.assumeTrue("SLH-DSA not compiled in native wolfSSL",
+            FeatureDetect.SlhDsaEnabled());
+        Assume.assumeTrue("SLH-DSA test keys not loadable on this build "
+            + "(see examples/certs/slhdsa/)",
+            (keySlhDsaSha2 != null) || (keySlhDsaShake != null));
+    }
+
     private void assumeMlDsaWksAvailable() {
         assumeMlDsaAvailable();
         File f = new File(serverMlDsa44WKS);
@@ -3380,6 +3435,59 @@ public class WolfSSLKeyStoreTest {
         assertEquals(serverCertMlDsa87, reload.getCertificate("k87"));
         assertEquals(serverCertMlDsa65, reload.getCertificate("trust"));
         assertTrue(reload.isCertificateEntry("trust"));
+    }
+
+    /**
+     * Store SLH-DSA private keys + self-signed certs into a WKS KeyStore,
+     * write to a byte stream, reload, and verify keys and certs round trip.
+     */
+    @Test
+    public void testStoreLoadByteBufferSlhDsa() throws Exception {
+
+        int expected = 0;
+
+        assumeSlhDsaAvailable();
+
+        KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+        store.load(null, storePass.toCharArray());
+
+        if (keySlhDsaSha2 != null) {
+            store.setKeyEntry("slhSha2", keySlhDsaSha2, storePass.toCharArray(),
+                new Certificate[]{ certSlhDsaSha2 });
+            store.setCertificateEntry("trustSha2", certSlhDsaSha2);
+            expected += 2;
+        }
+        if (keySlhDsaShake != null) {
+            store.setKeyEntry("slhShake", keySlhDsaShake,
+                storePass.toCharArray(), new Certificate[]{ certSlhDsaShake });
+            expected += 1;
+        }
+        assertEquals(expected, store.size());
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        store.store(baos, storePass.toCharArray());
+        byte[] wksBytes = baos.toByteArray();
+        assertTrue(wksBytes.length > 0);
+
+        KeyStore reload = KeyStore.getInstance(storeType, storeProvider);
+        reload.load(new ByteArrayInputStream(wksBytes),
+            storePass.toCharArray());
+        assertEquals(expected, reload.size());
+
+        if (keySlhDsaSha2 != null) {
+            assertEquals(keySlhDsaSha2,
+                reload.getKey("slhSha2", storePass.toCharArray()));
+            assertEquals(certSlhDsaSha2, reload.getCertificate("slhSha2"));
+            assertEquals(certSlhDsaSha2,
+                reload.getCertificate("trustSha2"));
+            assertTrue(reload.isCertificateEntry("trustSha2"));
+        }
+        if (keySlhDsaShake != null) {
+            assertEquals(keySlhDsaShake,
+                reload.getKey("slhShake", storePass.toCharArray()));
+            assertEquals(certSlhDsaShake,
+                reload.getCertificate("slhShake"));
+        }
     }
 
     /**
