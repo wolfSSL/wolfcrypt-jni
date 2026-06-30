@@ -235,6 +235,56 @@ The JCE provider currently supports the following algorithms:
             OID: 1.3.6.1.5.5.7.6.35
         LMS (also registered as HSS/LMS)
             OID: 1.2.840.113549.1.9.16.3.17
+        SLH-DSA (any SLH-DSA parameter set key)
+        SLH-DSA-SHA2-128s
+            OID: 2.16.840.1.101.3.4.3.20
+        SLH-DSA-SHA2-128f
+            OID: 2.16.840.1.101.3.4.3.21
+        SLH-DSA-SHA2-192s
+            OID: 2.16.840.1.101.3.4.3.22
+        SLH-DSA-SHA2-192f
+            OID: 2.16.840.1.101.3.4.3.23
+        SLH-DSA-SHA2-256s
+            OID: 2.16.840.1.101.3.4.3.24
+        SLH-DSA-SHA2-256f
+            OID: 2.16.840.1.101.3.4.3.25
+        SLH-DSA-SHAKE-128s
+            OID: 2.16.840.1.101.3.4.3.26
+        SLH-DSA-SHAKE-128f
+            OID: 2.16.840.1.101.3.4.3.27
+        SLH-DSA-SHAKE-192s
+            OID: 2.16.840.1.101.3.4.3.28
+        SLH-DSA-SHAKE-192f
+            OID: 2.16.840.1.101.3.4.3.29
+        SLH-DSA-SHAKE-256s
+            OID: 2.16.840.1.101.3.4.3.30
+        SLH-DSA-SHAKE-256f
+            OID: 2.16.840.1.101.3.4.3.31
+        HASH-SLH-DSA (pre-hash, any SLH-DSA parameter set key)
+        SLH-DSA-SHA2-128s-WITH-SHA256
+            OID: 2.16.840.1.101.3.4.3.35
+        SLH-DSA-SHA2-128f-WITH-SHA256
+            OID: 2.16.840.1.101.3.4.3.36
+        SLH-DSA-SHA2-192s-WITH-SHA512
+            OID: 2.16.840.1.101.3.4.3.37
+        SLH-DSA-SHA2-192f-WITH-SHA512
+            OID: 2.16.840.1.101.3.4.3.38
+        SLH-DSA-SHA2-256s-WITH-SHA512
+            OID: 2.16.840.1.101.3.4.3.39
+        SLH-DSA-SHA2-256f-WITH-SHA512
+            OID: 2.16.840.1.101.3.4.3.40
+        SLH-DSA-SHAKE-128s-WITH-SHAKE128
+            OID: 2.16.840.1.101.3.4.3.41
+        SLH-DSA-SHAKE-128f-WITH-SHAKE128
+            OID: 2.16.840.1.101.3.4.3.42
+        SLH-DSA-SHAKE-192s-WITH-SHAKE256
+            OID: 2.16.840.1.101.3.4.3.43
+        SLH-DSA-SHAKE-192f-WITH-SHAKE256
+            OID: 2.16.840.1.101.3.4.3.44
+        SLH-DSA-SHAKE-256s-WITH-SHAKE256
+            OID: 2.16.840.1.101.3.4.3.45
+        SLH-DSA-SHAKE-256f-WITH-SHAKE256
+            OID: 2.16.840.1.101.3.4.3.46
 
     KeyAgreement Class
         DiffieHellman
@@ -262,6 +312,19 @@ The JCE provider currently supports the following algorithms:
         ML-DSA-44 (alias OID: 2.16.840.1.101.3.4.3.17)
         ML-DSA-65 (alias OID: 2.16.840.1.101.3.4.3.18)
         ML-DSA-87 (alias OID: 2.16.840.1.101.3.4.3.19)
+        SLH-DSA (defaults to SLH-DSA-SHA2-128f, set overridable via init())
+        SLH-DSA-SHA2-128s (alias OID: 2.16.840.1.101.3.4.3.20)
+        SLH-DSA-SHA2-128f (alias OID: 2.16.840.1.101.3.4.3.21)
+        SLH-DSA-SHA2-192s (alias OID: 2.16.840.1.101.3.4.3.22)
+        SLH-DSA-SHA2-192f (alias OID: 2.16.840.1.101.3.4.3.23)
+        SLH-DSA-SHA2-256s (alias OID: 2.16.840.1.101.3.4.3.24)
+        SLH-DSA-SHA2-256f (alias OID: 2.16.840.1.101.3.4.3.25)
+        SLH-DSA-SHAKE-128s (alias OID: 2.16.840.1.101.3.4.3.26)
+        SLH-DSA-SHAKE-128f (alias OID: 2.16.840.1.101.3.4.3.27)
+        SLH-DSA-SHAKE-192s (alias OID: 2.16.840.1.101.3.4.3.28)
+        SLH-DSA-SHAKE-192f (alias OID: 2.16.840.1.101.3.4.3.29)
+        SLH-DSA-SHAKE-256s (alias OID: 2.16.840.1.101.3.4.3.30)
+        SLH-DSA-SHAKE-256f (alias OID: 2.16.840.1.101.3.4.3.31)
         ML-KEM (defaults to ML-KEM-768, level overridable via init())
         ML-KEM-512 (alias OID: 2.16.840.1.101.3.4.4.1)
         ML-KEM-768 (alias OID: 2.16.840.1.101.3.4.4.2)
@@ -275,6 +338,19 @@ The JCE provider currently supports the following algorithms:
         ML-DSA-44 (alias OID: 2.16.840.1.101.3.4.3.17)
         ML-DSA-65 (alias OID: 2.16.840.1.101.3.4.3.18)
         ML-DSA-87 (alias OID: 2.16.840.1.101.3.4.3.19)
+        SLH-DSA
+        SLH-DSA-SHA2-128s (alias OID: 2.16.840.1.101.3.4.3.20)
+        SLH-DSA-SHA2-128f (alias OID: 2.16.840.1.101.3.4.3.21)
+        SLH-DSA-SHA2-192s (alias OID: 2.16.840.1.101.3.4.3.22)
+        SLH-DSA-SHA2-192f (alias OID: 2.16.840.1.101.3.4.3.23)
+        SLH-DSA-SHA2-256s (alias OID: 2.16.840.1.101.3.4.3.24)
+        SLH-DSA-SHA2-256f (alias OID: 2.16.840.1.101.3.4.3.25)
+        SLH-DSA-SHAKE-128s (alias OID: 2.16.840.1.101.3.4.3.26)
+        SLH-DSA-SHAKE-128f (alias OID: 2.16.840.1.101.3.4.3.27)
+        SLH-DSA-SHAKE-192s (alias OID: 2.16.840.1.101.3.4.3.28)
+        SLH-DSA-SHAKE-192f (alias OID: 2.16.840.1.101.3.4.3.29)
+        SLH-DSA-SHAKE-256s (alias OID: 2.16.840.1.101.3.4.3.30)
+        SLH-DSA-SHAKE-256f (alias OID: 2.16.840.1.101.3.4.3.31)
         ML-KEM
         ML-KEM-512 (alias OID: 2.16.840.1.101.3.4.4.1)
         ML-KEM-768 (alias OID: 2.16.840.1.101.3.4.4.2)
@@ -422,9 +498,10 @@ FIPS 140-2/3.
 #### Stored Object Compatibility
 
 The WKS KeyStore supports storage of PrivateKey, Certificate, and SecretKey
-objects. PrivateKey storage includes RSA, ECC, and ML-DSA (FIPS 204) keys.
-ML-DSA key support requires native wolfSSL to be built with ML-DSA enabled
-(see the ML-DSA note in [README.md](./README.md)).
+objects. PrivateKey storage includes RSA, ECC, ML-DSA (FIPS 204), and SLH-DSA
+(FIPS 205) keys. ML-DSA and SLH-DSA key support requires native wolfSSL to be
+built with the respective algorithm enabled (see the ML-DSA and SLH-DSA notes
+in [README.md](./README.md)).
 
 #### Converting Other KeyStore Formats to WKS
 

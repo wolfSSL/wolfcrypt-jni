@@ -176,6 +176,46 @@ jobs:
       jdk_version: ${{ matrix.jdk_version }}
       wolfssl_configure: ${{ matrix.wolfssl_configure }}
 
+  # ----------------------- SLH-DSA (FIPS 205) --------------------------
+  # SLH-DSA provides full keygen/sign/verify in wolfJCE and requires wolfSSL
+  # to be built with --enable-slhdsa. It is not pulled in by --enable-all.
+  # The --enable-slhdsa option is comma-separated:
+  #   (default/yes)  the six SHAKE parameter sets (128s/128f/192s/192f/
+  #                  256s/256f), full keygen + sign + verify
+  #   sha2           -> adds the six SHA2 parameter sets (SLH-DSA-SHA2-*)
+  #   128f, sha2-128f, ... -> select individual parameter sets
+  #   small          -> WOLFSSL_WC_SLHDSA_SMALL     (low-memory codepath)
+  #   small-mem      -> WOLFSSL_WC_SLHDSA_SMALL_MEM (lower-memory codepath)
+  #   verify-only    -> WOLFSSL_SLHDSA_VERIFY_ONLY  (no keygen/sign)
+  # Extra options do not imply 'yes': parameter sets must be selected via
+  # 'yes', 'sha2', or per-set tokens, otherwise no set is compiled in and
+  # native wolfSSL fails to build ("No parameters defined"). SHAKE256/SHA-3
+  # dependencies are auto-enabled by wolfSSL configure, so no --enable-sha3
+  # is needed. JUnit tests probe per parameter set and per capability, so
+  # each permutation runs what it can and skips the rest. Permutations:
+  # default SHAKE-only, all 12 sets, all 12 + small codepath, a reduced
+  # per-set selection + small-mem codepath, verify-only degradation, and
+  # --enable-all interop.
+  linux-zulu-slhdsa:
+    strategy:
+      matrix:
+        os: [ 'ubuntu-latest', 'macos-latest' ]
+        jdk_version: [ '11', '21', '24' ]
+        wolfssl_configure:
+          - '--enable-jni --enable-slhdsa'
+          - '--enable-jni --enable-slhdsa=yes,sha2'
+          - '--enable-jni --enable-slhdsa=yes,sha2,small'
+          - '--enable-jni --enable-slhdsa=128f,sha2-128f,small-mem'
+          - '--enable-jni --enable-slhdsa=yes,sha2,verify-only'
+          - '--enable-jni --enable-all --enable-slhdsa=yes,sha2'
+    name: ${{ matrix.os }} (Zulu JDK ${{ matrix.jdk_version }}, ${{ matrix.wolfssl_configure }})
+    uses: ./.github/workflows/linux-common.yml
+    with:
+      os: ${{ matrix.os }}
+      jdk_distro: "zulu"
+      jdk_version: ${{ matrix.jdk_version }}
+      wolfssl_configure: ${{ matrix.wolfssl_configure }}
+
   # ------------------ Facebook Infer static analysis -------------------
   # Run Facebook infer over PR code, only running on Linux with one
   # JDK/version for now.

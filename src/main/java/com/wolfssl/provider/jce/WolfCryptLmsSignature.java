@@ -111,7 +111,7 @@ public final class WolfCryptLmsSignature extends SignatureSpi {
             }
 
             try {
-                rawPub = WolfCryptLmsUtil.parsePublicKeyDer(der);
+                rawPub = WolfCryptSpkiUtil.parseLmsPublicKeyDer(der);
             }
             catch (IllegalArgumentException e) {
                 throw new InvalidKeyException(

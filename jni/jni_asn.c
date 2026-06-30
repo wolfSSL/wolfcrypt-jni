@@ -134,6 +134,153 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getML_1DSA_1LEVEL5k
 #endif
 }
 
+/* SLH-DSA (FIPS 205) Key_Sum enum values from oid_sum.h, present when native
+ * wolfSSL is built with SLH-DSA support. Return 0 (treated as unsupported by
+ * Java callers) when SLH-DSA is not compiled in. */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHA2_1128Sk
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    return (jint)SLH_DSA_SHA2_128Sk;
+#else
+    return 0;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHA2_1128Fk
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    return (jint)SLH_DSA_SHA2_128Fk;
+#else
+    return 0;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHA2_1192Sk
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    return (jint)SLH_DSA_SHA2_192Sk;
+#else
+    return 0;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHA2_1192Fk
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    return (jint)SLH_DSA_SHA2_192Fk;
+#else
+    return 0;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHA2_1256Sk
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    return (jint)SLH_DSA_SHA2_256Sk;
+#else
+    return 0;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHA2_1256Fk
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    return (jint)SLH_DSA_SHA2_256Fk;
+#else
+    return 0;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHAKE_1128Sk
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    return (jint)SLH_DSA_SHAKE_128Sk;
+#else
+    return 0;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHAKE_1128Fk
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    return (jint)SLH_DSA_SHAKE_128Fk;
+#else
+    return 0;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHAKE_1192Sk
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    return (jint)SLH_DSA_SHAKE_192Sk;
+#else
+    return 0;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHAKE_1192Fk
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    return (jint)SLH_DSA_SHAKE_192Fk;
+#else
+    return 0;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHAKE_1256Sk
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    return (jint)SLH_DSA_SHAKE_256Sk;
+#else
+    return 0;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHAKE_1256Fk
+  (JNIEnv* env, jclass class)
+{
+    (void)env;
+    (void)class;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    return (jint)SLH_DSA_SHAKE_256Fk;
+#else
+    return 0;
+#endif
+}
+
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature__Ljava_nio_ByteBuffer_2Ljava_nio_ByteBuffer_2JI(
     JNIEnv* env, jclass class, jobject encoded_object, jobject hash_object,
     jlong hashSize, jint hashOID)

@@ -194,6 +194,8 @@ public class WolfCryptMlDsaKeyFactory extends KeyFactorySpi {
     protected <T extends KeySpec> T engineGetKeySpec(Key key, Class<T> keySpec)
         throws InvalidKeySpecException {
 
+        Key wolfKey;
+
         if (key == null) {
             throw new InvalidKeySpecException("Key cannot be null");
         }
@@ -202,34 +204,33 @@ public class WolfCryptMlDsaKeyFactory extends KeyFactorySpi {
                 "Requested KeySpec class cannot be null");
         }
 
-        if (key instanceof WolfCryptMlDsaPrivateKey) {
-            checkLevelMatchesRequired(
-                ((WolfCryptMlDsaPrivateKey)key).getLevel());
-        }
-        else if (key instanceof WolfCryptMlDsaPublicKey) {
-            checkLevelMatchesRequired(
-                ((WolfCryptMlDsaPublicKey)key).getLevel());
+        /* Normalize key types, validates level on wolfJCE and
+         * encoding/DER/level on foreign keys. */
+        try {
+            wolfKey = engineTranslateKey(key);
+        } catch (InvalidKeyException e) {
+            throw new InvalidKeySpecException(e.getMessage(), e);
         }
 
-        if (key instanceof PrivateKey) {
+        if (wolfKey instanceof PrivateKey) {
             if (!keySpec.isAssignableFrom(PKCS8EncodedKeySpec.class)) {
                 throw new InvalidKeySpecException(
                     "ML-DSA private keys can only be expressed as " +
                     "PKCS8EncodedKeySpec, got request for: " +
                     keySpec.getName());
             }
-            byte[] encoded = requireEncoded(key, "PKCS#8");
+            byte[] encoded = WolfCryptUtil.requireEncoded(wolfKey, "PKCS#8");
             return keySpec.cast(new PKCS8EncodedKeySpec(encoded));
         }
 
-        if (key instanceof PublicKey) {
+        if (wolfKey instanceof PublicKey) {
             if (!keySpec.isAssignableFrom(X509EncodedKeySpec.class)) {
                 throw new InvalidKeySpecException(
                     "ML-DSA public keys can only be expressed as " +
                     "X509EncodedKeySpec, got request for: " +
                     keySpec.getName());
             }
-            byte[] encoded = requireEncoded(key, "X.509");
+            byte[] encoded = WolfCryptUtil.requireEncoded(wolfKey, "X.509");
             return keySpec.cast(new X509EncodedKeySpec(encoded));
         }
 
@@ -316,15 +317,4 @@ public class WolfCryptMlDsaKeyFactory extends KeyFactorySpi {
             "Unsupported Key type: " + key.getClass().getName());
     }
 
-    /* Return key getEncoded(), throws if null/empty. */
-    private static byte[] requireEncoded(Key key, String expectedFormat)
-        throws InvalidKeySpecException {
-
-        byte[] encoded = key.getEncoded();
-        if (encoded == null || encoded.length == 0) {
-            throw new InvalidKeySpecException(
-                "Key has no encoded form (expected " + expectedFormat + ")");
-        }
-        return encoded;
-    }
 }

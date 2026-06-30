@@ -409,6 +409,16 @@ public class FeatureDetect {
     public static native boolean SlhDsaEnabled();
 
     /**
+     * Tests if SLH-DSA (FIPS 205) key generation and signing are compiled
+     * into the native wolfSSL library. False on verify-only native builds.
+     *
+     * @return true if enabled (WOLFSSL_HAVE_SLHDSA without
+     *         WOLFSSL_SLHDSA_VERIFY_ONLY), otherwise false if not
+     *         compiled in.
+     */
+    public static native boolean SlhDsaKeyGenEnabled();
+
+    /**
      * Tests if LMS/HSS (RFC 8554) is compiled into the native wolfSSL
      * library.
      *

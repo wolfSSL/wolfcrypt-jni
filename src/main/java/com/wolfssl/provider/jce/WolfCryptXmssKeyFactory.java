@@ -101,6 +101,7 @@ public class WolfCryptXmssKeyFactory extends KeyFactorySpi {
         throws InvalidKeySpecException {
 
         byte[] encoded;
+        Key wolfKey;
 
         if (key == null) {
             throw new InvalidKeySpecException("Key cannot be null");
@@ -111,14 +112,21 @@ public class WolfCryptXmssKeyFactory extends KeyFactorySpi {
                 "Requested KeySpec class cannot be null");
         }
 
-        if (key instanceof PublicKey) {
+        /* Normalize key, validates foreign keys (encoding, type, DER) */
+        try {
+            wolfKey = engineTranslateKey(key);
+        } catch (InvalidKeyException e) {
+            throw new InvalidKeySpecException(e.getMessage(), e);
+        }
+
+        if (wolfKey instanceof PublicKey) {
             if (!keySpec.isAssignableFrom(X509EncodedKeySpec.class)) {
                 throw new InvalidKeySpecException(
                     "XMSS public keys can only be expressed as " +
                     "X509EncodedKeySpec, got request for: " +
                     keySpec.getName());
             }
-            encoded = requireEncoded(key, "X.509");
+            encoded = WolfCryptUtil.requireEncoded(wolfKey, "X.509");
             return keySpec.cast(new X509EncodedKeySpec(encoded));
         }
 
@@ -168,17 +176,4 @@ public class WolfCryptXmssKeyFactory extends KeyFactorySpi {
             "Unsupported Key type: " + key.getClass().getName());
     }
 
-    /* Return key.getEncoded(), throws if null/empty. */
-    private static byte[] requireEncoded(Key key, String expectedFormat)
-        throws InvalidKeySpecException {
-
-        byte[] encoded = key.getEncoded();
-
-        if (encoded == null || encoded.length == 0) {
-            throw new InvalidKeySpecException(
-                "Key has no encoded form (expected " + expectedFormat + ")");
-        }
-
-        return encoded;
-    }
 }

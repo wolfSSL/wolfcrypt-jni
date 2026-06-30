@@ -101,6 +101,7 @@
     <ClCompile Include="..\..\jni\jni_md5.c" />
     <ClCompile Include="..\..\jni\jni_mldsa.c" />
     <ClCompile Include="..\..\jni\jni_mlkem.c" />
+    <ClCompile Include="..\..\jni\jni_slhdsa.c" />
     <ClCompile Include="..\..\jni\jni_native_struct.c" />
     <ClCompile Include="..\..\jni\jni_pwdbased.c" />
     <ClCompile Include="..\..\jni\jni_rng.c" />

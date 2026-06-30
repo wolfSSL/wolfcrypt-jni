@@ -58,6 +58,42 @@ public class Asn extends WolfObject {
     /** ML-DSA-87 (FIPS 204) key value, from oid_sum.h Key_Sum enum.
      * OID 2.16.840.1.101.3.4.3.19. */
     public static final int ML_DSA_LEVEL5k;
+    /** SLH-DSA-SHA2-128s (FIPS 205) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.20. */
+    public static final int SLH_DSA_SHA2_128Sk;
+    /** SLH-DSA-SHA2-128f (FIPS 205) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.21. */
+    public static final int SLH_DSA_SHA2_128Fk;
+    /** SLH-DSA-SHA2-192s (FIPS 205) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.22. */
+    public static final int SLH_DSA_SHA2_192Sk;
+    /** SLH-DSA-SHA2-192f (FIPS 205) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.23. */
+    public static final int SLH_DSA_SHA2_192Fk;
+    /** SLH-DSA-SHA2-256s (FIPS 205) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.24. */
+    public static final int SLH_DSA_SHA2_256Sk;
+    /** SLH-DSA-SHA2-256f (FIPS 205) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.25. */
+    public static final int SLH_DSA_SHA2_256Fk;
+    /** SLH-DSA-SHAKE-128s (FIPS 205) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.26. */
+    public static final int SLH_DSA_SHAKE_128Sk;
+    /** SLH-DSA-SHAKE-128f (FIPS 205) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.27. */
+    public static final int SLH_DSA_SHAKE_128Fk;
+    /** SLH-DSA-SHAKE-192s (FIPS 205) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.28. */
+    public static final int SLH_DSA_SHAKE_192Sk;
+    /** SLH-DSA-SHAKE-192f (FIPS 205) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.29. */
+    public static final int SLH_DSA_SHAKE_192Fk;
+    /** SLH-DSA-SHAKE-256s (FIPS 205) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.30. */
+    public static final int SLH_DSA_SHAKE_256Sk;
+    /** SLH-DSA-SHAKE-256f (FIPS 205) key value, from oid_sum.h Key_Sum enum.
+     * OID 2.16.840.1.101.3.4.3.31. */
+    public static final int SLH_DSA_SHAKE_256Fk;
 
     /* Hash Sum values, from oid_sum.h Hash_Sum enum */
 
@@ -91,6 +127,18 @@ public class Asn extends WolfObject {
         ML_DSA_LEVEL2k = getML_DSA_LEVEL2k();
         ML_DSA_LEVEL3k = getML_DSA_LEVEL3k();
         ML_DSA_LEVEL5k = getML_DSA_LEVEL5k();
+        SLH_DSA_SHA2_128Sk = getSLH_DSA_SHA2_128Sk();
+        SLH_DSA_SHA2_128Fk = getSLH_DSA_SHA2_128Fk();
+        SLH_DSA_SHA2_192Sk = getSLH_DSA_SHA2_192Sk();
+        SLH_DSA_SHA2_192Fk = getSLH_DSA_SHA2_192Fk();
+        SLH_DSA_SHA2_256Sk = getSLH_DSA_SHA2_256Sk();
+        SLH_DSA_SHA2_256Fk = getSLH_DSA_SHA2_256Fk();
+        SLH_DSA_SHAKE_128Sk = getSLH_DSA_SHAKE_128Sk();
+        SLH_DSA_SHAKE_128Fk = getSLH_DSA_SHAKE_128Fk();
+        SLH_DSA_SHAKE_192Sk = getSLH_DSA_SHAKE_192Sk();
+        SLH_DSA_SHAKE_192Fk = getSLH_DSA_SHAKE_192Fk();
+        SLH_DSA_SHAKE_256Sk = getSLH_DSA_SHAKE_256Sk();
+        SLH_DSA_SHAKE_256Fk = getSLH_DSA_SHAKE_256Fk();
 
         MD5h = getMD5h();
         SHAh = getSHAh();
@@ -127,6 +175,42 @@ public class Asn extends WolfObject {
 
     /** Return value of native ML_DSA_LEVEL5k enum */
     private static native int getML_DSA_LEVEL5k();
+
+    /** Return value of native SLH_DSA_SHA2_128Sk enum */
+    private static native int getSLH_DSA_SHA2_128Sk();
+
+    /** Return value of native SLH_DSA_SHA2_128Fk enum */
+    private static native int getSLH_DSA_SHA2_128Fk();
+
+    /** Return value of native SLH_DSA_SHA2_192Sk enum */
+    private static native int getSLH_DSA_SHA2_192Sk();
+
+    /** Return value of native SLH_DSA_SHA2_192Fk enum */
+    private static native int getSLH_DSA_SHA2_192Fk();
+
+    /** Return value of native SLH_DSA_SHA2_256Sk enum */
+    private static native int getSLH_DSA_SHA2_256Sk();
+
+    /** Return value of native SLH_DSA_SHA2_256Fk enum */
+    private static native int getSLH_DSA_SHA2_256Fk();
+
+    /** Return value of native SLH_DSA_SHAKE_128Sk enum */
+    private static native int getSLH_DSA_SHAKE_128Sk();
+
+    /** Return value of native SLH_DSA_SHAKE_128Fk enum */
+    private static native int getSLH_DSA_SHAKE_128Fk();
+
+    /** Return value of native SLH_DSA_SHAKE_192Sk enum */
+    private static native int getSLH_DSA_SHAKE_192Sk();
+
+    /** Return value of native SLH_DSA_SHAKE_192Fk enum */
+    private static native int getSLH_DSA_SHAKE_192Fk();
+
+    /** Return value of native SLH_DSA_SHAKE_256Sk enum */
+    private static native int getSLH_DSA_SHAKE_256Sk();
+
+    /** Return value of native SLH_DSA_SHAKE_256Fk enum */
+    private static native int getSLH_DSA_SHAKE_256Fk();
 
     /** Return value of native MD5h enum */
     private static native int getMD5h();

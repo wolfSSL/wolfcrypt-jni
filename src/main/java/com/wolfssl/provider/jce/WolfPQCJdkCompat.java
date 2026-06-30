@@ -27,6 +27,7 @@ import java.security.spec.AlgorithmParameterSpec;
 
 import com.wolfssl.wolfcrypt.MlDsa;
 import com.wolfssl.wolfcrypt.MlKem;
+import com.wolfssl.wolfcrypt.SlhDsa;
 
 /**
  * JDK reflection helpers for PQC named parameter specs.
@@ -69,6 +70,20 @@ final class WolfPQCJdkCompat {
         NPS_ML_DSA_44 = resolveNamedParameterSpec(MlDsa.ML_DSA_44);
         NPS_ML_DSA_65 = resolveNamedParameterSpec(MlDsa.ML_DSA_65);
         NPS_ML_DSA_87 = resolveNamedParameterSpec(MlDsa.ML_DSA_87);
+    }
+
+    /* Per-parameter-set NamedParameterSpec instances for SLH-DSA, indexed by
+     * the native SlhDsa parameter value (0-11). The JDK ships no SLH-DSA
+     * predefined constants, so on JDK 11+ these are constructed as
+     * NamedParameterSpec(name). null on JDK 8-10. */
+    private static final AlgorithmParameterSpec[] NPS_SLH_DSA =
+        new AlgorithmParameterSpec[12];
+
+    static {
+        for (int p = SlhDsa.SLH_DSA_SHAKE_128S;
+             p <= SlhDsa.SLH_DSA_SHA2_256F; p++) {
+            NPS_SLH_DSA[p] = resolveSlhDsaNamedParamSpec(slhDsaParamToName(p));
+        }
     }
 
     private WolfPQCJdkCompat() { }
@@ -257,6 +272,149 @@ final class WolfPQCJdkCompat {
         }
 
         /* JDK 11-23: construct via NamedParameterSpec(String). */
+        try {
+            return (AlgorithmParameterSpec) NPS_CLASS
+                .getConstructor(String.class).newInstance(name);
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Map an SLH-DSA parameter set to its canonical FIPS 205 name.
+     *
+     * @param param one of {@code SlhDsa.SLH_DSA_*} (0-11)
+     *
+     * @return canonical name like {@code "SLH-DSA-SHA2-128f"}
+     *
+     * @throws IllegalArgumentException on unknown parameter set
+     */
+    static String slhDsaParamToName(int param) {
+
+        switch (param) {
+            case SlhDsa.SLH_DSA_SHAKE_128S:
+                return "SLH-DSA-SHAKE-128s";
+            case SlhDsa.SLH_DSA_SHAKE_128F:
+                return "SLH-DSA-SHAKE-128f";
+            case SlhDsa.SLH_DSA_SHAKE_192S:
+                return "SLH-DSA-SHAKE-192s";
+            case SlhDsa.SLH_DSA_SHAKE_192F:
+                return "SLH-DSA-SHAKE-192f";
+            case SlhDsa.SLH_DSA_SHAKE_256S:
+                return "SLH-DSA-SHAKE-256s";
+            case SlhDsa.SLH_DSA_SHAKE_256F:
+                return "SLH-DSA-SHAKE-256f";
+            case SlhDsa.SLH_DSA_SHA2_128S:
+                return "SLH-DSA-SHA2-128s";
+            case SlhDsa.SLH_DSA_SHA2_128F:
+                return "SLH-DSA-SHA2-128f";
+            case SlhDsa.SLH_DSA_SHA2_192S:
+                return "SLH-DSA-SHA2-192s";
+            case SlhDsa.SLH_DSA_SHA2_192F:
+                return "SLH-DSA-SHA2-192f";
+            case SlhDsa.SLH_DSA_SHA2_256S:
+                return "SLH-DSA-SHA2-256s";
+            case SlhDsa.SLH_DSA_SHA2_256F:
+                return "SLH-DSA-SHA2-256f";
+            default:
+                throw new IllegalArgumentException(
+                    "Invalid SLH-DSA parameter set: " + param);
+        }
+    }
+
+    /**
+     * Map a canonical SLH-DSA parameter-set name (ie:
+     * {@code "SLH-DSA-SHA2-128f"}) to the corresponding {@link SlhDsa}
+     * parameter set constant. Comparison is case-insensitive.
+     *
+     * @param name parameter-set name
+     *
+     * @return one of {@code SlhDsa.SLH_DSA_*} (0-11)
+     *
+     * @throws IllegalArgumentException on unrecognized name
+     */
+    static int slhDsaNameToParam(String name) {
+
+        if (name == null) {
+            throw new IllegalArgumentException("name is null");
+        }
+        if (name.equalsIgnoreCase("SLH-DSA-SHAKE-128s")) {
+            return SlhDsa.SLH_DSA_SHAKE_128S;
+        }
+        if (name.equalsIgnoreCase("SLH-DSA-SHAKE-128f")) {
+            return SlhDsa.SLH_DSA_SHAKE_128F;
+        }
+        if (name.equalsIgnoreCase("SLH-DSA-SHAKE-192s")) {
+            return SlhDsa.SLH_DSA_SHAKE_192S;
+        }
+        if (name.equalsIgnoreCase("SLH-DSA-SHAKE-192f")) {
+            return SlhDsa.SLH_DSA_SHAKE_192F;
+        }
+        if (name.equalsIgnoreCase("SLH-DSA-SHAKE-256s")) {
+            return SlhDsa.SLH_DSA_SHAKE_256S;
+        }
+        if (name.equalsIgnoreCase("SLH-DSA-SHAKE-256f")) {
+            return SlhDsa.SLH_DSA_SHAKE_256F;
+        }
+        if (name.equalsIgnoreCase("SLH-DSA-SHA2-128s")) {
+            return SlhDsa.SLH_DSA_SHA2_128S;
+        }
+        if (name.equalsIgnoreCase("SLH-DSA-SHA2-128f")) {
+            return SlhDsa.SLH_DSA_SHA2_128F;
+        }
+        if (name.equalsIgnoreCase("SLH-DSA-SHA2-192s")) {
+            return SlhDsa.SLH_DSA_SHA2_192S;
+        }
+        if (name.equalsIgnoreCase("SLH-DSA-SHA2-192f")) {
+            return SlhDsa.SLH_DSA_SHA2_192F;
+        }
+        if (name.equalsIgnoreCase("SLH-DSA-SHA2-256s")) {
+            return SlhDsa.SLH_DSA_SHA2_256S;
+        }
+        if (name.equalsIgnoreCase("SLH-DSA-SHA2-256f")) {
+            return SlhDsa.SLH_DSA_SHA2_256F;
+        }
+        throw new IllegalArgumentException(
+            "Unknown SLH-DSA parameter-set name: " + name);
+    }
+
+    /**
+     * Return the cached {@code NamedParameterSpec} for the given SLH-DSA
+     * parameter set, resolved once at class load.
+     *
+     * @param param one of {@code SlhDsa.SLH_DSA_*} (0-11)
+     *
+     * @return JDK {@code NamedParameterSpec} on JDK 11+, else null
+     *
+     * @throws IllegalArgumentException on unknown parameter set
+     */
+    static AlgorithmParameterSpec slhDsaNamedParameterSpec(int param) {
+
+        if (param < SlhDsa.SLH_DSA_SHAKE_128S ||
+            param > SlhDsa.SLH_DSA_SHA2_256F) {
+            throw new IllegalArgumentException(
+                "Invalid SLH-DSA parameter set: " + param);
+        }
+        return NPS_SLH_DSA[param];
+    }
+
+    /**
+     * Resolve a {@code NamedParameterSpec} for the given SLH-DSA name via
+     * reflection. The JDK ships no SLH-DSA predefined constants, so this only
+     * uses the {@code NamedParameterSpec(String)} constructor path.
+     *
+     * @param name canonical SLH-DSA parameter-set name
+     *
+     * @return JDK {@code NamedParameterSpec} on JDK 11+, else null
+     */
+    private static AlgorithmParameterSpec resolveSlhDsaNamedParamSpec(
+        String name) {
+
+        if (NPS_CLASS == null) {
+            /* Class doesn't exist in JDK 8-10, no spec to return. */
+            return null;
+        }
+
         try {
             return (AlgorithmParameterSpec) NPS_CLASS
                 .getConstructor(String.class).newInstance(name);
