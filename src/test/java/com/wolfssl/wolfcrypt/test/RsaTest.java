@@ -109,33 +109,35 @@ public class RsaTest {
         assertTrue(minRsaSize > 0);
     }
 
+    /* RSA key generation can fail with PRIME_GEN_E. Prime generation uses a
+     * finite retry count (NIST FIPS 186-4 B.3.3 in FIPS mode) and the prime
+     * search occasionally misses. JCE-level classes retry internally, the
+     * JNI-level Rsa class does not. */
+    private static final int MAKE_KEY_MAX_ATTEMPTS = 3;
+
     /**
-     * Helper to make RSA key with retry. In FIPS mode the prime generation
-     * loop has a finite retry count (NIST FIPS 186-4 B.3.3). On rare occasions
-     * this can fail with PRIME_GEN_E even with a healthy RNG, so retry once
-     * on that error.
-     *
-     * JCE level classes have retry built in, but not at the JNI class
-     * level.
+     * Helper to make an RSA key, retrying on transient PRIME_GEN_E up to
+     * {@link #MAKE_KEY_MAX_ATTEMPTS} times. Any other error, or a PRIME_GEN_E
+     * on the final attempt, is propagated. Each attempt uses a fresh key.
      */
     private void makeKeyWithRetry(int size, long e, Rng rng) {
 
-        Rsa key = new Rsa();
-        try {
-            key.makeKey(size, e, rng);
-        } catch (WolfCryptException ex) {
-            if (Fips.enabled &&
-                ex.getError() == WolfCryptError.PRIME_GEN_E) {
-                /* Retry once on transient PRIME_GEN_E */
-                key.releaseNativeStruct();
-                key = new Rsa();
+        for (int i = 0; i < MAKE_KEY_MAX_ATTEMPTS; i++) {
+            Rsa key = new Rsa();
+            try {
                 key.makeKey(size, e, rng);
-            } else {
                 key.releaseNativeStruct();
+                return;
+            } catch (WolfCryptException ex) {
+                key.releaseNativeStruct();
+                if (ex.getError() == WolfCryptError.PRIME_GEN_E &&
+                    i < MAKE_KEY_MAX_ATTEMPTS - 1) {
+                    /* transient prime-search miss, retry with a fresh key */
+                    continue;
+                }
                 throw ex;
             }
         }
-        key.releaseNativeStruct();
     }
 
     @Test
