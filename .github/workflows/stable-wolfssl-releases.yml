@@ -33,7 +33,14 @@ jobs:
       matrix:
         wolfssl_version: ${{ fromJson(needs.get-stable-releases.outputs.versions) }}
         jdk_version: [ '21' ]
-        wolfssl_configure: [ '--enable-jni', '--enable-jni --enable-all' ]
+        # XMSS requires wolfSSL 5.9.2+ and is not pulled in by --enable-all, so
+        # it is enabled explicitly. On stable releases older than 5.9.2 the XMSS
+        # JUnit tests skip gracefully (FeatureDetect.XmssEnabled() returns
+        # false), becoming real coverage once 5.9.2-stable rotates in.
+        wolfssl_configure:
+          - '--enable-jni'
+          - '--enable-jni --enable-all'
+          - '--enable-jni --enable-all --enable-xmss'
     name: wolfSSL ${{ matrix.wolfssl_version }} (JDK ${{ matrix.jdk_version }}, ${{ matrix.wolfssl_configure }})
     steps:
       - uses: actions/checkout@v4

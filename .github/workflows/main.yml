@@ -122,6 +122,28 @@ jobs:
       jdk_version: ${{ matrix.jdk_version }}
       wolfssl_configure: ${{ matrix.wolfssl_configure }}
 
+  # -------------------- XMSS / XMSS^MT (RFC 8391) ----------------------
+  # XMSS is verify-only and requires wolfSSL 5.9.2 or later. XMSS is not pulled
+  # in by --enable-all, so it must be enabled explicitly with --enable-xmss.
+  # Permutations: the basic build, SHAKE parameter sets (--enable-sha3), and
+  # --enable-all plus XMSS.
+  linux-zulu-xmss:
+    strategy:
+      matrix:
+        os: [ 'ubuntu-latest', 'macos-latest' ]
+        jdk_version: [ '11', '21', '24' ]
+        wolfssl_configure:
+          - '--enable-jni --enable-xmss'
+          - '--enable-jni --enable-xmss --enable-sha3'
+          - '--enable-jni --enable-all --enable-xmss'
+    name: ${{ matrix.os }} (Zulu JDK ${{ matrix.jdk_version }}, ${{ matrix.wolfssl_configure }})
+    uses: ./.github/workflows/linux-common.yml
+    with:
+      os: ${{ matrix.os }}
+      jdk_distro: "zulu"
+      jdk_version: ${{ matrix.jdk_version }}
+      wolfssl_configure: ${{ matrix.wolfssl_configure }}
+
   # ------------------ Facebook Infer static analysis -------------------
   # Run Facebook infer over PR code, only running on Linux with one
   # JDK/version for now.

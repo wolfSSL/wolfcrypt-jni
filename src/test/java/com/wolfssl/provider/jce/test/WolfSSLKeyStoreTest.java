@@ -55,6 +55,7 @@ import java.security.SecureRandom;
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.KeyFactory;
 import java.security.KeyStoreException;
 import java.security.NoSuchProviderException;
@@ -67,6 +68,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateException;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -165,6 +167,10 @@ public class WolfSSLKeyStoreTest {
     private static Certificate  serverCertMlDsa44 = null;
     private static Certificate  serverCertMlDsa65 = null;
     private static Certificate  serverCertMlDsa87 = null;
+
+    /* XMSS self-signed root certificate (verify-only), from
+     * examples/certs/xmss/. Loaded only if FeatureDetect.XmssEnabled(). */
+    private static String xmssRootCertDer = null;
 
     /* Example .jks KeyStore file paths */
     private static String clientJKS = null;          /* client.jks */
@@ -341,6 +347,57 @@ public class WolfSSLKeyStoreTest {
         return cert;
     }
 
+    /**
+     * Store a verify-only XMSS self-signed certificate as a trusted entry in a
+     * WKS KeyStore, serialize and reload the store, and confirm the cert
+     * round-trips. wolfJCE can then import the certificate's XMSS public key
+     * via the registered KeyFactory.
+     */
+    @Test
+    public void testXmssCertificateRoundTrip() throws Exception {
+
+        Assume.assumeTrue("XMSS not compiled in", FeatureDetect.XmssEnabled());
+
+        Assume.assumeTrue("XMSS test certificate not present",
+            new File(xmssRootCertDer).exists());
+
+        Certificate xmssCert = certFileToCertificate(xmssRootCertDer);
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        store.load(null, storePass.toCharArray());
+        store.setCertificateEntry("xmss-root", xmssCert);
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        store.store(bos, storePass.toCharArray());
+
+        KeyStore reloaded = KeyStore.getInstance("WKS", "wolfJCE");
+        reloaded.load(new ByteArrayInputStream(bos.toByteArray()),
+            storePass.toCharArray());
+
+        Certificate got = reloaded.getCertificate("xmss-root");
+        assertNotNull("XMSS certificate missing after reload", got);
+        assertTrue("XMSS entry should be a certificate entry",
+            reloaded.isCertificateEntry("xmss-root"));
+        assertArrayEquals("XMSS certificate did not round-trip",
+            xmssCert.getEncoded(), got.getEncoded());
+
+        /* wolfJCE can import the certificate's XMSS public key. Guarded
+         * because the JDK has no XMSS support and may not expose an XMSS
+         * certificate public key on all versions. */
+        PublicKey certPub = null;
+        try {
+            certPub = got.getPublicKey();
+        } catch (RuntimeException e) {
+            certPub = null;
+        }
+        if (certPub != null && certPub.getEncoded() != null) {
+            KeyFactory kf = KeyFactory.getInstance("XMSS", "wolfJCE");
+            PublicKey wolfPub = kf.generatePublic(
+                new X509EncodedKeySpec(certPub.getEncoded()));
+            assertEquals("XMSS", wolfPub.getAlgorithm());
+        }
+    }
+
 
     /**
      * Create PrivateKey and Certificate objects based on files.
@@ -482,6 +539,9 @@ public class WolfSSLKeyStoreTest {
             certPre.concat("examples/certs/client-ecc-cert.der");
         caEccCertDer =
             certPre.concat("examples/certs/ca-ecc-cert.der");
+
+        xmssRootCertDer =
+            certPre.concat("examples/certs/xmss/xmss_root_cert.der");
 
         serverPkcs8Der =
             certPre.concat("examples/certs/server-keyPkcs8.der");
