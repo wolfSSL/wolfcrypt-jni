@@ -32,7 +32,10 @@ import org.junit.runners.model.Statement;
 import org.junit.runner.Description;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
+import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfSSLCertManager;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -44,6 +47,10 @@ public class WolfSSLCertManagerTest {
 
     private static String certPre = "";
     private static String caCertPem = null;
+    private static String caCertDer = null;
+    private static String serverCertDer = null;
+    private static String caEccCertPem = null;
+    private static String serverEccDer = null;
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
@@ -57,9 +64,13 @@ public class WolfSSLCertManagerTest {
             return new Statement() {
                 @Override
                 public void evaluate() throws Throwable {
-                    File f = new File(caCertPem);
-                    Assume.assumeTrue("Test cert files not available: " +
-                        caCertPem, f.exists());
+                    String[] certs = { caCertPem, caCertDer, serverCertDer,
+                                       caEccCertPem, serverEccDer };
+                    for (String cert : certs) {
+                        File f = new File(cert);
+                        Assume.assumeTrue("Test cert files not available: " +
+                            cert, f.exists());
+                    }
                     base.evaluate();
                 }
             };
@@ -89,6 +100,10 @@ public class WolfSSLCertManagerTest {
 
         /* Set paths to example certs */
         caCertPem = certPre.concat("examples/certs/ca-cert.pem");
+        caCertDer = certPre.concat("examples/certs/ca-cert.der");
+        serverCertDer = certPre.concat("examples/certs/server-cert.der");
+        caEccCertPem = certPre.concat("examples/certs/ca-ecc-cert.pem");
+        serverEccDer = certPre.concat("examples/certs/server-ecc.der");
     }
 
     @Test
@@ -122,6 +137,134 @@ public class WolfSSLCertManagerTest {
         try {
             cm.CertManagerLoadCA(null, null);
             fail("CertManagerLoadCA(null, null) should throw exception");
+
+        } catch (WolfCryptException e) {
+            /* expected */
+
+        } finally {
+            cm.free();
+        }
+    }
+
+    @Test
+    public void testCertManagerLoadCABufferTrailingData() throws Exception {
+
+        byte[] cert = Files.readAllBytes(Paths.get(caCertDer));
+
+        /* Place cert into larger array with trailing padding bytes,
+         * caller-provided sz should be honored over array length */
+        byte[] padded = new byte[cert.length + 128];
+        System.arraycopy(cert, 0, padded, 0, cert.length);
+
+        WolfSSLCertManager cm = new WolfSSLCertManager();
+
+        try {
+            cm.CertManagerLoadCABuffer(padded, cert.length,
+                WolfCrypt.SSL_FILETYPE_ASN1);
+
+        } finally {
+            cm.free();
+        }
+    }
+
+    @Test
+    public void testCertManagerLoadCABufferSzTooLarge() throws Exception {
+
+        byte[] cert = Files.readAllBytes(Paths.get(caCertDer));
+
+        WolfSSLCertManager cm = new WolfSSLCertManager();
+
+        /* sz larger than array length should throw exception */
+        try {
+            cm.CertManagerLoadCABuffer(cert, cert.length + 1,
+                WolfCrypt.SSL_FILETYPE_ASN1);
+            fail("CertManagerLoadCABuffer() with sz > array length " +
+                 "should throw exception");
+
+        } catch (WolfCryptException e) {
+            /* expected */
+
+        } finally {
+            cm.free();
+        }
+    }
+
+    @Test
+    public void testCertManagerVerifyBufferTrailingData() throws Exception {
+
+        byte[] caCert = Files.readAllBytes(Paths.get(caCertDer));
+        byte[] peerCert = Files.readAllBytes(Paths.get(serverCertDer));
+
+        /* Place cert into larger array with trailing padding bytes,
+         * caller-provided sz should be honored over array length */
+        byte[] padded = new byte[peerCert.length + 128];
+        System.arraycopy(peerCert, 0, padded, 0, peerCert.length);
+
+        WolfSSLCertManager cm = new WolfSSLCertManager();
+
+        try {
+            cm.CertManagerLoadCABuffer(caCert, caCert.length,
+                WolfCrypt.SSL_FILETYPE_ASN1);
+            cm.CertManagerVerifyBuffer(padded, peerCert.length,
+                WolfCrypt.SSL_FILETYPE_ASN1);
+
+        } finally {
+            cm.free();
+        }
+    }
+
+    @Test
+    public void testCertManagerLoadCABufferSzLimitsTrust() throws Exception {
+
+        byte[] caRsaPem = Files.readAllBytes(Paths.get(caCertPem));
+        byte[] caEccPem = Files.readAllBytes(Paths.get(caEccCertPem));
+        byte[] serverEcc = Files.readAllBytes(Paths.get(serverEccDer));
+
+        /* Two PEM CA certs in one array, sz covers only the first (RSA).
+         * Second (ECC) CA is past sz and must NOT be loaded as trusted */
+        byte[] twoCAs = new byte[caRsaPem.length + caEccPem.length];
+        System.arraycopy(caRsaPem, 0, twoCAs, 0, caRsaPem.length);
+        System.arraycopy(caEccPem, 0, twoCAs, caRsaPem.length,
+            caEccPem.length);
+
+        WolfSSLCertManager cm = new WolfSSLCertManager();
+
+        try {
+            cm.CertManagerLoadCABuffer(twoCAs, caRsaPem.length,
+                WolfCrypt.SSL_FILETYPE_PEM);
+
+            /* Cert signed by second CA should NOT verify */
+            try {
+                cm.CertManagerVerifyBuffer(serverEcc, serverEcc.length,
+                    WolfCrypt.SSL_FILETYPE_ASN1);
+                fail("Cert signed by CA past caller-provided sz should " +
+                     "not verify");
+
+            } catch (WolfCryptException e) {
+                /* expected */
+            }
+
+        } finally {
+            cm.free();
+        }
+    }
+
+    @Test
+    public void testCertManagerVerifyBufferSzTooLarge() throws Exception {
+
+        byte[] caCert = Files.readAllBytes(Paths.get(caCertDer));
+        byte[] peerCert = Files.readAllBytes(Paths.get(serverCertDer));
+
+        WolfSSLCertManager cm = new WolfSSLCertManager();
+
+        /* sz larger than array length should throw exception */
+        try {
+            cm.CertManagerLoadCABuffer(caCert, caCert.length,
+                WolfCrypt.SSL_FILETYPE_ASN1);
+            cm.CertManagerVerifyBuffer(peerCert, peerCert.length + 1,
+                WolfCrypt.SSL_FILETYPE_ASN1);
+            fail("CertManagerVerifyBuffer() with sz > array length " +
+                 "should throw exception");
 
         } catch (WolfCryptException e) {
             /* expected */
