@@ -29,7 +29,7 @@
 #include <wolfssl/version.h>
 #include <wolfssl/wolfcrypt/types.h>
 #include <wolfssl/wolfcrypt/memory.h>
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     #include <wolfssl/wolfcrypt/wc_mlkem.h>
 #endif
 
@@ -44,7 +44,7 @@
     #define RNG WC_RNG
 #endif
 
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
 
 /* Zeroize sensitive buffer 'buf' of size 'sz' bytes, using wc_ForceZero
  * when available, otherwise XMEMSET. */
@@ -70,12 +70,12 @@ static int mlkem_level_to_type(jint level)
     }
 }
 
-#endif /* WOLFSSL_HAVE_MLKEM || HAVE_MLKEM */
+#endif /* WOLFSSL_HAVE_MLKEM */
 
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_MlKem_mallocNativeStruct(
     JNIEnv* env, jobject this)
 {
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     MlKemKey* key = NULL;
 
     key = (MlKemKey*)XMALLOC(sizeof(MlKemKey), NULL, DYNAMIC_TYPE_TMP_BUFFER);
@@ -100,7 +100,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_MlKem_mallocNativeStruct(
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1init(
     JNIEnv* env, jobject this, jint level)
 {
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     int type = 0;
     MlKemKey* key = NULL;
@@ -134,7 +134,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1init(
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1free(
     JNIEnv* env, jobject this)
 {
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     MlKemKey* key = (MlKemKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception */
@@ -155,7 +155,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1free(
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1make_1key(
     JNIEnv* env, jobject this, jobject rng_object)
 {
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     RNG* rng = NULL;
@@ -192,7 +192,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1make_1key(
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1make_1key_1from_1seed(
     JNIEnv* env, jobject this, jbyteArray seed_object)
 {
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     byte* seed = NULL;
@@ -238,7 +238,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1encapsu
 {
     jbyteArray result = NULL;
 
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     RNG* rng = NULL;
@@ -316,7 +316,7 @@ Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1encapsulate_1with_1random(
 {
     jbyteArray result = NULL;
 
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     byte* rand = NULL;
@@ -402,7 +402,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1decapsu
 {
     jbyteArray result = NULL;
 
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     byte* ct = NULL;
@@ -480,7 +480,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1export_
 {
     jbyteArray result = NULL;
 
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     byte* output = NULL;
@@ -542,7 +542,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1export_
 {
     jbyteArray result = NULL;
 
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     byte* output = NULL;
@@ -603,7 +603,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1export_
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1import_1public(
     JNIEnv* env, jobject this, jbyteArray pub_object)
 {
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     byte* pub = NULL;
@@ -647,7 +647,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1import_1publi
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1import_1private(
     JNIEnv* env, jobject this, jbyteArray priv_object)
 {
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     byte* priv = NULL;
@@ -691,7 +691,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1import_1priva
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1public_1key_1size(
     JNIEnv* env, jobject this)
 {
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     word32 sz = 0;
@@ -724,7 +724,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1public_1key_1
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1private_1key_1size(
     JNIEnv* env, jobject this)
 {
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     word32 sz = 0;
@@ -757,7 +757,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1private_1key_
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1ciphertext_1size(
     JNIEnv* env, jobject this)
 {
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     word32 sz = 0;
@@ -790,7 +790,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1ciphertext_1s
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1shared_1secret_1size(
     JNIEnv* env, jobject this)
 {
-#if defined(WOLFSSL_HAVE_MLKEM) || defined(HAVE_MLKEM)
+#ifdef WOLFSSL_HAVE_MLKEM
     int ret = 0;
     MlKemKey* key = NULL;
     word32 sz = 0;
