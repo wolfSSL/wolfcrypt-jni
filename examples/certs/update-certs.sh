@@ -98,6 +98,10 @@ xmssCertList=(
     "xmss/xmss_root_cert.der"
 )
 
+lmsCertList=(
+    "lms/bc_lms_native_bc_root.der"
+)
+
 for i in ${!certList[@]};
 do
     printf "Updating: ${certList[$i]}\n"
@@ -136,6 +140,22 @@ if [ -d "$CERT_LOCATION/xmss" ]; then
     done
 else
     printf "Notice: $CERT_LOCATION/xmss not found, skipping XMSS\n"
+    printf "certs (provided wolfSSL predates them), keeping existing\n"
+    printf "local copies\n"
+fi
+
+if [ -d "$CERT_LOCATION/lms" ]; then
+    for i in ${!lmsCertList[@]};
+    do
+        printf "Updating: ${lmsCertList[$i]}\n"
+        cp $CERT_LOCATION/${lmsCertList[$i]} ./${lmsCertList[$i]}
+        if [ $? -ne 0 ]; then
+            printf "Warning: skipped missing LMS cert: "
+            printf "${lmsCertList[$i]}\n"
+        fi
+    done
+else
+    printf "Notice: $CERT_LOCATION/lms not found, skipping LMS\n"
     printf "certs (provided wolfSSL predates them), keeping existing\n"
     printf "local copies\n"
 fi

@@ -358,6 +358,15 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.Signature.OID.1.3.6.1.5.5.7.6.35", "XMSSMT");
         }
 
+        /* LMS / HSS (RFC 8554) Signature support (verify-only) */
+        if (FeatureDetect.LmsEnabled()) {
+            put("Signature.LMS",
+                "com.wolfssl.provider.jce.WolfCryptLmsSignature");
+            put("Alg.Alias.Signature.HSS/LMS", "LMS");
+            put("Alg.Alias.Signature.1.2.840.113549.1.9.16.3.17", "LMS");
+            put("Alg.Alias.Signature.OID.1.2.840.113549.1.9.16.3.17", "LMS");
+        }
+
         /* Mac */
         if (FeatureDetect.HmacMd5Enabled()) {
             put("Mac.HmacMD5",
@@ -847,6 +856,16 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.KeyFactory.OID.1.3.6.1.5.5.7.6.34", "XMSS");
             put("Alg.Alias.KeyFactory.1.3.6.1.5.5.7.6.35", "XMSSMT");
             put("Alg.Alias.KeyFactory.OID.1.3.6.1.5.5.7.6.35", "XMSSMT");
+        }
+
+        /* LMS / HSS (RFC 8554) KeyFactory (verify-only). X.509 public-key
+         * handling only, private keys are not supported. */
+        if (FeatureDetect.LmsEnabled()) {
+            put("KeyFactory.LMS",
+                "com.wolfssl.provider.jce.WolfCryptLmsKeyFactory");
+            put("Alg.Alias.KeyFactory.HSS/LMS", "LMS");
+            put("Alg.Alias.KeyFactory.1.2.840.113549.1.9.16.3.17", "LMS");
+            put("Alg.Alias.KeyFactory.OID.1.2.840.113549.1.9.16.3.17", "LMS");
         }
 
         /* KeyStore */

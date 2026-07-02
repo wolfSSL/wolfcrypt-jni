@@ -55,6 +55,14 @@ signing belongs in hardware (NIST SP 800-208). When `--enable-xmss` is missing
 or the native wolfSSL is older than 5.9.2, wolfJCE still compiles and runs
 normally but the XMSS services are not registered.
 
+**Note on LMS/HSS (RFC 8554):** LMS support is **not** enabled by
+`--enable-jni` alone. Add `--enable-lms` (or `--enable-lms=verify-only`) to the
+native wolfSSL `./configure` line (for the SHAKE256 parameter sets also add
+`--enable-sha3`). wolfJCE provides **verify-only** LMS/HSS support, matching the
+JDK SUN provider: it registers the LMS `Signature` (verification) and
+`KeyFactory` (public-key) services. wolfJCE does not generate LMS keys or sign,
+since stateful hash-based signing belongs in hardware (NIST SP 800-208).
+
 **wolfSSL Standard Build**:
 ```
 $ cd wolfssl-x.x.x

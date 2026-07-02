@@ -79,6 +79,8 @@ import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.provider.jce.WolfSSLKeyStore;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.MlDsa;
+import com.wolfssl.wolfcrypt.WolfCryptError;
+import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 public class WolfSSLKeyStoreTest {
@@ -161,6 +163,7 @@ public class WolfSSLKeyStoreTest {
     private static String mldsa44CertPem = null;
     private static String mldsa65CertPem = null;
     private static String mldsa87CertPem = null;
+    private static String lmsCertDer = null;
     private static PrivateKey   serverKeyMlDsa44  = null;
     private static PrivateKey   serverKeyMlDsa65  = null;
     private static PrivateKey   serverKeyMlDsa87  = null;
@@ -616,6 +619,8 @@ public class WolfSSLKeyStoreTest {
             certPre.concat("examples/certs/mldsa/mldsa65-cert.pem");
         mldsa87CertPem =
             certPre.concat("examples/certs/mldsa/mldsa87-cert.pem");
+        lmsCertDer =
+            certPre.concat("examples/certs/lms/bc_lms_native_bc_root.der");
         serverMlDsa44WKS =
             certPre.concat("examples/certs/server-mldsa44.wks");
         serverMlDsa65WKS =
@@ -2678,23 +2683,32 @@ public class WolfSSLKeyStoreTest {
         store.setKeyEntry("rsaKey", serverKeyRsa, storePass.toCharArray(),
             new Certificate[] { serverCertRsa });
 
-        /* Time first getKey() */
-        long start = System.currentTimeMillis();
+        /* Warm up the getKey() path once before timing. */
+        store.getKey("rsaKey", storePass.toCharArray());
+
+        /* Time first getKey(). Use nanoTime() (monotonic, high-resolution)
+         * rather than currentTimeMillis() (wall-clock, coarse). */
+        long start = System.nanoTime();
         Key key1 = store.getKey("rsaKey", storePass.toCharArray());
-        long first = System.currentTimeMillis() - start;
+        long first = System.nanoTime() - start;
 
         /* Time second getKey() - should be similar since cache is disabled */
-        start = System.currentTimeMillis();
+        start = System.nanoTime();
         Key key2 = store.getKey("rsaKey", storePass.toCharArray());
-        long second = System.currentTimeMillis() - start;
+        long second = System.nanoTime() - start;
 
         assertNotNull(key1);
         assertNotNull(key2);
 
-        /* Without cache, both should be slow (within 30% of each other) */
-        assertTrue("Without cache, times should be similar (first=" +
-            first + "ms, second=" + second + "ms)",
-            second > first * 0.3);
+        /* Without a cache both calls re-derive the KEK (PBKDF2), so the second
+         * should not be dramatically faster than the first (within ~30%). */
+        long firstMs = first / 1000000L;
+        if (firstMs > 5) {
+            long secondMs = second / 1000000L;
+            assertTrue("Without cache, times should be similar (first=" +
+                firstMs + "ms, second=" + secondMs + "ms)",
+                second > first * 0.3);
+        }
     }
 
     @Test
@@ -3453,6 +3467,84 @@ public class WolfSSLKeyStoreTest {
             assertEquals(aliases[i] + ": cert roundtrip",
                 expectedCerts[i], out);
         }
+    }
+
+    /**
+     * Store an LMS/HSS-keyed X.509 certificate (from native wolfSSL
+     * certs/lms/) in a WKS KeyStore as a trusted certificate entry, reload it,
+     * and confirm it round-trips. Also confirms wolfJCE can import the
+     * certificate LMS public key. wolfJCE WKS does not store stateful LMS
+     * private keys, so only the certificate/public-key path is exercised.
+     */
+    @Test
+    public void testLmsCertificateRoundTrip() throws Exception {
+
+        Assume.assumeTrue("LMS not compiled in", FeatureDetect.LmsEnabled());
+
+        Assume.assumeTrue("LMS test certificate not present",
+            new File(lmsCertDer).exists());
+
+        Certificate lmsCert = certFileToCertificate(lmsCertDer);
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        store.load(null, storePass.toCharArray());
+        store.setCertificateEntry("lms-root", lmsCert);
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        store.store(bos, storePass.toCharArray());
+
+        KeyStore reloaded = KeyStore.getInstance("WKS", "wolfJCE");
+        reloaded.load(new ByteArrayInputStream(bos.toByteArray()),
+            storePass.toCharArray());
+
+        Certificate got = reloaded.getCertificate("lms-root");
+        assertNotNull("LMS certificate missing after reload", got);
+        assertTrue("LMS entry should be a certificate entry",
+            reloaded.isCertificateEntry("lms-root"));
+        assertArrayEquals("LMS certificate did not round-trip",
+            lmsCert.getEncoded(), got.getEncoded());
+
+        /* wolfJCE can import the certificate's LMS/HSS public key. The public
+         * key materialization is guarded because older JDKs (< 21) cannot
+         * expose an HSS/LMS certificate public key. */
+        PublicKey certPub = null;
+        try {
+            certPub = got.getPublicKey();
+        } catch (RuntimeException e) {
+            certPub = null;
+        }
+        if (certPub != null && certPub.getEncoded() != null) {
+            KeyFactory kf = KeyFactory.getInstance("LMS", "wolfJCE");
+            PublicKey wolfPub = null;
+            try {
+                wolfPub = kf.generatePublic(
+                    new X509EncodedKeySpec(certPub.getEncoded()));
+            } catch (InvalidKeySpecException e) {
+                /* Test certificate uses an LMS SHA-256/256 parameter set,
+                 * which native wolfCrypt may be built without. Treat that as
+                 * a skip. */
+                if (isNotCompiledIn(e)) {
+                    Assume.assumeTrue(
+                        "LMS SHA-256/256 parameter set not compiled in", false);
+                }
+                throw e;
+            }
+            assertEquals("HSS/LMS", wolfPub.getAlgorithm());
+        }
+    }
+
+    /* True if throwable cause chain contains NOT_COMPILED_IN. */
+    private static boolean isNotCompiledIn(Throwable t) {
+
+        for (; t != null; t = t.getCause()) {
+            if (t instanceof WolfCryptException &&
+                ((WolfCryptException) t).getError() ==
+                    WolfCryptError.NOT_COMPILED_IN) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

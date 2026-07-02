@@ -37,10 +37,16 @@ jobs:
         # it is enabled explicitly. On stable releases older than 5.9.2 the XMSS
         # JUnit tests skip gracefully (FeatureDetect.XmssEnabled() returns
         # false), becoming real coverage once 5.9.2-stable rotates in.
+        # LMS/HSS is verify-only in wolfJCE and is not pulled in by
+        # --enable-all, so it is enabled explicitly. On stable releases that
+        # predate a given LMS parameter family the LMS JUnit tests skip
+        # gracefully (per-hash NOT_COMPILED_IN, or FeatureDetect.LmsEnabled()
+        # returning false).
         wolfssl_configure:
           - '--enable-jni'
           - '--enable-jni --enable-all'
           - '--enable-jni --enable-all --enable-xmss'
+          - '--enable-jni --enable-all --enable-lms'
     name: wolfSSL ${{ matrix.wolfssl_version }} (JDK ${{ matrix.jdk_version }}, ${{ matrix.wolfssl_configure }})
     steps:
       - uses: actions/checkout@v4

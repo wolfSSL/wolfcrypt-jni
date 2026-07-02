@@ -58,6 +58,8 @@ import org.junit.runners.Suite.SuiteClasses;
     WolfCryptMlKemKemTest.class,
     WolfCryptXmssSignatureTest.class,
     WolfCryptXmssKeyFactoryTest.class,
+    WolfCryptLmsSignatureTest.class,
+    WolfCryptLmsKeyFactoryTest.class,
     WolfCryptPKIXCertPathValidatorTest.class,
     WolfCryptPKIXCertPathBuilderTest.class,
     WolfCryptPKIXRevocationCheckerTest.class,
