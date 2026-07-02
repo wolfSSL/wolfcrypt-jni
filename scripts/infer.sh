@@ -62,6 +62,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/FeatureDetect.java \
     src/main/java/com/wolfssl/wolfcrypt/Fips.java \
     src/main/java/com/wolfssl/wolfcrypt/Hmac.java \
+    src/main/java/com/wolfssl/wolfcrypt/Lms.java \
     src/main/java/com/wolfssl/wolfcrypt/Logging.java \
     src/main/java/com/wolfssl/wolfcrypt/Md5.java \
     src/main/java/com/wolfssl/wolfcrypt/MessageDigest.java \
@@ -107,6 +108,10 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyAgreement.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyGenerator.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptKeyPairGenerator.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptLmsKeyFactory.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptLmsPublicKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptLmsSignature.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptLmsUtil.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMac.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMlDsaKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMlDsaPrivateKey.java \

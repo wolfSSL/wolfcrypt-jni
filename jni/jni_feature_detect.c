@@ -660,7 +660,11 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_LmsEnabled
 {
     (void)env;
     (void)jcl;
-#ifdef WOLFSSL_HAVE_LMS
+    /* wolfCrypt JNI/JCE LMS support requires wolfSSL >= 5.9.2, the first
+     * release providing the wc_LmsKey_GetParameters_ex() hash-family API used
+     * by the LMS JNI layer. Report disabled on older wolfSSL so callers and
+     * tests treat LMS as not compiled in. */
+#if defined(WOLFSSL_HAVE_LMS) && (LIBWOLFSSL_VERSION_HEX >= 0x05009002)
     return JNI_TRUE;
 #else
     return JNI_FALSE;
