@@ -415,12 +415,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
     (void)jcl;
 
-    if (env == NULL || in == NULL || (sz < 0)) {
+    if (env == NULL || in == NULL || (sz < 0) ||
+        (sz > (jlong)(*env)->GetArrayLength(env, in))) {
         return BAD_FUNC_ARG;
     }
 
     buff = (byte*)(*env)->GetByteArrayElements(env, in, NULL);
-    buffSz = (*env)->GetArrayLength(env, in);
+    buffSz = (word32)sz;
 
     ret = wolfSSL_CertManagerLoadCABuffer(cm, buff, buffSz, format);
 
@@ -437,14 +438,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     byte* buff = NULL;
     WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
     (void)jcl;
-    (void)sz;
 
-    if (env == NULL || in == NULL) {
+    if (env == NULL || in == NULL || (sz < 0) ||
+        (sz > (jlong)(*env)->GetArrayLength(env, in))) {
         return BAD_FUNC_ARG;
     }
 
     buff = (byte*)(*env)->GetByteArrayElements(env, in, NULL);
-    buffSz = (*env)->GetArrayLength(env, in);
+    buffSz = (word32)sz;
 
     ret = wolfSSL_CertManagerLoadCABuffer_ex(cm, buff, buffSz, format, 0,
         (word32)flags);
@@ -479,12 +480,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
     (void)jcl;
 
-    if (env == NULL || in == NULL || (sz < 0)) {
+    if (env == NULL || in == NULL || (sz < 0) ||
+        (sz > (jlong)(*env)->GetArrayLength(env, in))) {
         return BAD_FUNC_ARG;
     }
 
     buff = (byte*)(*env)->GetByteArrayElements(env, in, NULL);
-    buffSz = (*env)->GetArrayLength(env, in);
+    buffSz = (word32)sz;
 
     ret = wolfSSL_CertManagerVerifyBuffer(cm, buff, buffSz, format);
 
@@ -546,12 +548,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
     (void)jcl;
 
-    if (env == NULL || in == NULL || (sz < 0)) {
+    if (env == NULL || in == NULL || (sz < 0) ||
+        (sz > (jlong)(*env)->GetArrayLength(env, in))) {
         return BAD_FUNC_ARG;
     }
 
     buff = (byte*)(*env)->GetByteArrayElements(env, in, NULL);
-    buffSz = (*env)->GetArrayLength(env, in);
+    buffSz = (word32)sz;
 
     ret = wolfSSL_CertManagerLoadCRLBuffer(cm, buff, buffSz, type);
 
@@ -655,7 +658,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
     (void)jcl;
 
-    if (env == NULL || cm == NULL || cert == NULL || (sz < 0)) {
+    if (env == NULL || cm == NULL || cert == NULL || (sz < 0) ||
+        (sz > (*env)->GetArrayLength(env, cert))) {
         return BAD_FUNC_ARG;
     }
 
@@ -663,7 +667,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     if (certBuf == NULL) {
         return MEMORY_E;
     }
-    certSz = (*env)->GetArrayLength(env, cert);
+    certSz = (word32)sz;
 
     ret = wolfSSL_CertManagerCheckOCSP(cm, certBuf, certSz);
 
@@ -710,10 +714,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     OcspRequest* request = NULL;
     DecodedCert* cert_decoded = NULL;
     (void)jcl;
-    (void)responseSz;
 
     if (env == NULL || cm == NULL || response == NULL || cert == NULL ||
-        (responseSz < 0) || (certSz < 0)) {
+        (responseSz < 0) || (certSz < 0) ||
+        (responseSz > (*env)->GetArrayLength(env, response)) ||
+        (certSz > (*env)->GetArrayLength(env, cert))) {
         return BAD_FUNC_ARG;
     }
 
@@ -722,7 +727,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     if (respBuf == NULL) {
         return MEMORY_E;
     }
-    respBufSz = (*env)->GetArrayLength(env, response);
+    respBufSz = (word32)responseSz;
 
     /* Get cert buffer and size */
     certBuf = (byte*)(*env)->GetByteArrayElements(env, cert, NULL);
@@ -731,7 +736,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
             (jbyte*)respBuf, JNI_ABORT);
         return MEMORY_E;
     }
-    certBufSz = (*env)->GetArrayLength(env, cert);
+    certBufSz = (word32)certSz;
 
     /* Allocate request and decoded cert structures */
     request = wolfSSL_OCSP_REQUEST_new();
@@ -833,14 +838,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_OcspRespons
     const unsigned char* p = NULL;
     OcspResponse* ocspResp = NULL;
     (void)jcl;
-    (void)responseSz;
 
     if (env == NULL || response == NULL) {
         return BAD_FUNC_ARG;
     }
 
     arrLen = (*env)->GetArrayLength(env, response);
-    if (arrLen <= 0) {
+    if (arrLen <= 0 || responseSz <= 0 || responseSz > arrLen) {
         return BAD_FUNC_ARG;
     }
 
@@ -850,7 +854,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_OcspRespons
     }
 
     p = (const unsigned char*)respBuf;
-    ocspResp = wolfSSL_d2i_OCSP_RESPONSE(NULL, &p, (int)arrLen);
+    ocspResp = wolfSSL_d2i_OCSP_RESPONSE(NULL, &p, (int)responseSz);
     if (ocspResp != NULL) {
         ret = wolfSSL_OCSP_response_status(ocspResp);
         wolfSSL_OCSP_RESPONSE_free(ocspResp);
