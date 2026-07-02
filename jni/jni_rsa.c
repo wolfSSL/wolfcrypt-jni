@@ -156,7 +156,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw__Ljava_nio_ByteBuffer_2
     n = getDirectBufferAddress(env, n_object);
     e = getDirectBufferAddress(env, e_object);
 
-    if (key == NULL || n == NULL || e == NULL) {
+    if (key == NULL || n == NULL || e == NULL || nSize < 0 || eSize < 0 ||
+        (nSize > (jlong)getDirectBufferLimit(env, n_object)) ||
+        (eSize > (jlong)getDirectBufferLimit(env, e_object))) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -197,7 +199,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw___3BJ_3BJ(
     n = getByteArray(env, n_object);
     e = getByteArray(env, e_object);
 
-    if (key == NULL || n == NULL || e == NULL) {
+    if (key == NULL || n == NULL || e == NULL || nSize < 0 || eSize < 0 ||
+        (nSize > (jlong)getByteArrayLength(env, n_object)) ||
+        (eSize > (jlong)getByteArrayLength(env, e_object))) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -316,7 +320,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_RsaFlattenPublicKey___3B_3J_3B_3J(
     nSz32 = (word32)nSz;
     eSz32 = (word32)eSz;
 
-    if (key == NULL || n == NULL || e == NULL) {
+    if (key == NULL || n == NULL || e == NULL || nSz < 0 || eSz < 0 ||
+        (nSz > (jlong)getByteArrayLength(env, n_object)) ||
+        (eSz > (jlong)getByteArrayLength(env, e_object))) {
         ret = BAD_FUNC_ARG;
     }
     else {

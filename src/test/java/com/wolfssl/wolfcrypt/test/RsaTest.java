@@ -481,6 +481,86 @@ public class RsaTest {
     }
 
     @Test
+    public void publicKeyDecodeRawOversizedSizesRejected() {
+        Rsa key = new Rsa();
+
+        byte[] n_in = new byte[8];
+        byte[] e_in = new byte[3];
+
+        /* nSize larger than n array length should throw exception */
+        try {
+            key.decodeRawPublicKey(n_in, n_in.length + 1, e_in, e_in.length);
+            fail("decodeRawPublicKey() with nSize > n.length should " +
+                 "throw exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* eSize larger than e array length should throw exception */
+        try {
+            key.decodeRawPublicKey(n_in, n_in.length, e_in, e_in.length + 1);
+            fail("decodeRawPublicKey() with eSize > e.length should " +
+                 "throw exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        ByteBuffer n_buf = ByteBuffer.allocateDirect(8);
+        ByteBuffer e_buf = ByteBuffer.allocateDirect(3);
+
+        /* nSize larger than n buffer limit should throw exception */
+        try {
+            key.decodeRawPublicKey(n_buf, n_buf.limit() + 1, e_buf,
+                e_buf.limit());
+            fail("decodeRawPublicKey() with nSize > n.limit() should " +
+                 "throw exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        key.releaseNativeStruct();
+    }
+
+    @Test
+    public void exportRawPublicKeyOversizedSizesRejected() {
+        Rsa key = new Rsa();
+
+        byte[] n_in = Util
+                .h2b("aff5f9e2e2622320d44dbf54f2274a0f96fa7d70a63ddaa563f48811"
+                        + "43112bb3c36fe65ba0c9ad99d6fb6e53cb08e3938ee415b3a8cb"
+                        + "7f9602f2154fab83dd160fa6f509ba2c41295af9eea8787d333e"
+                        + "961461447fc60b3c61616ef5b94e822114e6fad44d1f2c476bc2"
+                        + "3bc03609e2e70a483d826409fdb7c50a91269a773976ef137e7f"
+                        + "a477c3951e8fbcb48f2378aa5e430e8c60b481beeb63df9abe10"
+                        + "c7ccf266e394fbd925e8725e4675fb6ad895caed4b31d751c871"
+                        + "2533e1c42ebefe9166e1aa20631521858c7548c61626ede105f2"
+                        + "812632bac96eb769c9be560beef4200b86409727a5a61d1cc583"
+                        + "1785ba4d42f02dd298a56bbbd6c479ce724d5bb5");
+        byte[] e_in = Util.h2b("d0ee61");
+
+        key.decodeRawPublicKey(n_in, e_in);
+
+        /* Output arrays too small for key, with in/out sizes that lie
+         * about capacity. Native must not write past the Java arrays */
+        byte[] n_out = new byte[4];
+        byte[] e_out = new byte[4];
+        long[] n_len = new long[1];
+        long[] e_len = new long[1];
+        n_len[0] = 512;
+        e_len[0] = e_out.length;
+
+        try {
+            key.exportRawPublicKey(n_out, n_len, e_out, e_len);
+            fail("exportRawPublicKey() with nSz > n.length should " +
+                 "throw exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        key.releaseNativeStruct();
+    }
+
+    @Test
     public void exportRawPublicKeySizesCorrect() {
         Rsa key = new Rsa();
 
