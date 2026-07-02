@@ -1261,6 +1261,44 @@ public class RsaTest {
                 digest, WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32);
             assertTrue("RSA-PSS check verification failed", verified);
 
+            /* Test with non-default salt length,
+             * saltLen != digest length must be honored on verify */
+            signature = key.rsaPssSign(digest,
+                WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 16, rng);
+            assertNotNull(signature);
+            assertTrue(signature.length > 0);
+
+            verified = key.rsaPssVerifyWithDigest(signature, message,
+                digest, WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 16);
+            assertTrue("RSA-PSS check verification failed with " +
+                "non-default salt length", verified);
+
+            /* Verification with wrong salt length should fail */
+            try {
+                verified = key.rsaPssVerifyWithDigest(signature, message,
+                    digest, WolfCrypt.WC_HASH_TYPE_SHA256,
+                    Rsa.WC_MGF1SHA256, 32);
+            } catch (WolfCryptException e) {
+                /* native error acceptable here, treat as not verified */
+                verified = false;
+            }
+            assertFalse("RSA-PSS check verification passed with " +
+                "mismatched salt length", verified);
+
+            /* Test special value RSA_PSS_SALT_LEN_DEFAULT, sign uses
+             * salt length equal to digest length */
+            signature = key.rsaPssSign(digest,
+                WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256,
+                Rsa.RSA_PSS_SALT_LEN_DEFAULT, rng);
+            assertNotNull(signature);
+            assertTrue(signature.length > 0);
+
+            verified = key.rsaPssVerifyWithDigest(signature, message,
+                digest, WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256,
+                Rsa.RSA_PSS_SALT_LEN_DEFAULT);
+            assertTrue("RSA-PSS check verification failed with " +
+                "RSA_PSS_SALT_LEN_DEFAULT", verified);
+
         } catch (Exception e) {
             fail("RSA-PSS check verification test failed: " + e.getMessage());
         }
