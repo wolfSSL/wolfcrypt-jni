@@ -48,6 +48,9 @@ import javax.crypto.ShortBufferException;
 import javax.crypto.SecretKey;
 import javax.crypto.Cipher;
 import javax.crypto.spec.DHParameterSpec;
+import javax.crypto.interfaces.DHPublicKey;
+
+import java.math.BigInteger;
 
 import java.security.Security;
 import java.security.Provider;
@@ -68,6 +71,7 @@ import java.security.spec.ECGenParameterSpec;
 
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
@@ -336,6 +340,77 @@ public class WolfCryptKeyAgreementTest {
 
         assertEquals(secretA2Sz, secretCSz);
         assertArrayEquals(secretA2, secretC);
+    }
+
+    /* Minimal DHPublicKey holding a caller-chosen Y, for feeding malicious
+     * peer public key values into engineDoPhase() during testing. */
+    private static DHPublicKey makeDHPublicKey(final BigInteger y,
+        final DHParameterSpec params) {
+
+        return new DHPublicKey() {
+            public BigInteger getY() {
+                return y;
+            }
+            public DHParameterSpec getParams() {
+                return params;
+            }
+            public String getAlgorithm() {
+                return "DH";
+            }
+            public String getFormat() {
+                return "X.509";
+            }
+            public byte[] getEncoded() {
+                return null;
+            }
+        };
+    }
+
+    @Test
+    public void testDHKeyAgreementRejectsInvalidPublicKey()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidParameterSpecException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        /* engineDoPhase() must reject small-subgroup and out-of-range peer
+         * DH public keys (SP 800-56A) before use. */
+
+        /* Use FFDHE-2048 parameters so the test is deterministic and does
+         * not depend on runtime DH parameter generation support. */
+        byte[][] pg = Dh.getNamedDhParams(Dh.WC_FFDHE_2048);
+        BigInteger p = new BigInteger(1, pg[0]);
+        BigInteger g = new BigInteger(1, pg[1]);
+        DHParameterSpec dhParams = new DHParameterSpec(p, g);
+
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DH", "wolfJCE");
+        keyGen.initialize(dhParams, secureRandom);
+        KeyPair aPair = keyGen.generateKeyPair();
+
+        /* Degenerate / small-order peer public keys that must be rejected */
+        BigInteger[] badY = new BigInteger[] {
+            BigInteger.ZERO,            /* 0 */
+            BigInteger.ONE,             /* 1, order 1 */
+            p.subtract(BigInteger.ONE), /* p-1, order 2 */
+            p                           /* p */
+        };
+
+        for (BigInteger y : badY) {
+            KeyAgreement ka = KeyAgreement.getInstance("DH", "wolfJCE");
+            ka.init(aPair.getPrivate());
+            try {
+                ka.doPhase(makeDHPublicKey(y, dhParams), true);
+                fail("doPhase should reject invalid DH public key Y=" + y);
+            } catch (InvalidKeyException e) {
+                /* expected */
+            }
+        }
+
+        /* Positive control: a valid peer public key still agrees */
+        KeyPair bPair = keyGen.generateKeyPair();
+        KeyAgreement ka = KeyAgreement.getInstance("DH", "wolfJCE");
+        ka.init(aPair.getPrivate());
+        ka.doPhase(bPair.getPublic(), true);
+        assertNotNull(ka.generateSecret());
     }
 
     @Test

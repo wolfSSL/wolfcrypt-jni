@@ -378,6 +378,28 @@ public class Dh extends NativeStruct {
     }
 
     /**
+     * Validate a DH public key against the parameters stored in this
+     * object, using native wc_DhCheckPubKey().
+     *
+     * @param pub public key value to validate, as byte array
+     *
+     * @throws WolfCryptException if the public key is invalid or the native
+     *         operation fails
+     * @throws IllegalStateException if object fails to initialize, or if
+     *         releaseNativeStruct() has been called and object has been
+     *         released.
+     */
+    public synchronized void checkPublicKey(byte[] pub)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+
+        synchronized (pointerLock) {
+            wc_DhCheckPubKey(pub);
+        }
+    }
+
+    /**
      * Get named DH parameters (FFDHE groups from RFC 7919).
      *
      * Returns an array containing [p, g] parameters for the named group.
