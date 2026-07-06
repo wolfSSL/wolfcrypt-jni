@@ -24,6 +24,7 @@ package com.wolfssl.provider.jce.test;
 import static org.junit.Assert.*;
 import org.junit.Test;
 import org.junit.Rule;
+import org.junit.Assume;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
@@ -66,8 +67,15 @@ import java.security.SecureRandom;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyFactory;
+import java.security.interfaces.ECPublicKey;
 import java.security.spec.InvalidParameterSpecException;
 import java.security.spec.ECGenParameterSpec;
+import java.security.spec.ECParameterSpec;
+import java.security.spec.ECPoint;
+import java.security.spec.ECPublicKeySpec;
+import java.security.spec.EllipticCurve;
+import java.security.spec.ECFieldFp;
 
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Fips;
@@ -597,6 +605,68 @@ public class WolfCryptKeyAgreementTest {
         byte secretC[]  = cKeyAgree.generateSecret();
 
         assertArrayEquals(secretA2, secretC);
+    }
+
+    /**
+     * Test that engineDoPhase() rejects ECC peer public keys that are not
+     * valid points on the curve.
+     */
+    @Test
+    public void testECDHKeyAgreementRejectsInvalidPublicKey()
+        throws Exception {
+
+
+        /* P-256 domain parameters */
+        BigInteger p = new BigInteger("FFFFFFFF00000001000000000000000000" +
+            "000000FFFFFFFFFFFFFFFFFFFFFFFF", 16);
+        BigInteger a = new BigInteger("FFFFFFFF00000001000000000000000000" +
+            "000000FFFFFFFFFFFFFFFFFFFFFFFC", 16);
+        BigInteger b = new BigInteger("5AC635D8AA3A93E7B3EBBD55769886BC65" +
+            "1D06B0CC53B0F63BCE3C3E27D2604B", 16);
+        BigInteger order = new BigInteger("FFFFFFFF00000000FFFFFFFFFFFFFFFF" +
+            "BCE6FAADA7179E84F3B9CAC2FC632551", 16);
+        BigInteger gx = new BigInteger("6B17D1F2E12C4247F8BCE6E563A440F277" +
+            "037D812DEB33A0F4A13945D898C296", 16);
+        BigInteger gy = new BigInteger("4FE342E2FE1A7F9B8EE7EB4A7C0F9E162B" +
+            "CE33576B315ECECBB6406837BF51F5", 16);
+
+        EllipticCurve curve = new EllipticCurve(new ECFieldFp(p), a, b);
+        ECParameterSpec spec =
+            new ECParameterSpec(curve, new ECPoint(gx, gy), order, 1);
+        KeyFactory kf = KeyFactory.getInstance("EC");
+
+        /* Off-curve point (gx, gy+1): does not satisfy the curve equation. */
+        ECPublicKey offCurve = null;
+        try {
+            offCurve = (ECPublicKey) kf.generatePublic(
+                new ECPublicKeySpec(
+                    new ECPoint(gx, gy.add(BigInteger.ONE)), spec));
+        } catch (Exception e) {
+            Assume.assumeNoException(
+                "Platform EC provider rejects off-curve point", e);
+        }
+
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("EC", "wolfJCE");
+        keyGen.initialize(new ECGenParameterSpec("secp256r1"));
+        KeyPair aPair = keyGen.generateKeyPair();
+
+        KeyAgreement ka = KeyAgreement.getInstance("ECDH", "wolfJCE");
+        ka.init(aPair.getPrivate());
+
+        try {
+            ka.doPhase(offCurve, true);
+            fail("doPhase should reject off-curve ECC public key");
+        } catch (InvalidKeyException e) {
+            /* expected */
+        }
+
+        /* Make sure valid peer public key still agrees */
+        KeyPair bPair = keyGen.generateKeyPair();
+        KeyAgreement ka2 = KeyAgreement.getInstance("ECDH", "wolfJCE");
+        ka2.init(aPair.getPrivate());
+        ka2.doPhase(bPair.getPublic(), true);
+        assertNotNull(ka2.generateSecret());
     }
 
     @Test
