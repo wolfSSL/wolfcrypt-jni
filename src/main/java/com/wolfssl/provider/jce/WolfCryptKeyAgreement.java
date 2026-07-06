@@ -158,7 +158,15 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                         "Failed to get ECC public key from Key object");
                 }
 
-                this.ecPublic.publicKeyDecode(pubKey);
+                /* Decode then validate peer public key is a valid point on
+                 * the curve before use. */
+                try {
+                    this.ecPublic.publicKeyDecode(pubKey);
+                    this.ecPublic.checkKey();
+                } catch (WolfCryptException e) {
+                    throw new InvalidKeyException(
+                        "ECC public key failed validation", e);
+                }
 
                 break;
         };
