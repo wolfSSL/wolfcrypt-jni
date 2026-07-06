@@ -210,7 +210,9 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
     int errorDepth = 0;
     jint result = 0;
     JNIEnv* jenv = NULL;
+    JavaVM* jvm  = NULL;
     VerifyCallbackCtx* ctx = NULL;
+    jobject localCallback  = NULL;
     jbyteArray certDer     = NULL;
     jclass callbackClass   = NULL;
     jmethodID verifyMethod = NULL;
@@ -234,29 +236,48 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
         ctx = g_callbackList->ctx;
     }
 
-    wc_UnLockMutex(&g_callbackMutex);
-
     /* No callback registered, use preverify result */
     if (ctx == NULL || ctx->callback == NULL) {
+        wc_UnLockMutex(&g_callbackMutex);
         return preverify;
     }
 
+    /* Capture jvm and take our own local reference to the callback while
+     * still holding g_callbackMutex. A concurrent CertManagerClearVerify()
+     * deletes the global reference and frees ctx after releasing the mutex,
+     * so nothing below dereferences ctx or the global reference. */
+    jvm = ctx->jvm;
+
     /* Get JNIEnv for current thread. Native callback may be called from
      * different thread than original Java thread. */
-    if ((*ctx->jvm)->GetEnv(ctx->jvm, (void**)&jenv,
+    if ((*jvm)->GetEnv(jvm, (void**)&jenv,
         JNI_VERSION_1_6) == JNI_EDETACHED) {
 #ifdef __ANDROID__
-        result = (*ctx->jvm)->AttachCurrentThread(
-            ctx->jvm, &jenv, NULL);
+        result = (*jvm)->AttachCurrentThread(jvm, &jenv, NULL);
 #else
-        result = (*ctx->jvm)->AttachCurrentThread(
-            ctx->jvm, (void**)&jenv, NULL);
+        result = (*jvm)->AttachCurrentThread(jvm, (void**)&jenv, NULL);
 #endif
         if (result != 0) {
             /* Failed to attach, reject */
+            wc_UnLockMutex(&g_callbackMutex);
             return 0;
         }
         needsDetach = 1;
+    }
+
+    /* Local reference keeps the callback object alive independent of ctx's
+     * global reference, which a concurrent ClearVerify may delete. */
+    localCallback = (*jenv)->NewLocalRef(jenv, ctx->callback);
+
+    wc_UnLockMutex(&g_callbackMutex);
+
+    /* ctx must not be dereferenced past this point, it may have been freed
+     * by a concurrent CertManagerClearVerify(). */
+    if (localCallback == NULL) {
+        if (needsDetach) {
+            (*jvm)->DetachCurrentThread(jvm);
+        }
+        return 0;
     }
 
     /* Get error code and depth from store */
@@ -267,13 +288,14 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
     certDer = getCertDerAtDepth(jenv, store, errorDepth);
 
     /* Find verify() method on callback object */
-    callbackClass = (*jenv)->GetObjectClass(jenv, ctx->callback);
+    callbackClass = (*jenv)->GetObjectClass(jenv, localCallback);
     if (callbackClass == NULL) {
         if (certDer != NULL) {
             (*jenv)->DeleteLocalRef(jenv, certDer);
         }
+        (*jenv)->DeleteLocalRef(jenv, localCallback);
         if (needsDetach) {
-            (*ctx->jvm)->DetachCurrentThread(ctx->jvm);
+            (*jvm)->DetachCurrentThread(jvm);
         }
         return 0;
     }
@@ -285,14 +307,15 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
             (*jenv)->DeleteLocalRef(jenv, certDer);
         }
         (*jenv)->DeleteLocalRef(jenv, callbackClass);
+        (*jenv)->DeleteLocalRef(jenv, localCallback);
         if (needsDetach) {
-            (*ctx->jvm)->DetachCurrentThread(ctx->jvm);
+            (*jvm)->DetachCurrentThread(jvm);
         }
         return 0;
     }
 
     /* Call Java callback.verify(preverify, error, errorDepth, certDer) */
-    result = (*jenv)->CallIntMethod(jenv, ctx->callback, verifyMethod,
+    result = (*jenv)->CallIntMethod(jenv, localCallback, verifyMethod,
         (jint)preverify, (jint)error, (jint)errorDepth, certDer);
 
     /* Check for Java exceptions, reject on exception */
@@ -313,8 +336,9 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
         (*jenv)->DeleteLocalRef(jenv, certDer);
     }
     (*jenv)->DeleteLocalRef(jenv, callbackClass);
+    (*jenv)->DeleteLocalRef(jenv, localCallback);
     if (needsDetach) {
-        (*ctx->jvm)->DetachCurrentThread(ctx->jvm);
+        (*jvm)->DetachCurrentThread(jvm);
     }
 
     return (int)result;
