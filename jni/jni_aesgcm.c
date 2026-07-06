@@ -234,11 +234,11 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
         }
     }
 
-    /* Commit authTag changes back to original Java array on success */
+    /* Commit authTag changes back to original Java array on success. */
     if (authTagArr != NULL) {
         if (ret == 0) {
             (*env)->ReleaseByteArrayElements(env, authTagArr,
-                (jbyte*)authTag, JNI_COMMIT);
+                (jbyte*)authTag, 0);
         }
         else {
             (*env)->ReleaseByteArrayElements(env, authTagArr,
