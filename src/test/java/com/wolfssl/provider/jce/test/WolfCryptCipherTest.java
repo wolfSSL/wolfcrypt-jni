@@ -6196,8 +6196,11 @@ public class WolfCryptCipherTest {
         assertEquals("GCM should include auth tag",
                     plaintext.length + 16, bytesWritten);
 
-        /* Compare with byte array result */
-        byte[] expected = cipher.doFinal(plaintext);
+        /* Compare with byte array result. Use separate Cipher instance, since
+         * GCM forbids reusing same key/IV for second encryption. */
+        Cipher cipher2 = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        cipher2.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
+        byte[] expected = cipher2.doFinal(plaintext);
         outputBuf.flip();
         byte[] result = new byte[bytesWritten];
         outputBuf.get(result);
@@ -6835,6 +6838,9 @@ public class WolfCryptCipherTest {
         int[] tagLengths = {96, 104, 112, 120, 128};
 
         for (int tagLen : tagLengths) {
+            /* Use a fresh IV for each encryption, GCM forbids reusing same
+             * key+IV pair for more than one encryption. */
+            secureRandom.nextBytes(iv);
             GCMParameterSpec gcmSpec = new GCMParameterSpec(tagLen, iv);
             cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
             byte[] ciphertext = cipher.doFinal(plaintext);
@@ -7306,8 +7312,12 @@ public class WolfCryptCipherTest {
         assertArrayEquals("Decrypted text should match original",
             plaintext, decrypted);
 
-        /* Verify cipher returns compatible parameters */
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
+        /* Verify cipher returns compatible parameters. Use a fresh IV, GCM
+         * forbids reusing same key+IV pair for a second encryption */
+        byte[] iv2 = new byte[12];
+        new SecureRandom().nextBytes(iv2);
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec,
+            new GCMParameterSpec(128, iv2));
         AlgorithmParameters cipherParams = cipher.getParameters();
         assertNotNull("Cipher should return parameters", cipherParams);
 
@@ -7318,6 +7328,54 @@ public class WolfCryptCipherTest {
 
         assertArrayEquals("Should decrypt correctly with cipher parameters",
             plaintext, decrypted2);
+    }
+
+    /**
+     * Test that AES-GCM refuses to reuse the same key and IV for more than
+     * one encryption.
+     */
+    @Test
+    public void testGCMEncryptRejectsNonceReuse() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[16];
+        byte[] iv = new byte[12];
+        byte[] pt;
+
+        secureRandom.nextBytes(keyBytes);
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        secureRandom.nextBytes(iv);
+        pt = "GCM nonce reuse test".getBytes();
+
+        /* Encrypting a second time with the same key and IV, without
+         * re-initializing, must be rejected. */
+        Cipher c = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        c.doFinal(pt);
+        try {
+            c.doFinal(pt);
+            fail("Second GCM encryption with same key and IV should throw");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        /* Re-initializing with a fresh IV must succeed. */
+        byte[] iv2 = new byte[12];
+        secureRandom.nextBytes(iv2);
+        c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv2));
+        assertNotNull(c.doFinal(pt));
+
+        /* Decryption may reuse the same key and IV without restriction. */
+        Cipher enc = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        enc.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        byte[] ct = enc.doFinal(pt);
+        Cipher dec = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        assertArrayEquals(pt, dec.doFinal(ct));
+        assertArrayEquals(pt, dec.doFinal(ct));
     }
 
     /**
