@@ -141,7 +141,12 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature__Ljava_nio
     byte* encoded = getDirectBufferAddress(env, encoded_object);
     byte* hash = getDirectBufferAddress(env, hash_object);
 
-    if (encoded == NULL || hash == NULL) {
+    /* Validate hashSize against hash buffer, and that the output buffer is
+     * large enough to hold DER encoded digest */
+    if (encoded == NULL || hash == NULL || hashSize < 0 ||
+        (hashSize > (jlong)getDirectBufferLimit(env, hash_object)) ||
+        ((jlong)getDirectBufferLimit(env, encoded_object) <
+            (hashSize + MAX_DER_DIGEST_ASN_SZ))) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
     }
     else {
@@ -158,7 +163,12 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Asn_encodeSignature___3B_3BJI
     byte* hash = getByteArray(env, hash_object);
     jlong ret = 0;
 
-    if (encoded == NULL || hash == NULL) {
+    /* Validate hashSize against hash array, and that the output array is
+     * large enough to hold DER encoded digest */
+    if (encoded == NULL || hash == NULL || hashSize < 0 ||
+        (hashSize > (jlong)getByteArrayLength(env, hash_object)) ||
+        ((jlong)getByteArrayLength(env, encoded_object) <
+            hashSize + MAX_DER_DIGEST_ASN_SZ)) {
         ret = BAD_FUNC_ARG;
     }
     else {

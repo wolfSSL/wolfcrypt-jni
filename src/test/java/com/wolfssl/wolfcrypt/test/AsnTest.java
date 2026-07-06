@@ -23,10 +23,13 @@ package com.wolfssl.wolfcrypt.test;
 
 import static org.junit.Assert.*;
 
+import java.nio.ByteBuffer;
+
 import org.junit.Test;
 import org.junit.BeforeClass;
 
 import com.wolfssl.wolfcrypt.Asn;
+import com.wolfssl.wolfcrypt.WolfCryptException;
 
 /**
  * Unit tests for Asn class, particularly dynamic OID retrieval
@@ -102,6 +105,70 @@ public class AsnTest {
         assertTrue("MD5 encoding should be successful", encodedLength > 40);
         assertTrue("MD5 encoding should be reasonable length",
                    encodedLength < 100);
+    }
+
+    @Test
+    public void testEncodeSignatureRejectsBadSizes() {
+
+        byte[] hash = new byte[32];
+
+        /* Undersized output array should be rejected, not overflowed */
+        byte[] tinyOut = new byte[4];
+        assertTrue("undersized output array should be rejected",
+                   Asn.encodeSignature(tinyOut, hash, hash.length,
+                                       Asn.SHA256h) < 0);
+
+        /* hashSize larger than hash array should be rejected, not overread */
+        byte[] out = new byte[512];
+        assertTrue("hashSize > hash.length should be rejected",
+                   Asn.encodeSignature(out, hash, hash.length + 100,
+                                       Asn.SHA256h) < 0);
+
+        /* Negative hashSize should be rejected, not cast to huge word32 */
+        assertTrue("negative hashSize should be rejected",
+                   Asn.encodeSignature(out, hash, -1, Asn.SHA256h) < 0);
+
+        /* Properly sized buffers should still succeed */
+        assertTrue("valid sizes should still encode",
+                   Asn.encodeSignature(out, hash, hash.length,
+                                       Asn.SHA256h) > 0);
+    }
+
+    @Test
+    public void testEncodeSignatureByteBufferRejectsBadSizes() {
+
+        ByteBuffer hash = ByteBuffer.allocateDirect(32);
+
+        /* Undersized output buffer should be rejected, not overflowed */
+        ByteBuffer tinyOut = ByteBuffer.allocateDirect(4);
+        try {
+            Asn.encodeSignature(tinyOut, hash, hash.limit(), Asn.SHA256h);
+            fail("undersized output buffer should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* hashSize larger than hash buffer should be rejected */
+        ByteBuffer out = ByteBuffer.allocateDirect(512);
+        try {
+            Asn.encodeSignature(out, hash, hash.limit() + 100, Asn.SHA256h);
+            fail("hashSize > hash.limit() should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* Negative hashSize should be rejected */
+        try {
+            Asn.encodeSignature(out, hash, -1, Asn.SHA256h);
+            fail("negative hashSize should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* Properly sized buffers should still succeed */
+        out.limit(out.capacity());
+        Asn.encodeSignature(out, hash, hash.limit(), Asn.SHA256h);
+        assertTrue("valid sizes should still encode", out.limit() > 0);
     }
 
     @Test

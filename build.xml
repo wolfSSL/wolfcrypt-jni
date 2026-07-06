@@ -117,9 +117,7 @@
 
     <!-- classpath to compiled wolfcrypt-jni.jar, for running tests -->
     <path id="classpath">
-        <fileset dir="${lib.dir}" includes="*.jar">
-            <include name="wolfcrypt-jni.jar" />
-        </fileset>
+        <pathelement location="${lib.dir}/wolfcrypt-jni.jar" />
         <fileset dir="${env.JUNIT_HOME}">
             <include name="${junit4}" />
         </fileset>
@@ -591,9 +589,7 @@
             class="com.wolfssl.provider.jce.WolfCryptProvider">
             <classpath>
                 <path>
-                    <fileset dir="${lib.dir}" includes="*.jar">
-                        <include name="wolfcrypt-jni.jar" />
-                    </fileset>
+                    <pathelement location="${lib.dir}/wolfcrypt-jni.jar" />
                 </path>
             </classpath>
         </whichresource>
