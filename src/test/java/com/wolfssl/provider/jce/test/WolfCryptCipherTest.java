@@ -7379,6 +7379,75 @@ public class WolfCryptCipherTest {
     }
 
     /**
+     * Test that AES-CBC/PKCS5 decryption reports every padding failure with
+     * the same generic BadPaddingException.
+     */
+    @Test
+    public void testCBCPaddingFailureMessagesConsistent()
+        throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[16];
+        byte[] iv = new byte[16];
+        SecretKeySpec key;
+        IvParameterSpec ivSpec;
+
+        secureRandom.nextBytes(keyBytes);
+        key = new SecretKeySpec(keyBytes, "AES");
+        secureRandom.nextBytes(iv);
+        ivSpec = new IvParameterSpec(iv);
+
+        /* A 16-byte plaintext produces a full 0x10 padding block, so second
+         * ciphertext block decrypts to the padding. Flipping bytes of
+         * the first ciphertext block deterministically corrupts padding */
+        byte[] pt = new byte[16];
+        secureRandom.nextBytes(pt);
+
+        Cipher enc = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        enc.init(Cipher.ENCRYPT_MODE, key, ivSpec);
+        byte[] ct = enc.doFinal(pt);
+        assertEquals(32, ct.length);
+
+        /* Corrupt a non-terminal padding byte, so the pad bytes are
+         * inconsistent while the pad length stays in range. */
+        byte[] bad1 = ct.clone();
+        bad1[0] ^= (byte)0xFF;
+
+        /* Corrupt the pad-length byte so the pad value exceeds block size */
+        byte[] bad2 = ct.clone();
+        bad2[15] ^= (byte)0x30;
+
+        String msg1 = decryptExpectingBadPadding(key, ivSpec, bad1);
+        String msg2 = decryptExpectingBadPadding(key, ivSpec, bad2);
+
+        /* Both failures must throw an identical message. */
+        assertEquals("Padding failures must not be distinguishable",
+            msg1, msg2);
+
+        /* Valid ciphertext must still decrypt correctly. */
+        Cipher dec = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, key, ivSpec);
+        assertArrayEquals(pt, dec.doFinal(ct));
+    }
+
+    private String decryptExpectingBadPadding(SecretKeySpec key,
+            IvParameterSpec ivSpec, byte[] ct) throws Exception {
+
+        Cipher dec = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, key, ivSpec);
+        try {
+            dec.doFinal(ct);
+            fail("Corrupted CBC padding must throw BadPaddingException");
+            return null;
+        } catch (BadPaddingException e) {
+            return e.getMessage();
+        }
+    }
+
+    /**
      * Test AlgorithmParameters.getInstance("AES") basic functionality
      */
     @Test
