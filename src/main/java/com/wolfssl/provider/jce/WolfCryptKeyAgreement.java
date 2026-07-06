@@ -47,6 +47,7 @@ import java.security.interfaces.ECPrivateKey;
 
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Ecc;
+import com.wolfssl.wolfcrypt.WolfCryptException;
 
 /**
  * wolfCrypt JCE Key Agreement wrapper
@@ -131,6 +132,14 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 if (pubKey == null) {
                     throw new InvalidKeyException(
                         "Failed to get DH public key from Key object");
+                }
+
+                /* Validate peer public key (SP 800-56A) before use */
+                try {
+                    this.dh.checkPublicKey(pubKey);
+                } catch (WolfCryptException e) {
+                    throw new InvalidKeyException(
+                        "DH public key failed validation", e);
                 }
 
                 this.dh.setPublicKey(pubKey);
