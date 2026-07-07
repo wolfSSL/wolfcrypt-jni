@@ -449,6 +449,50 @@ public class WolfCryptDHKeyFactoryTest {
     }
 
     @Test
+    public void testDHPublicKeySpecRangeValidation() throws Exception {
+
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
+
+        /* Generate reference key pair to obtain valid DH parameters (P, G)
+         * and a valid public value Y */
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
+        kpg.initialize(2048);
+        KeyPair kp = kpg.generateKeyPair();
+        DHPublicKey pubKey = (DHPublicKey) kp.getPublic();
+        DHParameterSpec params = pubKey.getParams();
+        BigInteger p = params.getP();
+        BigInteger g = params.getG();
+
+        KeyFactory kf = KeyFactory.getInstance("DH", "wolfJCE");
+
+        /* Y = 1 is degenerate and must be rejected */
+        try {
+            kf.generatePublic(new DHPublicKeySpec(BigInteger.ONE, p, g));
+            fail("Should reject DH public key Y = 1");
+
+        } catch (InvalidKeySpecException e) {
+            /* Expected */
+        }
+
+        /* Y = p-1 is degenerate and must be rejected */
+        try {
+            kf.generatePublic(
+                new DHPublicKeySpec(p.subtract(BigInteger.ONE), p, g));
+            fail("Should reject DH public key Y = p-1");
+
+        } catch (InvalidKeySpecException e) {
+            /* Expected */
+        }
+
+        /* Valid Y in range 1 < Y < p-1 is accepted */
+        PublicKey validKey = kf.generatePublic(
+            new DHPublicKeySpec(pubKey.getY(), p, g));
+        assertNotNull("Valid DH public key should be created", validKey);
+        assertTrue("Should be DHPublicKey", validKey instanceof DHPublicKey);
+    }
+
+    @Test
     public void testDHPrivateKeySpecConversionWithoutSunJCE()
         throws Exception {
 
