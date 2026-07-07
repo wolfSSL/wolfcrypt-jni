@@ -439,13 +439,6 @@ public class WolfCryptUtil {
         disabledAlgos = disabledAlgos.replaceAll(", ", ",");
         disabledList = Arrays.asList(disabledAlgos.split(","));
 
-        /* Check full algorithm name first (case-insensitive) */
-        for (String disabled : disabledList) {
-            if (disabled.equalsIgnoreCase(algorithm)) {
-                return true;
-            }
-        }
-
         /* Decompose composite algorithm names like "MD2withRSA" into
          * constituent parts and check each. Common formats:
          *   - "MD2withRSA" - ["MD2", "RSA"]
@@ -453,15 +446,65 @@ public class WolfCryptUtil {
          *   - "SHA256withRSA" - ["SHA256", "RSA"]
          * Use case-insensitive matching to match SunJCE behavior */
         String[] parts = decomposeAlgorithmName(algorithm);
-        for (String part : parts) {
-            for (String disabled : disabledList) {
-                if (disabled.equalsIgnoreCase(part)) {
+
+        for (String disabled : disabledList) {
+            /* Entries may carry qualifiers, for example the JDK 11+ default
+             * "SHA1 jdkCA & denyAfter 2019-01-01". Compare against the
+             * leading algorithm name only. */
+            String disabledName = extractDisabledAlgorithmName(disabled);
+            if (disabledName == null || disabledName.isEmpty()) {
+                continue;
+            }
+
+            /* Skip key-size constraints such as "RSA keySize < 1024". Those
+             * are size limits enforced by isKeyAllowed(), not signature name
+             * disables. */
+            if (disabled.toLowerCase().contains("keysize")) {
+                continue;
+            }
+
+            /* Check the full algorithm name (case-insensitive) */
+            if (disabledName.equalsIgnoreCase(algorithm)) {
+                return true;
+            }
+
+            /* Check each decomposed part */
+            for (String part : parts) {
+                if (disabledName.equalsIgnoreCase(part)) {
                     return true;
                 }
             }
         }
 
         return false;
+    }
+
+    /**
+     * Extract the leading algorithm name from a single
+     * jdk.certpath.disabledAlgorithms list entry, dropping any qualifiers.
+     *
+     * For example "SHA1 jdkCA ..." returns "SHA1" and
+     * "RSA keySize ..." returns "RSA".
+     *
+     * @param entry a single disabled-algorithms list entry
+     *
+     * @return the leading algorithm name, or null if none could be extracted
+     */
+    private static String extractDisabledAlgorithmName(String entry) {
+
+        String[] tokens = null;
+
+        if (entry == null) {
+            return null;
+        }
+
+        /* Split on the first whitespace or '&' qualifier separator */
+        tokens = entry.trim().split("[\\s&]");
+        if (tokens.length == 0) {
+            return null;
+        }
+
+        return tokens[0].trim();
     }
 
     /**
