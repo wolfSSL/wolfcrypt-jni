@@ -197,6 +197,9 @@
     <ClCompile Include="..\..\jni\jni_mldsa.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\jni\jni_slhdsa.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\jni\jni_native_struct.c">
       <Filter>Source Files</Filter>
     </ClCompile>

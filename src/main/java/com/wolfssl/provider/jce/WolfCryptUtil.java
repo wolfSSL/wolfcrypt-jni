@@ -43,6 +43,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.interfaces.DSAPublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECParameterSpec;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -820,6 +821,31 @@ public class WolfCryptUtil {
         } catch (NoSuchProviderException e) {
             return KeyFactory.getInstance(algorithm);
         }
+    }
+
+    /**
+     * Return key.getEncoded(), throwing InvalidKeySpecException if the key
+     * has no encoded form.
+     *
+     * @param key Key to get the encoding from
+     * @param expectedFormat encoding format name used in the exception
+     *        message (ex: "PKCS#8" or "X.509")
+     *
+     * @return encoded key bytes
+     *
+     * @throws InvalidKeySpecException if key.getEncoded() is null or empty
+     */
+    static byte[] requireEncoded(Key key, String expectedFormat)
+        throws InvalidKeySpecException {
+
+        byte[] encoded = key.getEncoded();
+
+        if (encoded == null || encoded.length == 0) {
+            throw new InvalidKeySpecException(
+                "Key has no encoded form (expected " + expectedFormat + ")");
+        }
+
+        return encoded;
     }
 }
 

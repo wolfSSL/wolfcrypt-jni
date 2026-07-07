@@ -76,7 +76,7 @@ public class WolfCryptXmssPublicKey implements PublicKey, Destroyable {
         throws IllegalArgumentException {
 
         byte[] rawPub;
-        WolfCryptXmssUtil.ParsedPub parsed;
+        WolfCryptSpkiUtil.ParsedXmssPub parsed;
         Xmss key = null;
 
         if (x509Der == null || x509Der.length == 0) {
@@ -87,7 +87,7 @@ public class WolfCryptXmssPublicKey implements PublicKey, Destroyable {
         /* Extract the raw XMSS public key and the family (XMSS vs XMSS^MT,
          * from the SPKI OID), then validate it by importing through wolfCrypt,
          * which derives the specific parameter set. */
-        parsed = WolfCryptXmssUtil.parsePublicKeyDer(x509Der);
+        parsed = WolfCryptSpkiUtil.parseXmssPublicKeyDer(x509Der);
         rawPub = parsed.raw;
 
         try {
@@ -108,7 +108,7 @@ public class WolfCryptXmssPublicKey implements PublicKey, Destroyable {
 
         /* Normalize to the canonical RFC 9802 SubjectPublicKeyInfo, so
          * getEncoded() and equals() are stable across input encodings. */
-        this.encoded = WolfCryptXmssUtil.encodePublicKeyDer(rawPub,
+        this.encoded = WolfCryptSpkiUtil.encodeXmssPublicKeyDer(rawPub,
             this.isXmssMt);
         this.rawPublicKey = rawPub.clone();
     }
@@ -288,9 +288,9 @@ public class WolfCryptXmssPublicKey implements PublicKey, Destroyable {
         in.defaultReadObject();
         stateLock = new Object();
         if (!destroyed && encoded != null) {
-            WolfCryptXmssUtil.ParsedPub parsed;
+            WolfCryptSpkiUtil.ParsedXmssPub parsed;
             try {
-                parsed = WolfCryptXmssUtil.parsePublicKeyDer(encoded);
+                parsed = WolfCryptSpkiUtil.parseXmssPublicKeyDer(encoded);
             }
             catch (IllegalArgumentException e) {
                 throw new InvalidObjectException(

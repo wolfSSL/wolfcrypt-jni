@@ -91,7 +91,7 @@ public class WolfCryptLmsPublicKey implements PublicKey, Destroyable {
         /* Extract the raw HSS public key (accepts both SPKI body forms) and
          * validate it by importing through wolfCrypt, which also derives the
          * parameter set. */
-        rawPub = WolfCryptLmsUtil.parsePublicKeyDer(x509Der);
+        rawPub = WolfCryptSpkiUtil.parseLmsPublicKeyDer(x509Der);
 
         try {
             key = new Lms();
@@ -118,7 +118,7 @@ public class WolfCryptLmsPublicKey implements PublicKey, Destroyable {
         /* Normalize to the canonical RFC 9708 unwrapped SubjectPublicKeyInfo,
          * so getEncoded() and equals() are stable across both input
          * encodings. */
-        this.encoded = WolfCryptLmsUtil.encodePublicKeyDer(rawPub);
+        this.encoded = WolfCryptSpkiUtil.encodeLmsPublicKeyDer(rawPub);
         this.rawPublicKey = rawPub;
     }
 
@@ -287,7 +287,7 @@ public class WolfCryptLmsPublicKey implements PublicKey, Destroyable {
         if (!destroyed && encoded != null) {
             try {
                 this.rawPublicKey =
-                    WolfCryptLmsUtil.parsePublicKeyDer(encoded);
+                    WolfCryptSpkiUtil.parseLmsPublicKeyDer(encoded);
             }
             catch (IllegalArgumentException e) {
                 throw (InvalidObjectException) new InvalidObjectException(

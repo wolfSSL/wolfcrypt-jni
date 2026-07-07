@@ -272,6 +272,7 @@ public abstract class WolfCryptMlDsaSignature extends SignatureSpi {
 
     /* Run the native public or private DER import on key object */
     private static void importDer(MlDsa k, byte[] der, boolean isPublic) {
+
         if (isPublic) {
             k.importPublicKeyDer(der);
         }
@@ -309,6 +310,7 @@ public abstract class WolfCryptMlDsaSignature extends SignatureSpi {
         if (publicKey == null) {
             throw new InvalidKeyException("PublicKey is null");
         }
+
         resetForInit();
         this.key = importPublicKeyForVerify(publicKey);
         this.signing = false;
@@ -321,6 +323,7 @@ public abstract class WolfCryptMlDsaSignature extends SignatureSpi {
         if (privateKey == null) {
             throw new InvalidKeyException("PrivateKey is null");
         }
+
         resetForInit();
         this.key = importPrivateKeyForSign(privateKey);
         this.signing = true;
@@ -328,9 +331,11 @@ public abstract class WolfCryptMlDsaSignature extends SignatureSpi {
 
     @Override
     protected void engineUpdate(byte b) throws SignatureException {
+
         if (this.key == null) {
             throw new SignatureException("Signature not initialized");
         }
+
         this.buffer.write(b);
     }
 
@@ -341,18 +346,22 @@ public abstract class WolfCryptMlDsaSignature extends SignatureSpi {
         if (this.key == null) {
             throw new SignatureException("Signature not initialized");
         }
-        if (b == null || off < 0 || len < 0 || off + len > b.length) {
+
+        if (b == null || off < 0 || len < 0 || len > b.length - off) {
             throw new SignatureException("Invalid update arguments");
         }
+
         this.buffer.write(b, off, len);
     }
 
     @Override
     protected byte[] engineSign() throws SignatureException {
+
         if (this.key == null || !this.signing) {
             throw new SignatureException(
                 "Signature not initialized for signing");
         }
+
         try {
             byte[] msg = this.buffer.toByteArray();
             byte[] sig = this.key.sign(msg, getOrInitRng());
@@ -377,6 +386,7 @@ public abstract class WolfCryptMlDsaSignature extends SignatureSpi {
         if (sigBytes == null) {
             throw new SignatureException("Signature bytes are null");
         }
+
         try {
             byte[] msg = this.buffer.toByteArray();
             boolean ok = this.key.verify(sigBytes, msg);

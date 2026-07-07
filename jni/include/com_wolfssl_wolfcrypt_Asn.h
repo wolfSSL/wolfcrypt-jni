@@ -75,6 +75,102 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getML_1DSA_1LEVEL5k
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getSLH_DSA_SHA2_128Sk
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHA2_1128Sk
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getSLH_DSA_SHA2_128Fk
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHA2_1128Fk
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getSLH_DSA_SHA2_192Sk
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHA2_1192Sk
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getSLH_DSA_SHA2_192Fk
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHA2_1192Fk
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getSLH_DSA_SHA2_256Sk
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHA2_1256Sk
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getSLH_DSA_SHA2_256Fk
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHA2_1256Fk
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getSLH_DSA_SHAKE_128Sk
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHAKE_1128Sk
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getSLH_DSA_SHAKE_128Fk
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHAKE_1128Fk
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getSLH_DSA_SHAKE_192Sk
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHAKE_1192Sk
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getSLH_DSA_SHAKE_192Fk
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHAKE_1192Fk
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getSLH_DSA_SHAKE_256Sk
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHAKE_1256Sk
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getSLH_DSA_SHAKE_256Fk
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getSLH_1DSA_1SHAKE_1256Fk
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
  * Method:    getMD5h
  * Signature: ()I
  */

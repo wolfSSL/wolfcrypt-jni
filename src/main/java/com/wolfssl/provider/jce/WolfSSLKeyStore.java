@@ -71,6 +71,7 @@ import com.wolfssl.wolfcrypt.Asn;
 import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.MlDsa;
+import com.wolfssl.wolfcrypt.SlhDsa;
 import com.wolfssl.wolfcrypt.Pwdbased;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfSSLCertManager;
@@ -1126,6 +1127,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         PrivateKey pKey = null;
         PKCS8EncodedKeySpec p8Spec = null;
         KeyFactory keyFact = null;
+        KeyFactory retryFact = null;
 
         SecretKey sKey = null;
 
@@ -1170,36 +1172,57 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     keyFact = KeyFactory.getInstance("RSASSA-PSS");
                 } else if (algoId == Asn.ECDSAk) {
                     keyFact = WolfCryptUtil.getKeyFactoryPreferWolfJCE("EC");
-                } else if (algoId != 0 &&
-                    (algoId == Asn.ML_DSA_LEVEL2k ||
-                     algoId == Asn.ML_DSA_LEVEL3k ||
-                     algoId == Asn.ML_DSA_LEVEL5k)) {
+                } else if (isMlDsaAlgoId(algoId)) {
                     keyFact = getMlDsaKeyFactory();
-                } else if (algoId == 0 && FeatureDetect.MlDsaEnabled()) {
+                } else if (isSlhDsaAlgoId(algoId)) {
+                    keyFact = getSlhDsaKeyFactory();
+                } else if (algoId == 0 && (FeatureDetect.MlDsaEnabled() ||
+                    FeatureDetect.SlhDsaEnabled())) {
                     /* Fallback for older native wolfSSL, getPkcs8AlgoID
                      * returned 0 because native ToTraditional_ex() did not
-                     * recognize ML-DSA OIDs. Let the ML-DSA KeyFactory
-                     * validate, generatePrivate() below throws for
-                     * non-ML-DSA DER (avoids a redundant pre-parse of
-                     * the same PKCS#8). */
-                    log("using ML-DSA fallback for older native wolfSSL");
-                    keyFact = getMlDsaKeyFactory();
+                     * recognize ML-DSA or SLH-DSA OIDs. Let the PQC KeyFactory
+                     * validate, generatePrivate() below throws for non-matching
+                     * DER (avoids a redundant pre-parse of the same PKCS#8).
+                     * Try ML-DSA first, then retry with SLH-DSA below if that
+                     * rejects the encoding. */
+                    log("using PQC KeyFactory fallback for older " +
+                        "native wolfSSL");
+                    if (FeatureDetect.MlDsaEnabled()) {
+                        keyFact = getMlDsaKeyFactory();
+                        if (FeatureDetect.SlhDsaEnabled()) {
+                            retryFact = getSlhDsaKeyFactory();
+                        }
+                    } else {
+                        keyFact = getSlhDsaKeyFactory();
+                    }
                 } else {
                     throw new NoSuchAlgorithmException(
-                        "Only RSA, RSASSA-PSS, EC, and ML-DSA private " +
-                        "key encoding supported: " + algoId);
+                        "Only RSA, RSASSA-PSS, EC, ML-DSA, and SLH-DSA " +
+                        "private key encoding supported: " + algoId);
                 }
 
                 try {
                     pKey = keyFact.generatePrivate(p8Spec);
-                    if (pKey == null) {
-                        throw new UnrecoverableKeyException(
-                            "Error generating PrivateKey from " +
-                            "PKCS8EncodedKeySpec");
-                    }
                 } catch (InvalidKeySpecException e) {
+                    if (retryFact == null) {
+                        throw newUnrecoverableKeyException(
+                            "Invalid key spec for KeyFactory", e);
+                    }
+                    /* ML-DSA KeyFactory rejected DER, try SLH-DSA */
+                    try {
+                        pKey = retryFact.generatePrivate(p8Spec);
+                    } catch (InvalidKeySpecException e2) {
+                        /* Keep the ML-DSA rejection visible alongside the
+                         * SLH-DSA one from the retry */
+                        e2.addSuppressed(e);
+                        throw newUnrecoverableKeyException(
+                            "Invalid key spec for KeyFactory", e2);
+                    }
+                }
+                if (pKey == null) {
                     throw new UnrecoverableKeyException(
-                        "Invalid key spec for KeyFactory");
+                        "Error generating PrivateKey from " +
+                        "PKCS8EncodedKeySpec");
                 }
             }
             else if (entry instanceof WKSSecretKey) {
@@ -1497,6 +1520,13 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     "trying Java-side match");
                 match = mlDsaCertMatchesPrivateKey(cert, pkcs8Key);
             }
+            if (!match && isSlhDsaAlgorithmName(key.getAlgorithm())) {
+                /* Native X509CheckPrivateKey() / EVP_PKCS82PKEY() cannot
+                 * handle SLH-DSA, fall back to a Java-side match. */
+                log("X509CheckPrivateKey returned false for SLH-DSA key, " +
+                    "trying Java-side match");
+                match = slhDsaCertMatchesPrivateKey(cert, pkcs8Key);
+            }
             if (!match) {
                 throw new KeyStoreException("X509Certificate does not match " +
                     "provided private key");
@@ -1621,6 +1651,189 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             /* wolfJCE not registered by name (or built without ML-DSA) */
             return KeyFactory.getInstance("ML-DSA");
         }
+    }
+
+    /**
+     * Java fallback for cert/private key match when native wolfSSL
+     * {@code X509CheckPrivateKey} can't handle SLH-DSA.
+     *
+     * <p>Imports the PKCS#8 private into a wolfJCE SlhDsa, exports the derived
+     * public as X.509 SubjectPublicKeyInfo DER, and compares bytes against the
+     * cert's public key encoding. SLH-DSA SPKI DER is canonical, so byte
+     * equality is safe.</p>
+     *
+     * @param cert the X.509 certificate to match
+     * @param pkcs8Key the PKCS#8-encoded SLH-DSA private key
+     *
+     * @return true if the cert's public key matches the private key
+     */
+    private boolean slhDsaCertMatchesPrivateKey(X509Certificate cert,
+        byte[] pkcs8Key) {
+
+        PublicKey certPub = null;
+        SlhDsa key = null;
+        byte[] certSpki = null;
+        byte[] derivedSpki = null;
+
+        if (!FeatureDetect.SlhDsaEnabled()) {
+            return false;
+        }
+
+        certPub = cert.getPublicKey();
+        if (certPub == null || !isSlhDsaAlgorithmName(certPub.getAlgorithm())) {
+            return false;
+        }
+
+        certSpki = certPub.getEncoded();
+        if (certSpki == null) {
+            return false;
+        }
+
+        /* Remove NULL AlgorithmIdentifier (JDK re-encoding) if present */
+        certSpki = WolfCryptSpkiUtil.stripNullAlgIdParams(certSpki);
+
+        try {
+            /* Parameter set auto-detected from the PKCS#8 OID. */
+            key = new SlhDsa();
+            key.importPrivateKeyDer(pkcs8Key);
+            derivedSpki = key.exportPublicKeyDer(true);
+
+            return Arrays.equals(certSpki, derivedSpki);
+        }
+        catch (WolfCryptException e) {
+            return false;
+        }
+        finally {
+            if (key != null) {
+                key.releaseNativeStruct();
+            }
+        }
+    }
+
+    /**
+     * Check if a JCA algorithm name identifies SLH-DSA.
+     *
+     * Accepts the generic name, the FIPS 205 parameter-set names, and the
+     * raw OID strings that CertificateFactory implementations may return
+     * from getAlgorithm() for algorithms they do not recognize.
+     *
+     * @param algo algorithm name from Key.getAlgorithm(), may be null
+     *
+     * @return true if the name identifies an SLH-DSA key, otherwise false
+     */
+    private static boolean isSlhDsaAlgorithmName(String algo) {
+
+        if (algo == null) {
+            return false;
+        }
+
+        if (algo.equalsIgnoreCase("SLH-DSA")) {
+            return true;
+        }
+
+        /* Per-set names SLH-DSA-SHA2-* and SLH-DSA-SHAKE-*. */
+        if (algo.regionMatches(true, 0, "SLH-DSA-", 0, 8)) {
+            return true;
+        }
+
+        /* OID aliases 2.16.840.1.101.3.4.3.20 - .31. */
+        if (algo.startsWith("2.16.840.1.101.3.4.3.")) {
+            try {
+                int last = Integer.parseInt(
+                    algo.substring("2.16.840.1.101.3.4.3.".length()));
+                return last >= 20 && last <= 31;
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get a KeyFactory for SLH-DSA, preferring the wolfJCE provider.
+     *
+     * @return KeyFactory for SLH-DSA
+     *
+     * @throws NoSuchAlgorithmException if no provider supports SLH-DSA
+     */
+    private static KeyFactory getSlhDsaKeyFactory()
+        throws NoSuchAlgorithmException {
+
+        try {
+            return KeyFactory.getInstance("SLH-DSA", "wolfJCE");
+        } catch (NoSuchProviderException | NoSuchAlgorithmException e) {
+            /* wolfJCE not registered by name (or built without SLH-DSA) */
+            return KeyFactory.getInstance("SLH-DSA");
+        }
+    }
+
+    /**
+     * Create an UnrecoverableKeyException with a cause attached.
+     * UnrecoverableKeyException has no (String, Throwable) constructor,
+     * so the cause is chained via initCause().
+     *
+     * @param msg exception message
+     * @param cause underlying exception to preserve
+     *
+     * @return new UnrecoverableKeyException with cause set
+     */
+    private static UnrecoverableKeyException newUnrecoverableKeyException(
+        String msg, Throwable cause) {
+
+        UnrecoverableKeyException e = new UnrecoverableKeyException(msg);
+        e.initCause(cause);
+        return e;
+    }
+
+    /**
+     * Return true if the given native Key_Sum (the PKCS#8 AlgorithmIdentifier
+     * OID sum returned by Asn.getPkcs8AlgoID()) identifies one of the three
+     * FIPS 204 ML-DSA parameter sets.
+     *
+     * The algoId != 0 guard matters: on a native build without ML-DSA the
+     * Asn.ML_DSA_LEVEL*k constants resolve to 0, so an unrelated key whose
+     * algoId is 0 must not be misidentified as ML-DSA.
+     *
+     * @param algoId native Key_Sum value from Asn.getPkcs8AlgoID()
+     *
+     * @return true if algoId is one of the ML-DSA parameter-set OID sums
+     */
+    private static boolean isMlDsaAlgoId(int algoId) {
+        return algoId != 0 &&
+            (algoId == Asn.ML_DSA_LEVEL2k ||
+             algoId == Asn.ML_DSA_LEVEL3k ||
+             algoId == Asn.ML_DSA_LEVEL5k);
+    }
+
+    /**
+     * Return true if the given native Key_Sum (the PKCS#8 AlgorithmIdentifier
+     * OID sum returned by Asn.getPkcs8AlgoID()) identifies one of the FIPS 205
+     * SLH-DSA parameter sets.
+     *
+     * On a native build without SLH-DSA Asn.SLH_DSA_*k constants resolve to 0,
+     * so an unrelated key whose algoId is 0 must not be misidentified as
+     * SLH-DSA.
+     *
+     * @param algoId native Key_Sum value from Asn.getPkcs8AlgoID()
+     *
+     * @return true if algoId is one of the SLH-DSA parameter-set OID sums
+     */
+    private static boolean isSlhDsaAlgoId(int algoId) {
+
+        return algoId != 0 &&
+            (algoId == Asn.SLH_DSA_SHA2_128Sk ||
+             algoId == Asn.SLH_DSA_SHA2_128Fk ||
+             algoId == Asn.SLH_DSA_SHA2_192Sk ||
+             algoId == Asn.SLH_DSA_SHA2_192Fk ||
+             algoId == Asn.SLH_DSA_SHA2_256Sk ||
+             algoId == Asn.SLH_DSA_SHA2_256Fk ||
+             algoId == Asn.SLH_DSA_SHAKE_128Sk ||
+             algoId == Asn.SLH_DSA_SHAKE_128Fk ||
+             algoId == Asn.SLH_DSA_SHAKE_192Sk ||
+             algoId == Asn.SLH_DSA_SHAKE_192Fk ||
+             algoId == Asn.SLH_DSA_SHAKE_256Sk ||
+             algoId == Asn.SLH_DSA_SHAKE_256Fk);
     }
 
     /**

@@ -483,8 +483,10 @@ public enum WolfCryptError {
     SEQ_OVERFLOW_E       (-1008),
     /** ML-DSA Pairwise Consistency Test failure */
     ML_DSA_PCT_E         (-1016),
+    /** SLH-DSA Conditional Algorithm Self-Test (CAST) KAT failure */
+    SLH_DSA_KAT_FIPS_E   (-1018),
 
-    /** Update this to indicate last error */
+    /** Historical marker mirroring an older native WC_LAST_E value */
     WC_LAST_E            (-1008),
 
     /** Last usable code */

@@ -102,6 +102,16 @@ lmsCertList=(
     "lms/bc_lms_native_bc_root.der"
 )
 
+# SLH-DSA (FIPS 205) self-signed root certs + private keys, used by the
+# wolfJCE WKS KeyStore tests. Copied from native wolfSSL certs/slhdsa/ when
+# present.
+slhdsaCertList=(
+    "slhdsa/root-slhdsa-sha2-128s.pem"
+    "slhdsa/root-slhdsa-sha2-128s-priv.pem"
+    "slhdsa/root-slhdsa-shake-128s.pem"
+    "slhdsa/root-slhdsa-shake-128s-priv.pem"
+)
+
 for i in ${!certList[@]};
 do
     printf "Updating: ${certList[$i]}\n"
@@ -156,6 +166,22 @@ if [ -d "$CERT_LOCATION/lms" ]; then
     done
 else
     printf "Notice: $CERT_LOCATION/lms not found, skipping LMS\n"
+    printf "certs (provided wolfSSL predates them), keeping existing\n"
+    printf "local copies\n"
+fi
+
+if [ -d "$CERT_LOCATION/slhdsa" ]; then
+    for i in ${!slhdsaCertList[@]};
+    do
+        printf "Updating: ${slhdsaCertList[$i]}\n"
+        cp $CERT_LOCATION/${slhdsaCertList[$i]} ./${slhdsaCertList[$i]}
+        if [ $? -ne 0 ]; then
+            printf "Warning: skipped missing SLH-DSA cert: "
+            printf "${slhdsaCertList[$i]}\n"
+        fi
+    done
+else
+    printf "Notice: $CERT_LOCATION/slhdsa not found, skipping SLH-DSA\n"
     printf "certs (provided wolfSSL predates them), keeping existing\n"
     printf "local copies\n"
 fi

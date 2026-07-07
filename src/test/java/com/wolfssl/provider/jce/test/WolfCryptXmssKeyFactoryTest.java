@@ -233,7 +233,7 @@ public class WolfCryptXmssKeyFactoryTest {
         assumeEnabled();
 
         /* Some encoders wrap the raw RFC 8391 public key in an inner OCTET
-         * STRING inside the BIT STRING; WolfCryptXmssUtil accepts that form
+         * STRING inside the BIT STRING; WolfCryptSpkiUtil accepts that form
          * and normalizes it to the same RFC 9802 (unwrapped) encoding. */
         byte[] octet = tlv(0x04, XMSS_SHA2_10_256_PK);
         byte[] algId = tlv(0x30, XMSS_OID);
