@@ -34,6 +34,8 @@ import java.util.HashMap;
 import java.util.Random;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
@@ -5010,6 +5012,68 @@ public class WolfCryptCipherTest {
             assertArrayEquals(
                 "Unwrapped AES-" + (keySize * 8) + " key should match original",
                 originalKey.getEncoded(), unwrappedKey.getEncoded());
+        }
+    }
+
+    /**
+     * Test that RSA PKCS#1 v1.5 unwrap reports every failure with the same
+     * exception type and message.
+     */
+    @Test
+    public void testRSAUnwrapFailuresAreNotDistinguishable()
+        throws Exception {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        byte[] raw = new byte[16];
+        secureRandom.nextBytes(raw);
+        SecretKeySpec key = new SecretKeySpec(raw, "AES");
+
+        Cipher wrap = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        wrap.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrapped = wrap.wrap(key);
+        int modSize = wrapped.length;
+
+        /* Confirm a valid wrapped key still unwraps. */
+        Cipher ok = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        ok.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key unwrapped = ok.unwrap(wrapped, "AES", Cipher.SECRET_KEY);
+        assertArrayEquals(raw, unwrapped.getEncoded());
+
+        /* Distinct, deterministic failure inputs: an over-length input that
+         * fails structurally, a modulus-sized input that fails the padding
+         * check, and an under-length input. */
+        byte[] over = new byte[modSize + 1];
+        byte[] padFail = new byte[modSize];
+        byte[] under = new byte[modSize - 1];
+
+        /* Every failure must surface the identical exception type and msg */
+        Set<String> outcomes = new HashSet<String>();
+        outcomes.add(rsaUnwrapFailure(over));
+        outcomes.add(rsaUnwrapFailure(padFail));
+        outcomes.add(rsaUnwrapFailure(under));
+
+        assertEquals("RSA unwrap failures must not be distinguishable: " +
+            outcomes, 1, outcomes.size());
+    }
+
+    private String rsaUnwrapFailure(byte[] wrapped) throws Exception {
+
+        Cipher c = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        c.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+
+        try {
+            c.unwrap(wrapped, "AES", Cipher.SECRET_KEY);
+            fail("Malformed wrapped key must not unwrap successfully");
+
+            return "SUCCESS";
+
+        } catch (InvalidKeyException e) {
+            return e.getClass().getName() + ":" + e.getMessage();
         }
     }
 

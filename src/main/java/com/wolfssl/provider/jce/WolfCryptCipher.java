@@ -1996,13 +1996,8 @@ public class WolfCryptCipher extends CipherSpi {
         try {
             unwrappedKey = wolfCryptFinal(wrappedKey, 0, wrappedKey.length);
 
-        } catch (BadPaddingException e) {
-            throw new InvalidKeyException("Failed to unwrap key: " +
-                e.getMessage(), e);
-
-        } catch (IllegalBlockSizeException e) {
-            throw new InvalidKeyException("Failed to unwrap key: " +
-                e.getMessage(), e);
+        } catch (BadPaddingException | IllegalBlockSizeException e) {
+            throw new InvalidKeyException("Failed to unwrap key");
         }
 
         switch (wrappedKeyType) {
