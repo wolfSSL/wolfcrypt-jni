@@ -116,8 +116,8 @@ public final class WolfCryptXmssSignature extends SignatureSpi {
             }
 
             try {
-                WolfCryptXmssUtil.ParsedPub parsed =
-                    WolfCryptXmssUtil.parsePublicKeyDer(der);
+                WolfCryptSpkiUtil.ParsedXmssPub parsed =
+                    WolfCryptSpkiUtil.parseXmssPublicKeyDer(der);
                 rawPub = parsed.raw;
                 isXmssMt = parsed.isXmssMt;
             }

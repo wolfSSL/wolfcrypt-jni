@@ -35,7 +35,9 @@ import java.security.spec.AlgorithmParameterSpec;
  * {@code Signature}/{@code KEM}/{@code KeyPairGenerator}
  * algorithm-name conventions used in JDK 24 (JEP 497): {@code "ML-DSA-44"},
  * {@code "ML-DSA-65"}, {@code "ML-DSA-87"}, {@code "ML-KEM-512"},
- * {@code "ML-KEM-768"}, {@code "ML-KEM-1024"}.</p>
+ * {@code "ML-KEM-768"}, {@code "ML-KEM-1024"}, and the FIPS 205 SLH-DSA
+ * parameter-set names ({@code "SLH-DSA-SHA2-128s"} ...
+ * {@code "SLH-DSA-SHAKE-256f"}).</p>
  */
 public class WolfPQCParameterSpec implements AlgorithmParameterSpec {
 
@@ -62,6 +64,54 @@ public class WolfPQCParameterSpec implements AlgorithmParameterSpec {
     /** ML-KEM-1024 (FIPS 203). */
     public static final WolfPQCParameterSpec ML_KEM_1024 =
         new WolfPQCParameterSpec("ML-KEM-1024");
+
+    /** SLH-DSA-SHAKE-128s (FIPS 205). */
+    public static final WolfPQCParameterSpec SLH_DSA_SHAKE_128S =
+        new WolfPQCParameterSpec("SLH-DSA-SHAKE-128s");
+
+    /** SLH-DSA-SHAKE-128f (FIPS 205). */
+    public static final WolfPQCParameterSpec SLH_DSA_SHAKE_128F =
+        new WolfPQCParameterSpec("SLH-DSA-SHAKE-128f");
+
+    /** SLH-DSA-SHAKE-192s (FIPS 205). */
+    public static final WolfPQCParameterSpec SLH_DSA_SHAKE_192S =
+        new WolfPQCParameterSpec("SLH-DSA-SHAKE-192s");
+
+    /** SLH-DSA-SHAKE-192f (FIPS 205). */
+    public static final WolfPQCParameterSpec SLH_DSA_SHAKE_192F =
+        new WolfPQCParameterSpec("SLH-DSA-SHAKE-192f");
+
+    /** SLH-DSA-SHAKE-256s (FIPS 205). */
+    public static final WolfPQCParameterSpec SLH_DSA_SHAKE_256S =
+        new WolfPQCParameterSpec("SLH-DSA-SHAKE-256s");
+
+    /** SLH-DSA-SHAKE-256f (FIPS 205). */
+    public static final WolfPQCParameterSpec SLH_DSA_SHAKE_256F =
+        new WolfPQCParameterSpec("SLH-DSA-SHAKE-256f");
+
+    /** SLH-DSA-SHA2-128s (FIPS 205). */
+    public static final WolfPQCParameterSpec SLH_DSA_SHA2_128S =
+        new WolfPQCParameterSpec("SLH-DSA-SHA2-128s");
+
+    /** SLH-DSA-SHA2-128f (FIPS 205). */
+    public static final WolfPQCParameterSpec SLH_DSA_SHA2_128F =
+        new WolfPQCParameterSpec("SLH-DSA-SHA2-128f");
+
+    /** SLH-DSA-SHA2-192s (FIPS 205). */
+    public static final WolfPQCParameterSpec SLH_DSA_SHA2_192S =
+        new WolfPQCParameterSpec("SLH-DSA-SHA2-192s");
+
+    /** SLH-DSA-SHA2-192f (FIPS 205). */
+    public static final WolfPQCParameterSpec SLH_DSA_SHA2_192F =
+        new WolfPQCParameterSpec("SLH-DSA-SHA2-192f");
+
+    /** SLH-DSA-SHA2-256s (FIPS 205). */
+    public static final WolfPQCParameterSpec SLH_DSA_SHA2_256S =
+        new WolfPQCParameterSpec("SLH-DSA-SHA2-256s");
+
+    /** SLH-DSA-SHA2-256f (FIPS 205). */
+    public static final WolfPQCParameterSpec SLH_DSA_SHA2_256F =
+        new WolfPQCParameterSpec("SLH-DSA-SHA2-256f");
 
     private final String name;
 

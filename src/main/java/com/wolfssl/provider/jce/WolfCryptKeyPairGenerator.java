@@ -57,6 +57,7 @@ import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.MlDsa;
 import com.wolfssl.wolfcrypt.MlKem;
+import com.wolfssl.wolfcrypt.SlhDsa;
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -72,7 +73,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         WC_ECC,
         WC_DH,
         WC_ML_DSA,
-        WC_ML_KEM
+        WC_ML_KEM,
+        WC_SLH_DSA
     }
 
     private KeyType type = null;
@@ -84,36 +86,32 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     private byte[] dhP = null;
     private byte[] dhG = null;
 
-    /**
-     * ML-DSA parameter level ({@link MlDsa#ML_DSA_44} / {@code ML_DSA_65} /
-     * {@code ML_DSA_87}), or 0 if unset. Set in the constructor and
-     * updated by {@code initialize(AlgorithmParameterSpec)}.
-     */
-    private int mlDsaLevel = 0;
+    /** Flag for "no PQC parameter set" in pqcParam and pqcLockedParam.
+     * Must be negative, 0 reserved for SLH-DSA-SHAKE-128s. */
+    private static final int PQC_PARAM_UNSET = -1;
 
     /**
-     * For per-level {@code wcKeyPairGenMlDsa{44,65,87}} aliases, the level
-     * is fixed and {@code engineInitialize(AlgorithmParameterSpec)} must
-     * reject mismatching specs. 0 means the generic alias (any level via
-     * spec). Set via constructor by per-level subclasses.
-     */
-    private int mlDsaLockedLevel = 0;
+     * PQC parameter set for WC_ML_DSA, WC_ML_KEM, and WC_SLH_DSA generators.
+     * Interpreted by this.type: an MlDsa.ML_DSA_* level, MlKem.ML_KEM_* level,
+     * or SlhDsa.SLH_DSA_* parameter set. Set to the per-family default in
+     * constructor. */
+    private int pqcParam = PQC_PARAM_UNSET;
 
     /**
-     * ML-KEM parameter level ({@link MlKem#ML_KEM_512} / {@code ML_KEM_768} /
-     * {@code ML_KEM_1024}). Set in the constructor and updated by
-     * {@code initialize(AlgorithmParameterSpec)}.
+     * For per-parameter-set PQC subclasses wcKeyPairGenMlDsa{44,65,87},
+     * wcKeyPairGenMlKem{512,768,1024}, wcKeyPairGenSlhDsa*, the parameter set
+     * is fixed and engineInitialize(AlgorithmParameterSpec) must reject
+     * mismatching specs. PQC_PARAM_UNSET means the generic alias (any param
+     * set via spec).
      */
-    private int mlkemLevel = MlKem.ML_KEM_768;
+    private int pqcLockedParam = PQC_PARAM_UNSET;
 
     /**
-     * For per-level {@code wcKeyPairGenMlKem{512,768,1024}} aliases, the
-     * level is fixed and {@code engineInitialize(AlgorithmParameterSpec)}
-     * must reject mismatching specs. 0 means the generic alias (any level
-     * via spec, defaulting to ML-KEM-768). Set via constructor by per-level
-     * subclasses.
+     * True when the PQC parameter set was explicitly chosen, either by a
+     * per-set subclass or an engineInitialize(AlgorithmParameterSpec) call.
+     * When false, the generic generator is using its per-family default.
      */
-    private int mlkemLockedLevel = 0;
+    private boolean pqcParamExplicit = false;
 
     private Rng rng = null;
 
@@ -124,19 +122,20 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     private String algString;
 
     private WolfCryptKeyPairGenerator(KeyType type) {
-        this(type, 0);
+        this(type, PQC_PARAM_UNSET);
     }
 
     /**
-     * Create new WolfCryptKeyPairGenerator, optionally locking the parameter
-     * set level for the per-level PQC subclasses (wcKeyPairGenMlDsa{44,65,87}
-     * and wcKeyPairGenMlKem{512,768,1024}).
+     * Create new WolfCryptKeyPairGenerator, optionally locking the PQC param
+     * set for the per-parameter-set subclasses (wcKeyPairGenMlDsa{44,65,87},
+     * wcKeyPairGenMlKem{512,768,1024}, and wcKeyPairGenSlhDsa*).
      *
      * @param type key type to generate
-     * @param lockedLevel fixed PQC parameter set level for per-level aliases,
-     *        or 0 for the generic alias (any level via spec)
+     * @param lockedParam fixed PQC parameter set for per-set aliases, or
+     *        PQC_PARAM_UNSET for the generic alias (any parameter set via
+     *        spec). Ignored for non-PQC key types.
      */
-    private WolfCryptKeyPairGenerator(KeyType type, int lockedLevel) {
+    private WolfCryptKeyPairGenerator(KeyType type, int lockedParam) {
 
         this.type = type;
 
@@ -180,28 +179,38 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
             }
         }
 
-        /* Set defaults for ML-DSA key generation. Per-level subclasses
-         * pass their fixed level in, the generic alias defaults to
-         * ML-DSA-65, matching JDK 24 / JEP 497 default. */
-        if (type == KeyType.WC_ML_DSA) {
-            this.mlDsaLockedLevel = lockedLevel;
-            this.mlDsaLevel = (lockedLevel != 0) ?
-                lockedLevel : MlDsa.ML_DSA_65;
-        }
+        /* Set defaults for PQC key generation (ML-DSA, ML-KEM, SLH-DSA).
+         * Per-set subclasses pass their fixed parameter set in. Generic
+         * aliases get the per-family default. */
+        if (type == KeyType.WC_ML_DSA || type == KeyType.WC_ML_KEM ||
+            type == KeyType.WC_SLH_DSA) {
 
-        /* Set defaults for ML-KEM key generation. Per-level subclasses pass
-         * their fixed level in. The generic alias defaults to ML-KEM-768,
-         * matching the JDK reference implementation default. */
-        if (type == KeyType.WC_ML_KEM) {
-            this.mlkemLockedLevel = lockedLevel;
-            this.mlkemLevel = (lockedLevel != 0) ?
-                lockedLevel : MlKem.ML_KEM_768;
+            this.pqcLockedParam = lockedParam;
+            if (lockedParam != PQC_PARAM_UNSET) {
+                this.pqcParam = lockedParam;
+                this.pqcParamExplicit = true;
+            }
+            else {
+                switch (type) {
+                    case WC_ML_DSA:
+                        this.pqcParam = MlDsa.ML_DSA_65;
+                        break;
+                    case WC_ML_KEM:
+                        this.pqcParam = MlKem.ML_KEM_768;
+                        break;
+                    default:
+                        this.pqcParam = SlhDsa.SLH_DSA_SHA2_128F;
+                        break;
+                }
+                this.pqcParamExplicit = false;
+            }
         }
 
         /* Initialize RNG for default key generation if needed. */
         if (type == KeyType.WC_RSA || type == KeyType.WC_RSA_PSS ||
             type == KeyType.WC_ECC || type == KeyType.WC_DH ||
-            type == KeyType.WC_ML_DSA || type == KeyType.WC_ML_KEM) {
+            type == KeyType.WC_ML_DSA || type == KeyType.WC_ML_KEM ||
+            type == KeyType.WC_SLH_DSA) {
 
             synchronized (rngLock) {
                 if (this.rng == null) {
@@ -219,26 +228,16 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
     @Override
     public synchronized void initialize(int keysize, SecureRandom random) {
 
-        if (type == KeyType.WC_ML_DSA) {
-            /* ML-DSA parameter sets (44/65/87) are not selected by integer
-             * key size. Callers must supply a NamedParameterSpec or a
-             * WolfPQCParameterSpec via initialize(AlgorithmParameterSpec).
-             * Matches JDK 24 / JEP 497 behavior. */
+        if (type == KeyType.WC_ML_DSA || type == KeyType.WC_ML_KEM ||
+            type == KeyType.WC_SLH_DSA) {
+            /* PQC parameter sets are selected by a named parameter spec, not
+             * integer key size. Callers must supply a NamedParameterSpec or
+             * WolfPQCParameterSpec via initialize(AlgorithmParameterSpec), or
+             * use the parameter-set-specific KeyPairGenerator name. Matches
+             * JDK 24 / JEP 497 behavior. */
             throw new InvalidParameterException(
-                "ML-DSA does not accept integer key sizes: use " +
-                "initialize(AlgorithmParameterSpec) with a " +
-                "NamedParameterSpec or WolfPQCParameterSpec instead.");
-        }
-
-        if (type == KeyType.WC_ML_KEM) {
-            /* ML-KEM parameter sets (512/768/1024) are selected by a named
-             * parameter spec, not an integer key size. Use a
-             * NamedParameterSpec or WolfPQCParameterSpec via
-             * initialize(AlgorithmParameterSpec), or the parameter-set-
-             * specific KeyPairGenerator name (ML-KEM-512/768/1024). */
-            throw new InvalidParameterException(
-                "ML-KEM does not accept integer key sizes: use " +
-                "initialize(AlgorithmParameterSpec) with a " +
+                typeToString(this.type) + " does not accept integer key " +
+                "sizes: use initialize(AlgorithmParameterSpec) with a " +
                 "NamedParameterSpec or WolfPQCParameterSpec instead.");
         }
 
@@ -490,94 +489,53 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 break;
 
             case WC_ML_DSA:
+            case WC_ML_KEM:
+            case WC_SLH_DSA:
 
-                int newLevel;
-                String mlDsaName = null;
+                String algName = typeToString(this.type);
+                int newParam;
+                String paramName = null;
 
-                /* Fall back to our own AlgorithmParameterSpec subtype
-                 * for JDK 8-10. */
+                /* Fall back to our AlgorithmParameterSpec subtype for
+                 * JDK 8-10. */
                 if (params instanceof WolfPQCParameterSpec) {
-                    mlDsaName = ((WolfPQCParameterSpec) params).getName();
+                    paramName = ((WolfPQCParameterSpec) params).getName();
                 }
                 /* JDK 11+ uses standard NamedParameterSpec via reflection. */
                 else {
-                    mlDsaName =
+                    paramName =
                         WolfPQCJdkCompat.namedParameterSpecGetName(params);
                 }
 
-                if (mlDsaName == null) {
+                if (paramName == null) {
                     throw new InvalidAlgorithmParameterException(
-                        "ML-DSA params must be a NamedParameterSpec " +
+                        algName + " params must be a NamedParameterSpec " +
                         "(JDK 11+) or WolfPQCParameterSpec (JDK 8-10), got: " +
                         params.getClass().getName());
                 }
 
                 try {
-                    newLevel = WolfPQCJdkCompat.paramNameToLevel(mlDsaName);
+                    newParam = pqcNameToParam(paramName);
                 }
                 catch (IllegalArgumentException e) {
                     throw new InvalidAlgorithmParameterException(
-                        "Unrecognized ML-DSA parameter set: " + mlDsaName);
+                        "Unrecognized " + algName + " parameter set: " +
+                        paramName);
                 }
 
-                /* Per-level wcKeyPairGenMlDsa{44,65,87} aliases reject specs
-                 * that don't match their locked level. */
-                if (this.mlDsaLockedLevel != 0 &&
-                    newLevel != this.mlDsaLockedLevel) {
+                /* Per-parameter-set subclasses reject specs that don't
+                 * match their locked parameter set. */
+                if ((this.pqcLockedParam != PQC_PARAM_UNSET) &&
+                    (newParam != this.pqcLockedParam)) {
 
                     throw new InvalidAlgorithmParameterException(
-                        "Spec '" + mlDsaName + "' does not match the " +
+                        "Spec '" + paramName + "' does not match the " +
                         "fixed parameter set for this KeyPairGenerator");
                 }
 
-                this.mlDsaLevel = newLevel;
-                log("init with ML-DSA spec: " + mlDsaName);
-
-                break;
-
-            case WC_ML_KEM:
-
-                int mlkemNewLevel;
-                String mlkemName = null;
-
-                /* Fall back to our own AlgorithmParameterSpec for JDK 8-10 */
-                if (params instanceof WolfPQCParameterSpec) {
-                    mlkemName = ((WolfPQCParameterSpec) params).getName();
-                }
-                /* JDK 11+ uses standard NamedParameterSpec via reflection */
-                else {
-                    mlkemName =
-                        WolfPQCJdkCompat.namedParameterSpecGetName(params);
-                }
-
-                if (mlkemName == null) {
-                    throw new InvalidAlgorithmParameterException(
-                        "ML-KEM params must be a NamedParameterSpec " +
-                        "(JDK 11+) or WolfPQCParameterSpec (JDK 8-10), got: " +
-                        params.getClass().getName());
-                }
-
-                try {
-                    mlkemNewLevel =
-                        WolfPQCJdkCompat.mlkemParamNameToLevel(mlkemName);
-                }
-                catch (IllegalArgumentException e) {
-                    throw new InvalidAlgorithmParameterException(
-                        "Unrecognized ML-KEM parameter set: " + mlkemName);
-                }
-
-                /* Per-level wcKeyPairGenMlKem{512,768,1024} aliases reject
-                 * specs that don't match their locked level. */
-                if (this.mlkemLockedLevel != 0 &&
-                    mlkemNewLevel != this.mlkemLockedLevel) {
-
-                    throw new InvalidAlgorithmParameterException(
-                        "Spec '" + mlkemName + "' does not match the " +
-                        "fixed parameter set for this KeyPairGenerator");
-                }
-
-                this.mlkemLevel = mlkemNewLevel;
-                log("init with ML-KEM spec: " + mlkemName);
+                this.pqcParam = newParam;
+                this.pqcParamExplicit = true;
+                log("init with " + algName + " spec: " + paramName);
 
                 break;
 
@@ -850,7 +808,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
             case WC_ML_DSA:
 
-                if (this.mlDsaLevel == 0) {
+                if (this.pqcParam == PQC_PARAM_UNSET) {
                     throw new RuntimeException(
                         "ML-DSA level not set, call initialize() first");
                 }
@@ -860,7 +818,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 byte[] mlDsaPrivDer = null;
 
                 try {
-                    mlDsa = new MlDsa(this.mlDsaLevel);
+                    mlDsa = new MlDsa(this.pqcParam);
 
                     synchronized (rngLock) {
                         mlDsa.makeKey(this.rng);
@@ -871,10 +829,10 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
                     WolfCryptMlDsaPublicKey mlDsaPub =
                         new WolfCryptMlDsaPublicKey(mlDsaPubDer,
-                            this.mlDsaLevel);
+                            this.pqcParam);
                     WolfCryptMlDsaPrivateKey mlDsaPriv =
                         new WolfCryptMlDsaPrivateKey(mlDsaPrivDer,
-                            this.mlDsaLevel);
+                            this.pqcParam);
 
                     pair = new KeyPair(mlDsaPub, mlDsaPriv);
 
@@ -890,7 +848,61 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     }
                 }
 
-                log("generated ML-DSA KeyPair, level " + this.mlDsaLevel);
+                log("generated ML-DSA KeyPair, level " + this.pqcParam);
+
+                break;
+
+            case WC_SLH_DSA:
+
+                if (this.pqcParam == PQC_PARAM_UNSET) {
+                    throw new RuntimeException(
+                        "SLH-DSA param set not set, call initialize() first");
+                }
+
+                /* For generic generator, fall back from default to a param set
+                 * compiled into native wolfSSL, so getInstance("SLH-DSA") works
+                 * on varied build configs. */
+                int slhDsaGenParam = this.pqcParam;
+                if (!this.pqcParamExplicit) {
+                    slhDsaGenParam = resolveDefaultSlhDsaParam();
+                }
+
+                SlhDsa slhDsa = null;
+                byte[] slhDsaPubDer = null;
+                byte[] slhDsaPrivDer = null;
+
+                try {
+                    slhDsa = new SlhDsa(slhDsaGenParam);
+
+                    synchronized (rngLock) {
+                        slhDsa.makeKey(this.rng);
+                    }
+
+                    slhDsaPubDer = slhDsa.exportPublicKeyDer(true);
+                    slhDsaPrivDer = slhDsa.exportPrivateKeyDer();
+
+                    WolfCryptSlhDsaPublicKey slhDsaPub =
+                        new WolfCryptSlhDsaPublicKey(slhDsaPubDer,
+                            slhDsaGenParam);
+                    WolfCryptSlhDsaPrivateKey slhDsaPriv =
+                        new WolfCryptSlhDsaPrivateKey(slhDsaPrivDer,
+                            slhDsaGenParam);
+
+                    pair = new KeyPair(slhDsaPub, slhDsaPriv);
+
+                }
+                catch (WolfCryptException e) {
+                    throw new RuntimeException(e);
+                }
+                finally {
+                    zeroArray(slhDsaPubDer);
+                    zeroArray(slhDsaPrivDer);
+                    if (slhDsa != null) {
+                        slhDsa.releaseNativeStruct();
+                    }
+                }
+
+                log("generated SLH-DSA KeyPair, param " + slhDsaGenParam);
 
                 break;
 
@@ -911,16 +923,16 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                             this.rng.generateBlock(MlKem.ML_KEM_SEED_SIZE);
                     }
 
-                    mlkem = new MlKem(this.mlkemLevel);
+                    mlkem = new MlKem(this.pqcParam);
                     mlkem.makeKeyFromSeed(mlkemSeed);
 
                     mlkemPub  = mlkem.exportPublic();
                     mlkemPriv = mlkem.exportPrivate();
 
                     WolfCryptMlKemPublicKey mlkemPubKey =
-                        new WolfCryptMlKemPublicKey(this.mlkemLevel, mlkemPub);
+                        new WolfCryptMlKemPublicKey(this.pqcParam, mlkemPub);
                     WolfCryptMlKemPrivateKey mlkemPrivKey =
-                        new WolfCryptMlKemPrivateKey(this.mlkemLevel, mlkemPriv,
+                        new WolfCryptMlKemPrivateKey(this.pqcParam, mlkemPriv,
                             mlkemSeed);
 
                     pair = new KeyPair(mlkemPubKey, mlkemPrivKey);
@@ -937,7 +949,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                     }
                 }
 
-                log("generated ML-KEM KeyPair, level " + this.mlkemLevel);
+                log("generated ML-KEM KeyPair, level " + this.pqcParam);
 
                 break;
 
@@ -947,6 +959,25 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         }
 
         return pair;
+    }
+
+    /*
+     * Resolve a PQC parameter-set name to its native value for this
+     * generator's key type: an MlDsa.ML_DSA_* level, an MlKem.ML_KEM_*
+     * level, or an SlhDsa.SLH_DSA_* parameter set.
+     *
+     * Throws IllegalArgumentException if the name is not a valid parameter
+     * set name for this key type.
+     */
+    private int pqcNameToParam(String name) {
+        switch (this.type) {
+            case WC_ML_DSA:
+                return WolfPQCJdkCompat.paramNameToLevel(name);
+            case WC_ML_KEM:
+                return WolfPQCJdkCompat.mlkemParamNameToLevel(name);
+            default:
+                return WolfPQCJdkCompat.slhDsaNameToParam(name);
+        }
     }
 
     private String typeToString(KeyType type) {
@@ -963,6 +994,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 return "ML-DSA";
             case WC_ML_KEM:
                 return "ML-KEM";
+            case WC_SLH_DSA:
+                return "SLH-DSA";
             default:
                 return "None";
         }
@@ -1103,6 +1136,195 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
          */
         public wcKeyPairGenMlDsa87() {
             super(KeyType.WC_ML_DSA, MlDsa.ML_DSA_87);
+        }
+    }
+
+    /* Cached resolveDefaultSlhDsaParam() result. The parameter sets compiled
+     * into the loaded native library cannot change at runtime, so probe native
+     * availability only once. -1 means unresolved. */
+    private static volatile int defaultSlhDsaParam = -1;
+
+    /**
+     * Resolve the generic generator default SLH-DSA parameter set to one
+     * compiled into native wolfSSL. Prefers SLH-DSA-SHA2-128f, then falls back
+     * through the remaining sets so getInstance("SLH-DSA") works on varied
+     * native builds. The result is cached after the first probe.
+     *
+     * @return the first compiled-in parameter set from the preference order,
+     *         or SLH-DSA-SHA2-128f if none could be probed.
+     */
+    private static int resolveDefaultSlhDsaParam() {
+
+        int resolved = defaultSlhDsaParam;
+        if (resolved >= 0) {
+            return resolved;
+        }
+
+        int[] preference = {
+            SlhDsa.SLH_DSA_SHA2_128F, SlhDsa.SLH_DSA_SHAKE_128F,
+            SlhDsa.SLH_DSA_SHA2_128S, SlhDsa.SLH_DSA_SHAKE_128S,
+            SlhDsa.SLH_DSA_SHA2_192F, SlhDsa.SLH_DSA_SHAKE_192F,
+            SlhDsa.SLH_DSA_SHA2_192S, SlhDsa.SLH_DSA_SHAKE_192S,
+            SlhDsa.SLH_DSA_SHA2_256F, SlhDsa.SLH_DSA_SHAKE_256F,
+            SlhDsa.SLH_DSA_SHA2_256S, SlhDsa.SLH_DSA_SHAKE_256S
+        };
+
+        resolved = SlhDsa.SLH_DSA_SHA2_128F;
+        for (int param : preference) {
+            if (slhDsaParamAvailable(param)) {
+                resolved = param;
+                break;
+            }
+        }
+
+        defaultSlhDsaParam = resolved;
+        return resolved;
+    }
+
+    /**
+     * Check whether an SLH-DSA parameter set is compiled into native wolfSSL.
+     * Performs a native init (via publicKeySize) without generating a key.
+     *
+     * @param param SLH-DSA parameter set (0-11)
+     *
+     * @return true if the parameter set is available, false otherwise
+     */
+    private static boolean slhDsaParamAvailable(int param) {
+
+        try {
+            SlhDsa key = new SlhDsa(param);
+            try {
+                key.publicKeySize();
+                return true;
+            }
+            finally {
+                key.releaseNativeStruct();
+            }
+        }
+        catch (WolfCryptException e) {
+            return false;
+        }
+    }
+
+    /**
+     * wolfCrypt SLH-DSA key pair generator (generic). The parameter set is
+     * selectable via {@code initialize(NamedParameterSpec)} or
+     * {@code initialize(WolfPQCParameterSpec)}. Defaults to SLH-DSA-SHA2-128f,
+     * falling back to a compiled-in set on partial native builds.
+     */
+    public static final class wcKeyPairGenSlhDsa
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsa object */
+        public wcKeyPairGenSlhDsa() {
+            super(KeyType.WC_SLH_DSA, PQC_PARAM_UNSET);
+        }
+    }
+
+    /** wolfCrypt SLH-DSA-SHAKE-128s key pair generator. */
+    public static final class wcKeyPairGenSlhDsaShake_128s
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsaShake_128s object */
+        public wcKeyPairGenSlhDsaShake_128s() {
+            super(KeyType.WC_SLH_DSA, SlhDsa.SLH_DSA_SHAKE_128S);
+        }
+    }
+
+    /** wolfCrypt SLH-DSA-SHAKE-128f key pair generator. */
+    public static final class wcKeyPairGenSlhDsaShake_128f
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsaShake_128f object */
+        public wcKeyPairGenSlhDsaShake_128f() {
+            super(KeyType.WC_SLH_DSA, SlhDsa.SLH_DSA_SHAKE_128F);
+        }
+    }
+
+    /** wolfCrypt SLH-DSA-SHAKE-192s key pair generator. */
+    public static final class wcKeyPairGenSlhDsaShake_192s
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsaShake_192s object */
+        public wcKeyPairGenSlhDsaShake_192s() {
+            super(KeyType.WC_SLH_DSA, SlhDsa.SLH_DSA_SHAKE_192S);
+        }
+    }
+
+    /** wolfCrypt SLH-DSA-SHAKE-192f key pair generator. */
+    public static final class wcKeyPairGenSlhDsaShake_192f
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsaShake_192f object */
+        public wcKeyPairGenSlhDsaShake_192f() {
+            super(KeyType.WC_SLH_DSA, SlhDsa.SLH_DSA_SHAKE_192F);
+        }
+    }
+
+    /** wolfCrypt SLH-DSA-SHAKE-256s key pair generator. */
+    public static final class wcKeyPairGenSlhDsaShake_256s
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsaShake_256s object */
+        public wcKeyPairGenSlhDsaShake_256s() {
+            super(KeyType.WC_SLH_DSA, SlhDsa.SLH_DSA_SHAKE_256S);
+        }
+    }
+
+    /** wolfCrypt SLH-DSA-SHAKE-256f key pair generator. */
+    public static final class wcKeyPairGenSlhDsaShake_256f
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsaShake_256f object */
+        public wcKeyPairGenSlhDsaShake_256f() {
+            super(KeyType.WC_SLH_DSA, SlhDsa.SLH_DSA_SHAKE_256F);
+        }
+    }
+
+    /** wolfCrypt SLH-DSA-SHA2-128s key pair generator. */
+    public static final class wcKeyPairGenSlhDsaSha2_128s
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsaSha2_128s object */
+        public wcKeyPairGenSlhDsaSha2_128s() {
+            super(KeyType.WC_SLH_DSA, SlhDsa.SLH_DSA_SHA2_128S);
+        }
+    }
+
+    /** wolfCrypt SLH-DSA-SHA2-128f key pair generator. */
+    public static final class wcKeyPairGenSlhDsaSha2_128f
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsaSha2_128f object */
+        public wcKeyPairGenSlhDsaSha2_128f() {
+            super(KeyType.WC_SLH_DSA, SlhDsa.SLH_DSA_SHA2_128F);
+        }
+    }
+
+    /** wolfCrypt SLH-DSA-SHA2-192s key pair generator. */
+    public static final class wcKeyPairGenSlhDsaSha2_192s
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsaSha2_192s object */
+        public wcKeyPairGenSlhDsaSha2_192s() {
+            super(KeyType.WC_SLH_DSA, SlhDsa.SLH_DSA_SHA2_192S);
+        }
+    }
+
+    /** wolfCrypt SLH-DSA-SHA2-192f key pair generator. */
+    public static final class wcKeyPairGenSlhDsaSha2_192f
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsaSha2_192f object */
+        public wcKeyPairGenSlhDsaSha2_192f() {
+            super(KeyType.WC_SLH_DSA, SlhDsa.SLH_DSA_SHA2_192F);
+        }
+    }
+
+    /** wolfCrypt SLH-DSA-SHA2-256s key pair generator. */
+    public static final class wcKeyPairGenSlhDsaSha2_256s
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsaSha2_256s object */
+        public wcKeyPairGenSlhDsaSha2_256s() {
+            super(KeyType.WC_SLH_DSA, SlhDsa.SLH_DSA_SHA2_256S);
+        }
+    }
+
+    /** wolfCrypt SLH-DSA-SHA2-256f key pair generator. */
+    public static final class wcKeyPairGenSlhDsaSha2_256f
+        extends WolfCryptKeyPairGenerator {
+        /** Create new wcKeyPairGenSlhDsaSha2_256f object */
+        public wcKeyPairGenSlhDsaSha2_256f() {
+            super(KeyType.WC_SLH_DSA, SlhDsa.SLH_DSA_SHA2_256F);
         }
     }
 
