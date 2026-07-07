@@ -29,6 +29,7 @@
 
 #ifdef HAVE_FIPS
     #include <wolfssl/wolfcrypt/error-crypt.h>
+    #include <wolfssl/wolfcrypt/wc_port.h>
     #include <wolfssl/wolfcrypt/fips_test.h>
     #include <wolfssl/wolfcrypt/aes.h>
     #include <wolfssl/wolfcrypt/des3.h>
@@ -54,7 +55,28 @@
 #ifdef HAVE_FIPS
 extern JavaVM* g_vm;
 static jobject g_errCb;
+
+/* Mutex protecting g_errCb against concurrent access from NativeErrorCallback,
+ * wolfCrypt_1SetCb_1fips, and the cleanup path. */
+static wolfSSL_Mutex g_fipsCbMutex;
+static int g_fipsCbMutexInit = 0;
 #endif
+
+/* Initialize the FIPS callback mutex. Called from JNI_OnLoad() so it is set
+ * up before any FIPS callback operations. Returns 0 on success, negative on
+ * error. No-op in non-FIPS builds. */
+int wolfCrypt_JNI_FipsCb_init(void)
+{
+#ifdef HAVE_FIPS
+    if (!g_fipsCbMutexInit) {
+        if (wc_InitMutex(&g_fipsCbMutex) != 0) {
+            return -1;
+        }
+        g_fipsCbMutexInit = 1;
+    }
+#endif
+    return 0;
+}
 
 /* Deregister native FIPS callback and free global ref. Called from
  * JNI_OnUnload in jni_native_struct.c. Logic here so we can access g_errCb. */
@@ -63,9 +85,18 @@ void wolfCrypt_JNI_FipsCb_cleanup(JNIEnv* env)
 #ifdef HAVE_FIPS
     wolfCrypt_SetCb_fips(NULL);
 
-    if (env != NULL && g_errCb != NULL) {
-        (*env)->DeleteGlobalRef(env, g_errCb);
-        g_errCb = NULL;
+    if (g_fipsCbMutexInit) {
+        if (wc_LockMutex(&g_fipsCbMutex) == 0) {
+            if (env != NULL && g_errCb != NULL) {
+                (*env)->DeleteGlobalRef(env, g_errCb);
+            }
+            g_errCb = NULL;
+            wc_UnLockMutex(&g_fipsCbMutex);
+        }
+
+        /* Do not wc_FreeMutex(&g_fipsCbMutex) here. NativeErrorCallback
+         * may still lock this process-wide static mutex concurrently
+         * during JNI_OnUnload(), so leave it initialized for process life. */
     }
 #else
     (void)env;
@@ -76,6 +107,7 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
 {
 #ifdef HAVE_FIPS
     JNIEnv* env;
+    jobject localCb = NULL;
     jclass class;
     jmethodID method;
     jint ret;
@@ -102,12 +134,21 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
         return;
     }
 
-    /* Return silently if stored callback ref is NULL or invalid */
-    if (g_errCb == NULL) {
+    /* Take our own local reference to the callback while holding the mutex,
+     * so a concurrent wolfCrypt_1SetCb_1fips() cannot free the global
+     * reference while we use it. The rest of this function uses only the
+     * local reference and never touches g_errCb again. */
+    if (!g_fipsCbMutexInit || wc_LockMutex(&g_fipsCbMutex) != 0) {
         return;
     }
+    if (g_errCb != NULL &&
+        (*env)->GetObjectRefType(env, g_errCb) == JNIGlobalRefType) {
+        localCb = (*env)->NewLocalRef(env, g_errCb);
+    }
+    wc_UnLockMutex(&g_fipsCbMutex);
 
-    if (JNIGlobalRefType != (*env)->GetObjectRefType(env, g_errCb)) {
+    /* Return silently if no valid callback was registered */
+    if (localCb == NULL) {
         if ((*env)->ExceptionOccurred(env)) {
             (*env)->ExceptionDescribe(env);
             (*env)->ExceptionClear(env);
@@ -115,12 +156,13 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
         return;
     }
 
-    class = (*env)->GetObjectClass(env, g_errCb);
+    class = (*env)->GetObjectClass(env, localCb);
     if (!class) {
         if ((*env)->ExceptionOccurred(env)) {
             (*env)->ExceptionDescribe(env);
             (*env)->ExceptionClear(env);
         }
+        (*env)->DeleteLocalRef(env, localCb);
         return;
     }
 
@@ -131,6 +173,7 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
             (*env)->ExceptionDescribe(env);
             (*env)->ExceptionClear(env);
         }
+        (*env)->DeleteLocalRef(env, localCb);
         return;
     }
 
@@ -140,12 +183,14 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
             (*env)->ExceptionDescribe(env);
             (*env)->ExceptionClear(env);
         }
+        (*env)->DeleteLocalRef(env, localCb);
         return;
     }
 
-    (*env)->CallVoidMethod(env, g_errCb, method, ok, err, hashStr);
+    (*env)->CallVoidMethod(env, localCb, method, ok, err, hashStr);
 
     (*env)->DeleteLocalRef(env, hashStr);
+    (*env)->DeleteLocalRef(env, localCb);
 
     if ((*env)->ExceptionOccurred(env)) {
         (*env)->ExceptionDescribe(env);
@@ -158,24 +203,46 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Fips_wolfCrypt_1SetCb_1fips(
     JNIEnv* env, jclass class, jobject callback)
 {
 #ifdef HAVE_FIPS
+    jobject newRef = NULL;
+
+    /* Ensure mutex is initialized, normally done in JNI_OnLoad() */
+    if (!g_fipsCbMutexInit && wolfCrypt_JNI_FipsCb_init() != 0) {
+        throwWolfCryptException(env,
+            "Failed to initialize FIPS callback mutex");
+        return;
+    }
+
     /* Unregister native callback */
     wolfCrypt_SetCb_fips(NULL);
 
-    /* Free previous callback global ref if set */
-    if (g_errCb != NULL) {
-        (*env)->DeleteGlobalRef(env, g_errCb);
-        g_errCb = NULL;
-    }
-
+    /* Create the new global ref before taking the lock */
     if (callback != NULL) {
-        g_errCb = (*env)->NewGlobalRef(env, callback);
-        if (g_errCb != NULL) {
-            wolfCrypt_SetCb_fips(NativeErrorCallback);
-        }
-        else {
+        newRef = (*env)->NewGlobalRef(env, callback);
+        if (newRef == NULL) {
             throwWolfCryptException(env,
                 "Failed to store global error callback");
+            return;
         }
+    }
+
+    /* Swap in the new ref under the mutex, freeing the previous one. Doing
+     * this as one critical section prevents a double free when two callers
+     * race. */
+    if (wc_LockMutex(&g_fipsCbMutex) != 0) {
+        if (newRef != NULL) {
+            (*env)->DeleteGlobalRef(env, newRef);
+        }
+        throwWolfCryptException(env, "Failed to lock FIPS callback mutex");
+        return;
+    }
+    if (g_errCb != NULL) {
+        (*env)->DeleteGlobalRef(env, g_errCb);
+    }
+    g_errCb = newRef;
+    wc_UnLockMutex(&g_fipsCbMutex);
+
+    if (newRef != NULL) {
+        wolfCrypt_SetCb_fips(NativeErrorCallback);
     }
 #endif
 }
