@@ -37,6 +37,7 @@ import java.security.Security;
 import java.security.Provider;
 import java.security.cert.CertPathValidator;
 import java.security.cert.CertPathValidatorException;
+import java.security.cert.CertPathValidatorException.BasicReason;
 import java.security.cert.CertificateFactory;
 import java.security.cert.PKIXRevocationChecker;
 import java.security.cert.PKIXRevocationChecker.Option;
@@ -52,6 +53,7 @@ import java.util.Set;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfSSLCertManager;
 import com.wolfssl.wolfcrypt.WolfCryptException;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.provider.jce.WolfCryptPKIXRevocationChecker;
@@ -814,6 +816,59 @@ public class WolfCryptPKIXRevocationCheckerTest {
         /* Soft fail exceptions may or may not be collected depending on
          * whether wolfSSL attempts OCSP for certs without embedded URLs.
          * Just verify the call completed without throwing. */
+
+        cm.free();
+    }
+
+    /* CertManager that simulates a definitive OCSP "revoked" response by
+     * throwing WolfCryptException(OCSP_CERT_REVOKED) from CertManagerCheckOCSP,
+     * exactly as native wolfSSL does for a revoked certificate. */
+    private static class RevokedOcspCertManager extends WolfSSLCertManager {
+
+        @Override
+        public synchronized void CertManagerCheckOCSP(byte[] cert, int sz) {
+            throw new WolfCryptException(
+                WolfCryptError.OCSP_CERT_REVOKED.getCode());
+        }
+    }
+
+    @Test
+    public void testOcspRevokedNotSuppressedBySoftFail() throws Exception {
+
+        if (!WolfCrypt.OcspEnabled()) {
+            /* Skip test if OCSP not compiled in */
+            return;
+        }
+
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+        WolfCryptPKIXRevocationChecker checker =
+            (WolfCryptPKIXRevocationChecker)cpv.getRevocationChecker();
+
+        FileInputStream fis = new FileInputStream(caCertDer);
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        X509Certificate caCert = (X509Certificate)cf.generateCertificate(fis);
+        fis.close();
+
+        fis = new FileInputStream(serverCertDer);
+        X509Certificate serverCert =
+            (X509Certificate)cf.generateCertificate(fis);
+        fis.close();
+
+        /* SOFT_FAIL must not suppress a definitive revoked status. */
+        checker.setOptions(EnumSet.of(Option.SOFT_FAIL));
+
+        WolfSSLCertManager cm = new RevokedOcspCertManager();
+        cm.CertManagerLoadCA(caCert);
+        checker.setCertManager(cm);
+        checker.init(false);
+
+        try {
+            checker.check(serverCert, null);
+            fail("A revoked certificate must hard-fail even under SOFT_FAIL");
+        } catch (CertPathValidatorException e) {
+            assertEquals("Revoked cert must fail with BasicReason.REVOKED",
+                BasicReason.REVOKED, e.getReason());
+        }
 
         cm.free();
     }
