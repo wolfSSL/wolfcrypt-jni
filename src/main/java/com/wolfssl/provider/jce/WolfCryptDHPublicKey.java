@@ -228,6 +228,16 @@ public class WolfCryptDHPublicKey implements DHPublicKey, Destroyable {
             System.arraycopy(derData, idx, pubBytes, 0, pubLen);
             publicVal = new BigInteger(1, pubBytes);
 
+            /* Validate public key is in range 1 < Y < p-1. Values of 0,
+             * 1, or p-1 are degenerate and yield a weak or constant shared
+             * secret. Matches native wc_DhCheckPubKey range check. */
+            if (publicVal.compareTo(BigInteger.ONE) <= 0 ||
+                publicVal.compareTo(p.subtract(BigInteger.ONE)) >= 0) {
+                throw new IllegalArgumentException(
+                    "DH public key value out of range: " +
+                    "must satisfy 1 < Y < p-1");
+            }
+
             /* Store extracted values */
             this.publicValue = publicVal;
             this.paramSpec = new DHParameterSpec(p, g);

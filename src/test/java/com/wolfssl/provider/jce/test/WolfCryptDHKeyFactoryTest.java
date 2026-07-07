@@ -51,6 +51,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import com.wolfssl.provider.jce.WolfCryptDHPublicKey;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
@@ -185,6 +186,47 @@ public class WolfCryptDHKeyFactoryTest {
             convertedEncoded);
         assertArrayEquals("Encoded forms should match", encoded,
             convertedEncoded);
+    }
+
+    @Test
+    public void testX509PublicKeyRangeValidation() throws Exception {
+
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
+
+        /* Generate reference key pair to obtain valid DH parameters (P, G)
+         * and a valid encoded public key */
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
+        kpg.initialize(2048);
+        KeyPair kp = kpg.generateKeyPair();
+        DHPublicKey refPub = (DHPublicKey) kp.getPublic();
+        DHParameterSpec params = refPub.getParams();
+        BigInteger p = params.getP();
+
+        KeyFactory kf = KeyFactory.getInstance("DH", "wolfJCE");
+
+        /* Build X.509 encodings carrying degenerate Y values (0, 1, p-1)
+         * using the raw public key constructor, which does not validate,
+         * then confirm the X.509 import path rejects each one */
+        BigInteger[] badY = new BigInteger[] {
+            BigInteger.ZERO, BigInteger.ONE, p.subtract(BigInteger.ONE) };
+
+        for (BigInteger y : badY) {
+            byte[] der = new WolfCryptDHPublicKey(y, params).getEncoded();
+            try {
+                kf.generatePublic(new X509EncodedKeySpec(der));
+                fail("Should reject X.509 DH public key Y = " + y);
+
+            } catch (InvalidKeySpecException e) {
+                /* Expected */
+            }
+        }
+
+        /* Valid Y round-trips through X.509 import */
+        PublicKey validKey =
+            kf.generatePublic(new X509EncodedKeySpec(refPub.getEncoded()));
+        assertNotNull("Valid DH public key should be created", validKey);
+        assertTrue("Should be DHPublicKey", validKey instanceof DHPublicKey);
     }
 
     @Test
