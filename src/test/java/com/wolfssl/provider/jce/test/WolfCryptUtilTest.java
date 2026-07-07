@@ -569,6 +569,49 @@ public class WolfCryptUtilTest {
     }
 
     @Test
+    public void testIsAlgorithmDisabledQualifiedEntries() {
+
+        String origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* JDK 11+ factory default ships SHA1 only in qualified form and
+             * key algorithms only as keySize constraints. */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "MD2, MD5, SHA1 jdkCA & denyAfter 2019-01-01, " +
+                "RSA keySize < 1024, DSA keySize < 1024, EC keySize < 224");
+
+            /* Qualified SHA1 entry must still disable SHA1 signatures */
+            assertTrue("SHA1withRSA should be disabled (qualified SHA1)",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "SHA1withRSA", "jdk.certpath.disabledAlgorithms"));
+            assertTrue("SHA1withECDSA should be disabled (qualified SHA1)",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "SHA1withECDSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* Bare entries must still work */
+            assertTrue("MD5withRSA should be disabled (bare MD5)",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "MD5withRSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* keySize constraints must not disable the signature algorithm.
+             * "RSA keySize < 1024" must not reject a SHA256withRSA
+             * signature. */
+            assertFalse("SHA256withRSA must not be disabled by keySize entry",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "SHA256withRSA", "jdk.certpath.disabledAlgorithms"));
+            assertFalse("SHA384withECDSA must not be disabled",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "SHA384withECDSA", "jdk.certpath.disabledAlgorithms"));
+        } finally {
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+        }
+    }
+
+    @Test
     public void testIsAlgorithmDisabledPBE() {
         String origProperty = Security.getProperty(
             "jdk.certpath.disabledAlgorithms");
