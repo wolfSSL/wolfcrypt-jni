@@ -393,6 +393,16 @@ public class WolfCryptDHKeyFactory extends KeyFactorySpi {
                 "Public key value must be positive");
         }
 
+        /* Validate public key is in range 1 < Y < p-1. Values of 1 or
+         * p-1 are degenerate and yield a weak shared secret. Mirrors native
+         * wc_DhCheckPubKey range check. */
+        if (keySpec.getY().compareTo(BigInteger.ONE) <= 0 ||
+            keySpec.getY().compareTo(
+                keySpec.getP().subtract(BigInteger.ONE)) >= 0) {
+            throw new InvalidKeySpecException(
+                "Public key out of valid range: must satisfy 1 < Y < p-1");
+        }
+
         try {
             /* Create DHParameterSpec from p and g */
             DHParameterSpec paramSpec = new DHParameterSpec(
