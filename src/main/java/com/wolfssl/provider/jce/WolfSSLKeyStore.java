@@ -24,6 +24,7 @@ package com.wolfssl.provider.jce;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -2348,6 +2349,12 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         WKSSecretKey sKeyEntry = null;
         WKSCertificate certEntry = null;
 
+        /* Parse entries into a local map first. They are only committed
+         * into the shared this.entries map after the HMAC integrity check
+         * passes, so a failed or tampered load never exposes unverified
+         * entries to engineGetKey()/engineGetCertificate() callers. */
+        Map<String, Object> loadedEntries = new LinkedHashMap<String, Object>();
+
         log("loading KeyStore from InputStream");
 
         /* Clear any cached KEK entries from previous keystore */
@@ -2431,19 +2438,19 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     case WKS_ENTRY_ID_PRIVATE_KEY:
                         log("loading PrivateKey: " + alias);
                         keyEntry = new WKSPrivateKey(encodedEntry);
-                        entries.put(alias, keyEntry);
+                        loadedEntries.put(alias, keyEntry);
                         break;
 
                     case WKS_ENTRY_ID_SECRET_KEY:
                         log("loading SecretKey: " + alias);
                         sKeyEntry = new WKSSecretKey(encodedEntry);
-                        entries.put(alias, sKeyEntry);
+                        loadedEntries.put(alias, sKeyEntry);
                         break;
 
                     case WKS_ENTRY_ID_CERTIFICATE:
                         log("loading Certificate: " + alias);
                         certEntry = new WKSCertificate(encodedEntry);
-                        entries.put(alias, certEntry);
+                        loadedEntries.put(alias, certEntry);
                         break;
 
                     default:
@@ -2509,6 +2516,11 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                 log("HMAC-SHA512 integrity verification skipped, " +
                     "no password provided");
             }
+
+            /* Commit parsed entries into the shared map, replacing any
+             * previous contents */
+            this.entries.clear();
+            this.entries.putAll(loadedEntries);
 
         } finally {
             if (dis != null) {
