@@ -45,6 +45,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.FileNotFoundException;
 import java.nio.charset.StandardCharsets;
@@ -398,6 +399,62 @@ public class WolfSSLKeyStoreTest {
             PublicKey wolfPub = kf.generatePublic(
                 new X509EncodedKeySpec(certPub.getEncoded()));
             assertEquals("XMSS", wolfPub.getAlgorithm());
+        }
+    }
+
+    /**
+     * A crafted WKS stream with an oversized encoded entry length must be
+     * rejected with an IOException, not trigger an unbounded allocation.
+     * Uses a null password so the HMAC integrity check is skipped.
+     */
+    @Test
+    public void testEngineLoadRejectsOversizedEntry() throws Exception {
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeInt(7);                 /* WKS magic number */
+        dos.writeInt(1);                 /* WKS store version */
+        dos.writeInt(1);                 /* entry count */
+        dos.writeInt(2);                 /* entry type: certificate */
+        dos.writeUTF("evil");            /* alias */
+        dos.writeInt(Integer.MAX_VALUE); /* encoded entry length */
+        dos.flush();
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        try {
+            store.load(new ByteArrayInputStream(bos.toByteArray()), null);
+            fail("oversized encoded entry length should throw IOException");
+        } catch (IOException e) {
+            /* expected, allocation must be bounded before it happens */
+        }
+    }
+
+    /**
+     * A crafted WKS stream with an HMAC length that is not the expected
+     * HMAC-SHA512 size must be rejected with an IOException, not trigger an
+     * unbounded allocation. Uses a null password so the HMAC integrity
+     * check is skipped.
+     */
+    @Test
+    public void testEngineLoadRejectsInvalidHmacLength() throws Exception {
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeInt(7);                 /* WKS magic number */
+        dos.writeInt(1);                 /* WKS store version */
+        dos.writeInt(0);                 /* entry count */
+        dos.writeInt(16);                /* salt length */
+        dos.write(new byte[16]);         /* salt */
+        dos.writeInt(10000);             /* PBKDF2 iterations */
+        dos.writeInt(Integer.MAX_VALUE); /* HMAC length */
+        dos.flush();
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        try {
+            store.load(new ByteArrayInputStream(bos.toByteArray()), null);
+            fail("invalid HMAC length should throw IOException");
+        } catch (IOException e) {
+            /* expected, allocation must be bounded before it happens */
         }
     }
 
