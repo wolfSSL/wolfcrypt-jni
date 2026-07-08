@@ -13,6 +13,7 @@ please reference the appropriate Security Policy or contact fips@wolfssl.com.
 | --- | --- | --- | --- |
 | `wolfjce.wks.iterationCount` | 210,000 | 10,000 | PBKDF2 iteration count |
 | `wolfjce.wks.maxCertChainLength` | 100 | N/A | Max cert chain length |
+| `wolfjce.wks.maxEntrySize` | 10485760 | N/A | Max encoded entry size in bytes |
 | `wolfjce.keystore.kekCacheEnabled` | false | N/A | Enable KEK caching |
 | `wolfjce.keystore.kekCacheTtlSec` | 300 | 1 | Cache TTL in seconds |
 
