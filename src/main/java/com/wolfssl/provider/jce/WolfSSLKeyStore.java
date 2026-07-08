@@ -2416,8 +2416,9 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
                 /* encoded entry length */
                 encodedLen = dis.readInt();
-                if (encodedLen < 0) {
-                    throw new IOException("Invalid encoded length, negative");
+                if (encodedLen <= 0) {
+                    throw new IOException("Invalid encoded entry length: " +
+                        encodedLen);
                 }
 
                 if (encodedLen > WKS_MAX_ENTRY_SIZE) {
@@ -2821,6 +2822,10 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     throw new IOException(
                         "Bad encrypted key length, negative");
                 }
+                if (tmp > WKS_MAX_ENTRY_SIZE) {
+                    throw new IOException("Encrypted key length (" + tmp +
+                        ") is larger than max allowed: " + WKS_MAX_ENTRY_SIZE);
+                }
                 this.encryptedKey = new byte[tmp];
                 dis.readFully(this.encryptedKey);
 
@@ -2847,6 +2852,11 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     if (tmp < 0) {
                         throw new IOException(
                             "Bad encoding length, negative");
+                    }
+                    if (tmp > WKS_MAX_ENTRY_SIZE) {
+                        throw new IOException("Cert encoding length (" + tmp +
+                            ") is larger than max allowed: " +
+                            WKS_MAX_ENTRY_SIZE);
                     }
                     tmpArr = new byte[tmp];
 
@@ -3164,6 +3174,10 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                 if (tmp < 0) {
                     throw new IOException("Bad encoding length, negative");
                 }
+                if (tmp > WKS_MAX_ENTRY_SIZE) {
+                    throw new IOException("Cert encoding length (" + tmp +
+                        ") is larger than max allowed: " + WKS_MAX_ENTRY_SIZE);
+                }
                 tmpArr = new byte[tmp];
 
                 /* encoded cert */
@@ -3438,6 +3452,10 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                 if (tmp < 0) {
                     throw new IOException(
                         "Bad encrypted key length, negative");
+                }
+                if (tmp > WKS_MAX_ENTRY_SIZE) {
+                    throw new IOException("Encrypted key length (" + tmp +
+                        ") is larger than max allowed: " + WKS_MAX_ENTRY_SIZE);
                 }
                 this.encryptedKey = new byte[tmp];
                 dis.readFully(this.encryptedKey);

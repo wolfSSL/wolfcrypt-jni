@@ -502,6 +502,211 @@ public class WolfSSLKeyStoreTest {
             victim.containsAlias("evil"));
     }
 
+    /**
+     * A crafted WKS private key entry whose encrypted key length field is
+     * oversized must be rejected with an IOException. Uses a null
+     * password so the HMAC integrity check is skipped.
+     */
+    @Test
+    public void testEngineLoadRejectsOversizedPrivateKeyField()
+        throws Exception {
+
+        /* Build a WKSPrivateKey entry that is valid up to the encrypted key
+         * length field, which claims Integer.MAX_VALUE bytes. */
+        ByteArrayOutputStream entryBos = new ByteArrayOutputStream();
+        DataOutputStream e = new DataOutputStream(entryBos);
+        e.writeLong(0L);                 /* creationDate */
+        e.writeInt(16);                  /* kdfSalt length */
+        e.write(new byte[16]);           /* kdfSalt */
+        e.writeInt(10000);               /* kdfIterations */
+        e.writeInt(16);                  /* iv length */
+        e.write(new byte[16]);           /* iv */
+        e.writeInt(Integer.MAX_VALUE);   /* encrypted key length */
+        e.flush();
+        byte[] entry = entryBos.toByteArray();
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeInt(7);                 /* WKS magic number */
+        dos.writeInt(1);                 /* WKS store version */
+        dos.writeInt(1);                 /* entry count */
+        dos.writeInt(1);                 /* entry type: private key */
+        dos.writeUTF("evil");            /* alias */
+        dos.writeInt(entry.length);      /* encoded entry length */
+        dos.write(entry);                /* encoded entry */
+        dos.flush();
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        try {
+            store.load(new ByteArrayInputStream(bos.toByteArray()), null);
+            fail("oversized encrypted key length should throw IOException");
+        } catch (IOException ex) {
+            /* expected, allocation must be bounded before it happens */
+        }
+    }
+
+    /**
+     * A crafted WKS secret key entry whose encrypted key length field is
+     * oversized must be rejected with an IOException. Uses a null
+     * password so the HMAC integrity check is skipped.
+     */
+    @Test
+    public void testEngineLoadRejectsOversizedSecretKeyField()
+        throws Exception {
+
+        /* Build a WKSSecretKey entry that is valid up to the encrypted key
+         * length field, which claims Integer.MAX_VALUE bytes. */
+        ByteArrayOutputStream entryBos = new ByteArrayOutputStream();
+        DataOutputStream e = new DataOutputStream(entryBos);
+        e.writeLong(0L);                 /* creationDate */
+        e.writeUTF("AES");               /* key algorithm */
+        e.writeInt(16);                  /* kdfSalt length */
+        e.write(new byte[16]);           /* kdfSalt */
+        e.writeInt(10000);               /* kdfIterations */
+        e.writeInt(16);                  /* iv length */
+        e.write(new byte[16]);           /* iv */
+        e.writeInt(Integer.MAX_VALUE);   /* encrypted key length */
+        e.flush();
+        byte[] entry = entryBos.toByteArray();
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeInt(7);                 /* WKS magic number */
+        dos.writeInt(1);                 /* WKS store version */
+        dos.writeInt(1);                 /* entry count */
+        dos.writeInt(3);                 /* entry type: secret key */
+        dos.writeUTF("evil");            /* alias */
+        dos.writeInt(entry.length);      /* encoded entry length */
+        dos.write(entry);                /* encoded entry */
+        dos.flush();
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        try {
+            store.load(new ByteArrayInputStream(bos.toByteArray()), null);
+            fail("oversized encrypted key length should throw IOException");
+        } catch (IOException ex) {
+            /* expected, allocation must be bounded before it happens */
+        }
+    }
+
+    /**
+     * A crafted WKS private key entry whose certificate chain contains an
+     * oversized cert encoding length must be rejected with an IOException.
+     * Uses a null password so the HMAC integrity check is skipped.
+     */
+    @Test
+    public void testEngineLoadRejectsOversizedChainCert()
+        throws Exception {
+
+        /* Build a WKSPrivateKey entry that is valid up to the first chain
+         * cert encoding length, which claims Integer.MAX_VALUE bytes. */
+        ByteArrayOutputStream entryBos = new ByteArrayOutputStream();
+        DataOutputStream e = new DataOutputStream(entryBos);
+        e.writeLong(0L);                 /* creationDate */
+        e.writeInt(16);                  /* kdfSalt length */
+        e.write(new byte[16]);           /* kdfSalt */
+        e.writeInt(10000);               /* kdfIterations */
+        e.writeInt(16);                  /* iv length */
+        e.write(new byte[16]);           /* iv */
+        e.writeInt(0);                   /* encrypted key length (empty) */
+        e.writeInt(1);                   /* chain count */
+        e.writeUTF("X.509");             /* chain cert type */
+        e.writeInt(Integer.MAX_VALUE);   /* chain cert encoding length */
+        e.flush();
+        byte[] entry = entryBos.toByteArray();
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeInt(7);                 /* WKS magic number */
+        dos.writeInt(1);                 /* WKS store version */
+        dos.writeInt(1);                 /* entry count */
+        dos.writeInt(1);                 /* entry type: private key */
+        dos.writeUTF("evil");            /* alias */
+        dos.writeInt(entry.length);      /* encoded entry length */
+        dos.write(entry);                /* encoded entry */
+        dos.flush();
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        try {
+            store.load(new ByteArrayInputStream(bos.toByteArray()), null);
+            fail("oversized chain cert length should throw IOException");
+        } catch (IOException ex) {
+            /* expected, allocation must be bounded before it happens */
+        }
+    }
+
+    /**
+     * A crafted WKS certificate entry whose DER encoding length is oversized
+     * must be rejected with an IOException. Uses a null password so the
+     * HMAC integrity check is skipped.
+     */
+    @Test
+    public void testEngineLoadRejectsOversizedCertificate()
+        throws Exception {
+
+        /* Build a WKSCertificate entry that is valid up to the encoding
+         * length field, which claims Integer.MAX_VALUE bytes. */
+        ByteArrayOutputStream entryBos = new ByteArrayOutputStream();
+        DataOutputStream e = new DataOutputStream(entryBos);
+        e.writeLong(0L);                 /* creationDate */
+        e.writeUTF("X.509");             /* certificate type */
+        e.writeInt(Integer.MAX_VALUE);   /* cert encoding length */
+        e.flush();
+        byte[] entry = entryBos.toByteArray();
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeInt(7);                 /* WKS magic number */
+        dos.writeInt(1);                 /* WKS store version */
+        dos.writeInt(1);                 /* entry count */
+        dos.writeInt(2);                 /* entry type: certificate */
+        dos.writeUTF("evil");            /* alias */
+        dos.writeInt(entry.length);      /* encoded entry length */
+        dos.write(entry);                /* encoded entry */
+        dos.flush();
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        try {
+            store.load(new ByteArrayInputStream(bos.toByteArray()), null);
+            fail("oversized cert encoding length should throw IOException");
+        } catch (IOException ex) {
+            /* expected, allocation must be bounded before it happens */
+        }
+    }
+
+    /**
+     * A crafted WKS entry with a zero-length encoded body must be rejected
+     * with an IOException, not an unchecked IllegalArgumentException from the
+     * per-entry decoder. engineLoad() declares only checked exceptions, so a
+     * malformed entry must fail predictably. Uses a null password so the
+     * HMAC integrity check is skipped, matching the zero-credential scenario.
+     */
+    @Test
+    public void testEngineLoadRejectsZeroLengthEntry() throws Exception {
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeInt(7);                 /* WKS magic number */
+        dos.writeInt(1);                 /* WKS store version */
+        dos.writeInt(1);                 /* entry count */
+        dos.writeInt(1);                 /* entry type: private key */
+        dos.writeUTF("evil");            /* alias */
+        dos.writeInt(0);                 /* encoded entry length */
+        /* trailing bytes so the entry length is not at end of stream, which
+         * is what lets the empty entry reach the per-entry decoder */
+        dos.writeInt(16);
+        dos.write(new byte[16]);
+        dos.flush();
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        try {
+            store.load(new ByteArrayInputStream(bos.toByteArray()), null);
+            fail("zero-length entry should throw IOException");
+        } catch (IOException ex) {
+            /* expected, malformed input fails with a checked exception */
+        }
+    }
+
 
     /**
      * Create PrivateKey and Certificate objects based on files.
