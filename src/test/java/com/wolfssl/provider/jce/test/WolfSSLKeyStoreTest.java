@@ -458,6 +458,50 @@ public class WolfSSLKeyStoreTest {
         }
     }
 
+    /**
+     * A WKS load that fails its HMAC integrity check must not expose the
+     * parsed entries. A KeyStore already initialized by a prior successful
+     * load keeps initialized == true, so getCertificate() stays reachable
+     * after a failed second load. Entries from the failed load must not be
+     * visible.
+     */
+    @Test
+    public void testEngineLoadFailureDoesNotExposeEntries()
+        throws Exception {
+
+        Assume.assumeTrue("test certificate not available",
+            serverCertRsa != null);
+
+        char[] pass = storePass.toCharArray();
+
+        /* Build a valid WKS blob, then tamper the trailing HMAC so the
+         * integrity check fails while the entries still parse. */
+        KeyStore src = KeyStore.getInstance("WKS", "wolfJCE");
+        src.load(null, pass);
+        src.setCertificateEntry("evil", serverCertRsa);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        src.store(bos, pass);
+        byte[] tampered = bos.toByteArray();
+        tampered[tampered.length - 1] ^= 0x01;
+
+        /* Initialize the victim with an empty load so it stays usable
+         * after the failed load below. */
+        KeyStore victim = KeyStore.getInstance("WKS", "wolfJCE");
+        victim.load(null, pass);
+
+        try {
+            victim.load(new ByteArrayInputStream(tampered), pass);
+            fail("tampered WKS should fail the integrity check");
+        } catch (IOException e) {
+            /* expected */
+        }
+
+        assertNull("failed load must not expose an entry",
+            victim.getCertificate("evil"));
+        assertFalse("failed load must not expose an alias",
+            victim.containsAlias("evil"));
+    }
+
 
     /**
      * Create PrivateKey and Certificate objects based on files.
