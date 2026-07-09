@@ -24,6 +24,7 @@ package com.wolfssl.provider.jce;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -225,6 +226,11 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
     private static final int WKS_DEFAULT_MAX_CHAIN_COUNT = 100;
     private static final int WKS_MAX_CHAIN_COUNT;
 
+    /* Max encoded entry size in bytes, configurable via
+     * 'wolfjce.wks.maxEntrySize' Security property */
+    private static final int WKS_DEFAULT_MAX_ENTRY_SIZE = 10 * 1024 * 1024;
+    private static final int WKS_MAX_ENTRY_SIZE;
+
     /* WKS magic number, used when storing KeyStore to OutputStream */
     private static final int WKS_MAGIC_NUMBER = 7;
 
@@ -342,8 +348,10 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
     static {
         int iCount = WKS_PBKDF2_DEFAULT_ITERATIONS;
         int cLength = WKS_DEFAULT_MAX_CHAIN_COUNT;
+        int eLength = WKS_DEFAULT_MAX_ENTRY_SIZE;
         String iterations = null;
         String chainCount = null;
+        String entrySize = null;
 
         /* Set PBKDF2 iteration count, using default or one set by
          * user in 'wolfjce.wks.iterationCount' Security property in
@@ -390,6 +398,27 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
         log("setting max cert chain length: " + cLength);
         WKS_MAX_CHAIN_COUNT = cLength;
+
+        /* Set max encoded entry size limit, using default or one set with
+         * `wolfjce.wks.maxEntrySize` Security property */
+        entrySize = Security.getProperty("wolfjce.wks.maxEntrySize");
+        if (entrySize != null && !entrySize.isEmpty()) {
+            try {
+                eLength = Integer.parseInt(entrySize);
+                if (eLength <= 0) {
+                    log("wolfjce.wks.maxEntrySize (" + eLength +
+                        ") lower than 0, using default");
+                    eLength = WKS_DEFAULT_MAX_ENTRY_SIZE;
+                }
+            } catch (NumberFormatException e) {
+                /* Error parsing property, fall back to default */
+                log("error parsing wolfjce.wks.maxEntrySize property, " +
+                    "using default instead");
+            }
+        }
+
+        log("setting max entry size: " + eLength);
+        WKS_MAX_ENTRY_SIZE = eLength;
     }
 
     /**
@@ -2533,6 +2562,12 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         WKSSecretKey sKeyEntry = null;
         WKSCertificate certEntry = null;
 
+        /* Parse entries into a local map first. They are only committed
+         * into the shared this.entries map after the HMAC integrity check
+         * passes, so a failed or tampered load never exposes unverified
+         * entries to engineGetKey()/engineGetCertificate() callers. */
+        Map<String, Object> loadedEntries = new LinkedHashMap<String, Object>();
+
         log("loading KeyStore from InputStream");
 
         /* Clear any cached KEK entries from previous keystore */
@@ -2594,8 +2629,15 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
                 /* encoded entry length */
                 encodedLen = dis.readInt();
-                if (encodedLen < 0) {
-                    throw new IOException("Invalid encoded length, negative");
+                if (encodedLen <= 0) {
+                    throw new IOException("Invalid encoded entry length: " +
+                        encodedLen);
+                }
+
+                if (encodedLen > WKS_MAX_ENTRY_SIZE) {
+                    throw new IOException("Encoded entry length (" +
+                        encodedLen + ") is larger than max allowed: " +
+                        WKS_MAX_ENTRY_SIZE);
                 }
 
                 /* encoded entry */
@@ -2610,19 +2652,19 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     case WKS_ENTRY_ID_PRIVATE_KEY:
                         log("loading PrivateKey: " + alias);
                         keyEntry = new WKSPrivateKey(encodedEntry);
-                        entries.put(alias, keyEntry);
+                        loadedEntries.put(alias, keyEntry);
                         break;
 
                     case WKS_ENTRY_ID_SECRET_KEY:
                         log("loading SecretKey: " + alias);
                         sKeyEntry = new WKSSecretKey(encodedEntry);
-                        entries.put(alias, sKeyEntry);
+                        loadedEntries.put(alias, sKeyEntry);
                         break;
 
                     case WKS_ENTRY_ID_CERTIFICATE:
                         log("loading Certificate: " + alias);
                         certEntry = new WKSCertificate(encodedEntry);
-                        entries.put(alias, certEntry);
+                        loadedEntries.put(alias, certEntry);
                         break;
 
                     default:
@@ -2657,8 +2699,10 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
             /* HMAC len and HMAC */
             hmacLen = dis.readInt();
-            if (hmacLen < 0) {
-                throw new IOException("Invalid HMAC length, negative");
+            if (hmacLen != WKS_HMAC_KEY_LENGTH) {
+                throw new IOException(
+                    "HMAC length (" + hmacLen + ") is different than " +
+                    "expected (" + WKS_HMAC_KEY_LENGTH + ")");
             }
             hmac = new byte[hmacLen];
             hmacLen = dis.read(hmac);
@@ -2686,6 +2730,11 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                 log("HMAC-SHA512 integrity verification skipped, " +
                     "no password provided");
             }
+
+            /* Commit parsed entries into the shared map, replacing any
+             * previous contents */
+            this.entries.clear();
+            this.entries.putAll(loadedEntries);
 
         } finally {
             if (dis != null) {
@@ -2986,6 +3035,10 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     throw new IOException(
                         "Bad encrypted key length, negative");
                 }
+                if (tmp > WKS_MAX_ENTRY_SIZE) {
+                    throw new IOException("Encrypted key length (" + tmp +
+                        ") is larger than max allowed: " + WKS_MAX_ENTRY_SIZE);
+                }
                 this.encryptedKey = new byte[tmp];
                 dis.readFully(this.encryptedKey);
 
@@ -3012,6 +3065,11 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     if (tmp < 0) {
                         throw new IOException(
                             "Bad encoding length, negative");
+                    }
+                    if (tmp > WKS_MAX_ENTRY_SIZE) {
+                        throw new IOException("Cert encoding length (" + tmp +
+                            ") is larger than max allowed: " +
+                            WKS_MAX_ENTRY_SIZE);
                     }
                     tmpArr = new byte[tmp];
 
@@ -3329,6 +3387,10 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                 if (tmp < 0) {
                     throw new IOException("Bad encoding length, negative");
                 }
+                if (tmp > WKS_MAX_ENTRY_SIZE) {
+                    throw new IOException("Cert encoding length (" + tmp +
+                        ") is larger than max allowed: " + WKS_MAX_ENTRY_SIZE);
+                }
                 tmpArr = new byte[tmp];
 
                 /* encoded cert */
@@ -3603,6 +3665,10 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                 if (tmp < 0) {
                     throw new IOException(
                         "Bad encrypted key length, negative");
+                }
+                if (tmp > WKS_MAX_ENTRY_SIZE) {
+                    throw new IOException("Encrypted key length (" + tmp +
+                        ") is larger than max allowed: " + WKS_MAX_ENTRY_SIZE);
                 }
                 this.encryptedKey = new byte[tmp];
                 dis.readFully(this.encryptedKey);
