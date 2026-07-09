@@ -535,6 +535,25 @@ public class AesTest {
             /* expected */
         }
 
+        /* Test unPadPKCS7() with negative block size */
+        try {
+            input = new byte[10];
+            unpadded = Aes.unPadPKCS7(input, -1);
+            fail("negative block size should throw WolfCryptException");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* Test unPadPKCS7() with length not a multiple of block size.
+         * PKCS#7 padded data must end on a block boundary. */
+        try {
+            input = Util.h2b("000102030405060708090A0B0C0D0E0F01");
+            unpadded = Aes.unPadPKCS7(input, Aes.BLOCK_SIZE);
+            fail("non block size multiple should throw WolfCryptException");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
         /* Test unPadPKCS7() with inconsistent pad value */
         try {
             padded = Util.h2b("00112233445566778899AABBCC020303");

@@ -44,7 +44,8 @@ JavaVM* g_vm = NULL;
 extern int wolfSSL_CertManager_init(void);
 extern void wolfSSL_CertManager_cleanup(void);
 
-/* Forward declaration for FIPS callback cleanup */
+/* Forward declarations for FIPS callback mutex init/cleanup */
+extern int wolfCrypt_JNI_FipsCb_init(void);
 extern void wolfCrypt_JNI_FipsCb_cleanup(JNIEnv* env);
 
 /* called when native library is loaded */
@@ -58,6 +59,12 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
     /* Initialize WolfSSLCertManager global mutex for thread-safe callback
      * handling. Done here so it is before any CertManager ops happen. */
     if (wolfSSL_CertManager_init() != 0) {
+        return JNI_ERR;
+    }
+
+    /* Initialize FIPS callback mutex for thread-safe error callback handling.
+     * No-op in non-FIPS builds. */
+    if (wolfCrypt_JNI_FipsCb_init() != 0) {
         return JNI_ERR;
     }
 

@@ -2187,17 +2187,75 @@ public class WolfCryptMacTest {
         /* 128 bits == 16 bytes */
         GCMParameterSpec gmacSpec = new GCMParameterSpec(128, iv);
 
-        /* First computation */
+        /* reset() before doFinal() must discard accumulated data without
+         * consuming IV, so tag computed after reset matches the known vector */
         mac.init(keyspec, gmacSpec);
-        mac.update(authIn);
-        byte[] computedTag1 = mac.doFinal();
-        assertArrayEquals(expectedTag, computedTag1);
-
-        /* Reset and compute again - should get same result */
+        mac.update(new byte[] { (byte)0xAA, (byte)0xBB, (byte)0xCC });
         mac.reset();
         mac.update(authIn);
-        byte[] computedTag2 = mac.doFinal();
-        assertArrayEquals(expectedTag, computedTag2);
+        byte[] computedTag = mac.doFinal();
+        assertArrayEquals(expectedTag, computedTag);
+    }
+
+    @Test
+    public void testAesGmacRejectsIvReuse()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException, InvalidAlgorithmParameterException {
+
+        byte[] key = new byte[16];
+        byte[] iv = new byte[12];
+        byte[] authIn = "authenticated data".getBytes();
+
+        if (!enabledAlgos.contains("AESGMAC")) {
+            return;
+        }
+
+        for (int i = 0; i < key.length; i++) {
+            key[i] = (byte)i;
+        }
+        for (int i = 0; i < iv.length; i++) {
+            iv[i] = (byte)(0x20 + i);
+        }
+
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+        GCMParameterSpec gmacSpec = new GCMParameterSpec(128, iv);
+
+        /* A second GMAC over same key and IV without re-init reuses the nonce
+         * and must be rejected */
+        Mac mac = Mac.getInstance("AESGMAC", "wolfJCE");
+        mac.init(keyspec, gmacSpec);
+        mac.update(authIn);
+        mac.doFinal();
+
+        try {
+            mac.update(authIn);
+            mac.doFinal();
+            fail("GMAC must reject a second MAC with the same key and IV");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        /* The same reuse via reset() after doFinal() must also be rejected. */
+        Mac mac2 = Mac.getInstance("AESGMAC", "wolfJCE");
+        mac2.init(keyspec, gmacSpec);
+        mac2.update(authIn);
+        mac2.doFinal();
+        mac2.reset();
+
+        try {
+            mac2.update(authIn);
+            mac2.doFinal();
+            fail("GMAC must reject reuse after reset()");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        /* Re-initializing with a fresh IV must succeed. */
+        byte[] iv2 = iv.clone();
+        iv2[0] ^= (byte)0xFF;
+        mac.init(keyspec, new GCMParameterSpec(128, iv2));
+        mac.update(authIn);
+        assertNotNull(mac.doFinal());
     }
 
     @Test

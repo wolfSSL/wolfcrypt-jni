@@ -34,6 +34,8 @@ import java.util.HashMap;
 import java.util.Random;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
@@ -5013,6 +5015,68 @@ public class WolfCryptCipherTest {
         }
     }
 
+    /**
+     * Test that RSA PKCS#1 v1.5 unwrap reports every failure with the same
+     * exception type and message.
+     */
+    @Test
+    public void testRSAUnwrapFailuresAreNotDistinguishable()
+        throws Exception {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        byte[] raw = new byte[16];
+        secureRandom.nextBytes(raw);
+        SecretKeySpec key = new SecretKeySpec(raw, "AES");
+
+        Cipher wrap = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        wrap.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrapped = wrap.wrap(key);
+        int modSize = wrapped.length;
+
+        /* Confirm a valid wrapped key still unwraps. */
+        Cipher ok = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        ok.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        Key unwrapped = ok.unwrap(wrapped, "AES", Cipher.SECRET_KEY);
+        assertArrayEquals(raw, unwrapped.getEncoded());
+
+        /* Distinct, deterministic failure inputs: an over-length input that
+         * fails structurally, a modulus-sized input that fails the padding
+         * check, and an under-length input. */
+        byte[] over = new byte[modSize + 1];
+        byte[] padFail = new byte[modSize];
+        byte[] under = new byte[modSize - 1];
+
+        /* Every failure must surface the identical exception type and msg */
+        Set<String> outcomes = new HashSet<String>();
+        outcomes.add(rsaUnwrapFailure(over));
+        outcomes.add(rsaUnwrapFailure(padFail));
+        outcomes.add(rsaUnwrapFailure(under));
+
+        assertEquals("RSA unwrap failures must not be distinguishable: " +
+            outcomes, 1, outcomes.size());
+    }
+
+    private String rsaUnwrapFailure(byte[] wrapped) throws Exception {
+
+        Cipher c = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+        c.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+
+        try {
+            c.unwrap(wrapped, "AES", Cipher.SECRET_KEY);
+            fail("Malformed wrapped key must not unwrap successfully");
+
+            return "SUCCESS";
+
+        } catch (InvalidKeyException e) {
+            return e.getClass().getName() + ":" + e.getMessage();
+        }
+    }
+
     @Test
     public void testRSAWrapUnwrapResetsState()
         throws NoSuchProviderException, NoSuchAlgorithmException,
@@ -6196,8 +6260,11 @@ public class WolfCryptCipherTest {
         assertEquals("GCM should include auth tag",
                     plaintext.length + 16, bytesWritten);
 
-        /* Compare with byte array result */
-        byte[] expected = cipher.doFinal(plaintext);
+        /* Compare with byte array result. Use separate Cipher instance, since
+         * GCM forbids reusing same key/IV for second encryption. */
+        Cipher cipher2 = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        cipher2.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
+        byte[] expected = cipher2.doFinal(plaintext);
         outputBuf.flip();
         byte[] result = new byte[bytesWritten];
         outputBuf.get(result);
@@ -6835,6 +6902,9 @@ public class WolfCryptCipherTest {
         int[] tagLengths = {96, 104, 112, 120, 128};
 
         for (int tagLen : tagLengths) {
+            /* Use a fresh IV for each encryption, GCM forbids reusing same
+             * key+IV pair for more than one encryption. */
+            secureRandom.nextBytes(iv);
             GCMParameterSpec gcmSpec = new GCMParameterSpec(tagLen, iv);
             cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
             byte[] ciphertext = cipher.doFinal(plaintext);
@@ -7306,8 +7376,12 @@ public class WolfCryptCipherTest {
         assertArrayEquals("Decrypted text should match original",
             plaintext, decrypted);
 
-        /* Verify cipher returns compatible parameters */
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
+        /* Verify cipher returns compatible parameters. Use a fresh IV, GCM
+         * forbids reusing same key+IV pair for a second encryption */
+        byte[] iv2 = new byte[12];
+        new SecureRandom().nextBytes(iv2);
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec,
+            new GCMParameterSpec(128, iv2));
         AlgorithmParameters cipherParams = cipher.getParameters();
         assertNotNull("Cipher should return parameters", cipherParams);
 
@@ -7318,6 +7392,123 @@ public class WolfCryptCipherTest {
 
         assertArrayEquals("Should decrypt correctly with cipher parameters",
             plaintext, decrypted2);
+    }
+
+    /**
+     * Test that AES-GCM refuses to reuse the same key and IV for more than
+     * one encryption.
+     */
+    @Test
+    public void testGCMEncryptRejectsNonceReuse() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[16];
+        byte[] iv = new byte[12];
+        byte[] pt;
+
+        secureRandom.nextBytes(keyBytes);
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        secureRandom.nextBytes(iv);
+        pt = "GCM nonce reuse test".getBytes();
+
+        /* Encrypting a second time with the same key and IV, without
+         * re-initializing, must be rejected. */
+        Cipher c = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        c.doFinal(pt);
+        try {
+            c.doFinal(pt);
+            fail("Second GCM encryption with same key and IV should throw");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        /* Re-initializing with a fresh IV must succeed. */
+        byte[] iv2 = new byte[12];
+        secureRandom.nextBytes(iv2);
+        c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv2));
+        assertNotNull(c.doFinal(pt));
+
+        /* Decryption may reuse the same key and IV without restriction. */
+        Cipher enc = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        enc.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        byte[] ct = enc.doFinal(pt);
+        Cipher dec = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        assertArrayEquals(pt, dec.doFinal(ct));
+        assertArrayEquals(pt, dec.doFinal(ct));
+    }
+
+    /**
+     * Test that AES-CBC/PKCS5 decryption reports every padding failure with
+     * the same generic BadPaddingException.
+     */
+    @Test
+    public void testCBCPaddingFailureMessagesConsistent()
+        throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[16];
+        byte[] iv = new byte[16];
+        SecretKeySpec key;
+        IvParameterSpec ivSpec;
+
+        secureRandom.nextBytes(keyBytes);
+        key = new SecretKeySpec(keyBytes, "AES");
+        secureRandom.nextBytes(iv);
+        ivSpec = new IvParameterSpec(iv);
+
+        /* A 16-byte plaintext produces a full 0x10 padding block, so second
+         * ciphertext block decrypts to the padding. Flipping bytes of
+         * the first ciphertext block deterministically corrupts padding */
+        byte[] pt = new byte[16];
+        secureRandom.nextBytes(pt);
+
+        Cipher enc = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        enc.init(Cipher.ENCRYPT_MODE, key, ivSpec);
+        byte[] ct = enc.doFinal(pt);
+        assertEquals(32, ct.length);
+
+        /* Corrupt a non-terminal padding byte, so the pad bytes are
+         * inconsistent while the pad length stays in range. */
+        byte[] bad1 = ct.clone();
+        bad1[0] ^= (byte)0xFF;
+
+        /* Corrupt the pad-length byte so the pad value exceeds block size */
+        byte[] bad2 = ct.clone();
+        bad2[15] ^= (byte)0x30;
+
+        String msg1 = decryptExpectingBadPadding(key, ivSpec, bad1);
+        String msg2 = decryptExpectingBadPadding(key, ivSpec, bad2);
+
+        /* Both failures must throw an identical message. */
+        assertEquals("Padding failures must not be distinguishable",
+            msg1, msg2);
+
+        /* Valid ciphertext must still decrypt correctly. */
+        Cipher dec = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, key, ivSpec);
+        assertArrayEquals(pt, dec.doFinal(ct));
+    }
+
+    private String decryptExpectingBadPadding(SecretKeySpec key,
+            IvParameterSpec ivSpec, byte[] ct) throws Exception {
+
+        Cipher dec = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, key, ivSpec);
+        try {
+            dec.doFinal(ct);
+            fail("Corrupted CBC padding must throw BadPaddingException");
+            return null;
+        } catch (BadPaddingException e) {
+            return e.getMessage();
+        }
     }
 
     /**
