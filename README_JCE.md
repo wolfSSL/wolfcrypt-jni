@@ -36,6 +36,7 @@ file for JCE provider customization:
 | --- | --- | --- | --- |
 | wolfjce.wks.iterationCount | 210,000 | Numeric | PBKDF2 iteration count (10,000 minimum) |
 | wolfjce.wks.maxCertChainLength | 100 | Integer | Max cert chain length |
+| wolfjce.wks.maxEntrySize | 10485760 | Integer | Max encoded entry size in bytes when loading WKS (10 MB default) |
 | wolfjce.keystore.kekCacheEnabled | false | true | Enable KEK caching in WKS KeyStore for performance |
 | wolfjce.keystore.kekCacheTtlSec | 300 | Integer | KEK cache TTL in seconds (1 second minimum) |
 | wolfjce.mapJKStoWKS | UNSET | true | Register fake JKS KeyStore service mapped to WKS |
