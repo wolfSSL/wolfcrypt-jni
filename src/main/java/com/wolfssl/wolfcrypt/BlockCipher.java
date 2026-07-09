@@ -354,41 +354,45 @@ public abstract class BlockCipher extends NativeStruct {
      */
     public static synchronized byte[] unPadPKCS7(byte[] in, int blockSize) {
 
-        byte padValue = 0;
+        int len = 0;
+        int count = 0;
+        int position = 0;
+        int failed = 0;
         byte[] unpadded = null;
-        boolean valid = true;
 
         if (in == null || in.length == 0) {
-            throw new WolfCryptException(
-                "Input array is null or zero length");
+            throw new WolfCryptException("Input array is null or zero length");
         }
 
-        if (blockSize == 0) {
-            throw new WolfCryptException("Block size is 0");
+        if (blockSize <= 0) {
+            throw new WolfCryptException("Block size must be positive");
         }
 
-        padValue = in[in.length - 1];
-
-        /* verify pad value is less than or equal to block size */
-        if ((padValue & 0xff) > blockSize) {
-            throw new WolfCryptException(
-                "Invalid pad value, larger than block size");
+        if (in.length < blockSize || (in.length % blockSize) != 0) {
+            throw new WolfCryptException("Invalid PKCS#7 padding");
         }
 
-        /* verify pad bytes are consistent */
-        for (int i = in.length; i > in.length - (padValue & 0xff); i--) {
-            if (in[i - 1] != padValue) {
-                valid = false;
-            }
+        len = in.length;
+        count = in[len - 1] & 0xff;
+
+        /* Validate PKCS#7 padding in constant time */
+        position = blockSize - count;
+
+        /* pad value must be in the range [1, blockSize] */
+        failed = ((count - 1) | (blockSize - count)) >> 31;
+
+        /* each of the final 'count' bytes must equal count */
+        for (int i = 0; i < blockSize; i++) {
+            int b = in[len - blockSize + i] & 0xff;
+            failed |= (b ^ count) & ~((i - position) >> 31);
         }
 
-        unpadded = new byte[in.length - (padValue & 0xff)];
-        System.arraycopy(in, 0, unpadded, 0, in.length - (padValue & 0xff));
-
-        if (!valid) {
-            throw new WolfCryptException(
-                "Invalid PKCS#7 padding, pad bytes not consistent");
+        if (failed != 0) {
+            throw new WolfCryptException("Invalid PKCS#7 padding");
         }
+
+        unpadded = new byte[len - count];
+        System.arraycopy(in, 0, unpadded, 0, len - count);
 
         return unpadded;
     }

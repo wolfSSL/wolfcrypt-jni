@@ -60,6 +60,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SlhDsaTest.class,
     WolfObjectTest.class,
     WolfSSLCertManagerTest.class,
+    WolfSSLCertManagerVerifyCallbackTest.class,
     WolfSSLCertManagerOCSPTest.class,
     WolfSSLX509StoreCtxTest.class,
     WolfCryptTest.class

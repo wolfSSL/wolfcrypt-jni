@@ -39,6 +39,7 @@ import javax.crypto.spec.PSource;
 import javax.crypto.spec.SecretKeySpec;
 
 import java.security.SecureRandom;
+import java.security.MessageDigest;
 import java.security.KeyFactory;
 import java.security.spec.MGF1ParameterSpec;
 import java.security.AlgorithmParameters;
@@ -150,6 +151,11 @@ public class WolfCryptCipher extends CipherSpi {
 
     /* AAD data for AES-GCM, populated via engineUpdateAAD() */
     private byte[] aadData = null;
+
+    /* Last (key, IV) used for a completed AES-GCM encryption, tracked to
+     * reject GCM nonce reuse. */
+    private byte[] lastGcmEncryptKey = null;
+    private byte[] lastGcmEncryptIv = null;
 
     /* Has update/final been called yet, gates setting of AAD for GCM */
     private boolean operationStarted = false;
@@ -1389,9 +1395,41 @@ public class WolfCryptCipher extends CipherSpi {
             case WC_AES:
                 if (cipherMode == CipherMode.WC_GCM) {
                     if (this.direction == OpMode.WC_ENCRYPT) {
+
+                        byte[] keyEnc;
+                        if (this.storedKey == null) {
+                            keyEnc = null;
+                        } else {
+                            keyEnc = this.storedKey.getEncoded();
+                        }
+
+                        /* Prevent reusing the same key and IV for GCM
+                         * encryption to protect against catastrophic security
+                         * degradation. */
+                        if (this.lastGcmEncryptIv != null &&
+                            MessageDigest.isEqual(
+                                this.lastGcmEncryptIv, this.iv) &&
+                            MessageDigest.isEqual(
+                                this.lastGcmEncryptKey, keyEnc)) {
+                            zeroArray(keyEnc);
+                            throw new IllegalStateException(
+                                "Cannot reuse the same key and IV for " +
+                                "AES-GCM encryption, re-initialize with a " +
+                                "fresh IV");
+                        }
+
                         byte[] tag = new byte[this.gcmTagLen];
                         tmpOut = this.aesGcm.encrypt(tmpIn, this.iv, tag,
                                     this.aadData);
+
+                        /* Record this (key, IV) as used for GCM encryption */
+                        zeroArray(this.lastGcmEncryptKey);
+                        this.lastGcmEncryptKey = keyEnc;
+                        if (this.iv == null) {
+                            this.lastGcmEncryptIv = null;
+                        } else {
+                            this.lastGcmEncryptIv = this.iv.clone();
+                        }
 
                         /* Concatenate auth tag to end of ciphertext */
                         byte[] totalOut = new byte[tmpOut.length + tag.length];
@@ -1498,7 +1536,11 @@ public class WolfCryptCipher extends CipherSpi {
                         cipherMode != CipherMode.WC_CTR &&
                         cipherMode != CipherMode.WC_CTS &&
                         cipherMode != CipherMode.WC_OFB) {
-                        tmpOut = Aes.unPadPKCS7(tmpOut, Aes.BLOCK_SIZE);
+                        try {
+                            tmpOut = Aes.unPadPKCS7(tmpOut, Aes.BLOCK_SIZE);
+                        } catch (WolfCryptException e) {
+                            throw new BadPaddingException("Decryption error");
+                        }
                     }
                 }
 
@@ -1514,7 +1556,11 @@ public class WolfCryptCipher extends CipherSpi {
                 if (tmpOut != null && tmpOut.length > 0) {
                     if (this.direction == OpMode.WC_DECRYPT &&
                         this.paddingType == PaddingType.WC_PKCS5) {
-                        tmpOut = Des3.unPadPKCS7(tmpOut, Des3.BLOCK_SIZE);
+                        try {
+                            tmpOut = Des3.unPadPKCS7(tmpOut, Des3.BLOCK_SIZE);
+                        } catch (WolfCryptException e) {
+                            throw new BadPaddingException("Decryption error");
+                        }
                     }
                 }
 
@@ -1950,13 +1996,8 @@ public class WolfCryptCipher extends CipherSpi {
         try {
             unwrappedKey = wolfCryptFinal(wrappedKey, 0, wrappedKey.length);
 
-        } catch (BadPaddingException e) {
-            throw new InvalidKeyException("Failed to unwrap key: " +
-                e.getMessage(), e);
-
-        } catch (IllegalBlockSizeException e) {
-            throw new InvalidKeyException("Failed to unwrap key: " +
-                e.getMessage(), e);
+        } catch (BadPaddingException | IllegalBlockSizeException e) {
+            throw new InvalidKeyException("Failed to unwrap key");
         }
 
         switch (wrappedKeyType) {
@@ -2082,6 +2123,8 @@ public class WolfCryptCipher extends CipherSpi {
             }
 
             zeroArray(this.iv);
+            zeroArray(this.lastGcmEncryptKey);
+            zeroArray(this.lastGcmEncryptIv);
 
             this.storedKey = null;
             this.storedSpec = null;

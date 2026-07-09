@@ -166,10 +166,25 @@ public class WolfCryptMac extends MacSpi {
         }
     }
 
+    /**
+     * Reject AES-GMAC operations that would reuse a key and IV. The IV is
+     * cleared after each GMAC tag is produced, so a further update() or
+     * doFinal() without re-initializing with a fresh IV is refused.
+     */
+    private void requireGmacIv() {
+
+        if ((macType == MacType.WC_AES_GMAC) && (gmacIv == null)) {
+            throw new IllegalStateException(
+                "AES-GMAC requires re-init with fresh IV before each MAC op");
+        }
+    }
+
     @Override
     protected byte[] engineDoFinal() {
 
         byte[] out = null;
+
+        requireGmacIv();
 
         if (macType == MacType.WC_AES_CMAC) {
             out = this.aesCmac.doFinal();
@@ -177,8 +192,10 @@ public class WolfCryptMac extends MacSpi {
             /* Compute GMAC using accumulated auth data */
             byte[] authData = gmacAuthData.toByteArray();
             out = this.aesGmac.update(gmacIv, authData, gmacTagLen);
-            /* Reset for next operation */
+
+            /* Clear IV and buffered data */
             gmacAuthData.reset();
+            this.gmacIv = null;
         } else {
             out = this.hmac.doFinal();
         }
@@ -258,6 +275,9 @@ public class WolfCryptMac extends MacSpi {
 
     @Override
     protected void engineUpdate(byte input) {
+
+        requireGmacIv();
+
         if (macType == MacType.WC_AES_CMAC) {
             this.aesCmac.update(input);
         } else if (macType == MacType.WC_AES_GMAC) {
@@ -272,6 +292,9 @@ public class WolfCryptMac extends MacSpi {
 
     @Override
     protected void engineUpdate(byte[] input, int offset, int len) {
+
+        requireGmacIv();
+
         if (macType == MacType.WC_AES_CMAC) {
             this.aesCmac.update(input, offset, len);
         } else if (macType == MacType.WC_AES_GMAC) {

@@ -41,6 +41,7 @@ import java.util.Set;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfSSLCertManager;
 import com.wolfssl.wolfcrypt.WolfCryptException;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 
 import java.security.cert.TrustAnchor;
 import javax.security.auth.x500.X500Principal;
@@ -329,6 +330,13 @@ public class WolfCryptPKIXRevocationChecker extends PKIXRevocationChecker {
                 "Failed to encode certificate", e);
 
         } catch (WolfCryptException e) {
+            /* A definitive OCSP "revoked" status must always be a hard fail,
+             * with BasicReason.REVOKED. Other codes SOFT_FAIL may suppress. */
+            if (e.getCode() == WolfCryptError.OCSP_CERT_REVOKED.getCode()) {
+                throw new CertPathValidatorException(
+                    "Certificate revoked (OCSP): " + e.getMessage(), e,
+                    null, -1, BasicReason.REVOKED);
+            }
             throw new CertPathValidatorException(
                 "OCSP check failed: " + e.getMessage(), e,
                 null, -1, BasicReason.UNDETERMINED_REVOCATION_STATUS);
@@ -509,6 +517,11 @@ public class WolfCryptPKIXRevocationChecker extends PKIXRevocationChecker {
      */
     private void handleException(CertPathValidatorException e)
         throws CertPathValidatorException {
+
+        /* A confirmed revoked status is always a hard failure */
+        if (e.getReason() == BasicReason.REVOKED) {
+            throw e;
+        }
 
         if (options.contains(Option.SOFT_FAIL)) {
             softFailExceptions.add(e);

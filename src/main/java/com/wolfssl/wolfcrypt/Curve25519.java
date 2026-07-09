@@ -58,8 +58,8 @@ public class Curve25519 extends NativeStruct {
 
                 synchronized (pointerLock) {
                     wc_curve25519_free();
+                    super.releaseNativeStruct();
                 }
-                super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }
         }
