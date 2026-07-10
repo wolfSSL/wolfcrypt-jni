@@ -189,36 +189,6 @@ public class Dh extends NativeStruct {
      *         releaseNativeStruct() has been called and object has been
      *         released.
      */
-    /**
-     * Validate DH public key value against stored parameters.
-     * Checks that the public key Y is in valid range [2, p-2].
-     *
-     * @param pub public key value to validate
-     *
-     * @throws WolfCryptException if validation fails
-     * @throws IllegalStateException if object fails to initialize, or if
-     *         releaseNativeStruct() has been called and object has been
-     *         released.
-     */
-    public synchronized void checkPublicKey(byte[] pub)
-        throws WolfCryptException, IllegalStateException {
-
-        checkStateAndInitialize();
-
-        synchronized (pointerLock) {
-            wc_DhCheckPubKey(pub);
-        }
-    }
-
-    /**
-     * Set private key
-     *
-     * @param priv private key array
-     *
-     * @throws IllegalStateException if object fails to initialize, or if
-     *         releaseNativeStruct() has been called and object has been
-     *         released.
-     */
     public synchronized void setPrivateKey(byte[] priv)
         throws IllegalStateException {
 
