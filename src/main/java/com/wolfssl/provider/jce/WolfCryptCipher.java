@@ -1246,7 +1246,10 @@ public class WolfCryptCipher extends CipherSpi {
 
         if (len > 0 && (cipherMode == CipherMode.WC_GCM ||
             cipherMode == CipherMode.WC_CCM)) {
-            if ((buffered.length + len) > AEAD_MAX_PLAINTEXT) {
+            /* Widen to long: buffered.length + len is int arithmetic that
+             * overflows (and can never exceed Integer.MAX_VALUE) before this
+             * guard could fire, so the check must be done in long. */
+            if (((long) buffered.length + len) > AEAD_MAX_PLAINTEXT) {
                 throw new IllegalStateException(
                     "AEAD plaintext exceeds maximum size of " +
                     AEAD_MAX_PLAINTEXT + " bytes");
