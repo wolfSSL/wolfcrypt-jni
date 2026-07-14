@@ -320,12 +320,17 @@ public class WolfCryptSignature extends SignatureSpi {
         switch (this.keyType) {
 
             case WC_RSA: {
-                BigInteger biN, biP, biQ;
-
                 /* import private PKCS#8 */
                 this.rsa.decodePrivateKeyPKCS8(encodedKey);
 
-                /* export raw CRT parameters to validate key consistency */
+                /* Defensive consistency check (n == p*q) via raw CRT export.
+                 * Some wolfSSL builds do not compile in raw key export
+                 * (wc_RsaExportKey -> "Feature not compiled in"); the key has
+                 * already imported cleanly above, so skip the check on those
+                 * builds rather than fail the operation. A genuine mismatch
+                 * still throws InvalidKeyException below. */
+                BigInteger biN = null, biP = null, biQ = null;
+                boolean validated = false;
                 int keySize = this.rsa.getEncryptSize();
                 byte[] n = new byte[keySize];
                 byte[] e = new byte[keySize];
@@ -347,23 +352,25 @@ public class WolfCryptSignature extends SignatureSpi {
                 try {
                     this.rsa.exportRawPrivateKey(n, nSz, e, eSz, d, dSz,
                         p, pSz, q, qSz, dP, dPSz, dQ, dQSz, u, uSz);
-
                     biN = new BigInteger(1, Arrays.copyOf(n, (int)nSz[0]));
                     biP = new BigInteger(1, Arrays.copyOf(p, (int)pSz[0]));
                     biQ = new BigInteger(1, Arrays.copyOf(q, (int)qSz[0]));
-
-                    if (!biN.equals(biP.multiply(biQ))) {
-                        throw new InvalidKeyException(
-                            "RSA private key modulus n does not equal p * q");
-                    }
+                    validated = true;
+                } catch (WolfCryptException wce) {
+                    /* raw key export not compiled in; skip consistency check */
                 } finally {
-                    /* Zero sensitive CRT components regardless of outcome */
+                    /* Zero CRT components regardless of outcome */
                     zeroArray(d);
                     zeroArray(p);
                     zeroArray(q);
                     zeroArray(dP);
                     zeroArray(dQ);
                     zeroArray(u);
+                }
+
+                if (validated && !biN.equals(biP.multiply(biQ))) {
+                    throw new InvalidKeyException(
+                        "RSA private key modulus n does not equal p * q");
                 }
 
                 break;
