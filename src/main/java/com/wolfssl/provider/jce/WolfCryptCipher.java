@@ -772,7 +772,9 @@ public class WolfCryptCipher extends CipherSpi {
 
             if (params == null && this.oaepSpec != null) {
                 params = AlgorithmParameters.getInstance("OAEP");
-                params.init(this.oaepSpec);
+                if (params != null) {
+                    params.init(this.oaepSpec);
+                }
             }
 
         } catch (NoSuchAlgorithmException |
