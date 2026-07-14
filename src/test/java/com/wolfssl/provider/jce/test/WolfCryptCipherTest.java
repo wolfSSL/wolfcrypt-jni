@@ -2670,7 +2670,8 @@ public class WolfCryptCipherTest {
             ? 11 + TAG_LENGTH_BYTES   /* 5 already emitted */
             : 16 + TAG_LENGTH_BYTES;  /* 5 buffered + 11 input */
         assertEquals("Output size after update should account for remaining " +
-            "input plus tag", expectedSizeAfterUpdate, cipher.getOutputSize(11));
+            "input plus tag", expectedSizeAfterUpdate,
+            cipher.getOutputSize(11));
 
         /* Test getOutputSize() before initialization, expect exception */
         Cipher uninitializedCipher = Cipher.getInstance("AES/GCM/NoPadding");
@@ -8316,10 +8317,10 @@ public class WolfCryptCipherTest {
             assertNotNull("AES-GCM update should return non-null array",
                 updateResult);
             if (FeatureDetect.AesGcmStreamEnabled()) {
-                assertEquals("AES-GCM streaming update should return ciphertext",
+                assertEquals("AES-GCM streaming update returns ciphertext",
                     input.length, updateResult.length);
             } else {
-                assertEquals("AES-GCM buffered update should return empty array",
+                assertEquals("AES-GCM buffered update returns empty array",
                     0, updateResult.length);
             }
 
