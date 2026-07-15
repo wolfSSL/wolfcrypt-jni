@@ -67,6 +67,9 @@ import com.wolfssl.wolfcrypt.AesCts;
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Rng;
+import com.wolfssl.wolfcrypt.Sha256;
+import com.wolfssl.wolfcrypt.Sha512;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -152,10 +155,17 @@ public class WolfCryptCipher extends CipherSpi {
     /* AAD data for AES-GCM, populated via engineUpdateAAD() */
     private byte[] aadData = null;
 
-    /* Last (key, IV) used for a completed AES-GCM encryption, tracked to
-     * reject GCM nonce reuse. */
-    private byte[] lastGcmEncryptKey = null;
+    /* Last (key, IV) set for AES-GCM encryption at init time, tracked to
+     * reject GCM nonce reuse on re-initialization. A digest of the encoded
+     * key (SHA-512, or SHA-256 when SHA-512 is not compiled in) is stored
+     * instead of the key bytes to avoid keeping an extra copy of key
+     * material in memory. */
+    private byte[] lastGcmEncryptKeyHash = null;
     private byte[] lastGcmEncryptIv = null;
+
+    /* Set when an AES-GCM encryption completes, cleared by init. A second
+     * encryption without re-init would reuse the same key and IV */
+    private boolean gcmEncryptNeedsReinit = false;
 
     /* Has update/final been called yet, gates setting of AAD for GCM */
     private boolean operationStarted = false;
@@ -1046,6 +1056,131 @@ public class WolfCryptCipher extends CipherSpi {
         }
     }
 
+    /**
+     * Reject AES-GCM encrypt init with the same key+IV as the last encrypt
+     * init used (GCM nonce reuse).
+     *
+     * Only the pair from the most recent encrypt init is tracked, so any
+     * intermediate encrypt init (key-only with a fresh random IV, or a
+     * different explicit IV) erases the memory of a previously used pair
+     * and a caller can deliberately reuse an earlier (key, IV) pair. This
+     * is a best-effort guard against accidental reuse, kept for SunJCE
+     * interoperability. Callers that opt out this way own IV uniqueness
+     * themselves.
+     *
+     * Called from wolfCryptCipherInit(). The new pair is recorded by
+     * recordGcmKeyIv() only after wolfCryptSetKey() accepts the key, so
+     * a failed init does not erase the tracked pair. Encrypting again
+     * without re-init is rejected separately via gcmEncryptNeedsReinit.
+     *
+     * @param key key this Cipher is being initialized with
+     *
+     * @throws InvalidAlgorithmParameterException if key and IV match the
+     *         previous AES-GCM encrypt initialization
+     */
+    private void checkGcmKeyIvReuse(Key key)
+        throws InvalidAlgorithmParameterException {
+
+        byte[] keyEnc = null;
+
+        if ((this.cipherMode != CipherMode.WC_GCM) ||
+            (this.direction != OpMode.WC_ENCRYPT) || (key == null)) {
+            return;
+        }
+
+        keyEnc = key.getEncoded();
+        if (keyEnc == null) {
+            /* wolfCryptSetKey() will reject this key */
+            return;
+        }
+
+        try {
+            if (this.lastGcmEncryptIv != null &&
+                MessageDigest.isEqual(this.lastGcmEncryptIv, this.iv) &&
+                MessageDigest.isEqual(this.lastGcmEncryptKeyHash,
+                    hashKeyForGcmTracking(keyEnc))) {
+                throw new InvalidAlgorithmParameterException(
+                    "Cannot reuse iv for GCM encryption");
+            }
+        } finally {
+            zeroArray(keyEnc);
+        }
+    }
+
+    /**
+     * Compute digest of encoded key bytes for GCM (key, IV) reuse
+     * tracking. A digest is stored and compared instead of the raw key
+     * bytes to avoid keeping an extra copy of key material in memory.
+     *
+     * SHA-512 is preferred to keep this compatible with CNSA 2.0
+     * deployments, which restrict hashing to SHA-384/SHA-512. SHA-256 is
+     * used as fallback when SHA-512 is not compiled into native wolfSSL.
+     *
+     * @param keyEnc encoded key bytes
+     *
+     * @return digest of keyEnc
+     */
+    private static byte[] hashKeyForGcmTracking(byte[] keyEnc) {
+
+        if (FeatureDetect.Sha512Enabled()) {
+            Sha512 sha = new Sha512();
+
+            try {
+                sha.update(keyEnc);
+                return sha.digest();
+            } finally {
+                sha.releaseNativeStruct();
+            }
+        }
+        else {
+            Sha256 sha = new Sha256();
+
+            try {
+                sha.update(keyEnc);
+                return sha.digest();
+            } finally {
+                sha.releaseNativeStruct();
+            }
+        }
+    }
+
+    /**
+     * Record the (key, IV) pair used for this AES-GCM encrypt init,
+     * checked against by checkGcmKeyIvReuse() on the next encrypt init.
+     *
+     * Called from wolfCryptCipherInit() after wolfCryptSetKey() has
+     * accepted the key.
+     *
+     * @param key key this Cipher was initialized with
+     */
+    private void recordGcmKeyIv(Key key) {
+
+        byte[] keyEnc = null;
+
+        if ((this.cipherMode != CipherMode.WC_GCM) ||
+            (this.direction != OpMode.WC_ENCRYPT) || (key == null)) {
+            return;
+        }
+
+        keyEnc = key.getEncoded();
+        if (keyEnc == null) {
+            return;
+        }
+
+        try {
+            zeroArray(this.lastGcmEncryptKeyHash);
+            this.lastGcmEncryptKeyHash = hashKeyForGcmTracking(keyEnc);
+        } finally {
+            zeroArray(keyEnc);
+        }
+        zeroArray(this.lastGcmEncryptIv);
+        if (this.iv == null) {
+            this.lastGcmEncryptIv = null;
+        } else {
+            this.lastGcmEncryptIv = this.iv.clone();
+        }
+    }
+
     /* called by engineInit() functions */
     private void wolfCryptCipherInit(int opmode, Key key,
             AlgorithmParameterSpec spec, SecureRandom random)
@@ -1057,9 +1192,12 @@ public class WolfCryptCipher extends CipherSpi {
         InitializeNativeStructs();
         wolfCryptSetDirection(opmode);
         wolfCryptSetIV(spec, random);
+        checkGcmKeyIvReuse(key);
         wolfCryptSetKey(key);
+        recordGcmKeyIv(key);
         this.operationStarted = false;
         this.cipherInitialized = true;
+        this.gcmEncryptNeedsReinit = false;
     }
 
     @Override
@@ -1196,6 +1334,15 @@ public class WolfCryptCipher extends CipherSpi {
         if (input.length < (inputOffset + len)) {
             throw new IllegalArgumentException(
                 "Input buffer length smaller than inputOffset + len");
+        }
+
+        /* A second GCM encryption without re-init would reuse the same
+         * key and IV, fail here at update() time like SunJCE does */
+        if ((this.cipherMode == CipherMode.WC_GCM) &&
+            (this.direction == OpMode.WC_ENCRYPT) &&
+            this.gcmEncryptNeedsReinit) {
+            throw new IllegalStateException(
+                "Must use either different key or iv for GCM encryption");
         }
 
         this.operationStarted = true;
@@ -1396,40 +1543,19 @@ public class WolfCryptCipher extends CipherSpi {
                 if (cipherMode == CipherMode.WC_GCM) {
                     if (this.direction == OpMode.WC_ENCRYPT) {
 
-                        byte[] keyEnc;
-                        if (this.storedKey == null) {
-                            keyEnc = null;
-                        } else {
-                            keyEnc = this.storedKey.getEncoded();
-                        }
-
-                        /* Prevent reusing the same key and IV for GCM
-                         * encryption to protect against catastrophic security
-                         * degradation. */
-                        if (this.lastGcmEncryptIv != null &&
-                            MessageDigest.isEqual(
-                                this.lastGcmEncryptIv, this.iv) &&
-                            MessageDigest.isEqual(
-                                this.lastGcmEncryptKey, keyEnc)) {
-                            zeroArray(keyEnc);
+                        /* A second encryption without re-init would reuse
+                         * the same key and IV (GCM nonce reuse) */
+                        if (this.gcmEncryptNeedsReinit) {
                             throw new IllegalStateException(
-                                "Cannot reuse the same key and IV for " +
-                                "AES-GCM encryption, re-initialize with a " +
-                                "fresh IV");
+                                "Must use either different key or iv for " +
+                                "GCM encryption");
                         }
 
                         byte[] tag = new byte[this.gcmTagLen];
                         tmpOut = this.aesGcm.encrypt(tmpIn, this.iv, tag,
                                     this.aadData);
 
-                        /* Record this (key, IV) as used for GCM encryption */
-                        zeroArray(this.lastGcmEncryptKey);
-                        this.lastGcmEncryptKey = keyEnc;
-                        if (this.iv == null) {
-                            this.lastGcmEncryptIv = null;
-                        } else {
-                            this.lastGcmEncryptIv = this.iv.clone();
-                        }
+                        this.gcmEncryptNeedsReinit = true;
 
                         /* Concatenate auth tag to end of ciphertext */
                         byte[] totalOut = new byte[tmpOut.length + tag.length];
@@ -2123,7 +2249,7 @@ public class WolfCryptCipher extends CipherSpi {
             }
 
             zeroArray(this.iv);
-            zeroArray(this.lastGcmEncryptKey);
+            zeroArray(this.lastGcmEncryptKeyHash);
             zeroArray(this.lastGcmEncryptIv);
 
             this.storedKey = null;

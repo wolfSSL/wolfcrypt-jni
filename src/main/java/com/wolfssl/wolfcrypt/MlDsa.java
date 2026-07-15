@@ -54,6 +54,28 @@ public class MlDsa extends NativeStruct {
     /** ML-DSA external mu length, in bytes (FIPS 204). */
     public static final int ML_DSA_MU_LEN = 64;
 
+    /**
+     * Get the standard algorithm name for an ML-DSA level.
+     *
+     * @param level ML-DSA level, one of ML_DSA_44/65/87
+     *
+     * @return standard algorithm name (e.g. "ML-DSA-44"), or null
+     *         if level is unknown
+     */
+    public static String getParamSetName(int level) {
+
+        switch (level) {
+            case ML_DSA_44:
+                return "ML-DSA-44";
+            case ML_DSA_65:
+                return "ML-DSA-65";
+            case ML_DSA_87:
+                return "ML-DSA-87";
+            default:
+                return null;
+        }
+    }
+
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
     /** Lock around object state. */

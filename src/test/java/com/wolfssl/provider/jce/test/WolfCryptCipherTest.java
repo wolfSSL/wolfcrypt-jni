@@ -2636,18 +2636,23 @@ public class WolfCryptCipherTest {
         assertEquals("Output size for zero-length input should be tag length",
             TAG_LENGTH_BYTES, cipher.getOutputSize(0));
 
-        /* Test ENCRYPT with small input, re-init to reset state */
+        /* Test ENCRYPT with small input. Each encrypt re-init needs a
+         * fresh IV, same key and IV is rejected */
+        iv[0] = (byte) 0x03;
+        spec = new GCMParameterSpec(TAG_LENGTH_BYTES * 8, iv);
         cipher.init(Cipher.ENCRYPT_MODE, key, spec);
         assertEquals("Output size should be input length plus tag length",
             10 + TAG_LENGTH_BYTES, cipher.getOutputSize(10));
 
         /* Test ENCRYPT with block boundary input */
+        iv[0] = (byte) 0x04;
+        spec = new GCMParameterSpec(TAG_LENGTH_BYTES * 8, iv);
         cipher.init(Cipher.ENCRYPT_MODE, key, spec);
         assertEquals("Output size should be input length plus tag length " +
             "at block boundary", 16 + TAG_LENGTH_BYTES,
             cipher.getOutputSize(16));
 
-        /* Test DECRYPT with tag included */
+        /* Test DECRYPT with tag included (no IV reuse restriction) */
         cipher.init(Cipher.DECRYPT_MODE, key, spec);
         assertEquals("Output size for decryption should be input length " +
             "minus tag length", 10,
@@ -2655,6 +2660,8 @@ public class WolfCryptCipherTest {
 
         /* Test ENCRYPT after partial update */
         byte[] partialInput = new byte[5];
+        iv[0] = (byte) 0x05;
+        spec = new GCMParameterSpec(TAG_LENGTH_BYTES * 8, iv);
         cipher.init(Cipher.ENCRYPT_MODE, key, spec);
         cipher.update(partialInput); /* Process some data */
         assertEquals("Output size after update should account for remaining " +
@@ -7440,6 +7447,106 @@ public class WolfCryptCipherTest {
         dec.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
         assertArrayEquals(pt, dec.doFinal(ct));
         assertArrayEquals(pt, dec.doFinal(ct));
+    }
+
+    private static boolean isAndroid() {
+        String runtimeName = System.getProperty("java.runtime.name");
+        return (runtimeName != null) && runtimeName.contains("Android");
+    }
+
+    /**
+     * Test that AES-GCM rejects encrypt re-initialization with the same
+     * key and IV, and that a key-only init (fresh random IV) replaces the
+     * tracked pair, matching SunJCE behavior.
+     */
+    @Test
+    public void testGCMEncryptRejectsSameKeyIvReinit() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[16];
+        byte[] iv = new byte[12];
+        byte[] pt = "GCM same key+IV re-init test".getBytes();
+
+        secureRandom.nextBytes(keyBytes);
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        secureRandom.nextBytes(iv);
+
+        /* Android's Cipher framework performs SPI selection at each
+         * init() and may use a fresh CipherSpi instance, so per instance
+         * (key, IV) reuse tracking cannot span re-inits there. Skip the
+         * re-init rejection checks on Android. */
+        if (!isAndroid()) {
+            /* Re-init with the same key and IV after an encryption must
+             * be rejected at init time */
+            Cipher c = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+            c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+            c.doFinal(pt);
+            try {
+                c.init(Cipher.ENCRYPT_MODE, key,
+                    new GCMParameterSpec(128, iv));
+                fail("GCM encrypt init with same key and IV should throw");
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+
+            /* Also rejected without a completed encryption in between */
+            Cipher c2 = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+            c2.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+            try {
+                c2.init(Cipher.ENCRYPT_MODE, key,
+                    new GCMParameterSpec(128, iv));
+                fail("GCM encrypt init with same key and IV should throw");
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+        }
+
+        /* A key-only init generates a fresh random IV and replaces the
+         * tracked pair, so a following init with an explicit IV is accepted. */
+        Cipher c3 = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        c3.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        byte[] ct1 = c3.doFinal(pt);
+        c3.init(Cipher.ENCRYPT_MODE, key);
+        c3.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        byte[] ct2 = c3.doFinal(pt);
+        assertArrayEquals("Same key, IV and plaintext should match", ct1, ct2);
+
+        if (!isAndroid()) {
+            /* A failed init (bad key) must not erase the tracked pair */
+            Cipher c4 = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+            c4.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+            try {
+                c4.init(Cipher.ENCRYPT_MODE,
+                    new SecretKeySpec(new byte[7], "AES"),
+                    new GCMParameterSpec(128, iv));
+                fail("init with 7-byte AES key should throw");
+            } catch (Exception e) {
+                /* expected, invalid AES key length */
+            }
+            try {
+                c4.init(Cipher.ENCRYPT_MODE, key,
+                    new GCMParameterSpec(128, iv));
+                fail("Same key and IV re-init should throw after failed " +
+                    "init");
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+        }
+
+        /* update() after a completed GCM encryption must fail like
+         * doFinal() does, matching SunJCE */
+        Cipher c5 = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        c5.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        c5.doFinal(pt);
+        try {
+            c5.update(pt);
+            fail("update() after completed GCM encryption should throw");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
     }
 
     /**

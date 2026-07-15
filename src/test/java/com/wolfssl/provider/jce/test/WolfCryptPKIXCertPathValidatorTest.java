@@ -1438,6 +1438,134 @@ public class WolfCryptPKIXCertPathValidatorTest {
         }
     }
 
+    /* SHA1withRSA test chain (RSA 2048) for usage-qualifier constraint
+     * testing. CA is self-signed, EE is signed by the CA, both with
+     * SHA1withRSA. Valid 2026-07-15 through 2036-07-12. */
+    private static final String sha1TestCaPem =
+        "-----BEGIN CERTIFICATE-----\n" +
+        "MIIDTTCCAjWgAwIBAgIUZNwK3fw2T2OWCzdXOvIWGg1JhKUwDQYJKoZIhvcNAQEF\n" +
+        "BQAwNjEVMBMGA1UECgwMd29sZlNTTCBUZXN0MR0wGwYDVQQDDBR3b2xmSkNFIFNI\n" +
+        "QTEgVGVzdCBDQTAeFw0yNjA3MTUxOTQ1NDhaFw0zNjA3MTIxOTQ1NDhaMDYxFTAT\n" +
+        "BgNVBAoMDHdvbGZTU0wgVGVzdDEdMBsGA1UEAwwUd29sZkpDRSBTSEExIFRlc3Qg\n" +
+        "Q0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCbJGY3iHyVrp/qRzGa\n" +
+        "Vaaw/zJOXccpcRipgarox6Y8n/c/3JXQxRf/CbJF9aRNdeZXCdFEx+rjk42ANkgt\n" +
+        "gYW92QxYox3/kwKK9p8z0Sx+NQ6frV2CQrRcCnqrf9q2AR7lmMmIY0KbzHw/ONQ9\n" +
+        "GmsQwurafvqVKJawcm+aMoR81wTk2pOqosZizyGWfasMWh3IMj2i2/9QwskA3VV9\n" +
+        "x+6nTx2ro9/pb8qO7QF8bw4IaYdqGPv1QuaHAyjhIgkZnBqb57nLi/TxN7R5tHhm\n" +
+        "rN8iPSfRUlHvcpjEuPXSmOPVtlPWj0BTPzPHAHGjyq3w0sLjb32Tfq0jHa2AxI2e\n" +
+        "LQe9AgMBAAGjUzBRMB0GA1UdDgQWBBQo/AVZlIKOq/krmTg2gTNd7797ezAfBgNV\n" +
+        "HSMEGDAWgBQo/AVZlIKOq/krmTg2gTNd7797ezAPBgNVHRMBAf8EBTADAQH/MA0G\n" +
+        "CSqGSIb3DQEBBQUAA4IBAQAbH5ciuh+DKqFk8p6QkJDLnnNKJbiU2UKAaZA4TwLQ\n" +
+        "uLdHtjKK2VBK9LFVnJ+bULKEc2ceGATssQ/N6QjpOIQEMdAqGvzRhLZv6kAqqe8M\n" +
+        "2i1IFwYZX7Y3Ol1gn7vhzuS76AuHc4W/vrrmQQApGB6SioLP8f0HRD0erGmpVzvu\n" +
+        "dS1P3so8BLUGcZtCJIJBk/jin1c7POlsvUwn1wrGC1gXutqvKlKYaC+siJcozJlk\n" +
+        "4tFUUwgopN7CPlQYM6RHY+DWriW6rmEQp+ABUAbw6kLDtBs4h1CWBjeJklYEObH7\n" +
+        "nH5HCzZCPTjKQ8qvQNiW4xl4ZxfjItY0Ij3AvIZIZ1ug\n" +
+        "-----END CERTIFICATE-----\n";
+
+    private static final String sha1TestEePem =
+        "-----BEGIN CERTIFICATE-----\n" +
+        "MIIDPDCCAiSgAwIBAgIUGqf56ThWW7atVoAWjObdEdvf0pYwDQYJKoZIhvcNAQEF\n" +
+        "BQAwNjEVMBMGA1UECgwMd29sZlNTTCBUZXN0MR0wGwYDVQQDDBR3b2xmSkNFIFNI\n" +
+        "QTEgVGVzdCBDQTAeFw0yNjA3MTUxOTQ1NDhaFw0zNjA3MTIxOTQ1NDhaMDYxFTAT\n" +
+        "BgNVBAoMDHdvbGZTU0wgVGVzdDEdMBsGA1UEAwwUd29sZkpDRSBTSEExIFRlc3Qg\n" +
+        "RUUwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCHSuxiOy8OE0UaTEHL\n" +
+        "EmpiXS2qGsGFhNhzfz9CgnmTs8rWWM4zexxoOjtM2n7+Y8oLnqIPNeMtqNaG4fm+\n" +
+        "bzggPkUsTL3OFETCyZyEat1t5YGJ/zufBVeF4I9xUDiqXLHK/g43uf4l2Jy4hulf\n" +
+        "gQImauE7a3hdNRKLFtcIgRX17nQrVsUrZ9yPalwaBtXq8HLApph+KNjqWf2k/k35\n" +
+        "IGg+zfIqogvy73492/btevCXeeW0a/lt0DJJ+9aOw8RWri0y14A+B+eA467JWWHo\n" +
+        "zwFjux5xPuxHnnPxf9/3QCmdel3O7aqcWywM7gAIDqv0uQ1gaBZkSZDMsv8VRq+W\n" +
+        "/fPbAgMBAAGjQjBAMB0GA1UdDgQWBBTZhVCfOJkNWRyZ8dnXV7Q4GnKUmDAfBgNV\n" +
+        "HSMEGDAWgBQo/AVZlIKOq/krmTg2gTNd7797ezANBgkqhkiG9w0BAQUFAAOCAQEA\n" +
+        "iDgnhsDpvkMeAMjreTq8Cnm9PMBfULAlxoOgzcSrecgi6ZLsROGiK97hX34mUaX3\n" +
+        "jatTDOpSRpPHeWxGOgKytXhmsHxkXeaZbn2AG3aWsWEZ9MjGVtmo2v8gL/64O3Tq\n" +
+        "sDZgZlENw0X05iGhOebSZwWHAXblieTqI30w69nJcChTit8F6nyvbatiykPknnGW\n" +
+        "/EVlicBy0C2rGyGB0lt4KCcTKdmvRe0FjhqTCHeZ5aR+Glt6bMJVH2qXWL37AZ7B\n" +
+        "wV3u7i1H44KXIxliMXOWEgV+fUmBjLAB+1rgLF19wmlPhMujwCgE/tLJMGM+gHO/\n" +
+        "MRwbWhzWQ3ULF/oy96RYpA==\n" +
+        "-----END CERTIFICATE-----\n";
+
+    /**
+     * Usage-qualified SHA1 entries in jdk.certpath.disabledAlgorithms
+     * (JDK factory default form) must not reject a SHA1-signed chain during
+     * CertPath validation. A bare SHA1 entry must still reject it.
+     */
+    @Test
+    public void testUsageQualifiedSHA1AllowedForCertPath() throws Exception {
+
+        String origProperty = null;
+        CertificateFactory cf = null;
+        X509Certificate caCert = null;
+        X509Certificate eeCert = null;
+        Set<TrustAnchor> anchors = null;
+        PKIXParameters params = null;
+        CertPath path = null;
+        CertPathValidator validator = null;
+
+        /* Save original security property value */
+        origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            cf = CertificateFactory.getInstance("X.509");
+            caCert = (X509Certificate)cf.generateCertificate(
+                new ByteArrayInputStream(sha1TestCaPem.getBytes()));
+            eeCert = (X509Certificate)cf.generateCertificate(
+                new ByteArrayInputStream(sha1TestEePem.getBytes()));
+
+            anchors = new HashSet<TrustAnchor>();
+            anchors.add(new TrustAnchor(caCert, null));
+
+            params = new PKIXParameters(anchors);
+            params.setRevocationEnabled(false);
+
+            /* Fixed date inside the chain validity window (2027-01-01
+             * UTC), keeps the test independent of wall clock and timezone */
+            params.setDate(new Date(1798761600000L));
+
+            List<Certificate> certList = new ArrayList<Certificate>();
+            certList.add(eeCert);
+            path = cf.generateCertPath(certList);
+
+            validator = CertPathValidator.getInstance("PKIX", "wolfJCE");
+
+            /* JDK factory default form: SHA1 disabled only for TLS server
+             * chains anchored to a JDK-shipped CA and for signed JARs,
+             * neither of which applies here. Validation must succeed. */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "MD2, MD5, SHA1 jdkCA & usage TLSServer, " +
+                "RSA keySize < 1024, DSA keySize < 1024, " +
+                "EC keySize < 224, include jdk.disabled.namedCurves, " +
+                "SHA1 usage SignedJAR & denyAfter 2019-01-01");
+
+            assertNotNull("SHA1 chain should validate under usage-" +
+                "qualified disabled entries",
+                validator.validate(path, params));
+
+            /* A bare SHA1 entry must still reject the chain */
+            Security.setProperty("jdk.certpath.disabledAlgorithms", "SHA1");
+
+            try {
+                validator.validate(path, params);
+                fail("Expected CertPathValidatorException for bare " +
+                     "SHA1 disabled algorithm");
+            } catch (CertPathValidatorException cpve) {
+                assertEquals("Expected BasicReason.ALGORITHM_CONSTRAINED",
+                    BasicReason.ALGORITHM_CONSTRAINED, cpve.getReason());
+            }
+
+        } finally {
+            /* Restore original security property */
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            }
+            else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
     @Test
     public void testAlgorithmConstraintsRejectsRSA() throws Exception {
 

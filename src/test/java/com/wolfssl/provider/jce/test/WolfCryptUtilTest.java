@@ -36,12 +36,21 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.File;
+import java.math.BigInteger;
 import java.security.Security;
 import java.util.Arrays;
+import java.util.Locale;
 import java.security.Provider;
 import java.security.KeyStore;
+import java.security.KeyPairGenerator;
+import java.security.PublicKey;
+import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECGenParameterSpec;
+import javax.crypto.spec.DHParameterSpec;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.provider.jce.WolfCryptUtil;
+import com.wolfssl.provider.jce.WolfCryptECParameterSpec;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
@@ -514,6 +523,8 @@ public class WolfCryptUtilTest {
             if (origProperty != null) {
                 Security.setProperty("jdk.certpath.disabledAlgorithms",
                     origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
             }
         }
     }
@@ -539,6 +550,8 @@ public class WolfCryptUtilTest {
             if (origProperty != null) {
                 Security.setProperty("jdk.certpath.disabledAlgorithms",
                     origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
             }
         }
     }
@@ -564,6 +577,8 @@ public class WolfCryptUtilTest {
             if (origProperty != null) {
                 Security.setProperty("jdk.certpath.disabledAlgorithms",
                     origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
             }
         }
     }
@@ -607,6 +622,511 @@ public class WolfCryptUtilTest {
             if (origProperty != null) {
                 Security.setProperty("jdk.certpath.disabledAlgorithms",
                     origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testIsAlgorithmDisabledUsageQualifiers() {
+
+        String origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* JDK factory default: SHA1 disabled only for TLS server chains
+             * anchored to a JDK-shipped CA and for signed JARs, neither of
+             * which applies to CertPath validation */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "MD2, MD5, SHA1 jdkCA & usage TLSServer, " +
+                "RSA keySize < 1024, DSA keySize < 1024, EC keySize < 224, " +
+                "include jdk.disabled.namedCurves, " +
+                "SHA1 usage SignedJAR & denyAfter 2019-01-01");
+
+            assertFalse("SHA1withRSA must not be disabled by usage entries",
+                WolfCryptUtil.isAlgorithmDisabledForCertPath(
+                    "SHA1withRSA", "jdk.certpath.disabledAlgorithms"));
+            assertFalse("SHA1withECDSA must not be disabled by usage entries",
+                WolfCryptUtil.isAlgorithmDisabledForCertPath(
+                    "SHA1withECDSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* The generic variant has no CertPath context and must treat
+             * usage-scoped entries as active (fail closed) */
+            assertTrue("SHA1withRSA should be disabled outside CertPath",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "SHA1withRSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* Bare entries in the same property still apply */
+            assertTrue("MD5withRSA should be disabled (bare MD5)",
+                WolfCryptUtil.isAlgorithmDisabledForCertPath(
+                    "MD5withRSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* TLSClient usage can never apply to CertPath validation */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "SHA1 usage TLSServer TLSClient");
+            assertFalse("TLSServer/TLSClient usage entry must not apply",
+                WolfCryptUtil.isAlgorithmDisabledForCertPath(
+                    "SHA1withRSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* Unrecognized usage context must fail closed */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "SHA1 usage FutureContext");
+            assertTrue("Unrecognized usage context should fail closed",
+                WolfCryptUtil.isAlgorithmDisabledForCertPath(
+                    "SHA1withRSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* Mixed recognized/unrecognized usage contexts fail closed */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "SHA1 usage TLSServer FutureContext");
+            assertTrue("Partially recognized usage should fail closed",
+                WolfCryptUtil.isAlgorithmDisabledForCertPath(
+                    "SHA1withRSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* Unrecognized non-usage qualifier must fail closed */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "SHA1 someNewQualifier 42");
+            assertTrue("Unrecognized qualifier should fail closed",
+                WolfCryptUtil.isAlgorithmDisabledForCertPath(
+                    "SHA1withRSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* jdkCA alone cannot be evaluated here, fail closed */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "SHA1 jdkCA");
+            assertTrue("jdkCA-only qualifier should fail closed",
+                WolfCryptUtil.isAlgorithmDisabledForCertPath(
+                    "SHA1withRSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* denyAfter alone cannot be evaluated here, fail closed */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "SHA1 denyAfter 2019-01-01");
+            assertTrue("denyAfter-only qualifier should fail closed",
+                WolfCryptUtil.isAlgorithmDisabledForCertPath(
+                    "SHA1withRSA", "jdk.certpath.disabledAlgorithms"));
+        } finally {
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testIsAlgorithmDisabledPQFamilyNames() {
+
+        String origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Family entry disables all of its parameter sets */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "ML-DSA");
+            assertTrue("ML-DSA should be disabled",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "ML-DSA", "jdk.certpath.disabledAlgorithms"));
+            assertTrue("ML-DSA-65 should be disabled by family entry",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "ML-DSA-65", "jdk.certpath.disabledAlgorithms"));
+            assertTrue("ML-DSA-87 should be disabled for CertPath too",
+                WolfCryptUtil.isAlgorithmDisabledForCertPath(
+                    "ML-DSA-87", "jdk.certpath.disabledAlgorithms"));
+
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "SLH-DSA");
+            assertTrue("SLH-DSA-SHA2-128s should be disabled by family",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "SLH-DSA-SHA2-128s", "jdk.certpath.disabledAlgorithms"));
+
+            /* Parameter set entry disables only that set, not the family
+             * or other sets */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "ML-DSA-44");
+            assertTrue("ML-DSA-44 should be disabled",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "ML-DSA-44", "jdk.certpath.disabledAlgorithms"));
+            assertFalse("ML-DSA-65 should not be disabled by ML-DSA-44",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "ML-DSA-65", "jdk.certpath.disabledAlgorithms"));
+            assertFalse("ML-DSA family should not be disabled by ML-DSA-44",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "ML-DSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* Prefix matching is scoped to PQ families only */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "SHA3");
+            assertFalse("SHA3 entry should not disable SHA3-256",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "SHA3-256", "jdk.certpath.disabledAlgorithms"));
+        } finally {
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testIsKeyAllowedPQKeys() throws Exception {
+
+        String origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+        PublicKey mlDsaPub = null;
+        PublicKey slhDsaPub = null;
+
+        try {
+            mlDsaPub = KeyPairGenerator.getInstance("ML-DSA-65", "wolfJCE")
+                .generateKeyPair().getPublic();
+        } catch (NoSuchAlgorithmException e) {
+            /* ML-DSA-65 not compiled into native wolfSSL */
+        }
+
+        try {
+            slhDsaPub = KeyPairGenerator.getInstance(
+                "SLH-DSA-SHA2-128s", "wolfJCE")
+                .generateKeyPair().getPublic();
+        } catch (NoSuchAlgorithmException e) {
+            /* SLH-DSA-SHA2-128s not compiled into native wolfSSL */
+        }
+
+        if (mlDsaPub == null && slhDsaPub == null) {
+            /* skip, no PQ support in native library */
+            return;
+        }
+
+        try {
+            if (mlDsaPub != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "MD2");
+                assertTrue("ML-DSA-65 key should be allowed",
+                    WolfCryptUtil.isKeyAllowed(mlDsaPub,
+                        "jdk.certpath.disabledAlgorithms"));
+
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    "ML-DSA");
+                assertFalse("family entry should block ML-DSA key",
+                    WolfCryptUtil.isKeyAllowed(mlDsaPub,
+                        "jdk.certpath.disabledAlgorithms"));
+                assertFalse("family entry should block for CertPath too",
+                    WolfCryptUtil.isKeyAllowedForCertPath(mlDsaPub,
+                        "jdk.certpath.disabledAlgorithms"));
+
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    "ML-DSA-65");
+                assertFalse("matching parameter set entry should block key",
+                    WolfCryptUtil.isKeyAllowed(mlDsaPub,
+                        "jdk.certpath.disabledAlgorithms"));
+
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    "ML-DSA-44");
+                assertTrue("different parameter set should not block key",
+                    WolfCryptUtil.isKeyAllowed(mlDsaPub,
+                        "jdk.certpath.disabledAlgorithms"));
+            }
+
+            if (slhDsaPub != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    "SLH-DSA");
+                assertFalse("family entry should block SLH-DSA key",
+                    WolfCryptUtil.isKeyAllowed(slhDsaPub,
+                        "jdk.certpath.disabledAlgorithms"));
+
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    "SLH-DSA-SHA2-128s");
+                assertFalse("matching parameter set entry should block key",
+                    WolfCryptUtil.isKeyAllowed(slhDsaPub,
+                        "jdk.certpath.disabledAlgorithms"));
+
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    "SLH-DSA-SHAKE-128s");
+                assertTrue("different parameter set should not block key",
+                    WolfCryptUtil.isKeyAllowed(slhDsaPub,
+                        "jdk.certpath.disabledAlgorithms"));
+            }
+        } finally {
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testIsKeyAllowedDHKeySize() throws Exception {
+
+        String origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+        PublicKey dhPub = null;
+
+        /* RFC 3526 group 14, 2048-bit MODP prime, generator 2 */
+        final BigInteger p = new BigInteger(
+            "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1" +
+            "29024E088A67CC74020BBEA63B139B22514A08798E3404DD" +
+            "EF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245" +
+            "E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED" +
+            "EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3D" +
+            "C2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F" +
+            "83655D23DCA3AD961C62F356208552BB9ED529077096966D" +
+            "670C354E4ABC9804F1746C08CA18217C32905E462E36CE3B" +
+            "E39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9" +
+            "DE2BCBF6955817183995497CEA956AE515D2261898FA0510" +
+            "15728E5A8AACAA68FFFFFFFFFFFFFFFF", 16);
+        final BigInteger g = BigInteger.valueOf(2);
+
+        try {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("DH", "wolfJCE");
+            kpg.initialize(new DHParameterSpec(p, g));
+            dhPub = kpg.generateKeyPair().getPublic();
+        } catch (Exception e) {
+            /* skip, DH not available in native library */
+            return;
+        }
+
+        try {
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "DH keySize < 2048");
+            assertTrue("2048-bit DH key should be allowed",
+                WolfCryptUtil.isKeyAllowed(dhPub,
+                    "jdk.certpath.disabledAlgorithms"));
+
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "DH keySize < 3072");
+            assertFalse("2048-bit DH key should be rejected",
+                WolfCryptUtil.isKeyAllowed(dhPub,
+                    "jdk.certpath.disabledAlgorithms"));
+        } finally {
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testIsAlgorithmDisabledIncludeExpansion() {
+
+        String origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+        String origCurves = Security.getProperty(
+            "jdk.disabled.namedCurves");
+
+        try {
+            Security.setProperty("jdk.disabled.namedCurves",
+                "secp112r1, sect113r1");
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "MD2, include jdk.disabled.namedCurves");
+
+            assertTrue("Included curve entry should be disabled",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "secp112r1", "jdk.certpath.disabledAlgorithms"));
+            assertTrue("Included entries apply for CertPath too",
+                WolfCryptUtil.isAlgorithmDisabledForCertPath(
+                    "sect113r1", "jdk.certpath.disabledAlgorithms"));
+            assertFalse("Curve not in included list should be allowed",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "secp256r1", "jdk.certpath.disabledAlgorithms"));
+            assertTrue("Entries next to the include still apply",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "MD2", "jdk.certpath.disabledAlgorithms"));
+
+            /* Include cycles terminate, entries still found */
+            Security.setProperty("jdk.disabled.namedCurves",
+                "sect113r1, include jdk.certpath.disabledAlgorithms");
+            assertTrue("Entries still found with include cycle",
+                WolfCryptUtil.isAlgorithmDisabled(
+                    "sect113r1", "jdk.certpath.disabledAlgorithms"));
+        } finally {
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+            if (origCurves != null) {
+                Security.setProperty("jdk.disabled.namedCurves",
+                    origCurves);
+            } else {
+                Security.setProperty("jdk.disabled.namedCurves", "");
+            }
+        }
+    }
+
+    @Test
+    public void testGetDisabledAlgorithmsKeySizeLimitNameMatch() {
+
+        String origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+
+        try {
+            /* Entries match on leading algorithm name, "ECDH keySize"
+             * must not set the "DH" limit */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "ECDH keySize < 4096");
+            assertEquals("ECDH entry must not set DH key size limit", 0,
+                WolfCryptUtil.getDisabledAlgorithmsKeySizeLimit(
+                    "DH", "jdk.certpath.disabledAlgorithms"));
+            assertEquals("ECDH entry should set ECDH key size limit", 4096,
+                WolfCryptUtil.getDisabledAlgorithmsKeySizeLimit(
+                    "ECDH", "jdk.certpath.disabledAlgorithms"));
+
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 1024, EC keySize < 224");
+            assertEquals(1024,
+                WolfCryptUtil.getDisabledAlgorithmsKeySizeLimit(
+                    "RSA", "jdk.certpath.disabledAlgorithms"));
+            assertEquals(224,
+                WolfCryptUtil.getDisabledAlgorithmsKeySizeLimit(
+                    "EC", "jdk.certpath.disabledAlgorithms"));
+
+            /* "<=" operator disables through N, minimum allowed N + 1 */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize <= 1023");
+            assertEquals("keySize <= N should yield minimum of N + 1", 1024,
+                WolfCryptUtil.getDisabledAlgorithmsKeySizeLimit(
+                    "RSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* Unsupported operators are ignored */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize >= 8192");
+            assertEquals("Unsupported operator should be ignored", 0,
+                WolfCryptUtil.getDisabledAlgorithmsKeySizeLimit(
+                    "RSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* Strictest of multiple matching entries wins */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 2048, RSA keySize < 1024");
+            assertEquals("Strictest of multiple entries should win", 2048,
+                WolfCryptUtil.getDisabledAlgorithmsKeySizeLimit(
+                    "RSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* keySize matching is case-insensitive, consistent with the
+             * keySize entry skip in the name check */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA KEYSIZE < 1024");
+            assertEquals("Uppercase KEYSIZE entry should set limit", 1024,
+                WolfCryptUtil.getDisabledAlgorithmsKeySizeLimit(
+                    "RSA", "jdk.certpath.disabledAlgorithms"));
+
+            /* keySize entry skip in the name check must not depend on the
+             * default locale. Turkish lowercases 'I' to dotless 'ı', which
+             * broke locale-sensitive toLowerCase() matching and caused
+             * "RSA KEYSIZE < 1024" to blanket-disable RSA. */
+            Locale origLocale = Locale.getDefault();
+            try {
+                Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    "RSA KEYSIZE < 1024");
+                assertFalse("keySize entry must be skipped in any locale",
+                    WolfCryptUtil.isAlgorithmDisabled(
+                        "SHA256withRSA", "jdk.certpath.disabledAlgorithms"));
+            } finally {
+                Locale.setDefault(origLocale);
+            }
+        } finally {
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testIsKeyAllowedKeySizeUsageQualifiers() throws Exception {
+
+        String origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+        PublicKey rsaPub = null;
+
+        try {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "wolfJCE");
+            kpg.initialize(2048);
+            rsaPub = kpg.generateKeyPair().getPublic();
+        } catch (Exception e) {
+            /* skip, RSA key generation not available */
+            return;
+        }
+
+        try {
+            /* Usage-scoped keySize entry never applies to CertPath
+             * validation, but stays active (fail closed) for the
+             * generic check */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 3072 & usage TLSServer");
+            assertTrue("Usage-scoped keySize entry must not apply " +
+                "to CertPath",
+                WolfCryptUtil.isKeyAllowedForCertPath(rsaPub,
+                    "jdk.certpath.disabledAlgorithms"));
+            assertFalse("Generic check treats usage keySize as active",
+                WolfCryptUtil.isKeyAllowed(rsaPub,
+                    "jdk.certpath.disabledAlgorithms"));
+
+            /* Unqualified keySize entry applies to both */
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "RSA keySize < 3072");
+            assertFalse("Unqualified keySize entry applies to CertPath",
+                WolfCryptUtil.isKeyAllowedForCertPath(rsaPub,
+                    "jdk.certpath.disabledAlgorithms"));
+        } finally {
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
+            }
+        }
+    }
+
+    @Test
+    public void testIsKeyAllowedECNamedCurve() throws Exception {
+
+        String origProperty = Security.getProperty(
+            "jdk.certpath.disabledAlgorithms");
+        PublicKey ecPub = null;
+
+        try {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("EC", "wolfJCE");
+            kpg.initialize(new ECGenParameterSpec("secp256r1"));
+            ecPub = kpg.generateKeyPair().getPublic();
+        } catch (Exception e) {
+            /* skip, EC key generation not available */
+            return;
+        }
+
+        /* Curve name check only applies when params carry a name */
+        if (!(((ECPublicKey)ecPub).getParams()
+                instanceof WolfCryptECParameterSpec)) {
+            return;
+        }
+
+        try {
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "secp256r1");
+            assertFalse("Key on disabled named curve should be rejected",
+                WolfCryptUtil.isKeyAllowed(ecPub,
+                    "jdk.certpath.disabledAlgorithms"));
+
+            Security.setProperty("jdk.certpath.disabledAlgorithms",
+                "secp112r1, sect113r1");
+            assertTrue("Key on non-disabled curve should be allowed",
+                WolfCryptUtil.isKeyAllowed(ecPub,
+                    "jdk.certpath.disabledAlgorithms"));
+        } finally {
+            if (origProperty != null) {
+                Security.setProperty("jdk.certpath.disabledAlgorithms",
+                    origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
             }
         }
     }
@@ -631,6 +1151,8 @@ public class WolfCryptUtilTest {
             if (origProperty != null) {
                 Security.setProperty("jdk.certpath.disabledAlgorithms",
                     origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
             }
         }
     }
@@ -665,6 +1187,8 @@ public class WolfCryptUtilTest {
             if (origProperty != null) {
                 Security.setProperty("jdk.certpath.disabledAlgorithms",
                     origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
             }
         }
     }
@@ -695,6 +1219,8 @@ public class WolfCryptUtilTest {
             if (origProperty != null) {
                 Security.setProperty("jdk.certpath.disabledAlgorithms",
                     origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
             }
         }
     }
@@ -724,6 +1250,8 @@ public class WolfCryptUtilTest {
             if (origProperty != null) {
                 Security.setProperty("jdk.certpath.disabledAlgorithms",
                     origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
             }
         }
     }
@@ -743,6 +1271,8 @@ public class WolfCryptUtilTest {
             if (origProperty != null) {
                 Security.setProperty("jdk.certpath.disabledAlgorithms",
                     origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
             }
         }
     }
@@ -772,6 +1302,8 @@ public class WolfCryptUtilTest {
             if (origProperty != null) {
                 Security.setProperty("jdk.certpath.disabledAlgorithms",
                     origProperty);
+            } else {
+                Security.setProperty("jdk.certpath.disabledAlgorithms", "");
             }
         }
     }

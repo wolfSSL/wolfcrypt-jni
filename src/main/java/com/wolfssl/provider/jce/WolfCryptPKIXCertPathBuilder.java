@@ -149,17 +149,18 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
 
         /* Check signature algorithm against disabled list */
         sigAlg = cert.getSigAlgName();
-        if (WolfCryptUtil.isAlgorithmDisabled(sigAlg, propertyName)) {
-            log("Algorithm constraints check failed on signature algorithm: " +
-                sigAlg);
+        if (WolfCryptUtil.isAlgorithmDisabledForCertPath(sigAlg,
+            propertyName)) {
+            log("Algorithm constraints check failed on signature " +
+                "algorithm: " + sigAlg);
             throw new CertPathBuilderException(
-                "Algorithm constraints check failed on signature algorithm: " +
-                sigAlg);
+                "Algorithm constraints check failed on signature " +
+                "algorithm: " + sigAlg);
         }
 
         /* Check public key algorithm and size against constraints */
         pubKey = cert.getPublicKey();
-        if (!WolfCryptUtil.isKeyAllowed(pubKey, propertyName)) {
+        if (!WolfCryptUtil.isKeyAllowedForCertPath(pubKey, propertyName)) {
             log("Algorithm constraints check failed on public key: " +
                 pubKey.getAlgorithm());
             throw new CertPathBuilderException(
@@ -206,7 +207,7 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
                 "Trust anchor has no public key to check algo constraints");
         }
 
-        if (!WolfCryptUtil.isKeyAllowed(pubKey, propertyName)) {
+        if (!WolfCryptUtil.isKeyAllowedForCertPath(pubKey, propertyName)) {
             log("Algorithm constraints check failed on trust " +
                 "anchor public key: " + pubKey.getAlgorithm());
             throw new CertPathBuilderException(
@@ -273,7 +274,8 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
             }
 
             if (signerKey != null &&
-                !WolfCryptUtil.isKeyAllowed(signerKey, propertyName)) {
+                !WolfCryptUtil.isKeyAllowedForCertPath(signerKey,
+                    propertyName)) {
 
                 String certName =
                     path.get(i).getSubjectX500Principal().getName();
