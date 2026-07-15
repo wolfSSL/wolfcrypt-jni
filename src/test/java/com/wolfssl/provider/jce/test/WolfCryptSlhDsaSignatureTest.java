@@ -38,10 +38,12 @@ import java.security.PublicKey;
 import java.security.Security;
 import java.security.Signature;
 import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.provider.jce.WolfCryptContextParameterSpec;
 import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.SlhDsa;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 /**
@@ -56,6 +58,16 @@ public class WolfCryptSlhDsaSignatureTest {
         "SLH-DSA-SHAKE-128s", "SLH-DSA-SHAKE-128f",
         "SLH-DSA-SHAKE-192s", "SLH-DSA-SHAKE-192f",
         "SLH-DSA-SHAKE-256s", "SLH-DSA-SHAKE-256f"
+    };
+
+    /* Parameter set IDs, same order as PARAM_NAMES */
+    private static final int[] PARAM_IDS = {
+        SlhDsa.SLH_DSA_SHA2_128S,  SlhDsa.SLH_DSA_SHA2_128F,
+        SlhDsa.SLH_DSA_SHA2_192S,  SlhDsa.SLH_DSA_SHA2_192F,
+        SlhDsa.SLH_DSA_SHA2_256S,  SlhDsa.SLH_DSA_SHA2_256F,
+        SlhDsa.SLH_DSA_SHAKE_128S, SlhDsa.SLH_DSA_SHAKE_128F,
+        SlhDsa.SLH_DSA_SHAKE_192S, SlhDsa.SLH_DSA_SHAKE_192F,
+        SlhDsa.SLH_DSA_SHAKE_256S, SlhDsa.SLH_DSA_SHAKE_256F
     };
 
     /* Fast-signing sets for end-to-end round trips. */
@@ -125,13 +137,26 @@ public class WolfCryptSlhDsaSignatureTest {
 
         Signature.getInstance("SLH-DSA", "wolfJCE");
 
-        for (String n : PARAM_NAMES) {
-            Signature.getInstance(n, "wolfJCE");
-        }
+        /* Per-set services and OID aliases (.20 - .31) are registered
+         * only for parameter sets compiled into native wolfSSL */
+        for (int i = 0; i < PARAM_NAMES.length; i++) {
+            String oid = "2.16.840.1.101.3.4.3." + (20 + i);
 
-        for (int i = 0; i < 12; i++) {
-            Signature.getInstance(
-                "2.16.840.1.101.3.4.3." + (20 + i), "wolfJCE");
+            if (FeatureDetect.SlhDsaParamEnabled(PARAM_IDS[i])) {
+                Signature.getInstance(PARAM_NAMES[i], "wolfJCE");
+                Signature.getInstance(oid, "wolfJCE");
+            }
+            else {
+                for (String alg : new String[] { PARAM_NAMES[i], oid }) {
+                    try {
+                        Signature.getInstance(alg, "wolfJCE");
+                        fail(alg + " not compiled into native wolfSSL, " +
+                            "should not be registered");
+                    } catch (NoSuchAlgorithmException e) {
+                        /* expected */
+                    }
+                }
+            }
         }
     }
 
@@ -344,14 +369,27 @@ public class WolfCryptSlhDsaSignatureTest {
 
         Signature.getInstance("HASH-SLH-DSA", "wolfJCE");
 
-        for (String n : PREHASH_NAMES) {
-            Signature.getInstance(n, "wolfJCE");
-        }
-
-        /* OID aliases .35 - .46, same order as PREHASH_NAMES */
+        /* Pre-hash services and OID aliases (.35 - .46, same order as
+         * PREHASH_NAMES) are registered only for parameter sets compiled
+         * into native wolfSSL */
         for (int i = 0; i < PREHASH_NAMES.length; i++) {
-            Signature.getInstance(
-                "2.16.840.1.101.3.4.3." + (35 + i), "wolfJCE");
+            String oid = "2.16.840.1.101.3.4.3." + (35 + i);
+
+            if (FeatureDetect.SlhDsaParamEnabled(PARAM_IDS[i])) {
+                Signature.getInstance(PREHASH_NAMES[i], "wolfJCE");
+                Signature.getInstance(oid, "wolfJCE");
+            }
+            else {
+                for (String alg : new String[] { PREHASH_NAMES[i], oid }) {
+                    try {
+                        Signature.getInstance(alg, "wolfJCE");
+                        fail(alg + " not compiled into native wolfSSL, " +
+                            "should not be registered");
+                    } catch (NoSuchAlgorithmException e) {
+                        /* expected */
+                    }
+                }
+            }
         }
     }
 

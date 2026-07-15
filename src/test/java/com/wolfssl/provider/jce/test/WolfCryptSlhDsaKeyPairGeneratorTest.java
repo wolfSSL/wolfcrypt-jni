@@ -32,6 +32,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 import java.security.Security;
 
@@ -54,6 +55,16 @@ public class WolfCryptSlhDsaKeyPairGeneratorTest {
         "SLH-DSA-SHAKE-128s", "SLH-DSA-SHAKE-128f",
         "SLH-DSA-SHAKE-192s", "SLH-DSA-SHAKE-192f",
         "SLH-DSA-SHAKE-256s", "SLH-DSA-SHAKE-256f"
+    };
+
+    /* Parameter set IDs, same order as PARAM_NAMES */
+    private static final int[] PARAM_IDS = {
+        SlhDsa.SLH_DSA_SHA2_128S,  SlhDsa.SLH_DSA_SHA2_128F,
+        SlhDsa.SLH_DSA_SHA2_192S,  SlhDsa.SLH_DSA_SHA2_192F,
+        SlhDsa.SLH_DSA_SHA2_256S,  SlhDsa.SLH_DSA_SHA2_256F,
+        SlhDsa.SLH_DSA_SHAKE_128S, SlhDsa.SLH_DSA_SHAKE_128F,
+        SlhDsa.SLH_DSA_SHAKE_192S, SlhDsa.SLH_DSA_SHAKE_192F,
+        SlhDsa.SLH_DSA_SHAKE_256S, SlhDsa.SLH_DSA_SHAKE_256F
     };
 
     /* Fast-signing sets used for the keygen round trips. */
@@ -101,15 +112,32 @@ public class WolfCryptSlhDsaKeyPairGeneratorTest {
     public void getInstanceForAllNames() throws Exception {
         assumeEnabled();
 
-        KeyPairGenerator.getInstance("SLH-DSA", "wolfJCE");
-        for (String n : PARAM_NAMES) {
-            KeyPairGenerator.getInstance(n, "wolfJCE");
+        /* Umbrella generator defaults to SHA2-128f, only registered when
+         * that parameter set is compiled into native wolfSSL */
+        if (FeatureDetect.SlhDsaParamEnabled(SlhDsa.SLH_DSA_SHA2_128F)) {
+            KeyPairGenerator.getInstance("SLH-DSA", "wolfJCE");
         }
 
-        /* OID aliases .20 - .31 */
-        for (int i = 0; i < 12; i++) {
-            KeyPairGenerator.getInstance(
-                "2.16.840.1.101.3.4.3." + (20 + i), "wolfJCE");
+        /* Per-set services and OID aliases (.20 - .31) are registered
+         * only for parameter sets compiled into native wolfSSL */
+        for (int i = 0; i < PARAM_NAMES.length; i++) {
+            String oid = "2.16.840.1.101.3.4.3." + (20 + i);
+
+            if (FeatureDetect.SlhDsaParamEnabled(PARAM_IDS[i])) {
+                KeyPairGenerator.getInstance(PARAM_NAMES[i], "wolfJCE");
+                KeyPairGenerator.getInstance(oid, "wolfJCE");
+            }
+            else {
+                for (String alg : new String[] { PARAM_NAMES[i], oid }) {
+                    try {
+                        KeyPairGenerator.getInstance(alg, "wolfJCE");
+                        fail(alg + " not compiled into native wolfSSL, " +
+                            "should not be registered");
+                    } catch (NoSuchAlgorithmException e) {
+                        /* expected */
+                    }
+                }
+            }
         }
     }
 
@@ -151,6 +179,11 @@ public class WolfCryptSlhDsaKeyPairGeneratorTest {
     @Test
     public void initializeWithIntKeySizeRejected() throws Exception {
         assumeEnabled();
+
+        /* Umbrella generator is only registered when its SHA2-128f
+         * default parameter set is compiled into native wolfSSL */
+        Assume.assumeTrue("SLH-DSA-SHA2-128f not compiled in",
+            FeatureDetect.SlhDsaParamEnabled(SlhDsa.SLH_DSA_SHA2_128F));
 
         KeyPairGenerator kpg =
             KeyPairGenerator.getInstance("SLH-DSA", "wolfJCE");

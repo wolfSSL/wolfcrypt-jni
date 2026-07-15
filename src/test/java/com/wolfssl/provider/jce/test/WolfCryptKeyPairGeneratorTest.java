@@ -1532,5 +1532,43 @@ public class WolfCryptKeyPairGeneratorTest {
             scope.close();
         }
     }
+
+    /**
+     * Every registered PQC KeyPairGenerator service must be able to generate
+     * a key pair. Native wolfSSL can be built with a subset of ML-DSA levels
+     * or SLH-DSA parameter sets, in which case the provider must not register
+     * services for the missing sets, and getInstance() throws
+     * NoSuchAlgorithmException instead of key generation failing at runtime.
+     */
+    @Test
+    public void testPQCParamSetRegistrationMatchesNative()
+        throws Exception {
+
+        String[] algos = {
+            "ML-DSA", "ML-DSA-44", "ML-DSA-65", "ML-DSA-87",
+            "SLH-DSA",
+            "SLH-DSA-SHA2-128s",  "SLH-DSA-SHA2-128f",
+            "SLH-DSA-SHA2-192s",  "SLH-DSA-SHA2-192f",
+            "SLH-DSA-SHA2-256s",  "SLH-DSA-SHA2-256f",
+            "SLH-DSA-SHAKE-128s", "SLH-DSA-SHAKE-128f",
+            "SLH-DSA-SHAKE-192s", "SLH-DSA-SHAKE-192f",
+            "SLH-DSA-SHAKE-256s", "SLH-DSA-SHAKE-256f"
+        };
+
+        for (String algo : algos) {
+            KeyPairGenerator kpg = null;
+
+            try {
+                kpg = KeyPairGenerator.getInstance(algo, "wolfJCE");
+            } catch (NoSuchAlgorithmException e) {
+                /* Not registered, param set not compiled into native wolfSSL */
+                continue;
+            }
+
+            assertNotNull("Registered KeyPairGenerator " + algo +
+                " must be able to generate a key pair",
+                kpg.generateKeyPair());
+        }
+    }
 }
 

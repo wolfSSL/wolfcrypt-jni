@@ -30,6 +30,7 @@ import org.junit.rules.TestRule;
 
 import java.security.KeyFactory;
 import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
 import java.security.KeyPairGenerator;
 import java.security.Provider;
 import java.security.PrivateKey;
@@ -41,6 +42,7 @@ import java.security.spec.InvalidKeySpecException;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.SlhDsa;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
 /**
@@ -163,20 +165,38 @@ public class WolfCryptSlhDsaKeyFactoryTest {
 
         KeyFactory.getInstance("SLH-DSA", "wolfJCE");
 
-        for (String n : PARAM_NAMES) {
-            KeyFactory.getInstance(n, "wolfJCE");
-        }
+        /* Per-set services and OID aliases (.20 - .31) are registered
+         * only for parameter sets compiled into native wolfSSL */
+        for (int i = 0; i < PARAM_NAMES.length; i++) {
+            String oid = "2.16.840.1.101.3.4.3." + (20 + i);
 
-        /* OID aliases .20 - .31 */
-        for (int i = 0; i < 12; i++) {
-            KeyFactory.getInstance(
-                "2.16.840.1.101.3.4.3." + (20 + i), "wolfJCE");
+            if (FeatureDetect.SlhDsaParamEnabled(PARAM_IDS[i])) {
+                KeyFactory.getInstance(PARAM_NAMES[i], "wolfJCE");
+                KeyFactory.getInstance(oid, "wolfJCE");
+            }
+            else {
+                for (String alg : new String[] { PARAM_NAMES[i], oid }) {
+                    try {
+                        KeyFactory.getInstance(alg, "wolfJCE");
+                        fail(alg + " not compiled into native wolfSSL, " +
+                            "should not be registered");
+                    } catch (NoSuchAlgorithmException e) {
+                        /* expected */
+                    }
+                }
+            }
         }
     }
 
     @Test
     public void perSetFactoryRejectsMismatchedKey() throws Exception {
         assumeReady();
+
+        /* Needs a parameter set different from kp (SLH-DSA-SHA2-128f)
+         * that is compiled into native wolfSSL, its KeyFactory service
+         * is not registered otherwise */
+        Assume.assumeTrue("SLH-DSA-SHAKE-128s not compiled in",
+            FeatureDetect.SlhDsaParamEnabled(SlhDsa.SLH_DSA_SHAKE_128S));
 
         /* A parameter-set-locked KeyFactory must reject keys of a
          * different set. kp is SLH-DSA-SHA2-128f. */
@@ -274,6 +294,16 @@ public class WolfCryptSlhDsaKeyFactoryTest {
         "SLH-DSA-SHAKE-128s", "SLH-DSA-SHAKE-128f",
         "SLH-DSA-SHAKE-192s", "SLH-DSA-SHAKE-192f",
         "SLH-DSA-SHAKE-256s", "SLH-DSA-SHAKE-256f"
+    };
+
+    /* Parameter set IDs, same order as PARAM_NAMES */
+    private static final int[] PARAM_IDS = {
+        SlhDsa.SLH_DSA_SHA2_128S,  SlhDsa.SLH_DSA_SHA2_128F,
+        SlhDsa.SLH_DSA_SHA2_192S,  SlhDsa.SLH_DSA_SHA2_192F,
+        SlhDsa.SLH_DSA_SHA2_256S,  SlhDsa.SLH_DSA_SHA2_256F,
+        SlhDsa.SLH_DSA_SHAKE_128S, SlhDsa.SLH_DSA_SHAKE_128F,
+        SlhDsa.SLH_DSA_SHAKE_192S, SlhDsa.SLH_DSA_SHAKE_192F,
+        SlhDsa.SLH_DSA_SHAKE_256S, SlhDsa.SLH_DSA_SHAKE_256F
     };
 
     /* DER TLV with a definite length (content up to 0xFFFF bytes). */

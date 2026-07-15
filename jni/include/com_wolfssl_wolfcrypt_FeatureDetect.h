@@ -433,6 +433,22 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_SlhDsaKeyGen
 
 /*
  * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    MlDsaLevelEnabled
+ * Signature: (I)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_MlDsaLevelEnabled
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    SlhDsaParamEnabled
+ * Signature: (I)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_SlhDsaParamEnabled
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
  * Method:    LmsEnabled
  * Signature: ()Z
  */

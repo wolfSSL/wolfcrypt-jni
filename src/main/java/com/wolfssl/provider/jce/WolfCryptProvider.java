@@ -23,9 +23,14 @@ package com.wolfssl.provider.jce;
 
 import java.security.Provider;
 import java.security.Security;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.MlDsa;
+import com.wolfssl.wolfcrypt.SlhDsa;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfSSLX509StoreCtx;
 
@@ -1221,10 +1226,113 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfSSLKeyStore");
         }
 
+        /* Unregister PQC parameter sets not compiled into native wolfSSL */
+        removeUnsupportedPQCParamSets();
+
         /* If using a FIPS version of wolfCrypt, allow private key to be
          * exported for use. Only applicable to FIPS 140-3 */
         if (Fips.enabled) {
             Fips.setPrivateKeyReadEnable(1, Fips.WC_KEYTYPE_ALL);
+        }
+    }
+
+    /**
+     * Remove services for PQC parameter sets that are not compiled into
+     * the native wolfSSL library.
+     *
+     * Native wolfSSL can be built with a subset of ML-DSA levels or
+     * SLH-DSA parameter sets (ex: --enable-slhdsa=128f,sha2-128f). The
+     * family-level feature detection used at registration time cannot see
+     * that granularity, so services for unsupported sets are removed here.
+     */
+    private void removeUnsupportedPQCParamSets() {
+
+        String[] mlDsaSets = {
+            "ML-DSA-44", "ML-DSA-65", "ML-DSA-87"
+        };
+
+        int[] mlDsaLevels = {
+            MlDsa.ML_DSA_44, MlDsa.ML_DSA_65, MlDsa.ML_DSA_87
+        };
+
+        String[] slhDsaSets = {
+            "SLH-DSA-SHA2-128s",  "SLH-DSA-SHA2-128f",
+            "SLH-DSA-SHA2-192s",  "SLH-DSA-SHA2-192f",
+            "SLH-DSA-SHA2-256s",  "SLH-DSA-SHA2-256f",
+            "SLH-DSA-SHAKE-128s", "SLH-DSA-SHAKE-128f",
+            "SLH-DSA-SHAKE-192s", "SLH-DSA-SHAKE-192f",
+            "SLH-DSA-SHAKE-256s", "SLH-DSA-SHAKE-256f"
+        };
+
+        int[] slhDsaParams = {
+            SlhDsa.SLH_DSA_SHA2_128S,  SlhDsa.SLH_DSA_SHA2_128F,
+            SlhDsa.SLH_DSA_SHA2_192S,  SlhDsa.SLH_DSA_SHA2_192F,
+            SlhDsa.SLH_DSA_SHA2_256S,  SlhDsa.SLH_DSA_SHA2_256F,
+            SlhDsa.SLH_DSA_SHAKE_128S, SlhDsa.SLH_DSA_SHAKE_128F,
+            SlhDsa.SLH_DSA_SHAKE_192S, SlhDsa.SLH_DSA_SHAKE_192F,
+            SlhDsa.SLH_DSA_SHAKE_256S, SlhDsa.SLH_DSA_SHAKE_256F
+        };
+
+        for (int i = 0; i < mlDsaSets.length; i++) {
+            if (!FeatureDetect.MlDsaLevelEnabled(mlDsaLevels[i])) {
+                removeParamSetServices(mlDsaSets[i]);
+            }
+        }
+        for (int i = 0; i < slhDsaSets.length; i++) {
+            if (!FeatureDetect.SlhDsaParamEnabled(slhDsaParams[i])) {
+                removeParamSetServices(slhDsaSets[i]);
+            }
+        }
+
+        /* Generic KeyPairGenerator services generate their default param
+         * set when not explicitly initialized, remove them when that default
+         * is not available */
+        if (!FeatureDetect.MlDsaLevelEnabled(MlDsa.ML_DSA_65)) {
+            remove("KeyPairGenerator.ML-DSA");
+        }
+        if (!FeatureDetect.SlhDsaParamEnabled(SlhDsa.SLH_DSA_SHA2_128F)) {
+            remove("KeyPairGenerator.SLH-DSA");
+        }
+    }
+
+    /**
+     * Remove all services and aliases registered for a single PQC param
+     * set name, including pre-hash signature variants.
+     *
+     * @param paramSet parameter set name (ex: "SLH-DSA-SHA2-128s")
+     */
+    private void removeParamSetServices(String paramSet) {
+
+        List<Object> toRemove = new ArrayList<Object>();
+
+        for (Map.Entry<Object, Object> entry : entrySet()) {
+            Object k = entry.getKey();
+            if (!(k instanceof String)) {
+                continue;
+            }
+            String name = (String)k;
+
+            /* Service registrations (Signature. / KeyPairGenerator. /
+             * KeyFactory.) and pre-hash signature variants */
+            if (name.endsWith("." + paramSet) ||
+                name.contains("." + paramSet + "-WITH-")) {
+                toRemove.add(k);
+                continue;
+            }
+
+            /* Aliases resolving to this parameter set */
+            if (name.startsWith("Alg.Alias.")) {
+                Object v = entry.getValue();
+                if (v instanceof String &&
+                    (((String)v).equals(paramSet) ||
+                     ((String)v).startsWith(paramSet + "-WITH-"))) {
+                    toRemove.add(k);
+                }
+            }
+        }
+
+        for (Object k : toRemove) {
+            remove(k);
         }
     }
 }

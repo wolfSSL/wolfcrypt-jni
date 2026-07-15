@@ -1980,3 +1980,30 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1Dilithium_1Pri
     return result;
 }
 
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_MlDsaLevelEnabled
+  (JNIEnv* env, jclass jcl, jint level)
+{
+    (void)env;
+    (void)jcl;
+#if defined(HAVE_DILITHIUM) || defined(WOLFSSL_HAVE_MLDSA)
+    jboolean enabled = JNI_FALSE;
+    wc_MlDsaKey* key = NULL;
+
+    key = (wc_MlDsaKey*)XMALLOC(sizeof(wc_MlDsaKey), NULL,
+        DYNAMIC_TYPE_TMP_BUFFER);
+    if (key != NULL) {
+        if (wc_MlDsaKey_Init(key, NULL, INVALID_DEVID) == 0) {
+            if (wc_MlDsaKey_SetParams(key, (byte)level) == 0) {
+                enabled = JNI_TRUE;
+            }
+            wc_MlDsaKey_Free(key);
+        }
+        XFREE(key, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
+    return enabled;
+#else
+    (void)level;
+    return JNI_FALSE;
+#endif
+}

@@ -419,6 +419,33 @@ public class FeatureDetect {
     public static native boolean SlhDsaKeyGenEnabled();
 
     /**
+     * Tests if given ML-DSA level is compiled into native wolfSSL.
+     *
+     * Probes native key initialization at runtime, so the result exactly
+     * matches what key operations will accept, including level-restricted
+     * native wolfSSL builds.
+     *
+     * @param level ML-DSA level, one of MlDsa.ML_DSA_44/65/87
+     *
+     * @return true if the level is compiled in and usable, otherwise false
+     */
+    public static native boolean MlDsaLevelEnabled(int level);
+
+    /**
+     * Tests if given SLH-DSA parameter set is compiled into native wolfSSL.
+     *
+     * Probes native key initialization at runtime, so the result exactly
+     * matches what key operations will accept, including parameter set
+     * restricted native wolfSSL builds (ex: --enable-slhdsa=128f,sha2-128f).
+     *
+     * @param param SLH-DSA parameter set, one of SlhDsa.SLH_DSA_*
+     *
+     * @return true if the parameter set is compiled in and usable,
+     *         otherwise false
+     */
+    public static native boolean SlhDsaParamEnabled(int param);
+
+    /**
      * Tests if LMS/HSS (RFC 8554) is compiled into the native wolfSSL
      * library.
      *

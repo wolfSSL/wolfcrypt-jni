@@ -1685,3 +1685,29 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_SlhDsa_wc_1SlhDsaKey_1check_1k
     throwNotCompiledInException(env);
 #endif
 }
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_SlhDsaParamEnabled
+  (JNIEnv* env, jclass jcl, jint param)
+{
+    (void)env;
+    (void)jcl;
+#ifdef WOLFSSL_HAVE_SLHDSA
+    jboolean enabled = JNI_FALSE;
+    SlhDsaKey* key = NULL;
+
+    key = (SlhDsaKey*)XMALLOC(sizeof(SlhDsaKey), NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (key != NULL) {
+        if (wc_SlhDsaKey_Init(key, (enum SlhDsaParam)param, NULL,
+            INVALID_DEVID) == 0) {
+            enabled = JNI_TRUE;
+            wc_SlhDsaKey_Free(key);
+        }
+        XFREE(key, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
+    return enabled;
+#else
+    (void)param;
+    return JNI_FALSE;
+#endif
+}
