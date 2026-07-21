@@ -80,6 +80,7 @@ import java.security.spec.ECFieldFp;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.Dh;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
@@ -186,6 +187,11 @@ public class WolfCryptKeyAgreementTest {
 
         /* try to get all available options we expect to have */
         for (int i = 0; i < wolfJCEAlgos.length; i++) {
+            if (wolfJCEAlgos[i].equals("DiffieHellman") &&
+                !FeatureDetect.DhEnabled()) {
+                /* skip DH if not compiled in native wolfSSL */
+                continue;
+            }
             KeyAgreement.getInstance(wolfJCEAlgos[i], "wolfJCE");
         }
 
@@ -379,6 +385,11 @@ public class WolfCryptKeyAgreementTest {
         throws NoSuchProviderException, NoSuchAlgorithmException,
                InvalidParameterSpecException, InvalidKeyException,
                InvalidAlgorithmParameterException {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* engineDoPhase() must reject small-subgroup and out-of-range peer
          * DH public keys (SP 800-56A) before use. */
@@ -1251,6 +1262,12 @@ public class WolfCryptKeyAgreementTest {
      */
     @Test
     public void testDHKeySerialization() throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         /* Generate DH keypair */
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
         kpg.initialize(2048);

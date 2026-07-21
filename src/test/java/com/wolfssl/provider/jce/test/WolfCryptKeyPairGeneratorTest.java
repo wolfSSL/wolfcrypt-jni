@@ -227,8 +227,11 @@ public class WolfCryptKeyPairGeneratorTest {
         assertNotNull(kpg);
         kpg = KeyPairGenerator.getInstance("RSA", "wolfJCE");
         assertNotNull(kpg);
-        kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
-        assertNotNull(kpg);
+        if (FeatureDetect.DhEnabled()) {
+            /* DH is only registered when compiled in native wolfSSL */
+            kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
+            assertNotNull(kpg);
+        }
         kpg = KeyPairGenerator.getInstance("RSASSA-PSS", "wolfJCE");
         assertNotNull(kpg);
 
@@ -582,6 +585,11 @@ public class WolfCryptKeyPairGeneratorTest {
         throws NoSuchProviderException, NoSuchAlgorithmException,
                InvalidAlgorithmParameterException {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         int testDHKeySizes[] = { 512, 1024, 2048 };
 
         for (int i = 0; i < testDHKeySizes.length; i++) {
@@ -605,6 +613,11 @@ public class WolfCryptKeyPairGeneratorTest {
     public void testKeyPairGeneratorDhInitWithKeySize()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                InvalidAlgorithmParameterException {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Test that DH KeyPairGenerator supports initialize(int) with
          * FFDHE standard key sizes (2048, 3072, 4096, 6144, 8192) */
@@ -662,6 +675,11 @@ public class WolfCryptKeyPairGeneratorTest {
         throws NoSuchProviderException, NoSuchAlgorithmException,
                InvalidAlgorithmParameterException {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         KeyPairGenerator kpg =
             KeyPairGenerator.getInstance("DH", "wolfJCE");
 
@@ -676,6 +694,11 @@ public class WolfCryptKeyPairGeneratorTest {
     public void testKeyPairGeneratorDhMultipleKeyGen()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                InvalidAlgorithmParameterException {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         KeyPairGenerator kpg =
             KeyPairGenerator.getInstance("DH", "wolfJCE");
@@ -695,6 +718,11 @@ public class WolfCryptKeyPairGeneratorTest {
     @Test
     public void testKeyPairGeneratorDhDefaultKeySize()
         throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Test that DH KeyPairGenerator works with default parameters
          * without explicit initialization. This matches SunJCE behavior. */

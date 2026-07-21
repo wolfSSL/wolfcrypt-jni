@@ -46,6 +46,7 @@ import javax.crypto.spec.DHGenParameterSpec;
 import javax.crypto.spec.DHParameterSpec;
 
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
@@ -79,9 +80,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
 
         AlgorithmParameterGenerator paramGen;
 
-        /* DH should be available */
-        paramGen = AlgorithmParameterGenerator.getInstance("DH", "wolfJCE");
-        assertNotNull(paramGen);
+        /* DH should be available, unless not compiled into native wolfSSL */
+        if (FeatureDetect.DhEnabled()) {
+            paramGen = AlgorithmParameterGenerator.getInstance("DH", "wolfJCE");
+            assertNotNull(paramGen);
+        }
 
         /* Getting a garbage algorithm should throw an exception */
         try {
@@ -100,6 +103,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
     public void testDHParameterGenerationFFDHESizes()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Test standard FFDHE sizes: 2048, 3072, 4096, 6144, 8192 */
         int[] ffdheSizes = { 2048, 3072, 4096, 6144, 8192 };
@@ -144,6 +152,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
         throws NoSuchProviderException, NoSuchAlgorithmException,
                Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         /* Test standard FFDHE sizes with SecureRandom */
         int[] ffdheSizes = { 2048, 3072, 4096, 6144, 8192 };
 
@@ -186,6 +199,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
         throws NoSuchProviderException, NoSuchAlgorithmException,
                Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         /* In FIPS mode, sizes without a pre-computed FFDHE group must be
          * rejected at init() time, before reaching native
          * wc_DhGenerateParams() */
@@ -216,6 +234,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
         throws NoSuchProviderException, NoSuchAlgorithmException,
                Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         /* Non-positive sizes must be rejected at init() time in all
          * modes */
         int[] invalidSizes = { 0, -1, -2048 };
@@ -239,6 +262,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
     public void testDHParameterGenerationNonStandardSizes()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Test non-standard sizes (requires dynamic generation).
          * Skip in FIPS mode, non-FFDHE sizes are rejected at init()
@@ -292,6 +320,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
         throws NoSuchProviderException, NoSuchAlgorithmException,
                Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         /* Test that default size is 2048 bits when no size is specified */
         AlgorithmParameterGenerator paramGen =
             AlgorithmParameterGenerator.getInstance("DH", "wolfJCE");
@@ -308,6 +341,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
     @Test
     public void testDHParameterGenerationWithDHGenParameterSpec()
         throws NoSuchProviderException, NoSuchAlgorithmException, Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Test that DHGenParameterSpec is supported and properly sets
          * both prime size and exponent size */
@@ -335,6 +373,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
     public void testDHParameterGenerationWithInvalidAlgorithmParameterSpec()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         /* Test that non-DHGenParameterSpec AlgorithmParameterSpec is
          * rejected */
         AlgorithmParameterGenerator paramGen =
@@ -359,6 +402,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
     @Test
     public void testDHParameterGenerationWithDHGenParameterSpecMultipleSizes()
         throws NoSuchProviderException, NoSuchAlgorithmException, Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Test DHGenParameterSpec with various FFDHE sizes and
          * exponent sizes */
@@ -413,6 +461,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
     public void testDHParameterGenerationWithDHGenParameterSpecNullRandom()
         throws NoSuchProviderException, NoSuchAlgorithmException, Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         /* Test that DHGenParameterSpec works with null SecureRandom
          * (should use default) */
         AlgorithmParameterGenerator paramGen =
@@ -434,6 +487,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
     @Test
     public void testDHParameterGenerationWithDHGenParameterSpecInvalidSize()
         throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Unsupported prime sizes in DHGenParameterSpec should be rejected
          * at init() time */
@@ -475,6 +533,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
     public void testDHParameterGenerationWithDHGenParameterSpecNullSpec()
         throws NoSuchProviderException, NoSuchAlgorithmException {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         /* Test that null DHGenParameterSpec is rejected */
         AlgorithmParameterGenerator paramGen =
             AlgorithmParameterGenerator.getInstance("DH", "wolfJCE");
@@ -492,6 +555,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
     @Test
     public void testDHParameterGenerationInteropWithSunJCE()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Test interoperability with SunJCE provider.
          * Generate parameters with wolfJCE and verify they work with
@@ -531,6 +599,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
     @Test
     public void testDHParametersFromWolfJCEMatchStandardProvider()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Generate params with both providers and verify format
          * compatibility */
@@ -576,6 +649,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
         throws NoSuchProviderException, NoSuchAlgorithmException,
                Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         /* For FFDHE standard sizes, parameters should be deterministic
          * (same size should produce same p and g) */
         AlgorithmParameterGenerator paramGen1 =
@@ -602,6 +680,11 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
     @Test
     public void testDHGenParameterSpecInteropWithSunJCE()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Test that our DHGenParameterSpec behavior matches SunJCE.
          * Both should accept DHGenParameterSpec and generate parameters

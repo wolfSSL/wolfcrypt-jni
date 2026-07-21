@@ -47,6 +47,7 @@ import java.security.spec.MGF1ParameterSpec;
 import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
@@ -74,9 +75,11 @@ public class WolfCryptAlgorithmParametersTest {
 
         AlgorithmParameters params;
 
-        /* DH should be available */
-        params = AlgorithmParameters.getInstance("DH", "wolfJCE");
-        assertNotNull(params);
+        /* DH should be available, unless not compiled into native wolfSSL */
+        if (FeatureDetect.DhEnabled()) {
+            params = AlgorithmParameters.getInstance("DH", "wolfJCE");
+            assertNotNull(params);
+        }
 
         /* Getting a garbage algorithm should throw an exception */
         try {
@@ -94,6 +97,11 @@ public class WolfCryptAlgorithmParametersTest {
     @Test
     public void testDHParametersInitWithDHParameterSpec()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Create known DH parameters */
         BigInteger p = new BigInteger(
@@ -130,6 +138,11 @@ public class WolfCryptAlgorithmParametersTest {
     public void testDHParametersInitWithDHParameterSpecIncludingL()
         throws Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         BigInteger p = new BigInteger(
             "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1" +
             "29024E088A67CC74020BBEA63B139B22514A08798E3404DD" +
@@ -162,6 +175,11 @@ public class WolfCryptAlgorithmParametersTest {
     public void testDHParametersInitWithInvalidParameterSpec()
         throws Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         AlgorithmParameters params =
             AlgorithmParameters.getInstance("DH", "wolfJCE");
 
@@ -182,6 +200,11 @@ public class WolfCryptAlgorithmParametersTest {
     @Test
     public void testDHParametersGetParameterSpecWithWrongClass()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         BigInteger p = new BigInteger("123456789");
         BigInteger g = BigInteger.valueOf(2);
@@ -217,6 +240,11 @@ public class WolfCryptAlgorithmParametersTest {
     public void testDHParametersGetParameterSpecWithNull()
         throws Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         BigInteger p = new BigInteger("123456789");
         BigInteger g = BigInteger.valueOf(2);
         DHParameterSpec spec = new DHParameterSpec(p, g);
@@ -241,6 +269,11 @@ public class WolfCryptAlgorithmParametersTest {
     public void testDHParametersGetParameterSpecBeforeInit()
         throws Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         AlgorithmParameters params =
             AlgorithmParameters.getInstance("DH", "wolfJCE");
 
@@ -259,6 +292,11 @@ public class WolfCryptAlgorithmParametersTest {
     @Test
     public void testDHParametersEncodingDER()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         BigInteger p = new BigInteger(
             "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1" +
@@ -303,6 +341,11 @@ public class WolfCryptAlgorithmParametersTest {
     public void testDHParametersEncodingWithFormat()
         throws Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         BigInteger p = new BigInteger("123456789");
         BigInteger g = BigInteger.valueOf(2);
         DHParameterSpec spec = new DHParameterSpec(p, g);
@@ -331,6 +374,11 @@ public class WolfCryptAlgorithmParametersTest {
     public void testDHParametersEncodingUnsupportedFormat()
         throws Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         BigInteger p = new BigInteger("123456789");
         BigInteger g = BigInteger.valueOf(2);
         DHParameterSpec spec = new DHParameterSpec(p, g);
@@ -353,6 +401,11 @@ public class WolfCryptAlgorithmParametersTest {
     public void testDHParametersEncodingBeforeInit()
         throws Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         AlgorithmParameters params =
             AlgorithmParameters.getInstance("DH", "wolfJCE");
 
@@ -369,6 +422,11 @@ public class WolfCryptAlgorithmParametersTest {
     @Test
     public void testDHParametersInitWithDERBytes()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Generate parameters to get valid DER encoding */
         AlgorithmParameterGenerator paramGen =
@@ -395,6 +453,11 @@ public class WolfCryptAlgorithmParametersTest {
     @Test
     public void testDHParametersInitWithDERBytesAndFormat()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         AlgorithmParameterGenerator paramGen =
             AlgorithmParameterGenerator.getInstance("DH", "wolfJCE");
@@ -430,6 +493,11 @@ public class WolfCryptAlgorithmParametersTest {
     public void testDHParametersInitWithInvalidDERBytes()
         throws Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         AlgorithmParameters params =
             AlgorithmParameters.getInstance("DH", "wolfJCE");
 
@@ -449,6 +517,11 @@ public class WolfCryptAlgorithmParametersTest {
     public void testDHParametersInitWithUnsupportedFormat()
         throws Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         AlgorithmParameters params =
             AlgorithmParameters.getInstance("DH", "wolfJCE");
 
@@ -466,6 +539,11 @@ public class WolfCryptAlgorithmParametersTest {
     @Test
     public void testDHParametersToString()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         BigInteger p = new BigInteger("123456789");
         BigInteger g = BigInteger.valueOf(2);
@@ -486,6 +564,11 @@ public class WolfCryptAlgorithmParametersTest {
     public void testDHParametersToStringBeforeInit()
         throws Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         AlgorithmParameters params =
             AlgorithmParameters.getInstance("DH", "wolfJCE");
 
@@ -501,6 +584,11 @@ public class WolfCryptAlgorithmParametersTest {
     @Test
     public void testDHParametersInteropWithSunJCE()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Generate parameters with wolfJCE */
         AlgorithmParameterGenerator wolfParamGen =
@@ -548,6 +636,11 @@ public class WolfCryptAlgorithmParametersTest {
     @Test
     public void testDHParametersRoundTrip()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Test multiple round trips: spec -> params -> encoded ->
          * params -> spec.
@@ -1360,6 +1453,11 @@ public class WolfCryptAlgorithmParametersTest {
     public void testDHParametersDERTruncatedSequence()
         throws Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         /* SEQUENCE tag with length larger than data */
         byte[] bad = new byte[] { 0x30, 0x20 };
 
@@ -1376,6 +1474,11 @@ public class WolfCryptAlgorithmParametersTest {
     @Test
     public void testDHParametersDERBadSequenceTag()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* Wrong tag (0x31 = SET instead of 0x30 = SEQUENCE) */
         byte[] bad = new byte[] {
@@ -1398,6 +1501,11 @@ public class WolfCryptAlgorithmParametersTest {
     public void testDHParametersDERBadIntegerLength()
         throws Exception {
 
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
         /* SEQUENCE with p INTEGER length exceeding boundary */
         byte[] bad = new byte[] {
             0x30, 0x06,
@@ -1418,6 +1526,11 @@ public class WolfCryptAlgorithmParametersTest {
     @Test
     public void testDHParametersDERMissingGenerator()
         throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
 
         /* SEQUENCE with only one INTEGER (missing g) */
         byte[] bad = new byte[] {
