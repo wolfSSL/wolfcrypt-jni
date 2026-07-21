@@ -6,7 +6,7 @@
  *
  * wolfSSL is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * wolfSSL is distributed in the hope that it will be useful,
@@ -262,7 +262,7 @@ public class WolfCryptMessageDigestSha384Test {
                         "cryptography. Main products include the wolfSSL " +
                         "embedded SSL/TLS library, wolfCrypt cryptography " +
                         "library, wolfMQTT, and wolfSSH. Products are " +
-                        "dual licensed under both GPLv2 and a commercial" +
+                        "dual licensed under both GPLv3 and a commercial" +
                         "license.";
 
         byte[] wolfOutput;

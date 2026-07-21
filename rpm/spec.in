@@ -3,7 +3,7 @@ Version:        @VERSION@
 Release:        1
 Summary:        wolfCrypt JCE provider and JNI wrapper
 
-License:        GPLv2
+License:        GPLv3
 URL:            http://www.wolfssl.com/
 Source0:        @NAME@-@VERSION@.tar.gz
 
