@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Iterator;
+import java.util.Map;
+import java.lang.reflect.Field;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
@@ -3021,6 +3023,15 @@ public class WolfSSLKeyStoreTest {
         wksSpi.engineProbe(null);
     }
 
+    /* Get internal KEK cache map via reflection */
+    private static Map<?, ?> getKekCacheMap(WolfSSLKeyStore wks)
+        throws Exception {
+
+        Field field = WolfSSLKeyStore.class.getDeclaredField("kekCache");
+        field.setAccessible(true);
+        return (Map<?, ?>)field.get(wks);
+    }
+
     @Test
     public void testKekCacheDisabledByDefault() throws Exception {
 
@@ -3030,38 +3041,20 @@ public class WolfSSLKeyStoreTest {
         assertTrue("KEK cache should be disabled by default",
             (enabled == null) || !enabled.equalsIgnoreCase("true"));
 
-        /* Create and populate KeyStore */
-        KeyStore store = KeyStore.getInstance(storeType, storeProvider);
-        store.load(null, storePass.toCharArray());
-        store.setKeyEntry("rsaKey", serverKeyRsa, storePass.toCharArray(),
-            new Certificate[] { serverCertRsa });
+        /* Use WolfSSLKeyStore directly to inspect KEK cache */
+        WolfSSLKeyStore wksSpi = new WolfSSLKeyStore();
+        wksSpi.engineLoad(null, storePass.toCharArray());
+        wksSpi.engineSetKeyEntry("rsaKey", serverKeyRsa,
+            storePass.toCharArray(), new Certificate[] { serverCertRsa });
 
-        /* Warm up the getKey() path once before timing. */
-        store.getKey("rsaKey", storePass.toCharArray());
-
-        /* Time first getKey(). Use nanoTime() (monotonic, high-resolution)
-         * rather than currentTimeMillis() (wall-clock, coarse). */
-        long start = System.nanoTime();
-        Key key1 = store.getKey("rsaKey", storePass.toCharArray());
-        long first = System.nanoTime() - start;
-
-        /* Time second getKey() - should be similar since cache is disabled */
-        start = System.nanoTime();
-        Key key2 = store.getKey("rsaKey", storePass.toCharArray());
-        long second = System.nanoTime() - start;
-
+        Key key1 = wksSpi.engineGetKey("rsaKey", storePass.toCharArray());
+        Key key2 = wksSpi.engineGetKey("rsaKey", storePass.toCharArray());
         assertNotNull(key1);
         assertNotNull(key2);
 
-        /* Without a cache both calls re-derive the KEK (PBKDF2), so the second
-         * should not be dramatically faster than the first (within ~30%). */
-        long firstMs = first / 1000000L;
-        if (firstMs > 5) {
-            long secondMs = second / 1000000L;
-            assertTrue("Without cache, times should be similar (first=" +
-                firstMs + "ms, second=" + secondMs + "ms)",
-                second > first * 0.3);
-        }
+        /* Cache stays empty when disabled */
+        assertTrue("KEK cache should remain empty when disabled",
+            getKekCacheMap(wksSpi).isEmpty());
     }
 
     @Test
@@ -3078,30 +3071,28 @@ public class WolfSSLKeyStoreTest {
             Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
             Security.setProperty("wolfjce.keystore.kekCacheTtlSec", "300");
 
-            /* Create and populate KeyStore */
-            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
-            store.load(null, storePass.toCharArray());
-            store.setKeyEntry("rsaKey", serverKeyRsa, storePass.toCharArray(),
+            /* Use WolfSSLKeyStore directly to inspect KEK cache */
+            WolfSSLKeyStore wksSpi = new WolfSSLKeyStore();
+            wksSpi.engineLoad(null, storePass.toCharArray());
+            wksSpi.engineSetKeyEntry("rsaKey", serverKeyRsa,
+                storePass.toCharArray(),
                 new Certificate[] { serverCertRsa });
 
-            /* First getKey() - populates cache */
-            long start = System.currentTimeMillis();
-            Key key1 = store.getKey("rsaKey", storePass.toCharArray());
-            long first = System.currentTimeMillis() - start;
+            Map<?, ?> cache = getKekCacheMap(wksSpi);
+            assertTrue("KEK cache should start empty", cache.isEmpty());
 
-            /* Second getKey() - should be much faster (cache hit) */
-            start = System.currentTimeMillis();
-            Key key2 = store.getKey("rsaKey", storePass.toCharArray());
-            long second = System.currentTimeMillis() - start;
-
+            /* First getKey() populates cache */
+            Key key1 = wksSpi.engineGetKey("rsaKey", storePass.toCharArray());
             assertNotNull(key1);
+            assertEquals("KEK cache should hold one entry after getKey",
+                1, cache.size());
+
+            /* Cache hit, no new entry added */
+            Key key2 = wksSpi.engineGetKey("rsaKey", storePass.toCharArray());
             assertNotNull(key2);
             assertEquals(key1, key2);
-
-            /* Cache hit should be faster. */
-            assertTrue("Cache hit should be faster: " +
-                "first=" + first + "ms, second=" + second + "ms",
-                first > 0 && (first > 50 ? second < first : true));
+            assertEquals("KEK cache should still hold one entry",
+                1, cache.size());
 
         } finally {
             /* Restore original properties */
@@ -3129,33 +3120,31 @@ public class WolfSSLKeyStoreTest {
             /* Enable cache */
             Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
 
-            /* Create and populate KeyStore with SecretKey */
-            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
-            store.load(null, storePass.toCharArray());
+            /* Use WolfSSLKeyStore directly to inspect KEK cache */
+            WolfSSLKeyStore wksSpi = new WolfSSLKeyStore();
+            wksSpi.engineLoad(null, storePass.toCharArray());
 
             KeyGenerator keyGen = KeyGenerator.getInstance("AES");
             keyGen.init(256);
             SecretKey secretKey = keyGen.generateKey();
-            store.setKeyEntry("aesKey", secretKey, storePass.toCharArray(),
-                null);
+            wksSpi.engineSetKeyEntry("aesKey", secretKey,
+                storePass.toCharArray(), null);
 
-            /* First getKey() */
-            long start = System.currentTimeMillis();
-            Key key1 = store.getKey("aesKey", storePass.toCharArray());
-            long first = System.currentTimeMillis() - start;
+            Map<?, ?> cache = getKekCacheMap(wksSpi);
+            assertTrue("KEK cache should start empty", cache.isEmpty());
 
-            /* Second getKey() - cache hit */
-            start = System.currentTimeMillis();
-            Key key2 = store.getKey("aesKey", storePass.toCharArray());
-            long second = System.currentTimeMillis() - start;
-
+            /* First getKey() populates cache */
+            Key key1 = wksSpi.engineGetKey("aesKey", storePass.toCharArray());
             assertNotNull(key1);
-            assertNotNull(key2);
+            assertEquals("KEK cache should hold one entry after getKey",
+                1, cache.size());
 
-            /* Cache hit should be faster */
-            assertTrue("SecretKey cache hit should be faster: " +
-                "first=" + first + "ms, second=" + second + "ms",
-                first > 50 ? second < first / 5 : true);
+            /* Cache hit, no new entry added */
+            Key key2 = wksSpi.engineGetKey("aesKey", storePass.toCharArray());
+            assertNotNull(key2);
+            assertEquals(key1, key2);
+            assertEquals("KEK cache should still hold one entry",
+                1, cache.size());
 
         } finally {
             if (origEnabled != null) {
@@ -3178,43 +3167,37 @@ public class WolfSSLKeyStoreTest {
             /* Enable cache */
             Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
 
-            /* Create KeyStore with two entries */
-            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
-            store.load(null, storePass.toCharArray());
-            store.setKeyEntry("rsaKey1", serverKeyRsa, storePass.toCharArray(),
+            /* Use WolfSSLKeyStore directly to inspect KEK cache */
+            WolfSSLKeyStore wksSpi = new WolfSSLKeyStore();
+            wksSpi.engineLoad(null, storePass.toCharArray());
+            wksSpi.engineSetKeyEntry("rsaKey1", serverKeyRsa,
+                storePass.toCharArray(),
                 new Certificate[] { serverCertRsa });
-            store.setKeyEntry("eccKey1", serverKeyEcc, storePass.toCharArray(),
-                eccServerChain);
+            wksSpi.engineSetKeyEntry("eccKey1", serverKeyEcc,
+                storePass.toCharArray(), eccServerChain);
 
-            /* Populate cache for both entries */
-            Key key1 = store.getKey("rsaKey1", storePass.toCharArray());
+            /* Populate cache, one KEK per entry */
+            Key key1 = wksSpi.engineGetKey("rsaKey1", storePass.toCharArray());
             assertNotNull(key1);
-            Key key2 = store.getKey("eccKey1", storePass.toCharArray());
+            Key key2 = wksSpi.engineGetKey("eccKey1", storePass.toCharArray());
             assertNotNull(key2);
 
-            /* Verify second call is fast (cache hit) */
-            long start = System.currentTimeMillis();
-            store.getKey("eccKey1", storePass.toCharArray());
-            long cachedTime = System.currentTimeMillis() - start;
+            Map<?, ?> cache = getKekCacheMap(wksSpi);
+            assertEquals("KEK cache should hold two entries",
+                2, cache.size());
 
             /* Delete first entry - should clear entire cache */
-            store.deleteEntry("rsaKey1");
+            wksSpi.engineDeleteEntry("rsaKey1");
+            assertFalse(wksSpi.engineContainsAlias("rsaKey1"));
+            assertTrue("KEK cache should be empty after deleteEntry",
+                cache.isEmpty());
 
-            /* Verify first entry is deleted */
-            assertFalse(store.containsAlias("rsaKey1"));
-
-            /* Get second key again - should be slow (cache was cleared) */
-            start = System.currentTimeMillis();
-            Key key2Again = store.getKey("eccKey1", storePass.toCharArray());
-            long uncachedTime = System.currentTimeMillis() - start;
+            /* Second key still retrievable, repopulates cache */
+            Key key2Again = wksSpi.engineGetKey("eccKey1",
+                storePass.toCharArray());
             assertNotNull(key2Again);
-
-            /* Verify it was slower. Use 2x threshold since timing can vary
-             * significantly on CI systems with fast storage. */
-            assertTrue("Cache should have been cleared, but timing suggests " +
-                "it wasn't (cached: " + cachedTime + "ms, uncached: " +
-                uncachedTime + "ms)",
-                uncachedTime > cachedTime * 2);
+            assertEquals("KEK cache should hold one entry after getKey",
+                1, cache.size());
 
         } finally {
             if (origEnabled != null) {
@@ -3238,47 +3221,37 @@ public class WolfSSLKeyStoreTest {
             /* Enable cache */
             Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
 
-            /* Create KeyStore with two entries */
-            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
-            store.load(null, storePass.toCharArray());
-            store.setKeyEntry("rsaKey1", serverKeyRsa, storePass.toCharArray(),
+            /* Use WolfSSLKeyStore directly to inspect KEK cache */
+            WolfSSLKeyStore wksSpi = new WolfSSLKeyStore();
+            wksSpi.engineLoad(null, storePass.toCharArray());
+            wksSpi.engineSetKeyEntry("rsaKey1", serverKeyRsa,
+                storePass.toCharArray(),
                 new Certificate[] { serverCertRsa });
-            store.setKeyEntry("eccKey1", serverKeyEcc, storePass.toCharArray(),
-                eccServerChain);
+            wksSpi.engineSetKeyEntry("eccKey1", serverKeyEcc,
+                storePass.toCharArray(), eccServerChain);
 
-            /* Populate cache for both entries */
-            Key key1 = store.getKey("rsaKey1", storePass.toCharArray());
+            /* Populate cache, one KEK per entry */
+            Key key1 = wksSpi.engineGetKey("rsaKey1", storePass.toCharArray());
             assertNotNull(key1);
-            Key key2 = store.getKey("eccKey1", storePass.toCharArray());
+            Key key2 = wksSpi.engineGetKey("eccKey1", storePass.toCharArray());
             assertNotNull(key2);
 
-            /* Verify second call is fast (cache hit) */
-            long start = System.nanoTime();
-            store.getKey("eccKey1", storePass.toCharArray());
-            long cachedNs = System.nanoTime() - start;
+            Map<?, ?> cache = getKekCacheMap(wksSpi);
+            assertEquals("KEK cache should hold two entries",
+                2, cache.size());
 
             /* Overwrite first entry - should clear entire cache */
-            store.setKeyEntry("rsaKey1", serverKeyEcc, storePass.toCharArray(),
-                eccServerChain);
+            wksSpi.engineSetKeyEntry("rsaKey1", serverKeyEcc,
+                storePass.toCharArray(), eccServerChain);
+            assertTrue("KEK cache should be empty after setKeyEntry",
+                cache.isEmpty());
 
-            /* Get second key again - should be slow (cache was cleared) */
-            start = System.nanoTime();
-            Key key2Again = store.getKey("eccKey1", storePass.toCharArray());
-            long uncachedNs = System.nanoTime() - start;
+            /* Second key still retrievable, repopulates cache */
+            Key key2Again = wksSpi.engineGetKey("eccKey1",
+                storePass.toCharArray());
             assertNotNull(key2Again);
-
-            /* Only verify timing if cached operation was fast enough to
-             * indicate a real cache hit. On loaded CI systems, even cached
-             * operations can be slow due to system overhead, making timing
-             * comparisons unreliable. */
-            long cachedMs = cachedNs / 1_000_000;
-            long uncachedMs = uncachedNs / 1_000_000;
-            if (cachedMs < 3) {
-                assertTrue("Cache should have been cleared, but timing " +
-                    "suggests it wasn't (cached: " + cachedMs + "ms, " +
-                    "uncached: " + uncachedMs + "ms)",
-                    uncachedMs > cachedMs * 2);
-            }
+            assertEquals("KEK cache should hold one entry after getKey",
+                1, cache.size());
 
         } finally {
             if (origEnabled != null) {
@@ -3301,35 +3274,37 @@ public class WolfSSLKeyStoreTest {
             /* Enable cache */
             Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
 
-            /* Create first KeyStore and populate cache */
-            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
-            store.load(null, storePass.toCharArray());
-            store.setKeyEntry("rsaKey", serverKeyRsa, storePass.toCharArray(),
+            /* Use WolfSSLKeyStore directly to inspect KEK cache */
+            WolfSSLKeyStore wksSpi = new WolfSSLKeyStore();
+            wksSpi.engineLoad(null, storePass.toCharArray());
+            wksSpi.engineSetKeyEntry("rsaKey", serverKeyRsa,
+                storePass.toCharArray(),
                 new Certificate[] { serverCertRsa });
 
             /* Populate cache */
-            Key key1 = store.getKey("rsaKey", storePass.toCharArray());
+            Key key1 = wksSpi.engineGetKey("rsaKey", storePass.toCharArray());
             assertNotNull(key1);
+
+            Map<?, ?> cache = getKekCacheMap(wksSpi);
+            assertEquals("KEK cache should hold one entry after getKey",
+                1, cache.size());
 
             /* Save to byte array */
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            store.store(baos, storePass.toCharArray());
+            wksSpi.engineStore(baos, storePass.toCharArray());
             byte[] storeData = baos.toByteArray();
 
             /* Load from byte array - should clear cache */
             ByteArrayInputStream bais = new ByteArrayInputStream(storeData);
-            store.load(bais, storePass.toCharArray());
+            wksSpi.engineLoad(bais, storePass.toCharArray());
+            assertTrue("KEK cache should be empty after load",
+                cache.isEmpty());
 
-            /* Get key - first call after load should take PBKDF2 time */
-            long start = System.currentTimeMillis();
-            Key key2 = store.getKey("rsaKey", storePass.toCharArray());
-            long elapsed = System.currentTimeMillis() - start;
-
+            /* Key should still be retrievable, repopulates cache */
+            Key key2 = wksSpi.engineGetKey("rsaKey", storePass.toCharArray());
             assertNotNull(key2);
-            /* After load, should need full PBKDF2 (cache was cleared) */
-            /* Use >= 5ms threshold for CI timing variability */
-            assertTrue("After load, getKey should take PBKDF2 time: " +
-                elapsed + "ms", elapsed >= 5);
+            assertEquals("KEK cache should hold one entry after getKey",
+                1, cache.size());
 
         } finally {
             if (origEnabled != null) {
@@ -3396,33 +3371,39 @@ public class WolfSSLKeyStoreTest {
             /* Enable cache */
             Security.setProperty("wolfjce.keystore.kekCacheEnabled", "true");
 
-            /* Create KeyStore with multiple entries using same password */
-            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
-            store.load(null, storePass.toCharArray());
+            /* Use WolfSSLKeyStore directly to inspect KEK cache */
+            WolfSSLKeyStore wksSpi = new WolfSSLKeyStore();
+            wksSpi.engineLoad(null, storePass.toCharArray());
 
-            store.setKeyEntry("rsaKey", serverKeyRsa, storePass.toCharArray(),
+            wksSpi.engineSetKeyEntry("rsaKey", serverKeyRsa,
+                storePass.toCharArray(),
                 new Certificate[] { serverCertRsa });
-            store.setKeyEntry("eccKey", serverKeyEcc, storePass.toCharArray(),
-                eccServerChain);
+            wksSpi.engineSetKeyEntry("eccKey", serverKeyEcc,
+                storePass.toCharArray(), eccServerChain);
 
-            /* Populate cache for both entries */
-            Key rsaKey = store.getKey("rsaKey", storePass.toCharArray());
-            Key eccKey = store.getKey("eccKey", storePass.toCharArray());
-
+            /* Populate cache, one entry per KeyStore entry salt */
+            Key rsaKey = wksSpi.engineGetKey("rsaKey",
+                storePass.toCharArray());
+            Key eccKey = wksSpi.engineGetKey("eccKey",
+                storePass.toCharArray());
             assertNotNull(rsaKey);
             assertNotNull(eccKey);
 
-            /* Both keys should be retrievable again quickly */
-            long start = System.currentTimeMillis();
-            Key rsaKey2 = store.getKey("rsaKey", storePass.toCharArray());
-            Key eccKey2 = store.getKey("eccKey", storePass.toCharArray());
-            long elapsed = System.currentTimeMillis() - start;
+            Map<?, ?> cache = getKekCacheMap(wksSpi);
+            assertEquals("KEK cache should hold one entry per KeyStore " +
+                "entry", 2, cache.size());
 
+            /* Cache hits, no new entries */
+            Key rsaKey2 = wksSpi.engineGetKey("rsaKey",
+                storePass.toCharArray());
+            Key eccKey2 = wksSpi.engineGetKey("eccKey",
+                storePass.toCharArray());
             assertNotNull(rsaKey2);
             assertNotNull(eccKey2);
-
-            assertTrue("Multiple cache hits should be fast: " +
-                elapsed + "ms", elapsed < 100);
+            assertEquals(rsaKey, rsaKey2);
+            assertEquals(eccKey, eccKey2);
+            assertEquals("KEK cache should still hold two entries",
+                2, cache.size());
 
         } finally {
             if (origEnabled != null) {
