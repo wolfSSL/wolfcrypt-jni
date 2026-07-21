@@ -75,6 +75,46 @@ public class SlhDsa extends NativeStruct {
     /** FIPS 205 maximum context length, in bytes. */
     public static final int SLH_DSA_MAX_CONTEXT_LEN = 255;
 
+    /**
+     * Get the standard algorithm name for an SLH-DSA parameter set.
+     *
+     * @param param SLH-DSA parameter set, one of SLH_DSA_*
+     *
+     * @return standard algorithm name (e.g. "SLH-DSA-SHA2-128s"), or
+     *         null if param is unknown
+     */
+    public static String getParamSetName(int param) {
+
+        switch (param) {
+            case SLH_DSA_SHAKE_128S:
+                return "SLH-DSA-SHAKE-128s";
+            case SLH_DSA_SHAKE_128F:
+                return "SLH-DSA-SHAKE-128f";
+            case SLH_DSA_SHAKE_192S:
+                return "SLH-DSA-SHAKE-192s";
+            case SLH_DSA_SHAKE_192F:
+                return "SLH-DSA-SHAKE-192f";
+            case SLH_DSA_SHAKE_256S:
+                return "SLH-DSA-SHAKE-256s";
+            case SLH_DSA_SHAKE_256F:
+                return "SLH-DSA-SHAKE-256f";
+            case SLH_DSA_SHA2_128S:
+                return "SLH-DSA-SHA2-128s";
+            case SLH_DSA_SHA2_128F:
+                return "SLH-DSA-SHA2-128f";
+            case SLH_DSA_SHA2_192S:
+                return "SLH-DSA-SHA2-192s";
+            case SLH_DSA_SHA2_192F:
+                return "SLH-DSA-SHA2-192f";
+            case SLH_DSA_SHA2_256S:
+                return "SLH-DSA-SHA2-256s";
+            case SLH_DSA_SHA2_256F:
+                return "SLH-DSA-SHA2-256f";
+            default:
+                return null;
+        }
+    }
+
     /* Lowest and highest valid native enum SlhDsaParam values. */
     private static final int PARAM_MIN = 0;
     private static final int PARAM_MAX = 11;

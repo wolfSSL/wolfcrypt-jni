@@ -401,16 +401,19 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
 
         /* Check signature algorithm against disabled list */
         sigAlg = cert.getSigAlgName();
-        if (WolfCryptUtil.isAlgorithmDisabled(sigAlg, propertyName)) {
-            log("Algorithm constraints check failed on sig algo: " + sigAlg);
+        if (WolfCryptUtil.isAlgorithmDisabledForCertPath(sigAlg,
+            propertyName)) {
+            log("Algorithm constraints check failed on signature " +
+                "algorithm: " + sigAlg);
             throw new CertPathValidatorException(
-                "Algorithm constraints check failed on sig algo: " + sigAlg,
+                "Algorithm constraints check failed on signature " +
+                "algorithm: " + sigAlg,
                 null, path, certIdx, BasicReason.ALGORITHM_CONSTRAINED);
         }
 
         /* Check public key algorithm and size against constraints */
         pubKey = cert.getPublicKey();
-        if (!WolfCryptUtil.isKeyAllowed(pubKey, propertyName)) {
+        if (!WolfCryptUtil.isKeyAllowedForCertPath(pubKey, propertyName)) {
             log("Algorithm constraints check failed on public key: " +
                 pubKey.getAlgorithm());
             throw new CertPathValidatorException(
@@ -456,12 +459,12 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 "algo constraints");
         }
 
-        if (!WolfCryptUtil.isKeyAllowed(pubKey, propertyName)) {
-            log("Algo constraints check failed on trust anchor public key: " +
-                pubKey.getAlgorithm());
+        if (!WolfCryptUtil.isKeyAllowedForCertPath(pubKey, propertyName)) {
+            log("Algorithm constraints check failed on trust anchor " +
+                "public key: " + pubKey.getAlgorithm());
             throw new CertPathValidatorException(
-                "Algo constraints check failed on trust anchor public key: " +
-                pubKey.getAlgorithm(), null, null, -1,
+                "Algorithm constraints check failed on trust anchor " +
+                "public key: " + pubKey.getAlgorithm(), null, null, -1,
                 BasicReason.ALGORITHM_CONSTRAINED);
         }
     }

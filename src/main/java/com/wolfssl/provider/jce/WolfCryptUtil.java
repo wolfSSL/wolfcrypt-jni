@@ -44,12 +44,21 @@ import java.security.interfaces.DSAPublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.InvalidKeySpecException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+import javax.crypto.interfaces.DHPublicKey;
+
+import com.wolfssl.wolfcrypt.MlDsa;
+import com.wolfssl.wolfcrypt.SlhDsa;
 
 /**
  * Utility class containing helper functions for wolfCrypt JCE provider.
@@ -410,18 +419,68 @@ public class WolfCryptUtil {
      * For example, "MD2withRSA" will check for "MD2withRSA", "MD2", and
      * "RSA" in the disabled algorithms list.
      *
+     * Entries may carry qualifiers after the algorithm name (ex:
+     * "SHA1 jdkCA &amp; usage TLSServer"). This method treats all qualifiers
+     * as if their conditions hold, keeping the entry active (fail closed).
+     * Callers checking algorithms for CertPath validation should use
+     * isAlgorithmDisabledForCertPath() instead, which skips entries that can
+     * never apply to that context.
+     *
+     * Include directives (ex: "include jdk.disabled.namedCurves") are
+     * expanded to the entries of the referenced property.
+     *
      * @param algorithm Algorithm name to check (e.g., "MD2", "MD5",
      *                  "SHA1withRSA", "MD2withRSA")
      * @param propertyName Security property name to check against
-     *                     (e.g., "jdk.certpath.disabledAlgorithms")
+     *                     (ex: "jdk.certpath.disabledAlgorithms")
      *
      * @return true if algorithm is disabled, false otherwise
      */
     public static boolean isAlgorithmDisabled(String algorithm,
         String propertyName) {
 
+        return isAlgorithmDisabled(algorithm, propertyName, false);
+    }
+
+    /**
+     * Check if a given algorithm is disabled for CertPath validation based
+     * on a security property.
+     *
+     * Same as isAlgorithmDisabled(), except entries restricted to usage
+     * contexts that can never apply to validation done through the standard
+     * CertPath API (TLSServer, TLSClient, SignedJAR) are skipped, matching
+     * JDK behavior. All other qualifiers (jdkCA, denyAfter, unrecognized)
+     * are treated as if their conditions hold, keeping the entry active
+     * (fail closed).
+     *
+     * @param algorithm Algorithm name to check (e.g., "MD2", "MD5",
+     *                  "SHA1withRSA", "MD2withRSA")
+     * @param propertyName Security property name to check against
+     *                     (ex: "jdk.certpath.disabledAlgorithms")
+     *
+     * @return true if algorithm is disabled, false otherwise
+     */
+    public static boolean isAlgorithmDisabledForCertPath(String algorithm,
+        String propertyName) {
+
+        return isAlgorithmDisabled(algorithm, propertyName, true);
+    }
+
+    /**
+     * Internal implementation of the disabled algorithm checks above.
+     *
+     * @param algorithm Algorithm name to check
+     * @param propertyName Security property name to check against
+     * @param certPathContext true when checking for CertPath validation,
+     *        skips entries scoped to usage contexts that can never apply
+     *        there
+     *
+     * @return true if algorithm is disabled, false otherwise
+     */
+    private static boolean isAlgorithmDisabled(String algorithm,
+        String propertyName, boolean certPathContext) {
+
         List<String> disabledList = null;
-        String disabledAlgos = null;
 
         if (algorithm == null || algorithm.isEmpty()) {
             return false;
@@ -431,14 +490,11 @@ public class WolfCryptUtil {
             return false;
         }
 
-        disabledAlgos = Security.getProperty(propertyName);
-        if (disabledAlgos == null || disabledAlgos.isEmpty()) {
+        /* Get property entries, with include directives expanded */
+        disabledList = getExpandedDisabledEntries(propertyName);
+        if (disabledList.isEmpty()) {
             return false;
         }
-
-        /* Remove spaces after commas, split into List */
-        disabledAlgos = disabledAlgos.replaceAll(", ", ",");
-        disabledList = Arrays.asList(disabledAlgos.split(","));
 
         /* Decompose composite algorithm names like "MD2withRSA" into
          * constituent parts and check each. Common formats:
@@ -460,12 +516,24 @@ public class WolfCryptUtil {
             /* Skip key-size constraints such as "RSA keySize < 1024". Those
              * are size limits enforced by isKeyAllowed(), not signature name
              * disables. */
-            if (disabled.toLowerCase().contains("keysize")) {
+            if (disabled.toLowerCase(Locale.ROOT).contains("keysize")) {
+                continue;
+            }
+
+            /* For CertPath callers, skip entries scoped to usage contexts
+             * that never apply there (ex: "SHA1 jdkCA & usage TLSServer") */
+            if (certPathContext && !disabledEntryAppliesToCertPath(disabled)) {
                 continue;
             }
 
             /* Check the full algorithm name (case-insensitive) */
             if (disabledName.equalsIgnoreCase(algorithm)) {
+                return true;
+            }
+
+            /* Match the full entry too, curve entries can contain a
+             * space (ex: "X9.62 c2tnb191v1") */
+            if (disabled.trim().equalsIgnoreCase(algorithm)) {
                 return true;
             }
 
@@ -475,9 +543,73 @@ public class WolfCryptUtil {
                     return true;
                 }
             }
+
+            /* Known PQ family entries also disable all of their parameter
+             * sets (ex "ML-DSA" disables "ML-DSA-44"). */
+            if (isPQFamilyName(disabledName)) {
+                String prefix = disabledName + "-";
+                if (algorithm.regionMatches(true, 0, prefix, 0,
+                    prefix.length())) {
+                    return true;
+                }
+                for (String part : parts) {
+                    if (part.regionMatches(true, 0, prefix, 0,
+                        prefix.length())) {
+                        return true;
+                    }
+                }
+            }
         }
 
         return false;
+    }
+
+    /**
+     * Get the entries of a disabled-algorithms security property, with
+     * include directives (ex: "include jdk.disabled.namedCurves") expanded
+     * to the entries of the referenced property, matching JDK behavior.
+     * Each property is expanded at most once to guard against include
+     * cycles.
+     *
+     * @param propertyName Security property name to read
+     *
+     * @return list of trimmed entries, empty list if property is not set
+     */
+    private static List<String> getExpandedDisabledEntries(
+        String propertyName) {
+
+        List<String> entries = new ArrayList<String>();
+        Deque<String> pending = new ArrayDeque<String>();
+        Set<String> expanded = new HashSet<String>();
+        String propValue = null;
+
+        pending.add(propertyName);
+
+        while (!pending.isEmpty()) {
+            String prop = pending.removeFirst();
+
+            /* Expand each property at most once, guards include cycles */
+            if (!expanded.add(prop)) {
+                continue;
+            }
+
+            propValue = Security.getProperty(prop);
+            if (propValue == null || propValue.isEmpty()) {
+                continue;
+            }
+
+            for (String entry : propValue.split(",")) {
+                entry = entry.trim();
+                if (entry.regionMatches(true, 0, "include ", 0, 8)) {
+                    pending.add(entry.substring(8).trim());
+                }
+                else if (!entry.isEmpty()) {
+                    entries.add(entry);
+                }
+            }
+        }
+
+        return entries;
     }
 
     /**
@@ -506,6 +638,77 @@ public class WolfCryptUtil {
         }
 
         return tokens[0].trim();
+    }
+
+    /**
+     * Determine if a single disabled-algorithms list entry applies to generic
+     * CertPath validation.
+     *
+     * Qualifiers after the algorithm name are ANDed together
+     * (ex: "SHA1 jdkCA &amp; usage TLSServer"). A usage qualifier that
+     * names only contexts which can never apply to CertPath validation
+     * (TLSServer, TLSClient, SignedJAR) can never be satisfied, which
+     * makes the whole ANDed entry non-applicable, matching JDK behavior.
+     * All other qualifiers (jdkCA, denyAfter, malformed or unrecognized) are
+     * treated as if their conditions hold (fail closed).
+     *
+     * @param entry a single disabled-algorithms list entry
+     *
+     * @return false if the entry can never apply to generic CertPath
+     *         validation, true otherwise (fail closed)
+     */
+    private static boolean disabledEntryAppliesToCertPath(String entry) {
+
+        int idx = 0;
+        String qualifiers = null;
+        String[] groups = null;
+        String[] usageTokens = null;
+        boolean allRecognized = false;
+
+        if (entry == null) {
+            return true;
+        }
+
+        /* Leading algorithm name ends at first space, rest is qualifiers */
+        entry = entry.trim();
+        idx = entry.indexOf(' ');
+        if (idx < 0) {
+            /* Bare algorithm name, no qualifiers */
+            return true;
+        }
+        qualifiers = entry.substring(idx + 1).trim();
+
+        /* Split ANDed qualifier groups */
+        groups = qualifiers.split("&");
+
+        for (String group : groups) {
+            usageTokens = group.trim().split("\\s+");
+
+            if (usageTokens.length < 2 ||
+                !usageTokens[0].equalsIgnoreCase("usage")) {
+                /* Not a usage qualifier, treat as satisfied (fail closed) */
+                continue;
+            }
+
+            /* An unrecognized usage context keeps entry active (fail closed) */
+            allRecognized = true;
+            for (int i = 1; i < usageTokens.length; i++) {
+                if (!usageTokens[i].equalsIgnoreCase("TLSServer") &&
+                    !usageTokens[i].equalsIgnoreCase("TLSClient") &&
+                    !usageTokens[i].equalsIgnoreCase("SignedJAR")) {
+                    allRecognized = false;
+                    break;
+                }
+            }
+
+            if (allRecognized) {
+                /* Usage condition can never hold here, and conditions are
+                 * ANDed, so the entry can never apply */
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -676,10 +879,13 @@ public class WolfCryptUtil {
      * for specified algorithm.
      *
      * Parses constraints like "RSA keySize &lt; 1024" from the security
-     * property and returns the minimum allowed key size.
+     * property and returns the minimum allowed key size. Entries are
+     * matched on their leading algorithm name, any algorithm name may be
+     * used. Only the "&lt;" and "&lt;=" operators are supported, entries
+     * using other operators are ignored.
      *
-     * @param algo Algorithm to search for key size limitation for, options
-     *             are "RSA", "DH", "DSA", and "EC".
+     * @param algo Algorithm to search for key size limitation for
+     *             (ex: "RSA", "DH", "DSA", "EC")
      * @param propertyName Security property name to check
      *                     (e.g., "jdk.certpath.disabledAlgorithms")
      *
@@ -688,12 +894,32 @@ public class WolfCryptUtil {
     public static int getDisabledAlgorithmsKeySizeLimit(String algo,
         String propertyName) {
 
+        return getDisabledAlgorithmsKeySizeLimit(algo, propertyName, false);
+    }
+
+    /**
+     * Internal implementation of getDisabledAlgorithmsKeySizeLimit().
+     *
+     * Matches entries on their leading algorithm name so that, for
+     * example, an "ECDH keySize" entry does not set the "DH" limit.
+     *
+     * @param algo Algorithm to search for key size limitation for
+     *        (ex: "RSA", "DH", "DSA", "EC")
+     * @param propertyName Security property name to check
+     * @param certPathContext true when checking for CertPath validation,
+     *        skips entries scoped to usage contexts that can never apply
+     *        there
+     *
+     * @return minimum key size allowed, or 0 if not set in property
+     */
+    private static int getDisabledAlgorithmsKeySizeLimit(String algo,
+        String propertyName, boolean certPathContext) {
+
         int ret = 0;
         List<String> disabledList = null;
-        Pattern p = Pattern.compile("\\d+");
+        Pattern p = Pattern.compile("keySize\\s*<(=?)\\s*(\\d+)",
+            Pattern.CASE_INSENSITIVE);
         Matcher match = null;
-        String needle = null;
-        String disabledAlgos = null;
 
         if (algo == null || algo.isEmpty()) {
             return ret;
@@ -703,42 +929,38 @@ public class WolfCryptUtil {
             return ret;
         }
 
-        disabledAlgos = Security.getProperty(propertyName);
-        if (disabledAlgos == null) {
-            return ret;
-        }
+        /* Get property entries, with include directives expanded */
+        disabledList = getExpandedDisabledEntries(propertyName);
 
-        switch (algo) {
-            case "RSA":
-                needle = "RSA keySize <";
-                break;
-            case "DH":
-                needle = "DH keySize <";
-                break;
-            case "DSA":
-                needle = "DSA keySize <";
-                break;
-            case "EC":
-                needle = "EC keySize <";
-                break;
-            default:
-                return ret;
-        }
+        for (String s : disabledList) {
+            /* Match on the leading algorithm name only, so "ECDH keySize"
+             * does not match algo "DH" */
+            String disabledName = extractDisabledAlgorithmName(s);
+            if (disabledName == null || !disabledName.equalsIgnoreCase(algo)) {
+                continue;
+            }
 
-        /* Remove spaces after commas, split into List */
-        disabledAlgos = disabledAlgos.replaceAll(", ", ",");
-        disabledList = Arrays.asList(disabledAlgos.split(","));
+            /* For CertPath callers, skip entries scoped to usage contexts
+             * that never apply there */
+            if (certPathContext && !disabledEntryAppliesToCertPath(s)) {
+                continue;
+            }
 
-        for (String s: disabledList) {
-            if (s.contains(needle)) {
-                match = p.matcher(s);
-                if (match.find()) {
-                    try {
-                        ret = Integer.parseInt(match.group());
-                    } catch (NumberFormatException e) {
-                        /* Number exceeds Integer.MAX_VALUE, ignore malformed
-                         * number and leave ret unchanged. */
+            match = p.matcher(s);
+            if (match.find()) {
+                try {
+                    int limit = Integer.parseInt(match.group(2));
+                    if (match.group(1).equals("=") &&
+                        limit < Integer.MAX_VALUE) {
+                        /* "keySize <= N" disables through N, minimum allowed
+                         * size is N + 1 */
+                        limit = limit + 1;
                     }
+                    /* Keep the strictest of multiple matching entries */
+                    ret = Math.max(ret, limit);
+                } catch (NumberFormatException e) {
+                    /* Number exceeds Integer.MAX_VALUE, ignore malformed
+                     * number and leave ret unchanged. */
                 }
             }
         }
@@ -747,20 +969,58 @@ public class WolfCryptUtil {
     }
 
     /**
-     * Check if a public key meets the size constraints specified in a
-     * security property.
+     * Check if a public key meets size constraints in a security property.
      *
-     * Extracts the key size based on key type (RSA, EC, DSA) and compares
-     * against minimum size constraints from the security property.
+     * Extracts key size based on key type (RSA, EC, DSA, DH) and compares
+     * against minimum size constraints from the security property. ML-DSA
+     * and SLH-DSA keys have fixed parameter sets rather than key sizes,
+     * and are checked by family and parameter set name (ex: "ML-DSA",
+     * "ML-DSA-44").
      *
      * @param key PublicKey to check
      * @param propertyName Security property name to check constraints from
-     *                     (e.g., "jdk.certpath.disabledAlgorithms")
+     *                     (ex: "jdk.certpath.disabledAlgorithms")
      *
      * @return true if key is allowed (meets size requirements), false if
      *         key size is too small or key type is unsupported
      */
     public static boolean isKeyAllowed(PublicKey key, String propertyName) {
+
+        return isKeyAllowed(key, propertyName, false);
+    }
+
+    /**
+     * Check if a public key meets size constraints specified in a security
+     * property, for use during CertPath validation.
+     *
+     * Same as isKeyAllowed(), except algorithm name checks use
+     * isAlgorithmDisabledForCertPath() semantics, skipping entries scoped
+     * to usage contexts that can never apply to CertPath validation.
+     *
+     * @param key PublicKey to check
+     * @param propertyName Security property name to check constraints from
+     *                     (ex: "jdk.certpath.disabledAlgorithms")
+     *
+     * @return true if key is allowed (meets size requirements), false if
+     *         key size is too small or key type is unsupported
+     */
+    public static boolean isKeyAllowedForCertPath(PublicKey key,
+        String propertyName) {
+
+        return isKeyAllowed(key, propertyName, true);
+    }
+
+    /**
+     * Internal implementation of key constraint checks above.
+     *
+     * @param key PublicKey to check
+     * @param propertyName Security property name to check constraints from
+     * @param certPathContext true when checking for CertPath validation
+     *
+     * @return true if key is allowed, false otherwise
+     */
+    private static boolean isKeyAllowed(PublicKey key, String propertyName,
+        boolean certPathContext) {
 
         int keySize = 0;
         int minSize = 0;
@@ -781,7 +1041,8 @@ public class WolfCryptUtil {
         if (key instanceof RSAPublicKey) {
             RSAPublicKey rsaKey = (RSAPublicKey)key;
             keySize = rsaKey.getModulus().bitLength();
-            minSize = getDisabledAlgorithmsKeySizeLimit("RSA", propertyName);
+            minSize = getDisabledAlgorithmsKeySizeLimit("RSA", propertyName,
+                certPathContext);
         }
         else if (key instanceof ECPublicKey) {
             ECPublicKey ecKey = (ECPublicKey)key;
@@ -790,18 +1051,63 @@ public class WolfCryptUtil {
                 /* EC key size is the order bit length */
                 keySize = params.getOrder().bitLength();
             }
-            minSize = getDisabledAlgorithmsKeySizeLimit("EC", propertyName);
+
+            /* Check named curve against disabled entries when the curve name
+             * can be determined, covers curves included from
+             * jdk.disabled.namedCurves. Keys whose curve cannot be determined
+             * are checked by size only. The "X9.62 " form matches JDK entries
+             * like "X9.62 c2tnb191v1". Skip curve resolution when the property
+             * has no entries, avoids native key translation with nothing to
+             * check against. */
+            String disabledProp = Security.getProperty(propertyName);
+            if (disabledProp != null && !disabledProp.isEmpty()) {
+                String curve = getECCurveName(ecKey);
+                if (curve != null &&
+                    (isAlgorithmDisabled(curve, propertyName,
+                        certPathContext) ||
+                     isAlgorithmDisabled("X9.62 " + curve, propertyName,
+                        certPathContext))) {
+                    return false;
+                }
+            }
+
+            minSize = getDisabledAlgorithmsKeySizeLimit("EC", propertyName,
+                certPathContext);
         }
         else if (key instanceof DSAPublicKey) {
             DSAPublicKey dsaKey = (DSAPublicKey)key;
             if (dsaKey.getParams() != null) {
                 keySize = dsaKey.getParams().getP().bitLength();
             }
-            minSize = getDisabledAlgorithmsKeySizeLimit("DSA", propertyName);
+            minSize = getDisabledAlgorithmsKeySizeLimit("DSA", propertyName,
+                certPathContext);
+        }
+        else if (key instanceof DHPublicKey) {
+            DHPublicKey dhKey = (DHPublicKey)key;
+            if (dhKey.getParams() != null) {
+                keySize = dhKey.getParams().getP().bitLength();
+            }
+            minSize = getDisabledAlgorithmsKeySizeLimit("DH", propertyName,
+                certPathContext);
+        }
+        else if (key instanceof WolfCryptMlDsaPublicKey) {
+            /* ML-DSA uses fixed parameter sets, no key size constraints */
+            return isPQKeyAllowed(algorithm,
+                MlDsa.getParamSetName(
+                    ((WolfCryptMlDsaPublicKey)key).getLevel()),
+                propertyName, certPathContext);
+        }
+        else if (key instanceof WolfCryptSlhDsaPublicKey) {
+            /* SLH-DSA uses fixed parameter sets, no key size constraints */
+            return isPQKeyAllowed(algorithm,
+                SlhDsa.getParamSetName(
+                    ((WolfCryptSlhDsaPublicKey)key).getParam()),
+                propertyName, certPathContext);
         }
         else {
             /* Unsupported key type, check if algorithm itself is disabled */
-            return !isAlgorithmDisabled(algorithm, propertyName);
+            return !isAlgorithmDisabled(algorithm, propertyName,
+                certPathContext);
         }
 
         /* If minimum size constraint exists and key is smaller, reject */
@@ -810,11 +1116,99 @@ public class WolfCryptUtil {
         }
 
         /* Check if algorithm name is disabled */
-        if (isAlgorithmDisabled(algorithm, propertyName)) {
+        if (isAlgorithmDisabled(algorithm, propertyName, certPathContext)) {
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Get the named curve of an EC public key, when determinable.
+     *
+     * wolfJCE keys carry the curve name in their parameters. Keys from
+     * other providers are re-resolved through the wolfJCE EC KeyFactory
+     * to detect the curve.
+     *
+     * @param ecKey EC public key to get curve name of
+     *
+     * @return curve name (ex: "SECP256R1"), or null if the curve could
+     *         not be determined
+     */
+    private static String getECCurveName(ECPublicKey ecKey) {
+
+        ECParameterSpec params = ecKey.getParams();
+
+        if (params instanceof WolfCryptECParameterSpec) {
+            return ((WolfCryptECParameterSpec)params).getStoredCurveName();
+        }
+
+        /* Key from other provider, re-resolve through the wolfJCE EC
+         * KeyFactory to detect the curve */
+        try {
+            Key translated =
+                new WolfCryptECKeyFactory().engineTranslateKey(ecKey);
+            if (translated instanceof ECPublicKey) {
+                params = ((ECPublicKey)translated).getParams();
+                if (params instanceof WolfCryptECParameterSpec) {
+                    return ((WolfCryptECParameterSpec)params)
+                        .getStoredCurveName();
+                }
+            }
+        } catch (Exception e) {
+            /* Unable to translate key, curve name unknown. */
+            log("Unable to resolve EC curve name for disabled algo check:" +
+                e.getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * Check a post-quantum public key against disabled algorithm entries
+     * by family and parameter set name.
+     *
+     * @param family family algorithm name (ex: "ML-DSA")
+     * @param paramSet parameter set name (ex: "ML-DSA-44"), null is
+     *        treated as not allowed (fail closed)
+     * @param propertyName Security property name to check against
+     * @param certPathContext true when checking for CertPath validation
+     *
+     * @return true if key is allowed, false otherwise
+     */
+    private static boolean isPQKeyAllowed(String family, String paramSet,
+        String propertyName, boolean certPathContext) {
+
+        if (paramSet == null) {
+            /* Unknown parameter set, fail closed */
+            return false;
+        }
+
+        if (isAlgorithmDisabled(family, propertyName, certPathContext)) {
+            return false;
+        }
+
+        if (isAlgorithmDisabled(paramSet, propertyName, certPathContext)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Check if an algorithm name is a known post-quantum family name.
+     * A disabled-algorithms entry with a family name also disables all
+     * parameter sets of that family.
+     *
+     * @param name algorithm name to check
+     *
+     * @return true if name is a PQ family name, false otherwise
+     */
+    private static boolean isPQFamilyName(String name) {
+
+        return name.equalsIgnoreCase("ML-DSA") ||
+               name.equalsIgnoreCase("SLH-DSA") ||
+               name.equalsIgnoreCase("ML-KEM");
     }
 
     /**
