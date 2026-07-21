@@ -28,6 +28,9 @@
 #endif
 
 #include <wolfssl/version.h>
+#ifdef HAVE_FIPS
+    #include <wolfssl/wolfcrypt/fips.h>
+#endif
 #include <wolfssl/wolfcrypt/types.h>
 
 #if defined(HAVE_DILITHIUM) || defined(WOLFSSL_HAVE_MLDSA)
@@ -686,7 +689,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1exp
     }
     XMEMSET(output, 0, outputSz);
 
+    PRIVATE_KEY_UNLOCK();
     ret = wc_MlDsaKey_ExportPrivRaw(key, output, &outputSz);
+    PRIVATE_KEY_LOCK();
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
         if (result != NULL) {
@@ -880,7 +885,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1Dilithium_1Key
     }
 
     /* Two-pass: first call with NULL output to get required size. */
+    PRIVATE_KEY_UNLOCK();
     ret = wc_MlDsaKey_KeyToDer(key, NULL, 0);
+    PRIVATE_KEY_LOCK();
     if (ret <= 0) {
         throwWolfCryptExceptionFromError(env, ret);
         return NULL;
@@ -895,7 +902,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1Dilithium_1Key
     }
     XMEMSET(output, 0, outputSz);
 
+    PRIVATE_KEY_UNLOCK();
     ret = wc_MlDsaKey_KeyToDer(key, output, outputSz);
+    PRIVATE_KEY_LOCK();
     if (ret > 0) {
         result = (*env)->NewByteArray(env, ret);
         if (result != NULL) {
@@ -1138,7 +1147,9 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1make_1key
         ret = BAD_FUNC_ARG;
     }
     else {
+        PRIVATE_KEY_UNLOCK();
         ret = wc_MlDsaKey_MakeKeyFromSeed(key, seed);
+        PRIVATE_KEY_LOCK();
     }
 
     if (ret != 0) {
@@ -1938,7 +1949,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1Dilithium_1Pri
     }
 
     /* Two-pass: first call with NULL output to get required size. */
+    PRIVATE_KEY_UNLOCK();
     ret = wc_MlDsaKey_PrivateKeyToDer(key, NULL, 0);
+    PRIVATE_KEY_LOCK();
     if (ret <= 0) {
         throwWolfCryptExceptionFromError(env, ret);
         return NULL;
@@ -1953,7 +1966,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1Dilithium_1Pri
     }
     XMEMSET(output, 0, outputSz);
 
+    PRIVATE_KEY_UNLOCK();
     ret = wc_MlDsaKey_PrivateKeyToDer(key, output, outputSz);
+    PRIVATE_KEY_LOCK();
     if (ret > 0) {
         result = (*env)->NewByteArray(env, ret);
         if (result != NULL) {

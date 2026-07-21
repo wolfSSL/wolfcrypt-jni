@@ -28,6 +28,9 @@
 #endif
 
 #include <wolfssl/version.h>
+#ifdef HAVE_FIPS
+    #include <wolfssl/wolfcrypt/fips.h>
+#endif
 #include <wolfssl/wolfcrypt/types.h>
 
 #ifdef WOLFSSL_HAVE_SLHDSA
@@ -1236,7 +1239,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_SlhDsa_wc_1SlhDsaKey_1ex
     }
     XMEMSET(output, 0, outputSz);
 
+    PRIVATE_KEY_UNLOCK();
     ret = wc_SlhDsaKey_ExportPrivate(key, output, &outputSz);
+    PRIVATE_KEY_LOCK();
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
         if (result != NULL) {
