@@ -1021,6 +1021,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmEncrypt_1fips__
     byte* authTag = NULL;
     byte* authIn  = NULL;
 
+#if FIPS_VERSION_GT(5,0) && \
+    !defined(WC_FIPS_AESGCM_ONE_SHOT_EXT_IV_ALLOWED)
+    byte ivOut[GCM_NONCE_MAX_SZ];
+#endif
+
     aes = (Aes*) getNativeStruct(env, aes_object);
     if ((*env)->ExceptionOccurred(env)) {
         /* prevent additional JNI calls with pending exception */
@@ -1039,9 +1044,30 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmEncrypt_1fips__
     }
 
     #if FIPS_VERSION_GT(5,0)
+        #ifdef WC_FIPS_AESGCM_ONE_SHOT_EXT_IV_ALLOWED
         ret = wc_AesGcmEncrypt_fips(aes, out, in, (word32)size, iv,
             (word32) ivSz, authTag, (word32)authTagSz, authIn,
             (word32)authInSz);
+        #else
+        /* wolfSSL 5.9.2+ FIPS builds (FIPS Ready and module WCv6.0.0+)
+         * no longer export one-shot wc_AesGcmEncrypt_fips() with an external
+         * IV, unless built with WC_FIPS_AESGCM_ONE_SHOT_EXT_IV_ALLOWED. */
+        if (ivSz < 0 || ivSz > GCM_NONCE_MAX_SZ) {
+            /* IV larger than ivOut, and not supported by FIPS */
+            ret = BAD_FUNC_ARG;
+        }
+        else {
+            ret = wc_AesGcmSetExtIV_fips(aes, iv, (word32)ivSz);
+            if (ret == 0) {
+                /* Unsuffixed name, FIPS v7 has no
+                 * wc_AesGcmEncrypt_ex_fips(), newer FIPS maps this to
+                 * the _fips variant in fips.h */
+                ret = wc_AesGcmEncrypt_ex(aes, out, in, (word32)size,
+                    ivOut, (word32)ivSz, authTag, (word32)authTagSz,
+                    authIn, (word32)authInSz);
+            }
+        }
+        #endif
     #else
         ret = AesGcmEncrypt_fips(aes, out, in, (word32)size, iv, (word32)ivSz,
             authTag, (word32)authTagSz, authIn, (word32)authInSz);
@@ -1083,6 +1109,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmEncrypt_1fips__
     byte* authTag = NULL;
     byte* authIn  = NULL;
 
+#if FIPS_VERSION_GT(5,0) && \
+    !defined(WC_FIPS_AESGCM_ONE_SHOT_EXT_IV_ALLOWED)
+    byte ivOut[GCM_NONCE_MAX_SZ];
+#endif
+
     aes = (Aes*) getNativeStruct(env, aes_object);
     if ((*env)->ExceptionOccurred(env)) {
         /* prevent additional JNI calls with pending exception */
@@ -1102,8 +1133,29 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmEncrypt_1fips__
     }
     else {
     #if FIPS_VERSION_GT(5,0)
+        #ifdef WC_FIPS_AESGCM_ONE_SHOT_EXT_IV_ALLOWED
         ret = wc_AesGcmEncrypt_fips(aes, out, in, (word32)size, iv,
             (word32)ivSz, authTag, (word32)authTagSz, authIn, (word32)authInSz);
+        #else
+        /* wolfSSL 5.9.2+ FIPS builds (FIPS Ready and module WCv6.0.0+)
+         * no longer export one-shot wc_AesGcmEncrypt_fips() with an external
+         * IV, unless built with WC_FIPS_AESGCM_ONE_SHOT_EXT_IV_ALLOWED. */
+        if (ivSz < 0 || ivSz > GCM_NONCE_MAX_SZ) {
+            /* IV larger than ivOut, and not supported by FIPS */
+            ret = BAD_FUNC_ARG;
+        }
+        else {
+            ret = wc_AesGcmSetExtIV_fips(aes, iv, (word32)ivSz);
+            if (ret == 0) {
+                /* Unsuffixed name, FIPS v7 has no
+                 * wc_AesGcmEncrypt_ex_fips(), newer FIPS maps this to
+                 * the _fips variant in fips.h */
+                ret = wc_AesGcmEncrypt_ex(aes, out, in, (word32)size,
+                    ivOut, (word32)ivSz, authTag, (word32)authTagSz,
+                    authIn, (word32)authInSz);
+            }
+        }
+        #endif
     #else
         ret = AesGcmEncrypt_fips(aes, out, in, (word32)size, iv, (word32)ivSz,
             authTag, (word32)authTagSz, authIn, (word32)authInSz);
