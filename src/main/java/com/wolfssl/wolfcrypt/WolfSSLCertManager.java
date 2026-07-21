@@ -45,7 +45,7 @@ import java.security.cert.CertificateEncodingException;
  *
  * @author  wolfSSL
  */
-public class WolfSSLCertManager {
+public class WolfSSLCertManager extends WolfObject {
     private boolean active = false;
     private long cmPtr = 0;
 
@@ -55,65 +55,7 @@ public class WolfSSLCertManager {
     /* lock around native WOLFSSL_CERT_MANAGER pointer use */
     private final Object cmLock = new Object();
 
-    /*
-     * Loads JNI library.
-     *
-     * Must run before the static native method call below, which happens
-     * during class initialization. Without this, touching this class
-     * before any other native-backed class throws UnsatisfiedLinkError
-     * from the class initializer and permanently poisons this class in
-     * the JVM.
-     *
-     * The native library is expected to be called "wolfcryptjni", and must
-     * be on the system library search path.
-     *
-     * "wolfcryptjni" links against the wolfSSL native C library ("wolfssl"),
-     * and for Windows compatibility "wolfssl" needs to be explicitly loaded
-     * first here.
-     *
-     * Library loading can be skipped by setting the System property
-     * "wolfssl.skipLibraryLoad" to "true". This allows applications to
-     * load native libraries manually using System.load() before accessing
-     * any wolfSSL classes.
-     */
-    static {
-        int fipsLoaded = 0;
-
-        String skipLoad = System.getProperty("wolfssl.skipLibraryLoad");
-        if (skipLoad != null && skipLoad.equalsIgnoreCase("true")) {
-            /* User indicated they will load native libraries manually */
-        }
-        else {
-            String osName = System.getProperty("os.name");
-            if (osName != null && osName.toLowerCase().contains("win")) {
-                try {
-                    /* Default wolfCrypt FIPS library on Windows is compiled
-                     * as "wolfssl-fips" by Visual Studio solution */
-                    System.loadLibrary("wolfssl-fips");
-                    fipsLoaded = 1;
-                } catch (UnsatisfiedLinkError e) {
-                    /* wolfCrypt FIPS not available */
-                }
-
-                if (fipsLoaded == 0) {
-                    /* FIPS library not loaded, try normal libwolfssl */
-                    System.loadLibrary("wolfssl");
-                }
-            }
-
-            /* Load wolfcryptjni library */
-            System.loadLibrary("wolfcryptjni");
-        }
-
-        /* Run FIPS CAST up front if we are in FIPS mode. Referencing Fips
-         * triggers WolfObject static initialization, which calls native
-         * wolfCrypt init. runAllCast_fips() only runs the CASTs once. */
-        if (Fips.enabled) {
-            Fips.runAllCast_fips();
-        }
-    }
-
-    /** Flag to allow loading certs with date errors */
+    /** Flag to allow loading certs with date errors. */
     public static final int WOLFSSL_LOAD_FLAG_DATE_ERR_OKAY =
         getWOLFSSL_LOAD_FLAG_DATE_ERR_OKAY();
 
