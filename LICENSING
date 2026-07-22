@@ -1,7 +1,8 @@
 
-wolfCrypt-jni and wolfCrypt are either licensed for use under the GPLv2 or a
-standard commercial license. For our users who cannot use wolfCrypt under
-GPLv2, a commercial license to wolfCrypt-jni and wolfCrypt is available.
+wolfCrypt JNI, wolfJCE, wolfSSL, and wolfCrypt are either licensed for use
+under the GPLv3 or a standard commercial license. For our users who cannot use
+wolfCrypt under GPLv3, a commercial license to wolfSSL and wolfCrypt is
+available.
 
 Please contact wolfSSL Inc. directly at:
   Email: licensing@wolfssl.com
