@@ -710,10 +710,15 @@ public class WolfCryptMlKemKeyFactoryTest {
             else {
                 System.setProperty(prop, savedSys);
             }
-            /* Security properties cannot be removed; restore prior value or
-             * neutralize to empty (treated as the default). */
+            /* Security properties cannot be removed, restore prior value
+             * or "expandedKey", which matches the wolfJCE default when
+             * unset and is parseable by all JDK ML-KEM implementations.
+             * Do not restore to empty string, SunJCE ML-KEM on JDK 25+
+             * throws IllegalArgumentException on an empty value. Do not
+             * restore to "seed", some JDK 25 builds cannot parse
+             * seed-form keys from other providers. */
             java.security.Security.setProperty(prop,
-                savedSec == null ? "" : savedSec);
+                savedSec == null ? "expandedKey" : savedSec);
         }
     }
 }

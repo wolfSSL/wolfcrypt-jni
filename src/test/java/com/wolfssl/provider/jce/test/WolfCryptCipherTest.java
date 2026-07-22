@@ -2062,8 +2062,10 @@ public class WolfCryptCipherTest {
 
         for (int i = 0; i < aesGcmVectors.length; i++) {
 
-            /* skip AES-128 vector if not compiled in native library */
-            if ((i == 0) && (!FeatureDetect.Aes128Enabled())) {
+            /* skip AES-128 vector if not compiled in native library, or
+             * if using wolfCrypt FIPS since this vector uses 1-byte IV */
+            if ((i == 0) &&
+                (!FeatureDetect.Aes128Enabled() || Fips.enabled)) {
                 continue;
             }
 
@@ -2168,8 +2170,10 @@ public class WolfCryptCipherTest {
             GCMParameterSpec spec = new GCMParameterSpec(
                 (vTag.length * 8), aesGcmVectors[i].getIV());
 
-            /* skip AES-128 vector if not compiled in native library */
-            if ((i == 0) && (!FeatureDetect.Aes128Enabled())) {
+            /* skip AES-128 vector if not compiled in native library, or
+             * if using wolfCrypt FIPS since this vector uses 1-byte IV */
+            if ((i == 0) &&
+                (!FeatureDetect.Aes128Enabled() || Fips.enabled)) {
                 continue;
             }
 
@@ -2331,7 +2335,8 @@ public class WolfCryptCipherTest {
 
         /* Try to pick a vector based on what is compiled in natively,
          * doesn't matter too much which vector we get */
-        if (FeatureDetect.Aes128Enabled()) {
+        if (FeatureDetect.Aes128Enabled() && !Fips.enabled) {
+            /* skipped when using wolfCrypt FIPS, vector has 1-byte IV */
             vect = aesGcmVectors[0];
         }
         else if (FeatureDetect.Aes192Enabled() && !Fips.enabled) {
@@ -2436,7 +2441,8 @@ public class WolfCryptCipherTest {
 
         /* Try to pick a vector based on what is compiled in natively,
          * doesn't matter too much which vector we get */
-        if (FeatureDetect.Aes128Enabled()) {
+        if (FeatureDetect.Aes128Enabled() && !Fips.enabled) {
+            /* skipped when using wolfCrypt FIPS, vector has 1-byte IV */
             vect = aesGcmVectors[0];
         }
         else if (FeatureDetect.Aes192Enabled() && !Fips.enabled) {
@@ -2536,8 +2542,10 @@ public class WolfCryptCipherTest {
 
         for (int i = 0; i < aesGcmVectors.length; i++) {
 
-            /* skip AES-128 vector if not compiled in native library */
-            if ((i == 0) && (!FeatureDetect.Aes128Enabled())) {
+            /* skip AES-128 vector if not compiled in native library, or
+             * if using wolfCrypt FIPS since this vector uses 1-byte IV */
+            if ((i == 0) &&
+                (!FeatureDetect.Aes128Enabled() || Fips.enabled)) {
                 continue;
             }
 

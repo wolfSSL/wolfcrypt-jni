@@ -307,8 +307,9 @@ public class AesGcmTest {
         byte[] plain = null;
         byte[] tag = new byte[t3.length];
 
-        /* skip test if AES-128 is not compiled in native library */
-        if (!FeatureDetect.Aes128Enabled()) {
+        /* skip test if AES-128 is not compiled in native library, or if
+         * using wolfCrypt FIPS since this test uses a 1-byte IV */
+        if (!FeatureDetect.Aes128Enabled() || Fips.enabled) {
             return;
         }
 
@@ -478,8 +479,7 @@ public class AesGcmTest {
         byte[] plain = null;
         byte[] tag = new byte[t1.length];
 
-        /* skip test if AES-192 is not compiled in native library, or if
-         * using wolfCrypt FIPS since it only supports 12-byte IVs */
+        /* skip test if AES-256 is not compiled in native library */
         if (!FeatureDetect.Aes256Enabled()) {
             return;
         }
@@ -549,14 +549,64 @@ public class AesGcmTest {
     }
 
     @Test
+    public void testAesGcmFipsIvSizeRestriction() throws WolfCryptException {
+
+        byte[] tag = new byte[t1.length];
+        byte[] shortIv = new byte[] { (byte)0xca };
+
+        /* wolfCrypt FIPS 140-3 (v5.1+) restricts AES-GCM external IV
+         * sizes to 8, 12 or 16 bytes, wolfcryptjni uses
+         * wc_AesGcmSetExtIV() + wc_AesGcmEncrypt_ex() on those versions.
+         * FIPS v2 uses one-shot encrypt which supports any IV size,
+         * skip there and when not using FIPS. */
+        if (!Fips.enabled || (Fips.fipsVersion < 5) ||
+            !FeatureDetect.Aes256Enabled()) {
+            return;
+        }
+
+        AesGcm enc = new AesGcm();
+        try {
+            enc.setKey(k1);
+
+            /* 12-byte IV should work in FIPS mode, verify known answer */
+            byte[] cipher = enc.encrypt(p, iv1, tag, a);
+            assertNotNull(cipher);
+            assertArrayEquals(c1, cipher);
+            assertArrayEquals(t1, tag);
+
+            /* 1-byte IV should throw exception in FIPS mode */
+            try {
+                enc.encrypt(p, shortIv, tag, a);
+                fail("AES-GCM encrypt with 1-byte IV should fail when " +
+                     "using wolfCrypt FIPS");
+            } catch (WolfCryptException e) {
+                /* expected */
+            }
+
+            /* Oversized IV (64 bytes) should throw exception in FIPS
+             * mode */
+            try {
+                enc.encrypt(p, new byte[64], tag, a);
+                fail("AES-GCM encrypt with 64-byte IV should fail when " +
+                     "using wolfCrypt FIPS");
+            } catch (WolfCryptException e) {
+                /* expected */
+            }
+        } finally {
+            enc.releaseNativeStruct();
+        }
+    }
+
+    @Test
     public void testReleaseAndReinitObjectAes128() throws WolfCryptException {
 
         byte[] cipher = null;
         byte[] plain = null;
         byte[] tag = new byte[t3.length];
 
-        /* skip test if AES-128 is not compiled in native library */
-        if (!FeatureDetect.Aes128Enabled()) {
+        /* skip test if AES-128 is not compiled in native library, or if
+         * using wolfCrypt FIPS since this test uses a 1-byte IV */
+        if (!FeatureDetect.Aes128Enabled() || Fips.enabled) {
             return;
         }
 
@@ -708,8 +758,9 @@ public class AesGcmTest {
         byte[] plain = null;
         byte[] tag = new byte[t3.length];
 
-        /* skip test if AES-128 is not compiled in native library */
-        if (!FeatureDetect.Aes128Enabled()) {
+        /* skip test if AES-128 is not compiled in native library, or if
+         * using wolfCrypt FIPS since this test uses a 1-byte IV */
+        if (!FeatureDetect.Aes128Enabled() || Fips.enabled) {
             return;
         }
 
@@ -833,8 +884,9 @@ public class AesGcmTest {
         final LinkedBlockingQueue<Integer> results = new LinkedBlockingQueue<>();
         final byte[] rand2kBuf = new byte[2048];
 
-        /* skip test if AES-128 is not compiled in native library */
-        if (!FeatureDetect.Aes128Enabled()) {
+        /* skip test if AES-128 is not compiled in native library, or if
+         * using wolfCrypt FIPS since this test uses a 1-byte IV */
+        if (!FeatureDetect.Aes128Enabled() || Fips.enabled) {
             return;
         }
 

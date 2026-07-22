@@ -27,6 +27,9 @@
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/version.h>
+#ifdef HAVE_FIPS
+    #include <wolfssl/wolfcrypt/fips.h>
+#endif
 
 #include <wolfssl/wolfcrypt/pwdbased.h>
 #include <com_wolfssl_wolfcrypt_Pwdbased.h>
@@ -67,8 +70,10 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
         salt = (byte*)(*env)->GetByteArrayElements(env, saltBuf, NULL);
     }
 
+    PRIVATE_KEY_UNLOCK();
     ret = wc_PKCS12_PBKDF(outKey, pass, passBufLen, salt, sBufLen,
                           iterations, kLen, typeH, id);
+    PRIVATE_KEY_LOCK();
     if (ret == 0) {
         result = (*env)->NewByteArray(env, kLen);
         if (result != NULL) {
@@ -151,8 +156,10 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
         salt = (byte*)(*env)->GetByteArrayElements(env, saltBuf, NULL);
     }
 
+    PRIVATE_KEY_UNLOCK();
     ret = wc_PBKDF2(outKey, pass, passBufLen, salt, sBufLen,
                     iterations, kLen, hashType);
+    PRIVATE_KEY_LOCK();
     if (ret == 0) {
         result = (*env)->NewByteArray(env, kLen);
         if (result != NULL) {

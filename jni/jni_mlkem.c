@@ -27,6 +27,9 @@
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/version.h>
+#ifdef HAVE_FIPS
+    #include <wolfssl/wolfcrypt/fips.h>
+#endif
 #include <wolfssl/wolfcrypt/types.h>
 #include <wolfssl/wolfcrypt/memory.h>
 #ifdef WOLFSSL_HAVE_MLKEM
@@ -444,7 +447,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1decapsu
     }
     XMEMSET(output, 0, ssSz);
 
+    PRIVATE_KEY_UNLOCK();
     ret = wc_MlKemKey_Decapsulate(key, output, ct, ctSz);
+    PRIVATE_KEY_LOCK();
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, ssSz);
@@ -571,7 +576,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1export_
     }
     XMEMSET(output, 0, outputSz);
 
+    PRIVATE_KEY_UNLOCK();
     ret = wc_MlKemKey_EncodePrivateKey(key, output, outputSz);
+    PRIVATE_KEY_LOCK();
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);

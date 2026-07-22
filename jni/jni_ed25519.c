@@ -27,6 +27,9 @@
     #include <wolfssl/options.h>
 #endif
 #include <wolfssl/version.h>
+#ifdef HAVE_FIPS
+    #include <wolfssl/wolfcrypt/fips.h>
+#endif
 #include <wolfssl/wolfcrypt/ed25519.h>
 #include <wolfssl/wolfcrypt/asn.h>
 #include <wolfssl/wolfcrypt/memory.h>
@@ -321,7 +324,9 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private(
     }
     XMEMSET(output, 0, outputSz);
 
+    PRIVATE_KEY_UNLOCK();
     ret = wc_ed25519_export_private(ed25519, output, &outputSz);
+    PRIVATE_KEY_LOCK();
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
@@ -389,7 +394,9 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private_1only(
     }
     XMEMSET(output, 0, outputSz);
 
+    PRIVATE_KEY_UNLOCK();
     ret = wc_ed25519_export_private_only(ed25519, output, &outputSz);
+    PRIVATE_KEY_LOCK();
 
     if (ret == 0) {
         result = (*env)->NewByteArray(env, outputSz);
