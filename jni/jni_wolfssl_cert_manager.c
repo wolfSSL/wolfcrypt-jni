@@ -225,15 +225,26 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
         return 0;
     }
 
-    /* Try to find callback by WOLFSSL_CERT_MANAGER if cm available in store */
-    if (store->store != NULL && store->store->cm != NULL) {
+    /* wolfSSL sets store->userCtx to the WOLFSSL_CERT_MANAGER that
+     * initiated verification, use it to find the matching callback */
+    if (store->userCtx != NULL) {
+        ctx = findCallbackCtx((WOLFSSL_CERT_MANAGER*)store->userCtx);
+    }
+
+    /* Fall back to the cm pointer in store if the userCtx lookup missed.
+     * Both are exact cm matches, so neither can dispatch to the wrong CM. */
+    if (ctx == NULL && store->store != NULL && store->store->cm != NULL) {
         ctx = findCallbackCtx(store->store->cm);
     }
-    else if (g_callbackList != NULL) {
-        /* When using CertManagerVerifyBuffer, we can't look up by cm pointer.
-         * Use the first callback in the list as a fallback. This works for
-         * single-threaded verification or when only one CertManager in use. */
-        ctx = g_callbackList->ctx;
+
+    /* No callbacks found, verification falls back to preverify. Logging it
+     * here for visibility. */
+    if (ctx == NULL) {
+        LogStr("nativeVerifyCallback: no callback ctx found for "
+               "userCtx=%p, cm=%p, using preverify=%d\n",
+               store->userCtx,
+               (store->store != NULL) ? (void*)store->store->cm : NULL,
+               preverify);
     }
 
     /* No callback registered, use preverify result */
