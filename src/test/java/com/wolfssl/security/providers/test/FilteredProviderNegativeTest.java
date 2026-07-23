@@ -54,6 +54,9 @@ import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
  */
 public class FilteredProviderNegativeTest {
 
+    /** Security property controlling filtered provider registration names. */
+    private static final String NAME_PROP = "wolfssl.filtered.useOriginalNames";
+
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
@@ -65,9 +68,20 @@ public class FilteredProviderNegativeTest {
 
         System.out.println("FilteredSun* provider negative test");
 
-        Security.addProvider(new FilteredSun());
-        Security.addProvider(new FilteredSunEC());
-        Security.addProvider(new FilteredSunRsaSign());
+        /* Pin the name override property to "false" while constructing and
+         * registering the providers, so registration names stay FilteredSun*
+         * even if the test JVM's java.security sets
+         * wolfssl.filtered.useOriginalNames=true (e.g. on a hardened image).
+         * Restore the prior value afterward. */
+        String prev = Security.getProperty(NAME_PROP);
+        Security.setProperty(NAME_PROP, "false");
+        try {
+            Security.addProvider(new FilteredSun());
+            Security.addProvider(new FilteredSunEC());
+            Security.addProvider(new FilteredSunRsaSign());
+        } finally {
+            Security.setProperty(NAME_PROP, (prev != null) ? prev : "false");
+        }
     }
 
     private static int javaMajorVersion() {

@@ -23,6 +23,7 @@ package com.wolfssl.security.providers;
 import java.lang.reflect.Field;
 import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +48,38 @@ import java.util.Map.Entry;
 final class ProviderServiceCopier {
 
     private ProviderServiceCopier() {
+    }
+
+    /**
+     * Resolve the name a filtered provider should register under.
+     *
+     * By default the filtered name is returned. When the
+     * wolfssl.filtered.useOriginalNames Security property is set to "true"
+     * (in java.security, or via Security.setProperty() before the providers
+     * are first instantiated), the original Sun provider name is returned
+     * instead, so that applications and JDK code with hardcoded provider
+     * names keep working.
+     *
+     * NOTE: with this property enabled, the providers must be registered by
+     * class name in java.security. A provider-name entry
+     * (ex: security.provider.N=SUN) resolves to the stock Sun provider through
+     * the JDK built-in name resolution, silently bypassing the filtered
+     * provider.
+     *
+     * @param filteredName default name, e.g. "FilteredSun"
+     * @param originalName original Sun provider name, e.g. "SUN"
+     *
+     * @return the name to pass to the Provider super constructor
+     */
+    static String resolveName(String filteredName, String originalName) {
+
+        String prop = Security.getProperty("wolfssl.filtered.useOriginalNames");
+
+        if (prop != null && "true".equalsIgnoreCase(prop.trim())) {
+            return originalName;
+        }
+
+        return filteredName;
     }
 
     /**
