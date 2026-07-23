@@ -102,7 +102,8 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Cache AVD snapshot for faster emulator boot
+      # Cache AVD snapshot for faster emulator boot. The v2 key retires
+      # snapshots saved before the settle script below was added.
       - name: AVD cache
         uses: actions/cache@v4
         id: avd-cache
@@ -110,9 +111,15 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-wolfcryptjni-fips-30-x86_64-google_apis-v1
+          key: avd-wolfcryptjni-fips-30-x86_64-google_apis-v2
 
-      # Create AVD and generate snapshot for caching
+      # Create AVD and generate snapshot for caching. Wait for the
+      # system to fully settle (boot complete plus the input service
+      # registered) before the emulator exits and the snapshot is
+      # saved. Snapshots saved mid-boot resume into a half-settled
+      # system on restore, where the emulator-runner action's keyguard
+      # dismiss (input keyevent 82) intermittently fails with
+      # "No service published for: input".
       - name: Create AVD and generate snapshot
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2.37.0
@@ -123,7 +130,12 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: echo "Generated AVD snapshot for caching"
+          script: |
+            adb wait-for-device
+            adb shell 'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 1; done'
+            adb shell 'while ! service check input | grep -q found; do sleep 1; done'
+            sleep 15
+            echo "Generated AVD snapshot for caching"
 
       # Launch app briefly to capture FIPS in-core hash from logcat.
       # The FIPS error callback prints the expected verifyCore hash on
