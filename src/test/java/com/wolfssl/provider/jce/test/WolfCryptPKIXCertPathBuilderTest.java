@@ -4591,6 +4591,56 @@ public class WolfCryptPKIXCertPathBuilderTest {
     }
 
     /**
+     * Test that the Java fallback builder enforces maxPathLength as a
+     * per-iteration depth budget, rejecting a chain that exceeds the limit.
+     * The fallback chain has one intermediate CA, so maxPathLength=0 must be
+     * rejected before the path completes.
+     */
+    @Test
+    public void testFallbackBuilderRejectsPathExceedingMaxLength()
+        throws Exception {
+
+        Assume.assumeTrue("Only applies when native check_time not supported",
+            !WolfSSLX509StoreCtx.isStoreCheckTimeSupported());
+
+        PKIXBuilderParameters params = createExpiredCertParams(1426399200000L);
+        params.setMaxPathLength(0);
+
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+        try {
+            cpb.build(params);
+            fail("Expected CertPathBuilderException when fallback path " +
+                "exceeds maxPathLength");
+        } catch (CertPathBuilderException e) {
+            assertNotNull("Exception message should not be null",
+                e.getMessage());
+            assertTrue("Expected maxPathLength violation, got: " +
+                e.getMessage(),
+                e.getMessage().contains("exceeds maximum length"));
+        }
+    }
+
+    /**
+     * Test that the Java fallback builder accepts a chain whose length equals
+     * maxPathLength exactly. The fallback chain has one intermediate CA, so
+     * maxPathLength=1 must not be rejected by the depth budget.
+     */
+    @Test
+    public void testFallbackBuilderAcceptsPathAtMaxLength()
+        throws Exception {
+
+        Assume.assumeTrue("Only applies when native check_time not supported",
+            !WolfSSLX509StoreCtx.isStoreCheckTimeSupported());
+
+        PKIXBuilderParameters params = createExpiredCertParams(1426399200000L);
+        params.setMaxPathLength(1);
+
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+        CertPathBuilderResult result = cpb.build(params);
+        assertNotNull("Builder should accept path at maxPathLength", result);
+    }
+
+    /**
      * Test end-to-end builder + validator with a valid custom date. Builds a
      * path with expired certs using a date within their validity, then
      * validates the result.
