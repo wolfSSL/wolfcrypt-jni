@@ -460,6 +460,27 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
     }
 
     /**
+     * Check if a certificate is self-issued, subject and issuer names match.
+     *
+     * Unlike self-signed, this does not require a self-signature. Per RFC 5280
+     * section 6.1.4(l), self-issued intermediates do not count against a CA's
+     * pathLenConstraint.
+     *
+     * @param cert certificate to check
+     *
+     * @return true if subject equals issuer, otherwise false
+     */
+    private boolean isSelfIssued(X509Certificate cert) {
+
+        if (cert == null) {
+            return false;
+        }
+
+        return cert.getSubjectX500Principal().equals(
+            cert.getIssuerX500Principal());
+    }
+
+    /**
      * Find potential issuer certificates for a given certificate.
      *
      * Searches through CertStores for certificates where the subject
@@ -468,11 +489,14 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
      * @param cert certificate for which to find issuers
      * @param certStores list of CertStores to search
      * @param anchors set of trust anchors (also potential issuers)
+     * @param minPathLen minimum BasicConstraints pathLenConstraint a
+     *        candidate issuer must have, the number of CA certs already
+     *        below it in the chain.
      *
      * @return list of potential issuer certificates
      */
     private List<X509Certificate> findIssuers(X509Certificate cert,
-        List<CertStore> certStores, Set<TrustAnchor> anchors) {
+        List<CertStore> certStores, Set<TrustAnchor> anchors, int minPathLen) {
 
         if (cert == null) {
             return new ArrayList<>();
@@ -498,8 +522,9 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
                     for (Certificate c : certs) {
                         if (c instanceof X509Certificate) {
                             X509Certificate x509Cert = (X509Certificate) c;
-                            /* Must be a CA certificate */
-                            if (x509Cert.getBasicConstraints() >= 0) {
+                            /* getBasicConstraints() returns -1 for non-CA, so
+                             * this enforces both CA and pathLenConstraint. */
+                            if (x509Cert.getBasicConstraints() >= minPathLen) {
                                 issuers.add(x509Cert);
                             }
                         }
@@ -511,14 +536,13 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
             }
         }
 
-        /* Also check trust anchors as potential issuers.
-         * Trust anchors should be CA certificates (basicConstraints >= 0)
-         * to be valid issuers in the chain. */
+        /* Also check trust anchors as potential issuers, same CA and
+         * pathLenConstraint check. */
         for (TrustAnchor anchor : anchors) {
             X509Certificate anchorCert = anchor.getTrustedCert();
             if (anchorCert != null &&
                 anchorCert.getSubjectX500Principal().equals(issuerPrincipal) &&
-                anchorCert.getBasicConstraints() >= 0) {
+                anchorCert.getBasicConstraints() >= minPathLen) {
                 /* Avoid duplicates */
                 if (!issuers.contains(anchorCert)) {
                     issuers.add(anchorCert);
@@ -590,9 +614,17 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
                     current.getSubjectX500Principal().getName());
             }
 
-            /* Find potential issuers */
+            /* Issuer's pathLenConstraint required to allow the non-self-issued
+             * CA certs below it. path[0] is the target, not a CA, so it is
+             * excluded. */
+            int minPathLen = 0;
+            for (int i = 1; i < path.size(); i++) {
+                if (!isSelfIssued(path.get(i))) {
+                    minPathLen++;
+                }
+            }
             List<X509Certificate> issuers =
-                findIssuers(current, certStores, anchors);
+                findIssuers(current, certStores, anchors, minPathLen);
 
             if (issuers.isEmpty()) {
                 throw new CertPathBuilderException(

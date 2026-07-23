@@ -23,6 +23,7 @@ package com.wolfssl.provider.jce;
 
 import java.util.Arrays;
 import java.nio.ByteBuffer;
+import java.io.ByteArrayOutputStream;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherSpi;
@@ -152,8 +153,8 @@ public class WolfCryptCipher extends CipherSpi {
     /* AES-GCM/CCM tag length (bytes), default to 128 bits */
     private int gcmTagLen = 16;
 
-    /* AAD data for AES-GCM, populated via engineUpdateAAD() */
-    private byte[] aadData = null;
+    /* AAD data for AES-GCM/CCM, accumulated via engineUpdateAAD() */
+    private ByteArrayOutputStream aadStream = null;
 
     /* Last (key, IV) set for AES-GCM encryption at init time, tracked to
      * reject GCM nonce reuse on re-initialization. A digest of the encoded
@@ -1537,6 +1538,10 @@ public class WolfCryptCipher extends CipherSpi {
             }
         }
 
+        /* Flatten accumulated AAD to a single array for GCM/CCM calls below */
+        byte[] aad = (this.aadStream != null) ?
+            this.aadStream.toByteArray() : null;
+
         switch (this.cipherType) {
 
             case WC_AES:
@@ -1553,7 +1558,7 @@ public class WolfCryptCipher extends CipherSpi {
 
                         byte[] tag = new byte[this.gcmTagLen];
                         tmpOut = this.aesGcm.encrypt(tmpIn, this.iv, tag,
-                                    this.aadData);
+                                    aad);
 
                         this.gcmEncryptNeedsReinit = true;
 
@@ -1585,7 +1590,7 @@ public class WolfCryptCipher extends CipherSpi {
 
                         try {
                             tmpOut = this.aesGcm.decrypt(tmpIn, this.iv,
-                                tag, this.aadData);
+                                tag, aad);
 
                         } catch (WolfCryptException e) {
                             /* Convert to AEADBadTagException */
@@ -1602,7 +1607,7 @@ public class WolfCryptCipher extends CipherSpi {
                     if (this.direction == OpMode.WC_ENCRYPT) {
                         byte[] tag = new byte[this.gcmTagLen];
                         tmpOut = this.aesCcm.encrypt(tmpIn, this.iv, tag,
-                                    this.aadData);
+                                    aad);
 
                         /* Concatenate auth tag to end of ciphertext */
                         byte[] totalOut = new byte[tmpOut.length + tag.length];
@@ -1631,7 +1636,7 @@ public class WolfCryptCipher extends CipherSpi {
                                     tmpIn.length - this.gcmTagLen);
 
                         tmpOut = this.aesCcm.decrypt(tmpIn, this.iv, tag,
-                                    this.aadData);
+                                    aad);
                     }
                 }
                 else if (cipherMode == CipherMode.WC_ECB) {
@@ -1789,7 +1794,7 @@ public class WolfCryptCipher extends CipherSpi {
 
             wolfCryptSetKey(storedKey);
 
-            this.aadData = null;
+            this.aadStream = null;
             this.operationStarted = false;
             this.cipherInitialized = true;
 
@@ -2039,18 +2044,11 @@ public class WolfCryptCipher extends CipherSpi {
                 "Source buffer is null or bad offset/len");
         }
 
-        if (this.aadData == null) {
-            /* Store as new array inside object */
-            this.aadData = new byte[len];
-            System.arraycopy(src, offset, this.aadData, 0, len);
+        if (this.aadStream == null) {
+            this.aadStream = new ByteArrayOutputStream();
         }
-        else {
-            /* Append to existing AAD array held inside object */
-            byte[] tmp = new byte[this.aadData.length + len];
-            System.arraycopy(this.aadData, 0, tmp, 0, this.aadData.length);
-            System.arraycopy(src, offset, tmp, this.aadData.length, len);
-            this.aadData = tmp;
-        }
+
+        this.aadStream.write(src, offset, len);
     }
 
     @Override

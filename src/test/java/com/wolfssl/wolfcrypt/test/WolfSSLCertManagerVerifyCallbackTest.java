@@ -181,6 +181,83 @@ public class WolfSSLCertManagerVerifyCallbackTest {
     }
 
     /**
+     * Test each CertManager verification invokes its own callback, not
+     * the most recently registered one from another CertManager.
+     */
+    @Test
+    public void testVerifyCallbackDispatchPerCertManager() throws Exception {
+
+        final AtomicBoolean cm1Invoked = new AtomicBoolean(false);
+        final AtomicBoolean cm2Invoked = new AtomicBoolean(false);
+        WolfSSLCertManager cm1 = null;
+        WolfSSLCertManager cm2 = null;
+
+        byte[] caDer = readFile(caCertDer);
+        byte[] serverDer = readFile(serverCertDer);
+
+        try {
+            cm1 = new WolfSSLCertManager();
+            cm1.CertManagerLoadCABuffer(caDer, caDer.length,
+                WolfCrypt.SSL_FILETYPE_ASN1);
+
+            cm2 = new WolfSSLCertManager();
+            cm2.CertManagerLoadCABuffer(caDer, caDer.length,
+                WolfCrypt.SSL_FILETYPE_ASN1);
+
+            /* Register cm2 callback last so it sits at the head of the
+             * native callback list when cm1 verifies */
+            cm1.setVerifyCallback(new WolfSSLCertManagerVerifyCallback() {
+                public int verify(int preverify, int error, int errorDepth) {
+                    cm1Invoked.set(true);
+                    return 1;
+                }
+            });
+            cm2.setVerifyCallback(new WolfSSLCertManagerVerifyCallback() {
+                public int verify(int preverify, int error, int errorDepth) {
+                    cm2Invoked.set(true);
+                    return 1;
+                }
+            });
+
+            try {
+                cm1.CertManagerVerifyBuffer(serverDer, serverDer.length,
+                    WolfCrypt.SSL_FILETYPE_ASN1);
+            } catch (WolfCryptException e) {
+                /* Verification result itself is not what we assert here */
+            }
+
+            assertTrue("cm1 verify callback should have been invoked",
+                cm1Invoked.get());
+            assertFalse("cm2 verify callback should not have been invoked",
+                cm2Invoked.get());
+
+            /* Verify cm2 verification reaches cm2 callback */
+            cm1Invoked.set(false);
+            cm2Invoked.set(false);
+
+            try {
+                cm2.CertManagerVerifyBuffer(serverDer, serverDer.length,
+                    WolfCrypt.SSL_FILETYPE_ASN1);
+            } catch (WolfCryptException e) {
+                /* Verification result itself is not what we assert here */
+            }
+
+            assertTrue("cm2 verify callback should have been invoked",
+                cm2Invoked.get());
+            assertFalse("cm1 verify callback should not have been invoked",
+                cm1Invoked.get());
+
+        } finally {
+            if (cm1 != null) {
+                cm1.free();
+            }
+            if (cm2 != null) {
+                cm2.free();
+            }
+        }
+    }
+
+    /**
      * Test concurrent certificate verification while callbacks are registered
      * and cleared. The native callback list is global across all CertManager
      * instances, so this runs many managers verifying.

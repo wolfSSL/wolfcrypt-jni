@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Rng;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.Fips;
@@ -48,6 +49,45 @@ import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 public class DhTest {
     private static Rng rng = new Rng();
     private final Object rngLock = new Rng();
+
+    /* 2048-bit DH prime p, generator g is 2. */
+    private static final String DH_P_2048_HEX =
+        "8E7EC04F98E157D62585624B5283FFD8D33B5EC35F0812FE79227319974A3517" +
+        "6F858116030A97494618413BB82E87BBCFF26A24DF32CAEEF40BE3FBBC18C709" +
+        "A167423BEE8C84539B0FADEBD305039AA800C3AA4A4E3C6B775FAD8E11E30FF9" +
+        "B1E1CA138C9DC9947751A5EE935AC54BB4B045D0CE6BA1AB4D40701D62F4990E" +
+        "A1CB9783CC3769171C8FFDC1AE7A10EC1C82AF9240B67CC667A00F70F2FE9B3B" +
+        "4BDABE25EB42FBEC5533E53A4BA5B60B32B7CBF326D42F620757A11C554B91DF" +
+        "C67B54403807E1A228B858B8D2614BF9D0E08B840F5CA95BA0ADDD641F2481B9" +
+        "0A7C47583D2F14E9C3A5C80440E74B7AA41BBD71025B9F754F424BF382BB5817";
+
+    /* X.509 SubjectPublicKeyInfo for the group above with public value
+     * Y = g = 2, a valid in range public key. */
+    private static final String DH_PUB_X509_VALID_HEX =
+        "308201213082011706092A864886F70D0103013082010802820101008E7EC04F" +
+        "98E157D62585624B5283FFD8D33B5EC35F0812FE79227319974A35176F858116" +
+        "030A97494618413BB82E87BBCFF26A24DF32CAEEF40BE3FBBC18C709A167423B" +
+        "EE8C84539B0FADEBD305039AA800C3AA4A4E3C6B775FAD8E11E30FF9B1E1CA13" +
+        "8C9DC9947751A5EE935AC54BB4B045D0CE6BA1AB4D40701D62F4990EA1CB9783" +
+        "CC3769171C8FFDC1AE7A10EC1C82AF9240B67CC667A00F70F2FE9B3B4BDABE25" +
+        "EB42FBEC5533E53A4BA5B60B32B7CBF326D42F620757A11C554B91DFC67B5440" +
+        "3807E1A228B858B8D2614BF9D0E08B840F5CA95BA0ADDD641F2481B90A7C4758" +
+        "3D2F14E9C3A5C80440E74B7AA41BBD71025B9F754F424BF382BB581702010203" +
+        "0400020102";
+
+    /* Same as above but with public value Y = 1, an out of range small
+     * subgroup value that must be rejected. */
+    private static final String DH_PUB_X509_SMALLSUBGROUP_HEX =
+        "308201213082011706092A864886F70D0103013082010802820101008E7EC04F" +
+        "98E157D62585624B5283FFD8D33B5EC35F0812FE79227319974A35176F858116" +
+        "030A97494618413BB82E87BBCFF26A24DF32CAEEF40BE3FBBC18C709A167423B" +
+        "EE8C84539B0FADEBD305039AA800C3AA4A4E3C6B775FAD8E11E30FF9B1E1CA13" +
+        "8C9DC9947751A5EE935AC54BB4B045D0CE6BA1AB4D40701D62F4990EA1CB9783" +
+        "CC3769171C8FFDC1AE7A10EC1C82AF9240B67CC667A00F70F2FE9B3B4BDABE25" +
+        "EB42FBEC5533E53A4BA5B60B32B7CBF326D42F620757A11C554B91DFC67B5440" +
+        "3807E1A228B858B8D2614BF9D0E08B840F5CA95BA0ADDD641F2481B90A7C4758" +
+        "3D2F14E9C3A5C80440E74B7AA41BBD71025B9F754F424BF382BB581702010203" +
+        "0400020101";
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
@@ -117,6 +157,67 @@ public class DhTest {
         assertNotNull(sharedSecretA);
         assertNotNull(sharedSecretB);
         assertArrayEquals(sharedSecretA, sharedSecretB);
+    }
+
+    /**
+     * checkPublicKey() must reject an out of range public key value. This
+     * is the same validation wc_DhAgree applies to a peer public key, so a
+     * small subgroup value cannot reach the shared secret computation.
+     */
+    @Test
+    public void checkPublicKeyRejectsOutOfRangeValue() {
+        Dh dh = new Dh();
+        dh.setParams(Util.h2b(DH_P_2048_HEX), Util.h2b("02"));
+
+        try {
+            /* Y = 1 is below the valid range 2 <= Y <= p-2 */
+            dh.checkPublicKey(new byte[] { 0x01 });
+            fail("checkPublicKey should reject Y = 1");
+        } catch (WolfCryptException e) {
+            /* expected */
+        } finally {
+            dh.releaseNativeStruct();
+        }
+    }
+
+    /**
+     * publicKeyDecodeX509() must accept a valid in range public key.
+     */
+    @Test
+    public void publicKeyDecodeX509AcceptsValidKey() {
+        Assume.assumeTrue("WOLFSSL_DH_EXTRA required",
+            FeatureDetect.DhExtraEnabled());
+
+        Dh dh = new Dh();
+        try {
+            byte[] der = dh.publicKeyDecodeX509(
+                Util.h2b(DH_PUB_X509_VALID_HEX));
+            assertNotNull(der);
+        } finally {
+            dh.releaseNativeStruct();
+        }
+    }
+
+    /**
+     * publicKeyDecodeX509() must reject a public key whose value is an out
+     * of range small subgroup element, failing fast at import instead of
+     * deferring to the shared secret computation.
+     */
+    @Test
+    public void publicKeyDecodeX509RejectsSmallSubgroupValue() {
+        Assume.assumeTrue("WOLFSSL_DH_EXTRA required",
+            FeatureDetect.DhExtraEnabled());
+
+        Dh dh = new Dh();
+        try {
+            dh.publicKeyDecodeX509(
+                Util.h2b(DH_PUB_X509_SMALLSUBGROUP_HEX));
+            fail("publicKeyDecodeX509 should reject Y = 1");
+        } catch (WolfCryptException e) {
+            /* expected */
+        } finally {
+            dh.releaseNativeStruct();
+        }
     }
 
     @Test

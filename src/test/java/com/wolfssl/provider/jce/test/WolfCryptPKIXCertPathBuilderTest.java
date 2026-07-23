@@ -197,6 +197,134 @@ public class WolfCryptPKIXCertPathBuilderTest {
         "cBdF0KRyJbeBYow7CUSMWYeODNLm+4A=\n" +
         "-----END CERTIFICATE-----\n";
 
+    /* Certificate chain for BasicConstraints pathLenConstraint tests.
+     * Root CA (unlimited pathLen) -> Intermediate CA with pathLen:0 ->
+     * Sub CA (a CA cert) -> end entity. The Sub CA under a pathLen:0
+     * Intermediate is not permitted by RFC 5280 section 6.1.4. Valid from
+     * 2020 until 2126 so the current date is always in range. */
+
+    /* Root CA, self-signed, CA:TRUE with no pathLenConstraint.
+     * Subject: CN=wolfSSL PathLen Test Root CA */
+    private static final String PATHLEN_ROOT_PEM =
+        "-----BEGIN CERTIFICATE-----\n" +
+        "MIIDQTCCAimgAwIBAgIUeU7mQnTh+kWmT4Nb+GTzIjeBGZ4wDQYJKoZIhvcNAQEL\n" +
+        "BQAwJzElMCMGA1UEAwwcd29sZlNTTCBQYXRoTGVuIFRlc3QgUm9vdCBDQTAgFw0y\n" +
+        "MDAxMDEwMDAwMDBaGA8yMTI2MDEwMTAwMDAwMFowJzElMCMGA1UEAwwcd29sZlNT\n" +
+        "TCBQYXRoTGVuIFRlc3QgUm9vdCBDQTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC\n" +
+        "AQoCggEBAJoAdHAjP/fkOONISSbCLeTF/7JvtE9U6RBB+ru2zA+E9otDd/1X1LSE\n" +
+        "ZU3OKl7/Q0uwZXAaAgYIFc3/91lEhypIaC4qYw4P6Pq+Y1m3SfVhlokw/lO3EhQ1\n" +
+        "71g8vxkD4VXTOimC1bTxUVekFM47Pmyb1cfP8vevcqHio/m42LYFwYJs6U/h3OAm\n" +
+        "2CqTAw6/cd5/TaUCjkfRz7ke1dSNe+cx5uQXoMAhKzY4DH22XzZu56xyELspKHxg\n" +
+        "rlmzaXjJsLRkABAOwBr7xB4vB8A7185eaZJZ5q5Nmyjtpszboh3rKGP+7q9l4Awf\n" +
+        "sdswNDEhr8EHzQ6nqO7hwDYNfCUKxs0CAwEAAaNjMGEwHQYDVR0OBBYEFKrsMwsj\n" +
+        "mnbMDPEpn5sC/5R3IX8sMB8GA1UdIwQYMBaAFKrsMwsjmnbMDPEpn5sC/5R3IX8s\n" +
+        "MA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMA0GCSqGSIb3DQEBCwUA\n" +
+        "A4IBAQBpbla03+czktTC90uTL2c/K6Xxp2Gps8QF97Xg2+Mp7+L8ve02OM+y2r7e\n" +
+        "LLxJJ2/QLjmqToNht8MZXYwZGo0jzDJpwxP2Uz6tzzsTygOcvsT04cErTwB5dAWr\n" +
+        "s5ibqcQWbsMTB7z2dr7ZcQn8RekwyhEOe+NnzxIxSbfACiW/vHqH/nWpPOgWGGHe\n" +
+        "kqVxcwfz3gqSXPvNmx+0sC4seVtCy72LvYKGLKcLNHqlG0C1c7CR2T1Lo9clMSJJ\n" +
+        "1oEQd0fsI6Y/Kzkpywv68gooLxp0HrJqHI20IuVLWg/UxTA/MznF7ZbeAwp6wEJe\n" +
+        "KCO/ZK+KCniMT3fRq5VNN19Wumon\n" +
+        "-----END CERTIFICATE-----\n";
+
+    /* Intermediate CA, signed by Root, CA:TRUE with pathLenConstraint:0.
+     * Subject: CN=wolfSSL PathLen0 Intermediate CA */
+    private static final String PATHLEN0_INT_PEM =
+        "-----BEGIN CERTIFICATE-----\n" +
+        "MIIDSDCCAjCgAwIBAgIUVQlgyjkiLNbQkXTqEtBhFL8RCAAwDQYJKoZIhvcNAQEL\n" +
+        "BQAwJzElMCMGA1UEAwwcd29sZlNTTCBQYXRoTGVuIFRlc3QgUm9vdCBDQTAgFw0y\n" +
+        "MDAxMDEwMDAwMDBaGA8yMTI2MDEwMTAwMDAwMFowKzEpMCcGA1UEAwwgd29sZlNT\n" +
+        "TCBQYXRoTGVuMCBJbnRlcm1lZGlhdGUgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IB\n" +
+        "DwAwggEKAoIBAQDX/cMcir/6pFUVd1BYAGdGSqwQvqyBrqoo4w2OPJw1cP5uworg\n" +
+        "OVoBXZjuwYp1FCZchnIdfDyTVwYovUdCt7mZWruFjDUq/E2X2rMSOsgleuECS/pc\n" +
+        "RBI629Si9fNzgDDilbD00C43WsCWBoGehNoadOVESYSlXucGh/Iq6sTuRnKgziF1\n" +
+        "CKr7P/LK6fcHm9ox0lHD9KTcNyTx2z1M3tR47ViBeyxpipuxaDtUKC6+2wx/CZpV\n" +
+        "elUkgBrATN/rAjhdC5dSq5uCf6XTCiD2CJUkUlXYLwcQ6RqK8GuTBr2+iUBFzx9G\n" +
+        "kQWq08TIu28sHGMAHgXL6gDVZX5pvDXLHfkNAgMBAAGjZjBkMBIGA1UdEwEB/wQI\n" +
+        "MAYBAf8CAQAwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBTfG+5pJI8xIIoVEot2\n" +
+        "XhOc5hsipzAfBgNVHSMEGDAWgBSq7DMLI5p2zAzxKZ+bAv+UdyF/LDANBgkqhkiG\n" +
+        "9w0BAQsFAAOCAQEAlLKElEwhLpeVhgsYHAIHqsK1qicVxuSxiRcdkdNs+ztk6+mS\n" +
+        "WQIcNyTYcsX8a8n3ymowF/7ybxccI9Fn8j4VkjvOusZGEbE2Xrz+MBSUKXT1PKAy\n" +
+        "peTS4XlBKWDT1OXY+7T1A2Lzghm8udKDg88+3r6W3C7FkckuMGZSeaCsBZLTS4zQ\n" +
+        "KwlAcWmCNSu8v6eXRoBGT3MDSSd40X8kSKZXN3YGdKWbeTMwYFOHs7SEaiPZQ4nd\n" +
+        "9hEZTFkmBUOIy4n34BVPPEKVIGPOc1v8vWwQTWgMVjiN9PoGbVjno9GTFV3+wIsv\n" +
+        "NjVs0BiHsRYfI1KW5swaOYlFoH+dT5Kmrx+VzQ==\n" +
+        "-----END CERTIFICATE-----\n";
+
+    /* Sub CA, signed by the pathLen:0 Intermediate, CA:TRUE. Its presence
+     * as a CA below a pathLen:0 CA is the constraint violation.
+     * Subject: CN=wolfSSL Unauthorized Sub CA */
+    private static final String PATHLEN_SUBCA_PEM =
+        "-----BEGIN CERTIFICATE-----\n" +
+        "MIIDRDCCAiygAwIBAgIUH4x1nW6+pxYALTxAgK7yqyNpp7UwDQYJKoZIhvcNAQEL\n" +
+        "BQAwKzEpMCcGA1UEAwwgd29sZlNTTCBQYXRoTGVuMCBJbnRlcm1lZGlhdGUgQ0Ew\n" +
+        "IBcNMjAwMTAxMDAwMDAwWhgPMjEyNjAxMDEwMDAwMDBaMCYxJDAiBgNVBAMMG3dv\n" +
+        "bGZTU0wgVW5hdXRob3JpemVkIFN1YiBDQTCCASIwDQYJKoZIhvcNAQEBBQADggEP\n" +
+        "ADCCAQoCggEBAMRelX6hXnQ7g2e2Y3UIUGcZdD7tKo683wdkb3ayJzoUYGr9zzyR\n" +
+        "j3CKIONSuKhXWRtC6ZrPlNDS5yStjiPeEaiGA+mVPL9mA3JK57E+cI3NewYBT3Fz\n" +
+        "WFSQvQYZvjEqkx8umCgwNUIaQjkc1cVXpSftsU1sHNJu5B350KQ1riVYidmUR9kd\n" +
+        "ZYKN0Enq2IrAd2SPhgK72ZbY5sEykNBLe3VcxDUCtBLXHic91dtenzwMR/0Gjr4z\n" +
+        "EV7YcdaBUHj9m9u1EPatP0v9M+C88nCwbwoygyMC4wFb5M+xFBANYDOKrHP8EBqZ\n" +
+        "7aoTJb7Suj1EoQB6PGNiuYQKDRjc4GHawV8CAwEAAaNjMGEwDwYDVR0TAQH/BAUw\n" +
+        "AwEB/zAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFJuuszq8/p+ug1wfxFdIYM8w\n" +
+        "ddgFMB8GA1UdIwQYMBaAFN8b7mkkjzEgihUSi3ZeE5zmGyKnMA0GCSqGSIb3DQEB\n" +
+        "CwUAA4IBAQBiwJdMdlwjxSs3i9O6W9VXoxHH14/vjGPilIxJOMKehw8bOfxGN95I\n" +
+        "HJBaC4wnltud/pvHcnAyVloure41igSnAVRFP16upRgj8qt3WCnNJa0pfKc9DiiN\n" +
+        "KJBr58w8/fI5WF4DX6oQtWznvO45dopJqeVq+Qam46yMayycs5JOTBhh5PoXjDvw\n" +
+        "7iyrSzjmTP6gsxQ0Pod2AbGIKEdwQbK6CxE0mGbO+vWaBzmE6x41RHRQCQJ85FFU\n" +
+        "XGn/Wm0ofAunaZVixf/MWQUEeFevUf/apuz7Oms4F0NRJexHxQOrCHQbp6W/Kf5F\n" +
+        "unWeUKNgfmnn8aeYrdpCBVeAqv8+8y1c\n" +
+        "-----END CERTIFICATE-----\n";
+
+    /* End entity, signed by the Sub CA.
+     * Subject: CN=wolfSSL PathLen Test User */
+    private static final String PATHLEN_EE_PEM =
+        "-----BEGIN CERTIFICATE-----\n" +
+        "MIIDOjCCAiKgAwIBAgIUENF0NIvYBd5mYcIIK5rEE3cyHoAwDQYJKoZIhvcNAQEL\n" +
+        "BQAwJjEkMCIGA1UEAwwbd29sZlNTTCBVbmF1dGhvcml6ZWQgU3ViIENBMCAXDTIw\n" +
+        "MDEwMTAwMDAwMFoYDzIxMjYwMTAxMDAwMDAwWjAkMSIwIAYDVQQDDBl3b2xmU1NM\n" +
+        "IFBhdGhMZW4gVGVzdCBVc2VyMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC\n" +
+        "AQEA0h0R6LDY06gfti/aWfZpZo7rM+p1Pbldvy/JbfCgjvTsQuZFFAY2VUrlzJfS\n" +
+        "tJOI2Ud9ArEfbaQrd9qZRBkqNAyiB0LKIiJ01cJMjZzfYUUm78DU5r9fcjV5bJOT\n" +
+        "dwCt2h37yXctkjXttu8RXgDb05yX9tjvnI8duZeQq9MMKOuqnFAAMUQO3O1U2CHT\n" +
+        "IjRY2x9P7VtwXdCr0Fd6aEBb4tPkyH3pDHlnG48SofKuuA11mByN50VzwMEftHF6\n" +
+        "1/Y2Cha2SG9WM3MfLMAcCbic6a0xEytqyf/6pqAF1dt3hvdPV6aj3FkJ7Unbs/oJ\n" +
+        "IzD1C8YNfaLCeGXSP1bO0JIqZwIDAQABo2AwXjAMBgNVHRMBAf8EAjAAMA4GA1Ud\n" +
+        "DwEB/wQEAwIHgDAdBgNVHQ4EFgQUxFsxbZFBtSTeqCIyLgIROSCHzWMwHwYDVR0j\n" +
+        "BBgwFoAUm66zOrz+n66DXB/EV0hgzzB12AUwDQYJKoZIhvcNAQELBQADggEBAICe\n" +
+        "GChCpADRSb97+KYCI4oQrCBVXBYPgBlbArGS031h7syipZO8xq8IxNJmA+Agxs5Z\n" +
+        "sbwi0NcutI1xYxpm5fkuh/Ly+F452l2Sug4CYMHc0fscgS7rQtB2YM5opOInptzF\n" +
+        "VI5rC8vF0artFfGaQttG5mWimOlENLqxeQTk//pbmiEsC/3G0D8B4C3y64NovEc1\n" +
+        "QYvDfb3BLTB1yNyhJwu3LGsgmRb19WRWD7WIygJpDqNlEXHQOawffqUKvnSUEQlJ\n" +
+        "1PtGE28/Wfsr9ROLFxtaNaTrZFiIh3qNctb8vHo4KtPBXANuj2JI5sFNr15Be633\n" +
+        "/rtSLpxeZgmMjufX8vo=\n" +
+        "-----END CERTIFICATE-----\n";
+
+    /* End entity, signed directly by the pathLen:0 Intermediate. A pathLen:0
+     * CA issuing an end entity directly is permitted by RFC 5280.
+     * Subject: CN=wolfSSL PathLen0 Direct User */
+    private static final String PATHLEN0_DIRECT_EE_PEM =
+        "-----BEGIN CERTIFICATE-----\n" +
+        "MIIDQjCCAiqgAwIBAgIUH4x1nW6+pxYALTxAgK7yqyNpp7YwDQYJKoZIhvcNAQEL\n" +
+        "BQAwKzEpMCcGA1UEAwwgd29sZlNTTCBQYXRoTGVuMCBJbnRlcm1lZGlhdGUgQ0Ew\n" +
+        "IBcNMjAwMTAxMDAwMDAwWhgPMjEyNjAxMDEwMDAwMDBaMCcxJTAjBgNVBAMMHHdv\n" +
+        "bGZTU0wgUGF0aExlbjAgRGlyZWN0IFVzZXIwggEiMA0GCSqGSIb3DQEBAQUAA4IB\n" +
+        "DwAwggEKAoIBAQC9syWEdkNvVPZ3Vr+ZE5TsdK9nAX/Fbdj2ycd1qu+0Y40zhsoB\n" +
+        "AI6nEdfB/3bYxHeIrX//cpLmiUbBGZd4XSHtdHwFHVnL3547FwaHm29gRM/rJWsP\n" +
+        "O7vb6pPEhcZbWACDx2E0Ds2/mbnhXy+F7ioYyT40WjcwDwN+7psR9o8iKpsqLYnu\n" +
+        "fMwjNPdfD3uGc2ITsTLUzaIPwRxx5m55Wy/n5Jn76AM6cFLe0PJbehZeEFmFIdNb\n" +
+        "MgUiumzijw1Nu58EZJ2qy8Q6PVjIn7sI7dn2WoehC6a0dh4RQtnBfqGrucmQyI76\n" +
+        "X/9GgRRjad9ShSdygF+kvq+WS6vAS4JO9jhHAgMBAAGjYDBeMAwGA1UdEwEB/wQC\n" +
+        "MAAwDgYDVR0PAQH/BAQDAgeAMB0GA1UdDgQWBBRh/GIDY1/jS9Sce6qVZxKhcDlJ\n" +
+        "qzAfBgNVHSMEGDAWgBTfG+5pJI8xIIoVEot2XhOc5hsipzANBgkqhkiG9w0BAQsF\n" +
+        "AAOCAQEAZsqPP9a1DKRIB2HKoxBMKXiVwsY6B+e5wrqKWYdrVimdHSak9fy3/a4s\n" +
+        "aHVML4PoO2B+ILOFxHlY6VKwcn0/CeNFXC/OJlZ6d5+LfnRWzq2k1rY66YsxO72m\n" +
+        "uLwY90jzj3hokQil9PkmoLk1izg8ZJ5Ecd4pqDXOj2DcVO/sh/M3OD6fGONXEe2r\n" +
+        "OnQQL90nbs8XOdd24vZ3k1FeB/hTyuQJxCV184MmwROYtFXiQ5LPtsur4Qf7A7T3\n" +
+        "s6ldtOUGtiKSVuukPd/Q65+e5ySnLluMWGBZZicgizZVInLJ6CCth100JeYiop38\n" +
+        "yzU0/5Kv1+CkhN2sIKDHjXRNJxAXvQ==\n" +
+        "-----END CERTIFICATE-----\n";
+
     /**
      * Test if this environment is Android.
      * @return true if Android, otherwise false
@@ -3562,6 +3690,96 @@ public class WolfCryptPKIXCertPathBuilderTest {
         assertEquals(
             "Second cert in path should be intermediate cert",
             intermediateCert, path.getCertificates().get(1));
+    }
+
+    /**
+     * Build PKIXBuilderParameters over target and intermediate certs,
+     * trusting root, with a custom validation date.
+     */
+    private PKIXBuilderParameters pathLenParams(X509Certificate root,
+        X509Certificate target, X509Certificate... intermediates)
+        throws CertificateException, InvalidAlgorithmParameterException,
+               NoSuchAlgorithmException {
+
+        Set<TrustAnchor> anchors = new HashSet<>();
+        anchors.add(new TrustAnchor(root, null));
+
+        Collection<Certificate> certs = new ArrayList<>();
+        certs.add(target);
+        for (X509Certificate c : intermediates) {
+            certs.add(c);
+        }
+        CertStore certStore = CertStore.getInstance("Collection",
+            new CollectionCertStoreParameters(certs));
+
+        X509CertSelector selector = new X509CertSelector();
+        selector.setCertificate(target);
+
+        PKIXBuilderParameters params =
+            new PKIXBuilderParameters(anchors, selector);
+        params.setRevocationEnabled(false);
+        params.addCertStore(certStore);
+        params.setDate(new Date(System.currentTimeMillis()));
+
+        return params;
+    }
+
+    /**
+     * Test that the Java fallback chain builder rejects a chain where a CA
+     * with BasicConstraints pathLenConstraint 0 issues another CA certificate
+     * (RFC 5280 section 6.1.4). Only applies to the fallback path, native
+     * chain building enforces pathLen per the linked wolfSSL version.
+     */
+    @Test
+    public void testPathLenConstraintRejectsUnauthorizedSubCA()
+        throws Exception {
+
+        Assume.assumeTrue("Only applies when native check_time not supported",
+            !WolfSSLX509StoreCtx.isStoreCheckTimeSupported());
+
+        X509Certificate root  = loadCertFromPEM(PATHLEN_ROOT_PEM);
+        X509Certificate int0  = loadCertFromPEM(PATHLEN0_INT_PEM);
+        X509Certificate subca = loadCertFromPEM(PATHLEN_SUBCA_PEM);
+        X509Certificate ee    = loadCertFromPEM(PATHLEN_EE_PEM);
+
+        PKIXBuilderParameters params = pathLenParams(root, ee, subca, int0);
+
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+        try {
+            cpb.build(params);
+            fail("Expected CertPathBuilderException, pathLen:0 CA must not " +
+                "be accepted as issuer of a sub CA");
+        } catch (CertPathBuilderException e) {
+            assertNotNull("Exception message should not be null",
+                e.getMessage());
+        }
+    }
+
+    /**
+     * Test that the Java fallback chain builder still accepts a CA with
+     * pathLenConstraint 0 issuing an end entity directly, proving the pathLen
+     * check does not over-reject valid chains.
+     */
+    @Test
+    public void testPathLenZeroAllowsDirectEndEntity()
+        throws Exception {
+
+        Assume.assumeTrue("Only applies when native check_time not supported",
+            !WolfSSLX509StoreCtx.isStoreCheckTimeSupported());
+
+        X509Certificate root = loadCertFromPEM(PATHLEN_ROOT_PEM);
+        X509Certificate int0 = loadCertFromPEM(PATHLEN0_INT_PEM);
+        X509Certificate ee   = loadCertFromPEM(PATHLEN0_DIRECT_EE_PEM);
+
+        PKIXBuilderParameters params = pathLenParams(root, ee, int0);
+
+        CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX", provider);
+        CertPathBuilderResult result = cpb.build(params);
+
+        assertNotNull("CertPathBuilderResult should not be null", result);
+        CertPath path = ((PKIXCertPathBuilderResult) result).getCertPath();
+        assertEquals("Path should contain end entity and intermediate",
+            2, path.getCertificates().size());
     }
 
     /**
