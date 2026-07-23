@@ -59,6 +59,10 @@ import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
  * Also asserts "no crypto leaked". Iterating each provider's getServices()
  * must not surface any service whose type is in the blocked crypto set.
  *
+ * Also covers the wolfssl.filtered.useOriginalNames Security property, which
+ * makes the providers register under the original Sun provider names for
+ * compatibility with code that hardcodes those names.
+ *
  * Requires Java 9+. See examples/filtered-providers/docs/add-opens.md for the
  * required (JDK-version-dependent) JVM module flags.
  */
@@ -73,6 +77,9 @@ public class FilteredProviderFunctionalTest {
 
     private static String caEccCertDer;
 
+    /** Security property controlling filtered provider registration names. */
+    private static final String NAME_PROP = "wolfssl.filtered.useOriginalNames";
+
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
@@ -84,9 +91,20 @@ public class FilteredProviderFunctionalTest {
 
         System.out.println("FilteredSun* provider functional test");
 
-        Security.addProvider(new FilteredSun());
-        Security.addProvider(new FilteredSunEC());
-        Security.addProvider(new FilteredSunRsaSign());
+        /* Pin the name override property to "false" while constructing and
+         * registering the providers, so registration names stay FilteredSun*
+         * even if the test JVM's java.security sets
+         * wolfssl.filtered.useOriginalNames=true (e.g. on a hardened
+         * image). Restore the prior value afterward. */
+        String prev = Security.getProperty(NAME_PROP);
+        Security.setProperty(NAME_PROP, "false");
+        try {
+            Security.addProvider(new FilteredSun());
+            Security.addProvider(new FilteredSunEC());
+            Security.addProvider(new FilteredSunRsaSign());
+        } finally {
+            Security.setProperty(NAME_PROP, (prev != null) ? prev : "false");
+        }
 
         /* Relative path from repo root; forked tests have cwd = basedir. */
         String certPre = "";
@@ -169,6 +187,153 @@ public class FilteredProviderFunctionalTest {
             assertFalse(providerName + " leaked blocked crypto service: "
                     + type + "." + svc.getAlgorithm(),
                 BLOCKED_TYPES.contains(type));
+        }
+    }
+
+    /**
+     * Restore the Security property to its prior value, or to "false"
+     * (equivalent to unset for name resolution) if it was never set.
+     */
+    private static void restoreSecurityProperty(String prev) {
+        Security.setProperty(NAME_PROP, (prev != null) ? prev : "false");
+    }
+
+    /**
+     * Return the 1-based registration position of the named provider,
+     * or -1 if not registered.
+     */
+    private static int providerPosition(String name) {
+
+        Provider[] providers = Security.getProviders();
+
+        for (int i = 0; i < providers.length; i++) {
+            if (providers[i].getName().equals(name)) {
+                return i + 1;
+            }
+        }
+
+        return -1;
+    }
+
+    @Test
+    public void testDefaultNamesUnchanged() {
+        String prev = Security.getProperty(NAME_PROP);
+
+        try {
+            Security.setProperty(NAME_PROP, "false");
+
+            assertEquals("FilteredSun",
+                new FilteredSun().getName());
+            assertEquals("FilteredSunEC",
+                new FilteredSunEC().getName());
+            assertEquals("FilteredSunRsaSign",
+                new FilteredSunRsaSign().getName());
+
+        } finally {
+            restoreSecurityProperty(prev);
+        }
+    }
+
+    @Test
+    public void testSecurityPropertyEnablesOriginalNames() {
+        String prev = Security.getProperty(NAME_PROP);
+
+        try {
+            Security.setProperty(NAME_PROP, "true");
+
+            assertEquals("SUN", new FilteredSun().getName());
+            assertEquals("SunEC", new FilteredSunEC().getName());
+            assertEquals("SunRsaSign", new FilteredSunRsaSign().getName());
+
+        } finally {
+            restoreSecurityProperty(prev);
+        }
+    }
+
+    @Test
+    public void testSystemPropertyIsIgnored() {
+        String prev = Security.getProperty(NAME_PROP);
+
+        try {
+            /* Only the Security property controls the name. A system property
+             * of the same name must have no effect. */
+            Security.setProperty(NAME_PROP, "false");
+            System.setProperty(NAME_PROP, "true");
+
+            assertEquals("FilteredSun", new FilteredSun().getName());
+
+        } finally {
+            System.clearProperty(NAME_PROP);
+            restoreSecurityProperty(prev);
+        }
+    }
+
+    @Test
+    public void testInfoStringUnchangedWithOverride() {
+        String prev = Security.getProperty(NAME_PROP);
+
+        try {
+            Security.setProperty(NAME_PROP, "true");
+
+            /* getInfo() must keep identifying the provider as filtered even
+             * when registered under the original name, so audits and telemetry
+             * can distinguish it from the stock SUN. */
+            Provider p = new FilteredSun();
+            assertEquals("SUN", p.getName());
+            assertEquals("Filtered SUN for non-crypto ops", p.getInfo());
+
+        } finally {
+            restoreSecurityProperty(prev);
+        }
+    }
+
+    @Test
+    public void testHardcodedSunLookupResolvesWithOverride()
+        throws Exception {
+
+        String prev = Security.getProperty(NAME_PROP);
+        Provider realSun = Security.getProvider("SUN");
+        int realSunPos = providerPosition("SUN");
+        Provider filtered = null;
+        boolean filteredAdded = false;
+
+        try {
+            Security.setProperty(NAME_PROP, "true");
+
+            filtered = new FilteredSun();
+            assertEquals("SUN", filtered.getName());
+
+            /* Simulate the hardened JRE: the real SUN is not registered, the
+             * filtered provider takes its place. On a stock test JDK the real
+             * SUN is registered, so swap it out for the test duration. */
+            if (realSun != null) {
+                Security.removeProvider("SUN");
+            }
+            assertTrue("could not register filtered provider as SUN",
+                Security.addProvider(filtered) != -1);
+            filteredAdded = true;
+
+            /* Hardcoded provider name lookup must now resolve to the
+             * filtered provider instance */
+            CertificateFactory cf =
+                CertificateFactory.getInstance("X.509", "SUN");
+            assertNotNull("CertificateFactory X.509 not resolved from " +
+                "provider registered as SUN", cf);
+            assertSame("lookup did not resolve to the filtered provider",
+                filtered, cf.getProvider());
+
+        } finally {
+            if (filteredAdded) {
+                Security.removeProvider(filtered.getName());
+            }
+            if (realSun != null && Security.getProvider("SUN") == null) {
+                if (realSunPos > 0) {
+                    Security.insertProviderAt(realSun, realSunPos);
+                } else {
+                    Security.addProvider(realSun);
+                }
+            }
+            restoreSecurityProperty(prev);
         }
     }
 }

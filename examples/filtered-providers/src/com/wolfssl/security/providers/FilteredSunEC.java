@@ -24,13 +24,20 @@ import java.security.Provider;
 import java.util.Set;
 
 /**
- * FilteredSunEC is a custom security provider that filters out
- * cryptographic services from the original SunEC provider, retaining
- * only the supporting non-cryptographic services.
+ * FilteredSunEC is a custom security provider that filters out cryptographic
+ * services from the original SunEC provider, retaining only the supporting
+ * non-cryptographic services.
  *
  * It retains only:
  *
  *     - AlgorithmParameters.EC
+ *
+ * Set the wolfssl.filtered.useOriginalNames Security property to "true" (in
+ * java.security, or via Security.setProperty() before this provider is first
+ * instantiated) to register this provider under the original "SunEC" name
+ * instead of "FilteredSunEC". This keeps applications and JDK code with
+ * hardcoded provider names working. Only the allow-listed services above are
+ * exposed regardless of the registered name.
  *
  * Set the system property wolfssl.filtered.debug=true to enable verbose
  * load/copy logging to stderr. Requires Java 9+ and the JVM module flags
@@ -43,7 +50,7 @@ public class FilteredSunEC extends Provider {
 
     public FilteredSunEC() {
 
-        super("FilteredSunEC",
+        super(ProviderServiceCopier.resolveName("FilteredSunEC", "SunEC"),
             System.getProperty("java.specification.version"),
             "Filtered SunEC for non-crypto ops");
 

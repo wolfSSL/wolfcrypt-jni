@@ -63,6 +63,10 @@ public class FilteredProviderSmokeTest {
     private static Provider sunEc;
     private static Provider sunRsa;
 
+    /** Security property controlling filtered provider registration names. */
+    private static final String NAME_PROP =
+        "wolfssl.filtered.useOriginalNames";
+
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
@@ -74,14 +78,25 @@ public class FilteredProviderSmokeTest {
 
         System.out.println("FilteredSun* provider smoke test");
 
-        /* Construct all three providers; must not throw. */
-        sun    = new FilteredSun();
-        sunEc  = new FilteredSunEC();
-        sunRsa = new FilteredSunRsaSign();
+        /* Pin the name override property to "false" while constructing and
+         * registering the providers, so registration names stay FilteredSun*
+         * even if the test JVM's java.security sets
+         * wolfssl.filtered.useOriginalNames=true (e.g. on a hardened image).
+         * Restore the prior value afterward. */
+        String prev = Security.getProperty(NAME_PROP);
+        Security.setProperty(NAME_PROP, "false");
+        try {
+            /* Construct all three providers; must not throw. */
+            sun    = new FilteredSun();
+            sunEc  = new FilteredSunEC();
+            sunRsa = new FilteredSunRsaSign();
 
-        Security.addProvider(sun);
-        Security.addProvider(sunEc);
-        Security.addProvider(sunRsa);
+            Security.addProvider(sun);
+            Security.addProvider(sunEc);
+            Security.addProvider(sunRsa);
+        } finally {
+            Security.setProperty(NAME_PROP, (prev != null) ? prev : "false");
+        }
     }
 
     /**

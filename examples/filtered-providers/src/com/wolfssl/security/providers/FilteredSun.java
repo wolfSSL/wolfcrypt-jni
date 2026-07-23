@@ -24,9 +24,9 @@ import java.security.Provider;
 import java.util.Set;
 
 /**
- * FilteredSun is a custom security provider that filters out
- * cryptographic services from the original SUN provider, retaining
- * only the supporting non-cryptographic services.
+ * FilteredSun is a custom security provider that filters out cryptographic
+ * services from the original SUN provider, retaining only the supporting
+ * non-cryptographic services.
  *
  * It retains only the services:
  *     - CertStore.Collection
@@ -34,6 +34,14 @@ import java.util.Set;
  *     - CertificateFactory.X.509
  *     - Configuration.JavaLoginConfig
  *     - Policy.JavaPolicy
+ *
+ * Set the wolfssl.filtered.useOriginalNames Security property to "true"
+ * (in java.security, or via Security.setProperty() before this provider is
+ * first instantiated) to register this provider under the original "SUN" name
+ * instead of "FilteredSun". This keeps applications and JDK code with
+ * hardcoded provider names working (e.g.
+ * CertificateFactory.getInstance("X.509", "SUN")). Only the allow-listed
+ * services above are exposed regardless of the registered name.
  *
  * Set the system property wolfssl.filtered.debug=true to enable verbose
  * load/copy logging to stderr. Requires Java 9+ and the JVM module flags
@@ -46,7 +54,7 @@ public class FilteredSun extends Provider {
 
     public FilteredSun() {
 
-        super("FilteredSun",
+        super(ProviderServiceCopier.resolveName("FilteredSun", "SUN"),
             System.getProperty("java.specification.version"),
             "Filtered SUN for non-crypto ops");
 

@@ -25,11 +25,18 @@ import java.util.Set;
 
 /**
  * FilteredSunRsaSign is a custom security provider that filters out
- * cryptographic services from the original SunRsaSign provider,
- * retaining only the supporting non-cryptographic services.
+ * cryptographic services from the original SunRsaSign provider, retaining
+ * only the supporting non-cryptographic services.
  *
  * It retains only:
  *     - KeyFactory.RSASSA-PSS
+ *
+ * Set the wolfssl.filtered.useOriginalNames Security property to "true" (in
+ * java.security, or via Security.setProperty() before this provider is first
+ * instantiated) to register this provider under the original "SunRsaSign"
+ * name instead of "FilteredSunRsaSign". This keeps applications and JDK code
+ * with hardcoded provider names working. Only the allow-listed services above
+ * are exposed regardless of the registered name.
  *
  * Set the system property wolfssl.filtered.debug=true to enable verbose
  * load/copy logging to stderr. Requires Java 9+ and the JVM module flags
@@ -42,7 +49,8 @@ public class FilteredSunRsaSign extends Provider {
 
     public FilteredSunRsaSign() {
 
-        super("FilteredSunRsaSign",
+        super(ProviderServiceCopier.resolveName(
+                "FilteredSunRsaSign", "SunRsaSign"),
             System.getProperty("java.specification.version"),
             "Filtered SunRsaSign for non-crypto ops");
 

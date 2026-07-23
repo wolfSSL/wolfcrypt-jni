@@ -114,6 +114,66 @@ Each `Filtered*.java` has a single `serviceSupported()` method, which is the
 only place that controls which services pass through. Edit it, rebuild, and
 redeploy if you need to do something different.
 
+## Using the original Sun provider names
+
+Some legacy code, OpenJDK code, or other libraries may hardcode specific
+provider names, such as:
+
+```java
+CertificateFactory.getInstance("X.509", "SUN");
+```
+
+With the filtered providers registered under their default names, those calls
+will throw `NoSuchProviderException` because the `SUN` providers may have been
+purposefully unregistered for FIPS compliance.
+
+To keep this type of code working, the `wolfssl.filtered.useOriginalNames`
+Security property can be set to `true` and the filtered providers will register
+under the original provider names that they are filtering instead of their
+`Filtered*` names.
+
+```
+wolfssl.filtered.useOriginalNames=true
+```
+
+This is a Security property (not System property), and is read at provider
+construction time, so it can also be set programmatically with
+`Security.setProperty()` as long as that happens before the providers are first
+instantiated. On images that set `security.overridePropertiesFile=false` the
+value is fixed by the image's `java.security` file and cannot be changed from
+the command line.
+
+Pros (why enable it):
+
+- Legacy application code and third-party jars that pin the original
+  provider names work unmodified, e.g.
+  `CertificateFactory.getInstance("X.509", "SUN")`.
+- OpenJDK code paths that internally look up Sun providers by name keep
+  resolving, without patching or shading.
+- No application-side try/catch fallback shims are needed for the
+  allow-listed services.
+
+Cons (why the default leaves the `Filtered*` names):
+
+- A hardened provider masquerading as the stock one can hide the hardening
+  from casual inspection: monitoring that records only `Provider.getName()`
+  sees `SUN` on both stock and hardened JREs. Use `Provider.getInfo()` or the
+  provider class name to distinguish them.
+- With the default `Filtered*` names, a pinned lookup fails loudly with
+  `NoSuchProviderException` at the exact call site that needs fixing. Enabling
+  the name override trades that diagnosability for compatibility.
+- The original providers must not also be registered. If both the real `SUN`
+  and a filtered provider named `SUN` end up registered, lookups resolve to
+  whichever is first in the provider order.
+- Always register by class name (`security.provider.N =
+  com.wolfssl.security.providers.FilteredSun`). Class-name registration is
+  unaffected by the name change. Registration by provider *name*
+  (`security.provider.N = SUN`) must not be used with this feature: the JDK
+  resolves the built-in provider names internally before consulting classpath
+  providers, so a `SUN`/`SunEC`/`SunRsaSign` entry always loads the stock Sun
+  provider, silently bypassing the filtered one and reinstating the
+  non-validated crypto regardless of this property.
+
 ## Tests
 
 The filtered-providers tests run automatically on JDK 9+ alongside the main
