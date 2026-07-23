@@ -78,7 +78,7 @@ public class WolfCryptPssParameters extends AlgorithmParametersSpi {
         try {
             this.pssSpec = decodePssParameters(params);
             validatePSSParameters(this.pssSpec);
-        } catch (InvalidParameterSpecException e) {
+        } catch (InvalidParameterSpecException | IllegalArgumentException e) {
             throw new IOException(
                 "Failed to decode PSS parameters: " + e.getMessage(), e);
         }

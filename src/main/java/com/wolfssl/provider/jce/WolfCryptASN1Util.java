@@ -621,7 +621,7 @@ public class WolfCryptASN1Util {
 
         if ((firstByte & 0x80) == 0) {
             /* Short form */
-            return new int[] {firstByte, offset};
+            length = firstByte;
         }
         else {
             /* Long form */
@@ -645,9 +645,15 @@ public class WolfCryptASN1Util {
             for (int i = 0; i < numBytes; i++) {
                 length = (length << 8) | (data[offset++] & 0xff);
             }
-
-            return new int[] {length, offset};
         }
+
+        /* Reject negative length or content extending beyond buffer */
+        if (length < 0 || length > data.length - offset) {
+            throw new IllegalArgumentException(
+                "Invalid DER length: exceeds available data");
+        }
+
+        return new int[] {length, offset};
     }
 
     /**
