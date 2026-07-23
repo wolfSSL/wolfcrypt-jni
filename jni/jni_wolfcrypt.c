@@ -365,6 +365,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
     byte* pem = NULL;
     byte* der = NULL;
     const char* password = NULL;
+    jboolean pwIsCopy = JNI_FALSE;
     jbyteArray derArr = NULL;
     (void)jcl;
 
@@ -387,7 +388,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
     /* Get password if provided */
     if (ret == 0) {
         if (passwordStr != NULL) {
-            password = (*env)->GetStringUTFChars(env, passwordStr, NULL);
+            password = (*env)->GetStringUTFChars(env, passwordStr, &pwIsCopy);
             if (password == NULL) {
                 ret = MEMORY_E;
             }
@@ -431,6 +432,16 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
         (*env)->ReleaseByteArrayElements(env, pemArr, (jbyte*)pem, JNI_ABORT);
     }
     if (password != NULL) {
+        /* Zero the native passphrase copy before release. Skip when not a
+         * copy, the pointer is then into the JVM's immutable String. */
+        if (pwIsCopy == JNI_TRUE) {
+        #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+            !defined(WOLFSSL_NO_FORCE_ZERO)
+            wc_ForceZero((void*)password, (word32)XSTRLEN(password));
+        #else
+            XMEMSET((void*)password, 0, XSTRLEN(password));
+        #endif
+        }
         (*env)->ReleaseStringUTFChars(env, passwordStr, password);
     }
     if (der != NULL) {
