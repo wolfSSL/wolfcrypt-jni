@@ -2304,6 +2304,70 @@ public class WolfCryptCipherTest {
     }
 
     /*
+     * Test that AAD supplied over many updateAAD() calls produces the same
+     * result as a single call. Guards the incremental AAD accumulator.
+     */
+    @Test
+    public void testAesGcmChunkedAADMatchesSingle()
+        throws NoSuchAlgorithmException, InvalidKeyException,
+               IllegalBlockSizeException, NoSuchProviderException,
+               InvalidAlgorithmParameterException, BadPaddingException,
+               NoSuchPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding") ||
+            !FeatureDetect.Aes256Enabled()) {
+            /* skip if AES-256-GCM is not enabled */
+            return;
+        }
+
+        byte[] keyBytes = new byte[32];
+        byte[] iv = new byte[12];
+        byte[] aad = new byte[257];
+        byte[] plaintext = new byte[64];
+        for (int i = 0; i < keyBytes.length; i++) {
+            keyBytes[i] = (byte)i;
+        }
+        for (int i = 0; i < iv.length; i++) {
+            iv[i] = (byte)(0xA0 + i);
+        }
+        for (int i = 0; i < aad.length; i++) {
+            aad[i] = (byte)(i & 0xFF);
+        }
+        for (int i = 0; i < plaintext.length; i++) {
+            plaintext[i] = (byte)(0x5A ^ i);
+        }
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        GCMParameterSpec spec = new GCMParameterSpec(128, iv);
+
+        /* Reference, AAD supplied in a single call */
+        Cipher c1 = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        c1.init(Cipher.ENCRYPT_MODE, key, spec);
+        c1.updateAAD(aad);
+        byte[] single = c1.doFinal(plaintext);
+
+        /* AAD supplied one byte per call */
+        Cipher c2 = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        c2.init(Cipher.ENCRYPT_MODE, key, spec);
+        for (int i = 0; i < aad.length; i++) {
+            c2.updateAAD(aad, i, 1);
+        }
+        byte[] chunked = c2.doFinal(plaintext);
+
+        assertArrayEquals(
+            "Chunked AAD must match single-call AAD", single, chunked);
+
+        /* Round trip decrypt with AAD split into 7-byte chunks */
+        Cipher dec = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, key, spec);
+        for (int i = 0; i < aad.length; i += 7) {
+            dec.updateAAD(aad, i, Math.min(7, aad.length - i));
+        }
+        byte[] recovered = dec.doFinal(chunked);
+        assertArrayEquals(plaintext, recovered);
+    }
+
+    /*
      * Test Cipher("AES/GCM/NoPadding") to make sure updateAAD() correctly
      * throws an exception when called after a call to update or doFinal.
      */
@@ -5529,6 +5593,72 @@ public class WolfCryptCipherTest {
 
         assertArrayEquals("CCM with AAD decrypt should match plaintext",
                           plaintext, decrypted);
+    }
+
+    /*
+     * Test that AAD supplied over many updateAAD() calls produces the same
+     * result as a single call for AES-CCM, the second consumer of the
+     * incremental AAD accumulator.
+     */
+    @Test
+    public void testAesCcmChunkedAADMatchesSingle()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        byte[] key = {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+        byte[] nonce = new byte[12];
+        byte[] aad = new byte[257];
+        byte[] plaintext = new byte[32];
+        for (int i = 0; i < nonce.length; i++) {
+            nonce[i] = (byte)(0x0B - i);
+        }
+        for (int i = 0; i < aad.length; i++) {
+            aad[i] = (byte)(i & 0xFF);
+        }
+        for (int i = 0; i < plaintext.length; i++) {
+            plaintext[i] = (byte)(0x5A ^ i);
+        }
+
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        GCMParameterSpec ccmSpec = new GCMParameterSpec(128, nonce);
+
+        /* Reference, AAD supplied in a single call */
+        Cipher c1 = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+        c1.init(Cipher.ENCRYPT_MODE, keySpec, ccmSpec);
+        c1.updateAAD(aad);
+        byte[] single = c1.doFinal(plaintext);
+
+        /* AAD supplied one byte per call */
+        Cipher c2 = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+        c2.init(Cipher.ENCRYPT_MODE, keySpec, ccmSpec);
+        for (int i = 0; i < aad.length; i++) {
+            c2.updateAAD(aad, i, 1);
+        }
+        byte[] chunked = c2.doFinal(plaintext);
+
+        assertArrayEquals(
+            "Chunked AAD must match single-call AAD", single, chunked);
+
+        /* Round trip decrypt with AAD split into 7-byte chunks */
+        Cipher dec = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, keySpec, ccmSpec);
+        for (int i = 0; i < aad.length; i += 7) {
+            dec.updateAAD(aad, i, Math.min(7, aad.length - i));
+        }
+        byte[] recovered = dec.doFinal(chunked);
+        assertArrayEquals(plaintext, recovered);
     }
 
     @Test
