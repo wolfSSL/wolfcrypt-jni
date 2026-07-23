@@ -75,6 +75,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import java.util.Base64;
 
@@ -3941,5 +3942,6 @@ public class WolfSSLKeyStoreTest {
 
         return false;
     }
+
 }
 

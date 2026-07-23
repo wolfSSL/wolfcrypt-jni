@@ -25,6 +25,8 @@ import java.util.Arrays;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CodingErrorAction;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactorySpi;
 import javax.crypto.spec.PBEKeySpec;
@@ -283,10 +285,25 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
             return null;
         }
 
+        /* Encode into single worst case sized buffer. */
+        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder()
+            .onMalformedInput(CodingErrorAction.REPLACE)
+            .onUnmappableCharacter(CodingErrorAction.REPLACE);
+
         passBuf = CharBuffer.wrap(pass);
-        utf8Buf = StandardCharsets.UTF_8.encode(passBuf);
-        passBytes = new byte[utf8Buf.limit()];
+        utf8Buf = ByteBuffer.allocate(
+            (int)Math.ceil(pass.length * (double)encoder.maxBytesPerChar()));
+        encoder.encode(passBuf, utf8Buf, true);
+        encoder.flush(utf8Buf);
+        utf8Buf.flip();
+
+        passBytes = new byte[utf8Buf.remaining()];
         utf8Buf.get(passBytes);
+
+        /* Zero the encoder buffer, it holds another UTF-8 copy */
+        if (utf8Buf.hasArray()) {
+            Arrays.fill(utf8Buf.array(), (byte)0);
+        }
 
         return passBytes;
     }
@@ -305,6 +322,7 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
         int kLen;
         byte[] salt = null;
         char[] pass = null;
+        byte[] passBytes = null;
         byte[] derivedKey = null;
         SecretKey key = null;
 
@@ -334,8 +352,9 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
             log("generating PBEKey (iterations: " + iterations +
                 ", key len: " + kLen + " bytes)");
 
-            derivedKey = Pwdbased.PBKDF2(passwordToByteArray(pass),
-                salt, iterations, kLen, this.hashType);
+            passBytes = passwordToByteArray(pass);
+            derivedKey = Pwdbased.PBKDF2(passBytes, salt, iterations, kLen,
+                this.hashType);
 
             if (derivedKey == null || derivedKey.length == 0) {
                 throw new InvalidKeySpecException(
@@ -355,6 +374,9 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
             }
             if (pass != null) {
                 Arrays.fill(pass, (char)0);
+            }
+            if (passBytes != null) {
+                Arrays.fill(passBytes, (byte)0);
             }
             if (derivedKey != null) {
                 Arrays.fill(derivedKey, (byte)0);
