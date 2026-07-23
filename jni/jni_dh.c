@@ -1273,9 +1273,38 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhPublicKeyDecode(
 
     /* Decode X.509 public key */
     ret = wc_DhKeyDecode(x509, &idx, key, x509Sz);
+    LogStr("wc_DhKeyDecode(x509=%p, key=%p) = %d\n", x509, key, ret);
+
+#ifdef WOLFSSL_DH_EXTRA
+    if (ret == 0) {
+        /* Fail fast on an out of range public key. wc_DhAgree also validates
+         * at use. Export the decoded Y to validate. */
+        byte* pubVal = NULL;
+        word32 pubValSz = (DH_MAX_SIZE + 7) / 8;
+
+        pubVal = (byte*)XMALLOC(pubValSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (pubVal == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            ret = wc_DhExportKeyPair(key, NULL, NULL, pubVal, &pubValSz);
+            if (ret == 0) {
+                ret = wc_DhCheckPubKey(key, pubVal, pubValSz);
+            }
+        #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+            !defined(WOLFSSL_NO_FORCE_ZERO)
+            wc_ForceZero(pubVal, (DH_MAX_SIZE + 7) / 8);
+        #else
+            XMEMSET(pubVal, 0, (DH_MAX_SIZE + 7) / 8);
+        #endif
+            XFREE(pubVal, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        }
+        LogStr("DH public key validation = %d\n", ret);
+    }
+#endif
 
     if (ret == 0) {
-        /* Return the same DER data (validated) */
+        /* Return the DER as passed in */
         result = (*env)->NewByteArray(env, x509Sz);
         if (result) {
             (*env)->SetByteArrayRegion(env, result, 0, x509Sz,
@@ -1286,8 +1315,6 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhPublicKeyDecode(
             ret = MEMORY_E;
         }
     }
-
-    LogStr("wc_DhKeyDecode(x509=%p, key=%p) = %d\n", x509, key, ret);
 
     releaseByteArray(env, x509_object, x509, JNI_ABORT);
 

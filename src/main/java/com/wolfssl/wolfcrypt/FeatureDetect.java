@@ -340,6 +340,13 @@ public class FeatureDetect {
     public static native boolean DhEnabled();
 
     /**
+     * Tests if WOLFSSL_DH_EXTRA is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean DhExtraEnabled();
+
+    /**
      * Tests if ECC is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.

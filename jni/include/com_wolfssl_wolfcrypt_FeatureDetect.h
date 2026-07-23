@@ -353,6 +353,14 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_DhEnabled
 
 /*
  * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    DhExtraEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_DhExtraEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
  * Method:    EccEnabled
  * Signature: ()Z
  */
