@@ -888,6 +888,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         byte[] salt, int iterations, int kLen) throws KeyStoreException {
 
         byte[] kek = null;
+        byte[] passBytes = null;
 
         if (pass == null || pass.length == 0 || salt == null ||
             salt.length == 0 || iterations <= 0 || kLen <= 0) {
@@ -896,9 +897,9 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         }
 
         try {
-            kek = Pwdbased.PBKDF2(
-                WolfCryptSecretKeyFactory.passwordToByteArray(pass),
-                salt, iterations, kLen, WKS_PBKDF2_TYPE);
+            passBytes = WolfCryptSecretKeyFactory.passwordToByteArray(pass);
+            kek = Pwdbased.PBKDF2(passBytes, salt, iterations, kLen,
+                WKS_PBKDF2_TYPE);
 
             if (kek == null) {
                 throw new KeyStoreException(
@@ -910,6 +911,11 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                 Arrays.fill(kek, (byte)0);
             }
             throw new KeyStoreException(e);
+
+        } finally {
+            if (passBytes != null) {
+                Arrays.fill(passBytes, (byte)0);
+            }
         }
 
         return kek;
@@ -2218,6 +2224,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
         byte[] encoded = null;
         byte[] derivedKey = null;
+        byte[] passBytes = null;
         byte[] hmac = null;
         byte[] encodedEntry = null;
         byte[] salt = new byte[WKS_PBKDF2_SALT_SIZE];
@@ -2333,9 +2340,10 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
             /* Derive HMAC key from password with PBKDF2 */
             log("deriving HMAC-SHA512 key with PKCS#5 PBKDF2-HMAC-SHA512");
-            derivedKey = Pwdbased.PBKDF2(
-                WolfCryptSecretKeyFactory.passwordToByteArray(password),
-                salt, WKS_PBKDF2_ITERATION_COUNT, WKS_HMAC_KEY_LENGTH,
+            passBytes =
+                WolfCryptSecretKeyFactory.passwordToByteArray(password);
+            derivedKey = Pwdbased.PBKDF2(passBytes, salt,
+                WKS_PBKDF2_ITERATION_COUNT, WKS_HMAC_KEY_LENGTH,
                 WKS_PBKDF2_TYPE);
             if (derivedKey == null) {
                 throw new IOException("Error deriving key with PBKDF2");
@@ -2376,6 +2384,9 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             }
             if (derivedKey != null) {
                 Arrays.fill(derivedKey, (byte)0);
+            }
+            if (passBytes != null) {
+                Arrays.fill(passBytes, (byte)0);
             }
             if (hmac != null) {
                 Arrays.fill(hmac, (byte)0);
@@ -2472,6 +2483,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             Mac mac = null;
             SecretKeySpec keySpec = null;
             byte[] derivedKey = null;
+            byte[] passBytes = null;
             byte[] buffered = null;
             byte[] hmac = null;
 
@@ -2482,9 +2494,16 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             }
 
             /* Derive HMAC key from password using PBKDF2 */
-            derivedKey = Pwdbased.PBKDF2(
-                WolfCryptSecretKeyFactory.passwordToByteArray(password),
-                salt, iterations, WKS_HMAC_KEY_LENGTH, WKS_PBKDF2_TYPE);
+            try {
+                passBytes =
+                    WolfCryptSecretKeyFactory.passwordToByteArray(password);
+                derivedKey = Pwdbased.PBKDF2(passBytes, salt, iterations,
+                    WKS_HMAC_KEY_LENGTH, WKS_PBKDF2_TYPE);
+            } finally {
+                if (passBytes != null) {
+                    Arrays.fill(passBytes, (byte)0);
+                }
+            }
             if (derivedKey == null) {
                 throw new IOException("Error deriving key with PBKDF2");
             }
