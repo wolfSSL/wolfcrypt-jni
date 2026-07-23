@@ -48,6 +48,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
     byte* pass = NULL;
     byte* salt = NULL;
     byte* outKey = NULL;
+    jboolean passIsCopy = JNI_FALSE;
     jbyteArray result = NULL;
     (void)jcl;
 
@@ -64,7 +65,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
     XMEMSET(outKey, 0, kLen);
 
     if (passBuf != NULL) {
-        pass = (byte*)(*env)->GetByteArrayElements(env, passBuf, NULL);
+        pass = (byte*)(*env)->GetByteArrayElements(env, passBuf, &passIsCopy);
     }
     if (saltBuf != NULL) {
         salt = (byte*)(*env)->GetByteArrayElements(env, saltBuf, NULL);
@@ -96,6 +97,15 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
     }
 
     if (pass != NULL) {
+        /* Zero native copy of password, JNI_ABORT does not copy back */
+        if (passIsCopy == JNI_TRUE && passBufLen > 0) {
+        #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+            !defined(WOLFSSL_NO_FORCE_ZERO)
+            wc_ForceZero(pass, passBufLen);
+        #else
+            XMEMSET(pass, 0, passBufLen);
+        #endif
+        }
         (*env)->ReleaseByteArrayElements(env, passBuf, (jbyte*)pass, JNI_ABORT);
     }
     if (salt != NULL) {
@@ -133,6 +143,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
     byte* pass = NULL;
     byte* salt = NULL;
     byte* outKey = NULL;
+    jboolean passIsCopy = JNI_FALSE;
     jbyteArray result = NULL;
     (void)jcl;
 
@@ -149,7 +160,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
     XMEMSET(outKey, 0, kLen);
 
     if ((passBuf != NULL) && (passBufLen > 0)) {
-        pass = (byte*)(*env)->GetByteArrayElements(env, passBuf, NULL);
+        pass = (byte*)(*env)->GetByteArrayElements(env, passBuf, &passIsCopy);
     }
 
     if (saltBuf != NULL) {
@@ -182,6 +193,15 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
     }
 
     if (pass != NULL) {
+        /* Zero native copy of password, JNI_ABORT does not copy back */
+        if (passIsCopy == JNI_TRUE && passBufLen > 0) {
+        #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+            !defined(WOLFSSL_NO_FORCE_ZERO)
+            wc_ForceZero(pass, passBufLen);
+        #else
+            XMEMSET(pass, 0, passBufLen);
+        #endif
+        }
         (*env)->ReleaseByteArrayElements(env, passBuf, (jbyte*)pass, JNI_ABORT);
     }
     if (salt != NULL) {
