@@ -4,6 +4,11 @@ on:
   pull_request:
     branches: [ 'master' ]
 
+# Cancel superseded in-progress runs for the same PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # First job: dynamically fetch the last 5 stable wolfSSL release tags
   get-stable-releases:
@@ -51,40 +56,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache JUnit dependencies
-        uses: actions/cache@v4
-        id: cache-junit
+      - name: Setup JUnit
+        uses: ./.github/actions/setup-junit
+
+      # Cache the installed wolfSSL build. Stable release tags do not
+      # move, so these entries stay valid until a runner-image
+      # toolchain bump rotates the key.
+      - name: Build native wolfSSL ${{ matrix.wolfssl_version }} (cached)
+        uses: ./.github/actions/build-wolfssl-cached
         with:
-          path: junit
-          key: junit-jars-v1
-
-      - name: Download junit-4.13.2.jar
-        if: steps.cache-junit.outputs.cache-hit != 'true'
-        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar
-
-      - name: Download hamcrest-all-1.3.jar
-        if: steps.cache-junit.outputs.cache-hit != 'true'
-        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/org/hamcrest/hamcrest-all/1.3/hamcrest-all-1.3.jar
-
-      - name: Build native wolfSSL ${{ matrix.wolfssl_version }}
-        uses: wolfSSL/actions-build-autotools-project@v1
-        with:
-          repository: wolfSSL/wolfssl
-          ref: ${{ matrix.wolfssl_version }}
-          path: wolfssl
           configure: ${{ matrix.wolfssl_configure }}
-          check: false
-          install: true
+          ref: ${{ matrix.wolfssl_version }}
 
       - name: Setup java
         uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: ${{ matrix.jdk_version }}
-
-      - name: Set JUNIT_HOME
-        run: |
-          echo "JUNIT_HOME=$GITHUB_WORKSPACE/junit" >> "$GITHUB_ENV"
 
       - name: Set LD_LIBRARY_PATH
         run: |

@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [ 'master' ]
 
+# Cancel superseded in-progress runs for the same PR. In-progress
+# push runs are never cancelled, though a still-queued push run may
+# be superseded by a newer queued one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Linux 32-bit build using Zulu x86 JDK
   # Tests JNI pointer handling and 32-bit specific code paths
@@ -44,25 +51,48 @@ jobs:
           java -version
           file $(which java)
 
-      - name: Cache JUnit dependencies
-        uses: actions/cache@v4
-        id: cache-junit
-        with:
-          path: junit
-          key: junit-jars-v1
+      - name: Setup JUnit
+        uses: ./.github/actions/setup-junit
 
-      - name: Download junit-4.13.2.jar
-        if: steps.cache-junit.outputs.cache-hit != 'true'
-        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar
-
-      - name: Download hamcrest-all-1.3.jar
-        if: steps.cache-junit.outputs.cache-hit != 'true'
-        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/org/hamcrest/hamcrest-all/1.3/hamcrest-all-1.3.jar
-
-      - name: Clone and build wolfSSL (32-bit)
+      # Cache the installed wolfSSL build. The m32 key segment keeps
+      # these 32-bit builds separate from the 64-bit cache entries.
+      - name: Resolve wolfSSL cache key
+        id: wolfssl-key
+        env:
+          WOLFSSL_CONFIGURE: ${{ matrix.wolfssl_configure }}
         run: |
-          git clone --depth 1 https://github.com/wolfSSL/wolfssl.git /tmp/wolfssl
+          SHA=$(git ls-remote https://github.com/wolfSSL/wolfssl.git \
+            refs/heads/master | cut -f1)
+          if [ -z "$SHA" ]; then
+            echo "Failed to resolve wolfSSL master SHA" >&2
+            exit 1
+          fi
+          CFG_HASH=$(printf '%s' "$WOLFSSL_CONFIGURE" | \
+            shasum -a 256 | cut -c1-16)
+          CC_HASH=$(cc --version 2>/dev/null | head -n1 | \
+            shasum -a 256 | cut -c1-8)
+          KEY="wolfssl-m32-${{ runner.os }}-${{ runner.arch }}"
+          KEY="$KEY-cc$CC_HASH-$SHA-$CFG_HASH"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Restore cached wolfSSL install
+        id: cache-wolfssl
+        uses: actions/cache/restore@v4
+        with:
+          path: wolfssl-install
+          key: ${{ steps.wolfssl-key.outputs.key }}
+
+      # Fetch the exact commit the cache key was computed from so the
+      # key and contents cannot drift if master advances mid-run.
+      - name: Clone and build wolfSSL (32-bit)
+        if: steps.cache-wolfssl.outputs.cache-hit != 'true'
+        run: |
+          git init /tmp/wolfssl
           cd /tmp/wolfssl
+          git fetch --depth 1 https://github.com/wolfSSL/wolfssl.git \
+            ${{ steps.wolfssl-key.outputs.sha }}
+          git checkout FETCH_HEAD
           ./autogen.sh
           ./configure ${{ matrix.wolfssl_configure }} \
             --prefix=$GITHUB_WORKSPACE/wolfssl-install \
@@ -70,9 +100,17 @@ jobs:
           make
           make install
 
+      # Save right after building (not at job end) so a later test
+      # failure does not prevent the cache from being populated.
+      - name: Save wolfSSL install to cache
+        if: steps.cache-wolfssl.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: wolfssl-install
+          key: ${{ steps.wolfssl-key.outputs.key }}
+
       - name: Set environment variables
         run: |
-          echo "JUNIT_HOME=$GITHUB_WORKSPACE/junit" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/wolfssl-install/lib" >> $GITHUB_ENV
 
       - name: Copy makefile

@@ -1,4 +1,4 @@
-name: Common Linux test logic
+name: Facebook Infer static analysis
 
 on:
   workflow_call:
@@ -12,9 +12,6 @@ on:
       jdk_version:
         required: true
         type: string
-      wolfssl_configure:
-        required: true
-        type: string
 
 jobs:
   build_wolfcryptjni:
@@ -22,32 +19,45 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Download Facebook Infer
+      # Infer runs javac directly over the Java sources (see
+      # scripts/infer.sh), so this job does not need native wolfSSL,
+      # the JNI library, JUnit, or the test suite. Tests for this
+      # configuration run in the main CI matrix (linux-zulu-all).
+
+      # Cache the extracted Infer release (~100MB download per run).
+      - name: Restore cached Infer
+        id: cache-infer
+        uses: actions/cache/restore@v4
+        with:
+          path: infer-linux64-v1.1.0
+          key: infer-v1.1.0-${{ runner.os }}-${{ runner.arch }}
+
+      # Download Facebook Infer, verifying the release tarball checksum
       - name: Download Infer
-        run: wget https://github.com/facebook/infer/releases/download/v1.1.0/infer-linux64-v1.1.0.tar.xz
+        if: steps.cache-infer.outputs.cache-hit != 'true'
+        run: |
+          wget https://github.com/facebook/infer/releases/download/v1.1.0/infer-linux64-v1.1.0.tar.xz
+          echo "5f5d453814422e93e2a70998d8946b09a2721628ff427f67ff0123dea87461d4  infer-linux64-v1.1.0.tar.xz" \
+            | shasum -a 256 -c -
       - name: Extract Infer
+        if: steps.cache-infer.outputs.cache-hit != 'true'
         run: tar -xvf infer-linux64-v1.1.0.tar.xz
-      - name: Symlink Infer
-        run: ln -s "$GITHUB_WORKSPACE/infer-linux64-v1.1.0/bin/infer" /usr/local/bin/infer
+
+      - name: Add Infer to PATH
+        run: echo "$GITHUB_WORKSPACE/infer-linux64-v1.1.0/bin" >> "$GITHUB_PATH"
       - name: Test Infer get version
         run: infer --version
 
-      # Download Junit JARs
-      - name: Download junit-4.13.2.jar
-        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar
-      - name: Download hamcrest-all-1.3.jar
-        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/org/hamcrest/hamcrest-all/1.3/hamcrest-all-1.3.jar
-
-      # Build native wolfSSL
-      - name: Build native wolfSSL
-        uses: wolfSSL/actions-build-autotools-project@v1
+      # Save only after the version sanity check above passes, and
+      # before the analysis runs, so a failed Infer run (issues found)
+      # does not prevent the cache from being populated but a broken
+      # extraction is never cached.
+      - name: Save Infer to cache
+        if: steps.cache-infer.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
         with:
-          repository: wolfSSL/wolfssl
-          ref: master
-          path: wolfssl
-          configure: ${{ inputs.wolfssl_configure }}
-          check: false
-          install: true
+          path: infer-linux64-v1.1.0
+          key: infer-v1.1.0-${{ runner.os }}-${{ runner.arch }}
 
       # Setup Java
       - name: Setup java
@@ -56,66 +66,6 @@ jobs:
           distribution: ${{ inputs.jdk_distro }}
           java-version: ${{ inputs.jdk_version }}
 
-      - name: Set JUNIT_HOME
-        run: |
-          echo "JUNIT_HOME=$GITHUB_WORKSPACE/junit" >> "$GITHUB_ENV"
-      - name: Set LD_LIBRARY_PATH
-        run: |
-          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$GITHUB_WORKSPACE/build-dir/lib" >> "$GITHUB_ENV"
-
-      # Only copy appropriate makefile for platform currently being tested
-      - name: Copy makefile
-        run: |
-          if [ "$RUNNER_OS" == "Linux" ]; then
-              cp makefile.linux makefile
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-              cp makefile.macosx makefile
-          else
-            echo "$RUNNER_OS not supported"
-            exit 1
-          fi
-        shell: bash
-
-      - name: Build JNI library
-        run: PREFIX=$GITHUB_WORKSPACE/build-dir make
-
-      # ant build-jni-debug
-      - name: Build jce-debug JAR (ant build-jni-debug)
-        run: ant build-jni-debug
-      - name: Run Java tests (ant test)
-        run: ant test
-      - name: Clean JAR
-        run: ant clean
-
-      # ant build-jni-release
-      - name: Build jce-debug JAR (ant build-jni-release)
-        run: ant build-jni-release
-      - name: Run Java tests (ant test)
-        run: ant test
-      - name: Clean JAR
-        run: ant clean
-
-      # ant build-jce-debug
-      - name: Build jce-debug JAR (ant build-jce-debug)
-        run: ant build-jce-debug
-      - name: Run Java tests (ant test)
-        run: ant test
-      - name: Clean JAR
-        run: ant clean
-
-      # ant build-jce-release
-      - name: Build jce-debug JAR (ant build-jce-release)
-        run: ant build-jce-release
-      - name: Run Java tests (ant test)
-        run: ant test
-      - name: Clean JAR
-        run: ant clean
-
-      - name: Show logs on failure
-        if: failure() || cancelled()
-        run: |
-          cat build/reports/*.txt
-
       # Run Facebook Infer
       - name: Run Facebook Infer
         run: ./scripts/infer.sh
@@ -123,4 +73,3 @@ jobs:
       - name: Shows Infer report on failure
         if: failure()
         run: cat infer-out/report.txt
-

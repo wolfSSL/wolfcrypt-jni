@@ -22,21 +22,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build native wolfSSL
-        uses: wolfSSL/actions-build-autotools-project@v1
+      # Cache the installed wolfSSL build. The key matches the one built
+      # in linux-common.yml for the same configure flags, so this job
+      # shares the cache with the main CI matrix.
+      - name: Build native wolfSSL (cached)
+        uses: ./.github/actions/build-wolfssl-cached
         with:
-          repository: wolfSSL/wolfssl
-          ref: master
-          path: wolfssl
           configure: ${{ inputs.wolfssl_configure }}
-          check: false
-          install: true
 
       - name: Setup java
         uses: actions/setup-java@v4
         with:
           distribution: ${{ inputs.jdk_distro }}
           java-version: ${{ inputs.jdk_version }}
+          cache: 'maven'
 
       - name: Set LD_LIBRARY_PATH
         run: |
@@ -62,13 +61,10 @@ jobs:
       - name: Build JNI library
         run: PREFIX=$GITHUB_WORKSPACE/build-dir make
 
-      # Maven build
-      - name: mvn compile
-        run: mvn compile
-
-      - name: mvn test
-        run: mvn test
-
+      # Maven build. A single mvn package runs the compile, test, and
+      # package phases in one lifecycle pass. Separate compile, test,
+      # and package steps would run the whole test suite twice, once
+      # for the test step and again inside package.
       - name: mvn package
         run: mvn package
 
