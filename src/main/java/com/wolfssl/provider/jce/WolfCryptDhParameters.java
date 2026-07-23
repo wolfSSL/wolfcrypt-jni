@@ -127,9 +127,9 @@ public class WolfCryptDhParameters extends AlgorithmParametersSpi {
             /* Private value length not encoded in standard DH params */
             this.l = 0;
 
-        } catch (ArrayIndexOutOfBoundsException e) {
-            throw new IOException(
-                "Invalid DH parameters encoding: " + e.getMessage());
+        } catch (ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+            throw new IOException("Invalid DH parameters encoding: " +
+                e.getMessage());
         }
     }
 

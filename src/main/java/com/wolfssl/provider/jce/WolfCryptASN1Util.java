@@ -414,8 +414,9 @@ public class WolfCryptASN1Util {
      *
      * @return decoded length value
      *
-     * @throws IllegalArgumentException if data is null or index is invalid
-     * @throws ArrayIndexOutOfBoundsException if data is too short
+     * @throws IllegalArgumentException if data is null, index is invalid,
+     *         the length uses more than 4 bytes, or the encoded length
+     *         extends beyond the available data
      */
     public static int getDERLength(byte[] data, int idx)
         throws IllegalArgumentException {
@@ -432,15 +433,38 @@ public class WolfCryptASN1Util {
         len = data[idx] & 0xFF;
 
         if ((len & 0x80) == 0) {
-            /* Short form */
+            /* Short form, content must fit in the buffer */
+            if (len > data.length - (idx + 1)) {
+                throw new IllegalArgumentException(
+                    "DER length exceeds available data");
+            }
             return len;
         }
 
         /* Long form */
         numBytes = len & 0x7F;
+
+        if (numBytes == 0) {
+            throw new IllegalArgumentException(
+                "Indefinite length encoding not supported");
+        }
+        if (numBytes > 4) {
+            throw new IllegalArgumentException("DER length too large");
+        }
+        if (idx + 1 + numBytes > data.length) {
+            throw new IllegalArgumentException(
+                "DER length bytes extend beyond data");
+        }
+
         result = 0;
         for (int i = 0; i < numBytes; i++) {
             result = (result << 8) | (data[idx + 1 + i] & 0xFF);
+        }
+
+        /* Reject a negative length or content extending beyond the buffer */
+        if (result < 0 || result > data.length - (idx + 1 + numBytes)) {
+            throw new IllegalArgumentException(
+                "DER length exceeds available data");
         }
 
         return result;
