@@ -19,32 +19,28 @@ on:
 jobs:
   build_wolfcryptjni:
     runs-on: ${{ inputs.os }}
+    # Full effective wolfSSL configure string, defined once so the
+    # build step and the cache key below cannot drift apart.
+    env:
+      WOLFSSL_CONFIGURE: >-
+        ${{ inputs.wolfssl_configure }}
+        CFLAGS="-fsanitize=address -fno-omit-frame-pointer"
+        LDFLAGS="-fsanitize=address"
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache JUnit dependencies
-        uses: actions/cache@v4
-        id: cache-junit
-        with:
-          path: junit
-          key: junit-jars-v1
+      - name: Setup JUnit
+        uses: ./.github/actions/setup-junit
 
-      - name: Download junit-4.13.2.jar
-        if: steps.cache-junit.outputs.cache-hit != 'true'
-        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar
-      - name: Download hamcrest-all-1.3.jar
-        if: steps.cache-junit.outputs.cache-hit != 'true'
-        run: wget --directory-prefix=$GITHUB_WORKSPACE/junit https://repo1.maven.org/maven2/org/hamcrest/hamcrest-all/1.3/hamcrest-all-1.3.jar
-
-      - name: Build native wolfSSL with AddressSanitizer
-        uses: wolfSSL/actions-build-autotools-project@v1
+      # Cache the installed wolfSSL build, keyed on the full configure
+      # string (including sanitizer flags), wolfSSL commit, OS/arch and
+      # compiler. The compiler in the key matters here: the sanitizer
+      # runtime preloaded at test time must match the toolchain that
+      # built the instrumented library.
+      - name: Build native wolfSSL with AddressSanitizer (cached)
+        uses: ./.github/actions/build-wolfssl-cached
         with:
-          repository: wolfSSL/wolfssl
-          ref: master
-          path: wolfssl
-          configure: ${{ inputs.wolfssl_configure }} CFLAGS="-fsanitize=address -fno-omit-frame-pointer" LDFLAGS="-fsanitize=address"
-          check: false
-          install: true
+          configure: ${{ env.WOLFSSL_CONFIGURE }}
 
       - name: Setup java
         uses: actions/setup-java@v4
@@ -58,7 +54,6 @@ jobs:
       # This will let us catch all non-leak issues.
       - name: Set environment variables
         run: |
-          echo "JUNIT_HOME=$GITHUB_WORKSPACE/junit" >> "$GITHUB_ENV"
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$GITHUB_WORKSPACE/build-dir/lib" >> "$GITHUB_ENV"
           echo "ASAN_OPTIONS=detect_leaks=0:abort_on_error=1:halt_on_error=1:print_stats=1" >> "$GITHUB_ENV"
 

@@ -5,6 +5,13 @@ on:
   pull_request:
     branches: [ '*' ]
 
+# Cancel superseded in-progress runs for the same PR. In-progress
+# push runs are never cancelled, though a still-queued push run may
+# be superseded by a newer queued one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Oracle JDK (Linux, Mac)
   # Oracle JDK requires JAR to be signed for some classes to load/run
@@ -217,21 +224,21 @@ jobs:
       wolfssl_configure: ${{ matrix.wolfssl_configure }}
 
   # ------------------ Facebook Infer static analysis -------------------
-  # Run Facebook infer over PR code, only running on Linux with one
-  # JDK/version for now.
+  # Run Facebook Infer over the Java sources, only running on Linux with
+  # one JDK/version for now. Infer only compiles the .java files with
+  # javac, so no native wolfSSL build or test run is needed here. Tests
+  # for the equivalent configuration run in linux-zulu-all above.
   fb-infer:
     strategy:
       matrix:
         os: [ 'ubuntu-latest' ]
         jdk_version: [ '11' ]
-        wolfssl_configure: [ '--enable-jni --enable-all' ]
-    name: Facebook Infer (${{ matrix.os }} Zulu JDK ${{ matrix.jdk_version }}, ${{ matrix.wolfssl_configure }})
+    name: Facebook Infer (${{ matrix.os }} Zulu JDK ${{ matrix.jdk_version }})
     uses: ./.github/workflows/infer.yml
     with:
       os: ${{ matrix.os }}
       jdk_distro: "zulu"
       jdk_version: ${{ matrix.jdk_version }}
-      wolfssl_configure: ${{ matrix.wolfssl_configure }}
 
   # --------------------- Maven build - test pom.xml --------------------
   # Run Maven build over PR code, running on Linux and Mac with only one
