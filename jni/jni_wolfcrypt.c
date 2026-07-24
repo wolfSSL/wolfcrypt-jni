@@ -42,6 +42,10 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+/* Max PEM input size for the single-block PEM to DER conversion functions.
+ * Ample room for real cert/key, but bounds upper memory use. */
+#define WC_JNI_MAX_PEM_SIZE (1024 * 1024)
+
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1NONE
   (JNIEnv* env, jclass class)
 {
@@ -377,9 +381,15 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
     }
 
     if (ret == 0) {
-        pem = (byte*)(*env)->GetByteArrayElements(env, pemArr, NULL);
         pemSz = (*env)->GetArrayLength(env, pemArr);
-        if (pem == NULL || pemSz <= 0) {
+        if (pemSz <= 0 || pemSz > WC_JNI_MAX_PEM_SIZE) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
+        pem = (byte*)(*env)->GetByteArrayElements(env, pemArr, NULL);
+        if (pem == NULL) {
             ret = BAD_FUNC_ARG;
         }
     }
@@ -479,9 +489,15 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcCertPemToDer
     }
 
     if (ret == 0) {
-        pem = (byte*)(*env)->GetByteArrayElements(env, pemArr, NULL);
         pemSz = (*env)->GetArrayLength(env, pemArr);
-        if (pem == NULL || pemSz <= 0) {
+        if (pemSz <= 0 || pemSz > WC_JNI_MAX_PEM_SIZE) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
+        pem = (byte*)(*env)->GetByteArrayElements(env, pemArr, NULL);
+        if (pem == NULL) {
             ret = BAD_FUNC_ARG;
         }
     }
@@ -561,9 +577,15 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcPubKeyPemToD
     }
 
     if (ret == 0) {
-        pem = (byte*)(*env)->GetByteArrayElements(env, pemArr, NULL);
         pemSz = (*env)->GetArrayLength(env, pemArr);
-        if (pem == NULL || pemSz <= 0) {
+        if (pemSz <= 0 || pemSz > WC_JNI_MAX_PEM_SIZE) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
+        pem = (byte*)(*env)->GetByteArrayElements(env, pemArr, NULL);
+        if (pem == NULL) {
             ret = BAD_FUNC_ARG;
         }
     }

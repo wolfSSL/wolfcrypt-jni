@@ -344,9 +344,10 @@ public class WolfCrypt extends WolfObject {
      *
      * @return DER-encoded private key as byte array
      *
-     * @throws WolfCryptException if conversion fails, native operation
-     *         encounters an error, or native ASN/PEM support is not
-     *         compiled in (NO_ASN or WOLFSSL_NO_PEM defined)
+     * @throws WolfCryptException if conversion fails, input is larger than
+     *         the 1 MB maximum PEM size, native operation encounters an
+     *         error, or native ASN/PEM support is not compiled in
+     *         (NO_ASN or WOLFSSL_NO_PEM defined)
      */
     public static byte[] keyPemToDer(byte[] pem, String password)
         throws WolfCryptException {
@@ -367,9 +368,10 @@ public class WolfCrypt extends WolfObject {
      *
      * @return DER-encoded certificate as byte array
      *
-     * @throws WolfCryptException if conversion fails, native operation
-     *         encounters an error, or native ASN/PEM support is not
-     *         compiled in (NO_ASN or WOLFSSL_NO_PEM defined)
+     * @throws WolfCryptException if conversion fails, input is larger than
+     *         the 1 MB maximum PEM size, native operation encounters an
+     *         error, or native ASN/PEM support is not compiled in
+     *         (NO_ASN or WOLFSSL_NO_PEM defined)
      */
     public static byte[] certPemToDer(byte[] pem) throws WolfCryptException {
 
@@ -389,9 +391,10 @@ public class WolfCrypt extends WolfObject {
      *
      * @return DER-encoded public key as byte array
      *
-     * @throws WolfCryptException if conversion fails, native operation
-     *         encounters an error, or native ASN/PEM support is not
-     *         compiled in (NO_ASN or WOLFSSL_NO_PEM defined)
+     * @throws WolfCryptException if conversion fails, input is larger than
+     *         the 1 MB maximum PEM size, native operation encounters an
+     *         error, or native ASN/PEM support is not compiled in
+     *         (NO_ASN or WOLFSSL_NO_PEM defined)
      */
     public static byte[] pubKeyPemToDer(byte[] pem) throws WolfCryptException {
 
