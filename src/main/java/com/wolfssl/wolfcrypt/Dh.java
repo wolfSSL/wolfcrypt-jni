@@ -100,11 +100,11 @@ public class Dh extends NativeStruct {
 
                 synchronized (pointerLock) {
                     wc_FreeDhKey();
+                    super.releaseNativeStruct();
                 }
                 setPrivateKey(new byte[0]);
                 setPublicKey(new byte[0]);
 
-                super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }
         }

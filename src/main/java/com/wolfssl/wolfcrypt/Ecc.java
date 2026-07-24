@@ -90,6 +90,7 @@ public class Ecc extends NativeStruct {
 
                 synchronized (pointerLock) {
                     wc_ecc_free();
+                    super.releaseNativeStruct();
                 }
 
                 synchronized (rngLock) {
@@ -100,7 +101,6 @@ public class Ecc extends NativeStruct {
                     }
                 }
 
-                super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }
         }

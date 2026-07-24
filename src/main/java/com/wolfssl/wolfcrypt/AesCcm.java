@@ -109,8 +109,8 @@ public class AesCcm extends NativeStruct {
                 (state != WolfCryptState.RELEASED)) {
                 synchronized (pointerLock) {
                     wc_AesFree();
+                    super.releaseNativeStruct();
                 }
-                super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }
         }

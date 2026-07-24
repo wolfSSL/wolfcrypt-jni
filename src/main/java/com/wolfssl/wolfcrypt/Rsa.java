@@ -250,8 +250,8 @@ public class Rsa extends NativeStruct {
 
                 synchronized (pointerLock) {
                     wc_FreeRsaKey();
+                    super.releaseNativeStruct();
                 }
-                super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }
         }
