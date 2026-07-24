@@ -198,6 +198,10 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey, Destroyable {
             }
             pLen = WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
+            if (pLen < 0 || pLen > derData.length - idx) {
+                throw new IllegalArgumentException(
+                    "Invalid PKCS#8: p length exceeds buffer");
+            }
             pBytes = new byte[pLen];
             System.arraycopy(derData, idx, pBytes, 0, pLen);
             p = new BigInteger(1, pBytes);
@@ -210,6 +214,10 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey, Destroyable {
             }
             gLen = WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
+            if (gLen < 0 || gLen > derData.length - idx) {
+                throw new IllegalArgumentException(
+                    "Invalid PKCS#8: g length exceeds buffer");
+            }
             gBytes = new byte[gLen];
             System.arraycopy(derData, idx, gBytes, 0, gLen);
             g = new BigInteger(1, gBytes);
@@ -230,6 +238,10 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey, Destroyable {
             }
             privLen = WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
+            if (privLen < 0 || privLen > derData.length - idx) {
+                throw new IllegalArgumentException(
+                    "Invalid PKCS#8: private value length exceeds buffer");
+            }
             privBytes = new byte[privLen];
             System.arraycopy(derData, idx, privBytes, 0, privLen);
             privateVal = new BigInteger(1, privBytes);
@@ -382,6 +394,10 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey, Destroyable {
             }
             pLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            if (pLen < 0 || pLen > this.encoded.length - idx) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: p length exceeds buffer");
+            }
             pBytes = new byte[pLen];
             System.arraycopy(this.encoded, idx, pBytes, 0, pLen);
             p = new BigInteger(1, pBytes);
@@ -394,6 +410,10 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey, Destroyable {
             }
             gLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            if (gLen < 0 || gLen > this.encoded.length - idx) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: g length exceeds buffer");
+            }
             gBytes = new byte[gLen];
             System.arraycopy(this.encoded, idx, gBytes, 0, gLen);
             g = new BigInteger(1, gBytes);
@@ -486,6 +506,10 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey, Destroyable {
             }
             privLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            if (privLen < 0 || privLen > this.encoded.length - idx) {
+                throw new IllegalStateException(
+                    "Invalid PKCS#8: private value length exceeds buffer");
+            }
             privBytes = new byte[privLen];
             System.arraycopy(this.encoded, idx, privBytes, 0, privLen);
             privateVal = new BigInteger(1, privBytes);
