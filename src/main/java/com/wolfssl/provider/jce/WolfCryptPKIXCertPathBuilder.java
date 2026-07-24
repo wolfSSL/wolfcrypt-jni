@@ -574,6 +574,16 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
 
         /* Build path from target to trust anchor */
         while (true) {
+            /* Enforce maxPathLength as per-iteration depth budget so oversized
+             * chain is rejected before signature checks. maxPathLength of -1
+             * means unlimited. */
+            if ((maxPathLength >= 0) && ((path.size() - 1) > maxPathLength)) {
+                throw new CertPathBuilderException(
+                    "Certificate path exceeds maximum length: " +
+                    maxPathLength + " (found " + (path.size() - 1) +
+                    " intermediate CA certificate(s))");
+            }
+
             /* Check if current cert is issued by a trust anchor */
             TrustAnchor anchor = isIssuedByTrustAnchor(current, anchors);
             if (anchor != null) {
@@ -657,20 +667,6 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
                 throw new CertPathBuilderException(
                     "No valid issuer found for certificate: " +
                     current.getSubjectX500Principal().getName());
-            }
-        }
-
-        /* Check path length constraint after path is complete.
-         * maxPathLength is maximum number of intermediate CA certificates
-         * allowed between end entity and trust anchor. maxPathLength of
-         * -1 means unlimited (no constraints). */
-        if (maxPathLength >= 0) {
-            int numCACerts = path.size() - 1; /* exclude target cert */
-            if (numCACerts > maxPathLength) {
-                throw new CertPathBuilderException(
-                    "Certificate path exceeds maximum length: " +
-                    maxPathLength + " (found " + numCACerts +
-                    " intermediate CA certificate(s))");
             }
         }
 

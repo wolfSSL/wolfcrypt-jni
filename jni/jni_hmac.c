@@ -156,6 +156,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSetKey
     Hmac* hmac = NULL;
     byte* key  = NULL;
     word32 keySz = 0;
+    jboolean keyIsCopy = JNI_FALSE;
 
     hmac = (Hmac*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -163,19 +164,41 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSetKey
         return;
     }
 
-    key   = getByteArray(env, key_object);
-    keySz = getByteArrayLength(env, key_object);
+    if (key_object != NULL) {
+        key = (byte*)(*env)->GetByteArrayElements(env, key_object, &keyIsCopy);
+        if ((*env)->ExceptionOccurred(env)) {
+            return;
+        }
+        keySz = getByteArrayLength(env, key_object);
+    }
 
-    ret = (!hmac || !key)
-        ? BAD_FUNC_ARG
-        : wc_HmacSetKey(hmac, type, key, keySz);
+    if (hmac == NULL || key == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_HmacSetKey(hmac, type, key, keySz);
+    }
 
-    if (ret != 0)
+    if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
+    }
 
     LogStr("HmacInit(hmac=%p) = %d\n", hmac, ret);
 
-    releaseByteArray(env, key_object, key, JNI_ABORT);
+    if (key != NULL) {
+        /* Zero native key copy before release. Skip when not a copy,
+         * key then points at the caller's array and must not be cleared */
+        if (keyIsCopy == JNI_TRUE) {
+        #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+            !defined(WOLFSSL_NO_FORCE_ZERO)
+            wc_ForceZero(key, keySz);
+        #else
+            XMEMSET(key, 0, keySz);
+        #endif
+        }
+        (*env)->ReleaseByteArrayElements(env, key_object, (jbyte*)key,
+            JNI_ABORT);
+    }
 #else
     throwNotCompiledInException(env);
 #endif

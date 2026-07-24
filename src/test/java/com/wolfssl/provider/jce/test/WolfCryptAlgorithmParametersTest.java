@@ -799,6 +799,38 @@ public class WolfCryptAlgorithmParametersTest {
         assertEquals(64, retrievedSpec.getSaltLength());
     }
 
+    /*
+     * Malformed PSS parameters with an out of range DER field length must be
+     * rejected with IOException, not an OutOfMemoryError or
+     * NegativeArraySizeException from an oversized allocation.
+     */
+    @Test
+    public void testRSAPSSParametersRejectOversizedFieldLength()
+        throws Exception {
+
+        /* Context field [2] claims Integer.MAX_VALUE content bytes */
+        byte[] maxLen = new byte[] {
+            0x30, 0x0A, (byte)0xa2, (byte)0x84, 0x7F, (byte)0xFF,
+            (byte)0xFF, (byte)0xFF, 0x00, 0x00, 0x00, 0x00 };
+
+        /* Context field [2] claims Integer.MIN_VALUE (negative) bytes */
+        byte[] negLen = new byte[] {
+            0x30, 0x0A, (byte)0xa2, (byte)0x84, (byte)0x80, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+        for (byte[] bad : new byte[][] { maxLen, negLen }) {
+            AlgorithmParameters params =
+                AlgorithmParameters.getInstance("RSASSA-PSS", "wolfJCE");
+            try {
+                params.init(bad);
+                fail("init with out of range field length should throw " +
+                    "IOException");
+            } catch (IOException e) {
+                /* expected */
+            }
+        }
+    }
+
     @Test
     public void testRSAPSSParametersEncodingDERWithDefaults()
         throws Exception {
