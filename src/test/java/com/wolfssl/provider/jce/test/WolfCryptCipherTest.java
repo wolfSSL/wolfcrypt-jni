@@ -84,6 +84,7 @@ import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import java.security.GeneralSecurityException;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
@@ -5769,6 +5770,127 @@ public class WolfCryptCipherTest {
         } catch (Exception e) {
             fail("Unexpected exception in nonce length validation: " +
                 e.getMessage());
+        }
+    }
+
+    @Test
+    public void testAesGcmTagLengthValidation() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            return;
+        }
+
+        byte[] key = new byte[16];
+        byte[] iv = new byte[12];
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+
+        int[] truncatingTagBits = { 4, 100, 129 };
+        for (int tagBits : truncatingTagBits) {
+            Cipher cipher =
+                Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+            try {
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec,
+                    new GCMParameterSpec(tagBits, iv));
+                fail("Should reject GCM tag length " + tagBits + " bits");
+            } catch (InvalidAlgorithmParameterException e) {
+                assertTrue("Error should mention tag length",
+                    e.getMessage().contains("tag length"));
+            }
+        }
+
+        /* Whole byte counts, so rejected below the JCE layer rather than at
+         * init. Only sizes over the AES block size are rejected on every
+         * build, minimum tag size enforcement varies by configuration. */
+        int[] unsupportedTagBits = { 256 };
+        for (int tagBits : unsupportedTagBits) {
+            Cipher cipher =
+                Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec,
+                new GCMParameterSpec(tagBits, iv));
+            try {
+                cipher.doFinal("test".getBytes());
+                fail("Should reject GCM tag length " + tagBits + " bits");
+            } catch (WolfCryptException | GeneralSecurityException e) {
+                /* expected */
+            }
+        }
+
+        byte[] plaintext = "GCM tag length test".getBytes();
+        int[] goodTagBits = { 96, 104, 112, 120, 128 };
+        for (int tagBits : goodTagBits) {
+            secureRandom.nextBytes(iv);
+            Cipher enc =
+                Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+            enc.init(Cipher.ENCRYPT_MODE, keySpec,
+                new GCMParameterSpec(tagBits, iv));
+            byte[] ct = enc.doFinal(plaintext);
+
+            Cipher dec =
+                Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+            dec.init(Cipher.DECRYPT_MODE, keySpec,
+                new GCMParameterSpec(tagBits, iv));
+            assertArrayEquals(plaintext, dec.doFinal(ct));
+        }
+    }
+
+    @Test
+    public void testAesCcmTagLengthValidation() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            return;
+        }
+
+        byte[] key = new byte[16];
+        byte[] nonce = new byte[12];
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+
+        int[] truncatingTagBits = { 4, 100, 129 };
+        for (int tagBits : truncatingTagBits) {
+            Cipher cipher =
+                Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+            try {
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec,
+                    new GCMParameterSpec(tagBits, nonce));
+                fail("Should reject CCM tag length " + tagBits + " bits");
+            } catch (InvalidAlgorithmParameterException e) {
+                assertTrue("Error should mention tag length",
+                    e.getMessage().contains("tag length"));
+            }
+        }
+
+        /* Whole byte counts, so rejected below the JCE layer rather than at
+         * init. Only sizes over the AES block size are rejected on every
+         * build, the RFC 3610 set is not enforced in all FIPS bundles. */
+        int[] unsupportedTagBits = { 256 };
+        for (int tagBits : unsupportedTagBits) {
+            Cipher cipher =
+                Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec,
+                new GCMParameterSpec(tagBits, nonce));
+            try {
+                cipher.doFinal("test".getBytes());
+                fail("Should reject CCM tag length " + tagBits + " bits");
+            } catch (WolfCryptException | GeneralSecurityException e) {
+                /* expected */
+            }
+        }
+
+        /* 32-bit tags are valid for CCM, unlike GCM */
+        byte[] plaintext = "CCM tag length test".getBytes();
+        int[] goodTagBits = { 32, 64, 96, 128 };
+        for (int tagBits : goodTagBits) {
+            secureRandom.nextBytes(nonce);
+            Cipher enc =
+                Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+            enc.init(Cipher.ENCRYPT_MODE, keySpec,
+                new GCMParameterSpec(tagBits, nonce));
+            byte[] ct = enc.doFinal(plaintext);
+
+            Cipher dec =
+                Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+            dec.init(Cipher.DECRYPT_MODE, keySpec,
+                new GCMParameterSpec(tagBits, nonce));
+            assertArrayEquals(plaintext, dec.doFinal(ct));
         }
     }
 
