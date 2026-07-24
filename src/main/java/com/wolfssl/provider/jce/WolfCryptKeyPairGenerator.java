@@ -476,13 +476,30 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 }
 
                 DHParameterSpec dhSpec = (DHParameterSpec)params;
-                this.dhP = dhSpec.getP().toByteArray();
-                this.dhG = dhSpec.getG().toByteArray();
+                BigInteger dhSpecP = dhSpec.getP();
+                BigInteger dhSpecG = dhSpec.getG();
 
-                if (dhP == null || dhG == null) {
+                if (dhSpecP == null || dhSpecG == null) {
                     throw new InvalidAlgorithmParameterException(
                         "Invalid parameters, either p or g is null");
                 }
+
+                if (dhSpecP.signum() <= 0 || dhSpecG.signum() <= 0) {
+                    throw new InvalidAlgorithmParameterException(
+                        "DH parameters p and g must be positive");
+                }
+
+                /* Reject primes the native library would refuse, so the
+                 * failure throws here instead of from generateKeyPair() */
+                int dhPrimeBits = dhSpecP.bitLength();
+                if (dhPrimeBits < Dh.DH_MIN_SIZE) {
+                    throw new InvalidAlgorithmParameterException(
+                        "DH prime size must be at least " + Dh.DH_MIN_SIZE +
+                        " bits, got " + dhPrimeBits);
+                }
+
+                this.dhP = dhSpecP.toByteArray();
+                this.dhG = dhSpecG.toByteArray();
 
                 log("init with spec, prime len: " + this.dhP.length);
 
