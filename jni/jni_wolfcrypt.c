@@ -46,6 +46,13 @@
  * Ample room for real cert/key, but bounds upper memory use. */
 #define WC_JNI_MAX_PEM_SIZE (1024 * 1024)
 
+/* Force-zero a buffer holding sensitive material */
+#if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && !defined(WOLFSSL_NO_FORCE_ZERO)
+    #define WC_JNI_FORCE_ZERO(p, len) wc_ForceZero((p), (len))
+#else
+    #define WC_JNI_FORCE_ZERO(p, len) XMEMSET((p), 0, (len))
+#endif
+
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1NONE
   (JNIEnv* env, jclass class)
 {
@@ -369,6 +376,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
     byte* pem = NULL;
     byte* der = NULL;
     const char* password = NULL;
+    jboolean pwIsCopy = JNI_FALSE;
     jbyteArray derArr = NULL;
     (void)jcl;
 
@@ -394,26 +402,28 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
         }
     }
 
-    /* Get password if provided */
-    if (ret == 0) {
-        if (passwordStr != NULL) {
-            password = (*env)->GetStringUTFChars(env, passwordStr, NULL);
-            if (password == NULL) {
-                ret = MEMORY_E;
-            }
-        }
-    }
-
     /* Allocate buffer for DER output, PEM is always larger than DER */
     if (ret == 0) {
         der = (byte*)XMALLOC(pemSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         if (der == NULL) {
             ret = MEMORY_E;
         }
+        else {
+            XMEMSET(der, 0, pemSz);
+        }
+    }
+
+    /* Get password if provided */
+    if (ret == 0) {
+        if (passwordStr != NULL) {
+            password = (*env)->GetStringUTFChars(env, passwordStr, &pwIsCopy);
+            if (password == NULL) {
+                ret = MEMORY_E;
+            }
+        }
     }
 
     if (ret == 0) {
-        XMEMSET(der, 0, pemSz);
         ret = wc_KeyPemToDer(pem, pemSz, der, pemSz, password);
         if (ret > 0) {
             derSz = ret;
@@ -441,15 +451,14 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
         (*env)->ReleaseByteArrayElements(env, pemArr, (jbyte*)pem, JNI_ABORT);
     }
     if (password != NULL) {
+        /* Only clear when JNI handed back a private copy */
+        if (pwIsCopy == JNI_TRUE) {
+            WC_JNI_FORCE_ZERO((void*)password, XSTRLEN(password));
+        }
         (*env)->ReleaseStringUTFChars(env, passwordStr, password);
     }
     if (der != NULL) {
-    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
-        !defined(WOLFSSL_NO_FORCE_ZERO)
-        wc_ForceZero(der, pemSz);
-    #else
-        XMEMSET(der, 0, pemSz);
-    #endif
+        WC_JNI_FORCE_ZERO(der, pemSz);
         XFREE(der, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
     if (ret != 0) {
