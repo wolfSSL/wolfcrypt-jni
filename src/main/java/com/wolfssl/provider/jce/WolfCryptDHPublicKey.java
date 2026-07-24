@@ -189,6 +189,10 @@ public class WolfCryptDHPublicKey implements DHPublicKey, Destroyable {
             }
             pLen = WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
+            if (pLen < 0 || pLen > derData.length - idx) {
+                throw new IllegalArgumentException(
+                    "Invalid X.509: p length exceeds buffer");
+            }
             pBytes = new byte[pLen];
             System.arraycopy(derData, idx, pBytes, 0, pLen);
             p = new BigInteger(1, pBytes);
@@ -201,6 +205,10 @@ public class WolfCryptDHPublicKey implements DHPublicKey, Destroyable {
             }
             gLen = WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
+            if (gLen < 0 || gLen > derData.length - idx) {
+                throw new IllegalArgumentException(
+                    "Invalid X.509: g length exceeds buffer");
+            }
             gBytes = new byte[gLen];
             System.arraycopy(derData, idx, gBytes, 0, gLen);
             g = new BigInteger(1, gBytes);
@@ -224,6 +232,10 @@ public class WolfCryptDHPublicKey implements DHPublicKey, Destroyable {
             }
             pubLen = WolfCryptASN1Util.getDERLength(derData, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(derData, idx);
+            if (pubLen < 0 || pubLen > derData.length - idx) {
+                throw new IllegalArgumentException(
+                    "Invalid X.509: public value length exceeds buffer");
+            }
             pubBytes = new byte[pubLen];
             System.arraycopy(derData, idx, pubBytes, 0, pubLen);
             publicVal = new BigInteger(1, pubBytes);
@@ -374,6 +386,10 @@ public class WolfCryptDHPublicKey implements DHPublicKey, Destroyable {
             }
             pLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            if (pLen < 0 || pLen > this.encoded.length - idx) {
+                throw new IllegalStateException(
+                    "Invalid X.509: p length exceeds buffer");
+            }
             pBytes = new byte[pLen];
             System.arraycopy(this.encoded, idx, pBytes, 0, pLen);
             p = new BigInteger(1, pBytes);
@@ -386,6 +402,10 @@ public class WolfCryptDHPublicKey implements DHPublicKey, Destroyable {
             }
             gLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            if (gLen < 0 || gLen > this.encoded.length - idx) {
+                throw new IllegalStateException(
+                    "Invalid X.509: g length exceeds buffer");
+            }
             gBytes = new byte[gLen];
             System.arraycopy(this.encoded, idx, gBytes, 0, gLen);
             g = new BigInteger(1, gBytes);
@@ -472,6 +492,10 @@ public class WolfCryptDHPublicKey implements DHPublicKey, Destroyable {
             }
             pubLen = WolfCryptASN1Util.getDERLength(this.encoded, idx);
             idx += WolfCryptASN1Util.getDERLengthSize(this.encoded, idx);
+            if (pubLen < 0 || pubLen > this.encoded.length - idx) {
+                throw new IllegalStateException(
+                    "Invalid X.509: public value length exceeds buffer");
+            }
             pubBytes = new byte[pubLen];
             System.arraycopy(this.encoded, idx, pubBytes, 0, pubLen);
             publicVal = new BigInteger(1, pubBytes);
