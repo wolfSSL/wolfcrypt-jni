@@ -39,6 +39,7 @@ import java.security.PublicKey;
 import java.security.Security;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
+import java.security.spec.ECPoint;
 import java.security.spec.ECPrivateKeySpec;
 import java.security.spec.ECPublicKeySpec;
 import java.security.spec.InvalidKeySpecException;
@@ -52,6 +53,7 @@ import org.junit.Test;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.provider.jce.WolfCryptECParameterSpec;
+import com.wolfssl.provider.jce.WolfCryptECPublicKey;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
@@ -353,6 +355,140 @@ public class WolfCryptECKeyFactoryTest {
         ECPublicKey convertedECKey = (ECPublicKey) convertedKey;
         assertEquals("Public key points should match",
              pubKey.getW(), convertedECKey.getW());
+    }
+
+    /**
+     * Test that generatePublic() rejects ECPublicKeySpec points that are
+     * not valid points on the named curve.
+     */
+    @Test
+    public void testECPublicKeySpecRejectsInvalidPoint() throws Exception {
+
+        if (!FeatureDetect.EccEnabled()) {
+            return;
+        }
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", "wolfJCE");
+        kpg.initialize(new ECGenParameterSpec("secp256r1"));
+        ECPublicKey pubKey = (ECPublicKey) kpg.generateKeyPair().getPublic();
+
+        ECParameterSpec params = pubKey.getParams();
+        BigInteger validX = pubKey.getW().getAffineX();
+        BigInteger validY = pubKey.getW().getAffineY();
+
+        KeyFactory kf = KeyFactory.getInstance("EC", "wolfJCE");
+
+        /* Unmodified point must still convert */
+        assertNotNull("Valid point should convert",
+            kf.generatePublic(new ECPublicKeySpec(
+                new ECPoint(validX, validY), params)));
+
+        /* Off-curve point sharing the X of a valid point */
+        try {
+            kf.generatePublic(new ECPublicKeySpec(
+                new ECPoint(validX, validY.add(BigInteger.ONE)), params));
+            fail("Off-curve point should be rejected");
+        } catch (InvalidKeySpecException e) {
+            /* expected */
+        }
+
+        /* Small off-curve point */
+        try {
+            kf.generatePublic(new ECPublicKeySpec(
+                new ECPoint(BigInteger.ONE, BigInteger.ONE), params));
+            fail("Off-curve point should be rejected");
+        } catch (InvalidKeySpecException e) {
+            /* expected */
+        }
+
+        /* All-zero point, off curve. ECPoint.POINT_INFINITY cannot be
+         * tested here, ECPublicKeySpec rejects it in its constructor. */
+        try {
+            kf.generatePublic(new ECPublicKeySpec(
+                new ECPoint(BigInteger.ZERO, BigInteger.ZERO), params));
+            fail("All-zero off-curve point should be rejected");
+        } catch (InvalidKeySpecException e) {
+            /* expected */
+        }
+    }
+
+    /**
+     * Test that the WolfCryptECPublicKey(ECPoint, ECParameterSpec)
+     * constructor rejects points not on the named curve.
+     */
+    @Test
+    public void testECPublicKeyConstructorRejectsInvalidPoint()
+        throws Exception {
+
+        if (!FeatureDetect.EccEnabled()) {
+            return;
+        }
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", "wolfJCE");
+        kpg.initialize(new ECGenParameterSpec("secp256r1"));
+        ECPublicKey pubKey = (ECPublicKey) kpg.generateKeyPair().getPublic();
+
+        ECParameterSpec params = pubKey.getParams();
+        BigInteger validX = pubKey.getW().getAffineX();
+        BigInteger validY = pubKey.getW().getAffineY();
+
+        /* Unmodified point must still be accepted, and round trip */
+        WolfCryptECPublicKey valid =
+            new WolfCryptECPublicKey(pubKey.getW(), params);
+        assertEquals("Round trip should preserve the point",
+            pubKey.getW(), valid.getW());
+        assertArrayEquals("Round trip should preserve the encoding",
+            pubKey.getEncoded(), valid.getEncoded());
+
+        try {
+            new WolfCryptECPublicKey(
+                new ECPoint(validX, validY.add(BigInteger.ONE)), params);
+            fail("Off-curve point should be rejected");
+        } catch (IllegalArgumentException e) {
+            /* expected */
+        }
+
+        try {
+            new WolfCryptECPublicKey(
+                new ECPoint(BigInteger.ONE, BigInteger.ONE), params);
+            fail("Off-curve point should be rejected");
+        } catch (IllegalArgumentException e) {
+            /* expected */
+        }
+
+        /* Negative coordinate. Raw import reinterprets bytes unsigned, so
+         * this would otherwise import as validX and produce a key whose
+         * getW() disagrees with getEncoded(). */
+        BigInteger negX = validX.subtract(BigInteger.ONE.shiftLeft(256));
+        try {
+            new WolfCryptECPublicKey(new ECPoint(negX, validY), params);
+            fail("Negative coordinate should be rejected");
+        } catch (IllegalArgumentException e) {
+            /* expected */
+        }
+
+        /* Coordinate too large for the curve */
+        try {
+            new WolfCryptECPublicKey(
+                new ECPoint(validX.shiftLeft(64), validY), params);
+            fail("Oversized coordinate should be rejected");
+        } catch (IllegalArgumentException e) {
+            /* expected */
+        }
+
+        /* KeyFactory must reject the same inputs as the constructor */
+        KeyFactory kf = KeyFactory.getInstance("EC", "wolfJCE");
+        for (ECPoint bad : new ECPoint[] {
+                new ECPoint(negX, validY),
+                new ECPoint(validX.shiftLeft(64), validY),
+                new ECPoint(validX, validY.add(BigInteger.ONE)) }) {
+            try {
+                kf.generatePublic(new ECPublicKeySpec(bad, params));
+                fail("KeyFactory should reject what the constructor rejects");
+            } catch (InvalidKeySpecException e) {
+                /* expected */
+            }
+        }
     }
 
     @Test
