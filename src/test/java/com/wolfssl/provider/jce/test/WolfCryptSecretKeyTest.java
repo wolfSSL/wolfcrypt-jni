@@ -270,6 +270,7 @@ public class WolfCryptSecretKeyTest {
         Arrays.fill(keyBytes, (byte)0x42);
 
         WolfCryptSecretKey key = new WolfCryptSecretKey("AES", keyBytes);
+        WolfCryptSecretKey liveKey = new WolfCryptSecretKey("AES", keyBytes);
 
         assertFalse(key.isDestroyed());
 
@@ -277,7 +278,6 @@ public class WolfCryptSecretKeyTest {
 
         assertTrue(key.isDestroyed());
 
-        /* All operations should throw IllegalStateException after destroy */
         try {
             key.getAlgorithm();
             fail("getAlgorithm() should throw IllegalStateException " +
@@ -302,20 +302,11 @@ public class WolfCryptSecretKeyTest {
             /* expected */
         }
 
-        try {
-            key.hashCode();
-            fail("hashCode() should throw IllegalStateException " +
-                 "after destroy");
-        } catch (IllegalStateException e) {
-            /* expected */
-        }
-
-        try {
-            key.equals(key);
-            fail("equals() should throw IllegalStateException after destroy");
-        } catch (IllegalStateException e) {
-            /* expected */
-        }
+        /* equals() and hashCode() do not throw after destroy */
+        key.hashCode();
+        assertTrue(key.equals(key));
+        assertFalse(key.equals(liveKey));
+        assertFalse(liveKey.equals(key));
     }
 
     @Test

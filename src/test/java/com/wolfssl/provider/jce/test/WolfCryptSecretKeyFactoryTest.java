@@ -1642,5 +1642,75 @@ public class WolfCryptSecretKeyFactoryTest {
         /* Verify round-trip */
         assertTrue(Arrays.equals(plaintext, decrypted));
     }
+
+    /**
+     * Test SecretKey equals() and hashCode() behavior, including that
+     * destroyed keys compare as not equal instead of throwing.
+     */
+    @Test
+    public void testAESKeyEquals()
+        throws NoSuchAlgorithmException, InvalidKeySpecException,
+               NoSuchProviderException, DestroyFailedException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        byte[] keyBytesA = new byte[Aes.KEY_SIZE_128];
+        Arrays.fill(keyBytesA, (byte)0x2A);
+        byte[] keyBytesB = new byte[Aes.KEY_SIZE_128];
+        Arrays.fill(keyBytesB, (byte)0x2B);
+
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+
+        SecretKey keyA = skf.generateSecret(
+            new SecretKeySpec(keyBytesA, "AES"));
+        SecretKey keyB = skf.generateSecret(
+            new SecretKeySpec(keyBytesA, "AES"));
+        SecretKey keyC = skf.generateSecret(
+            new SecretKeySpec(keyBytesB, "AES"));
+
+        assertTrue(keyA.equals(keyA));
+        assertTrue(keyA.equals(keyB));
+        assertTrue(keyB.equals(keyA));
+        assertEquals(keyA.hashCode(), keyB.hashCode());
+
+        assertFalse(keyA.equals(keyC));
+        assertFalse(keyC.equals(keyA));
+        assertFalse(keyA.equals(null));
+        assertFalse(keyA.equals("not a key"));
+
+        keyB.destroy();
+        assertFalse(keyA.equals(keyB));
+        assertFalse(keyB.equals(keyA));
+    }
+
+    /**
+     * Test that SecretKey equals() does not deadlock when two threads
+     * compare the same pair of keys in opposite order.
+     */
+    @Test
+    public void testAESThreadedKeyEquals()
+        throws NoSuchAlgorithmException, InvalidKeySpecException,
+               NoSuchProviderException, InterruptedException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[Aes.KEY_SIZE_128];
+        Arrays.fill(keyBytes, (byte)0x2A);
+
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+
+        final SecretKey keyA = skf.generateSecret(
+            new SecretKeySpec(keyBytes, "AES"));
+        final SecretKey keyB = skf.generateSecret(
+            new SecretKeySpec(keyBytes, "AES"));
+
+        assertNoDeadlockOnCrossThreadEquals(keyA, keyB, "SecretKey");
+    }
 }
 

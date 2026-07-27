@@ -187,20 +187,19 @@ public class WolfCryptSecretKey implements SecretKey {
         return this.destroyed;
     }
 
+    /* equals() and hashCode() do not throw after destroy(), but the hash
+     * changes when key bytes are cleared, remove from maps before destroy */
     @Override
     public synchronized int hashCode() {
-        checkDestroyed();
         return Arrays.hashCode(encoded);
     }
 
     @Override
-    public synchronized boolean equals(Object obj) {
+    public boolean equals(Object obj) {
 
         byte[] sKeyEncoded = null;
         byte[] thisEncoded = null;
         SecretKey sKey;
-
-        checkDestroyed();
 
         if (obj == this) {
             return true;
@@ -235,13 +234,12 @@ public class WolfCryptSecretKey implements SecretKey {
             return true;
 
         } catch (Exception e) {
-            /* If encoding fails for either key, cannot be equal */
+            /* Destroyed keys cannot be compared, treat as not equal */
             return false;
 
         } finally {
-            if (sKeyEncoded != null) {
-                Arrays.fill(sKeyEncoded, (byte)0);
-            }
+            /* Only our own copy, the other key's getEncoded() may return
+             * an internal reference and zeroizing that would destroy it */
             if (thisEncoded != null) {
                 Arrays.fill(thisEncoded, (byte)0);
             }
