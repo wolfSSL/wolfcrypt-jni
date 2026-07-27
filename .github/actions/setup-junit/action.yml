@@ -1,0 +1,51 @@
+name: 'Setup JUnit'
+description: 'Cache and download the JUnit jars used by ant test, verify
+  their checksums, and export JUNIT_HOME'
+
+# shasum is used instead of sha256sum because it is available on both
+# the Linux and macOS hosted runners.
+#
+# The v2 cache key retires the junit-jars-v1 entries that older
+# workflows populated without checksum verification, so every entry
+# under this key is guaranteed to have passed the checks below.
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Restore cached JUnit dependencies
+      id: cache-junit
+      uses: actions/cache/restore@v4
+      with:
+        path: junit
+        key: junit-jars-v2
+
+    - name: Download junit-4.13.2.jar
+      if: steps.cache-junit.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        wget --directory-prefix=$GITHUB_WORKSPACE/junit \
+          https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar
+        echo "8e495b634469d64fb8acfa3495a065cbacc8a0fff55ce1e31007be4c16dc57d3  $GITHUB_WORKSPACE/junit/junit-4.13.2.jar" \
+          | shasum -a 256 -c -
+
+    - name: Download hamcrest-all-1.3.jar
+      if: steps.cache-junit.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        wget --directory-prefix=$GITHUB_WORKSPACE/junit \
+          https://repo1.maven.org/maven2/org/hamcrest/hamcrest-all/1.3/hamcrest-all-1.3.jar
+        echo "4877670629ab96f34f5f90ab283125fcd9acb7e683e66319a68be6eb2cca60de  $GITHUB_WORKSPACE/junit/hamcrest-all-1.3.jar" \
+          | shasum -a 256 -c -
+
+    # Save right after verifying (not at job end) so a later test
+    # failure does not prevent the cache from being populated.
+    - name: Save JUnit dependencies to cache
+      if: steps.cache-junit.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: junit
+        key: junit-jars-v2
+
+    - name: Set JUNIT_HOME
+      shell: bash
+      run: echo "JUNIT_HOME=$GITHUB_WORKSPACE/junit" >> "$GITHUB_ENV"

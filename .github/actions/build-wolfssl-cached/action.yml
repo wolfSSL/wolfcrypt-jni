@@ -1,0 +1,83 @@
+name: 'Build wolfSSL (cached)'
+description: 'Restore a cached native wolfSSL install keyed on the
+  wolfSSL commit, configure flags, OS/arch and compiler, building
+  and saving the exact keyed commit on a cache miss'
+
+# The configure string is passed in once and used for both the cache
+# key and the build, so the key and the built contents cannot drift
+# apart. The compiler version is part of the key so a runner-image
+# toolchain bump rotates the cache; sanitizer-instrumented builds in
+# particular must match the runtime (libasan) of the current image.
+#
+# The install prefix is fixed to build-dir by the wrapped
+# actions-build-autotools-project action, so the cache path is
+# hard-coded to match rather than exposed as an input.
+
+inputs:
+  configure:
+    description: 'Full wolfSSL ./configure arguments'
+    required: true
+  ref:
+    description: 'wolfSSL git ref to build. The default master is
+      resolved to a commit SHA so the cache key and the built contents
+      cannot drift if master advances mid-run; any other value is
+      expected to be an immutable release tag and is used as-is.'
+    required: false
+    default: 'master'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve wolfSSL cache key
+      id: wolfssl-key
+      shell: bash
+      env:
+        WOLFSSL_CONFIGURE: ${{ inputs.configure }}
+        WOLFSSL_REF: ${{ inputs.ref }}
+      run: |
+        if [ "$WOLFSSL_REF" = "master" ]; then
+          REF=$(git ls-remote https://github.com/wolfSSL/wolfssl.git \
+            refs/heads/master | cut -f1)
+          if [ -z "$REF" ]; then
+            echo "Failed to resolve wolfSSL master SHA" >&2
+            exit 1
+          fi
+        else
+          REF="$WOLFSSL_REF"
+        fi
+        CFG_HASH=$(printf '%s' "$WOLFSSL_CONFIGURE" | \
+          shasum -a 256 | cut -c1-16)
+        CC_HASH=$(cc --version 2>/dev/null | head -n1 | \
+          shasum -a 256 | cut -c1-8)
+        KEY="wolfssl-${{ runner.os }}-${{ runner.arch }}"
+        KEY="$KEY-cc$CC_HASH-$REF-$CFG_HASH"
+        echo "ref=$REF" >> "$GITHUB_OUTPUT"
+        echo "key=$KEY" >> "$GITHUB_OUTPUT"
+
+    - name: Restore cached wolfSSL install
+      id: cache-wolfssl
+      uses: actions/cache/restore@v4
+      with:
+        path: build-dir
+        key: ${{ steps.wolfssl-key.outputs.key }}
+
+    # Build the exact ref the cache key was computed from
+    - name: Build native wolfSSL
+      if: steps.cache-wolfssl.outputs.cache-hit != 'true'
+      uses: wolfSSL/actions-build-autotools-project@v1
+      with:
+        repository: wolfSSL/wolfssl
+        ref: ${{ steps.wolfssl-key.outputs.ref }}
+        path: wolfssl
+        configure: ${{ inputs.configure }}
+        check: false
+        install: true
+
+    # Save right after building (not at job end) so a later test
+    # failure does not prevent the cache from being populated.
+    - name: Save wolfSSL install to cache
+      if: steps.cache-wolfssl.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: build-dir
+        key: ${{ steps.wolfssl-key.outputs.key }}
