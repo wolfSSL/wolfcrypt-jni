@@ -171,6 +171,34 @@ public class HmacTest {
         }
     }
 
+    /*
+     * setKey() must not modify the caller's key array. The JNI layer zeroes
+     * only its own native copy of the key before release. This guards the
+     * JNI_ABORT release mode, the zeroed native copy must never be written
+     * back to the caller's array.
+     */
+    @Test
+    public void hmacSetKeyShouldNotModifyKey() {
+        byte[] key = new byte[32];
+        for (int i = 0; i < key.length; i++) {
+            key[i] = (byte)(0x41 + ((i * 7) % 26));
+        }
+        byte[] keyCopy = key.clone();
+
+        Hmac hmac = new Hmac();
+        try {
+            hmac.setKey(Hmac.SHA256, key);
+        } catch (WolfCryptException e) {
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                return;
+            }
+            throw e;
+        }
+
+        assertArrayEquals("setKey must not modify caller key array",
+            keyCopy, key);
+    }
+
     @Test
     public void sha384HmacShouldMatch() {
         String[] keyVector = new String[] {
