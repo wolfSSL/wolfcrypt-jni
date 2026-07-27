@@ -31,17 +31,22 @@ import org.junit.runner.Description;
 import org.junit.BeforeClass;
 import org.junit.AfterClass;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.File;
 import java.math.BigInteger;
 import java.security.Security;
 import java.util.Arrays;
 import java.util.Locale;
+import java.security.Key;
 import java.security.Provider;
 import java.security.KeyStore;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.Certificate;
 import java.security.KeyPairGenerator;
 import java.security.PublicKey;
 import java.security.NoSuchAlgorithmException;
@@ -74,6 +79,16 @@ public class WolfCryptUtilTest {
     private static String origMapJksToWks = null;
     private static String origMapPkcs12ToWks = null;
     private static String origIterationCount = null;
+
+    /* Minimum size for the large KeyStore fixtures, asserted so these
+     * tests keep covering conversion of multi hundred kB KeyStores */
+    private static final int LARGE_KEYSTORE_MIN_SIZE = 512 * 1024;
+
+    /* Chain length and entry count for buildLargeKeyStore(). Chain stays
+     * well under the WKS default max of 100 so a lower
+     * wolfjce.wks.maxCertChainLength does not fail these tests early. */
+    private static final int TEST_CHAIN_LENGTH = 50;
+    private static final int TEST_ENTRY_COUNT = 10;
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
@@ -137,6 +152,31 @@ public class WolfCryptUtilTest {
     }
 
     /**
+     * Helper method to load a KeyStore file into a byte array
+     * @param path Path to the KeyStore file
+     * @return byte array containing the KeyStore data
+     * @throws Exception if file cannot be read
+     */
+    private static synchronized byte[] loadKeyStoreBytes(String path)
+        throws Exception {
+
+        int bytesRead;
+        byte[] buffer = new byte[1024];
+        FileInputStream fis = new FileInputStream(path);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        try {
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                baos.write(buffer, 0, bytesRead);
+            }
+        } finally {
+            fis.close();
+        }
+
+        return baos.toByteArray();
+    }
+
+    /**
      * Helper method to load a KeyStore file into a ByteArrayInputStream
      * @param path Path to the KeyStore file
      * @return ByteArrayInputStream containing the KeyStore data
@@ -145,17 +185,49 @@ public class WolfCryptUtilTest {
     private static synchronized ByteArrayInputStream loadKeyStoreFile(
         String path) throws Exception {
 
-        FileInputStream fis = new FileInputStream(path);
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        return new ByteArrayInputStream(loadKeyStoreBytes(path));
+    }
 
-        byte[] buffer = new byte[1024];
-        int bytesRead;
-        while ((bytesRead = fis.read(buffer)) != -1) {
-            baos.write(buffer, 0, bytesRead);
+    /**
+     * Helper method to build a large KeyStore from repeated server.jks
+     * entries, at least LARGE_KEYSTORE_MIN_SIZE bytes when stored.
+     *
+     * @param type KeyStore type to create ("JKS" or "WKS")
+     * @return byte array holding the stored KeyStore
+     * @throws Exception on error building KeyStore
+     */
+    private static byte[] buildLargeKeyStore(String type) throws Exception {
+
+        KeyStore src = KeyStore.getInstance("JKS");
+        FileInputStream fis = new FileInputStream(TEST_JKS_PATH);
+        try {
+            src.load(fis, PASSWORD);
+        } finally {
+            fis.close();
         }
-        fis.close();
 
-        return new ByteArrayInputStream(baos.toByteArray());
+        Key key = src.getKey(TEST_ALIAS, PASSWORD);
+        Certificate[] chain = src.getCertificateChain(TEST_ALIAS);
+
+        Certificate[] bigChain = new Certificate[TEST_CHAIN_LENGTH];
+        for (int i = 0; i < bigChain.length; i++) {
+            bigChain[i] = chain[i % chain.length];
+        }
+
+        KeyStore big;
+        if (type.equals("WKS")) {
+            big = KeyStore.getInstance("WKS", WKS_PROVIDER);
+        } else {
+            big = KeyStore.getInstance(type);
+        }
+        big.load(null, PASSWORD);
+        for (int i = 0; i < TEST_ENTRY_COUNT; i++) {
+            big.setKeyEntry(TEST_ALIAS + i, key, PASSWORD, bigChain);
+        }
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        big.store(baos, PASSWORD);
+        return baos.toByteArray();
     }
 
     /**
@@ -503,6 +575,138 @@ public class WolfCryptUtilTest {
         /* Verify the KeyStore was converted and contains entries */
         assertTrue("WKS KeyStore should contain entries",
                   wksStore.size() > 0);
+    }
+
+    /**
+     * Test converting a JKS KeyStore larger than 512kB supplied through
+     * a mark-limited BufferedInputStream.
+     */
+    @Test
+    public void testConvertLargeJksToWksFromBufferedStream()
+        throws Exception {
+        assumeTestFileExists(TEST_JKS_PATH);
+
+        byte[] jksBytes = buildLargeKeyStore("JKS");
+        assertTrue("Test KeyStore should be large",
+            jksBytes.length > LARGE_KEYSTORE_MIN_SIZE);
+
+        InputStream wksStream = WolfCryptUtil.convertKeyStoreToWKS(
+            new BufferedInputStream(new ByteArrayInputStream(jksBytes)),
+            PASSWORD, PASSWORD, true);
+
+        KeyStore wksStore = KeyStore.getInstance("WKS", WKS_PROVIDER);
+        wksStore.load(wksStream, PASSWORD);
+
+        assertEquals("All entries should be converted",
+            TEST_ENTRY_COUNT, wksStore.size());
+        assertNotNull("Private key should exist",
+            wksStore.getKey(TEST_ALIAS + "0", PASSWORD));
+        assertEquals("Certificate chain length should be preserved",
+            TEST_CHAIN_LENGTH,
+            wksStore.getCertificateChain(TEST_ALIAS + "0").length);
+    }
+
+    /**
+     * Test converting a WKS KeyStore larger than 512kB supplied through
+     * a mark-limited BufferedInputStream.
+     */
+    @Test
+    public void testConvertLargeWksToWksFromBufferedStream()
+        throws Exception {
+        assumeTestFileExists(TEST_JKS_PATH);
+
+        byte[] wksBytes = buildLargeKeyStore("WKS");
+        assertTrue("Test KeyStore should be large",
+            wksBytes.length > LARGE_KEYSTORE_MIN_SIZE);
+
+        InputStream wksStream = WolfCryptUtil.convertKeyStoreToWKS(
+            new BufferedInputStream(new ByteArrayInputStream(wksBytes)),
+            PASSWORD, PASSWORD, true);
+
+        KeyStore wksStore = KeyStore.getInstance("WKS", WKS_PROVIDER);
+        wksStore.load(wksStream, PASSWORD);
+
+        assertEquals("All entries should be converted",
+            TEST_ENTRY_COUNT, wksStore.size());
+    }
+
+    /**
+     * Test that a valid KeyStore opened with the wrong password reports
+     * the password problem rather than a format detection failure.
+     */
+    @Test
+    public void testConvertWrongPasswordReportsPasswordError()
+        throws Exception {
+
+        char[] wrongPassword = "wrongPasswordNotTheRealOne".toCharArray();
+
+        String[] paths = { TEST_P12_PATH, TEST_JKS_PATH };
+
+        for (String path : paths) {
+            /* Skip just this path, not the whole method */
+            if (!new File(path).exists()) {
+                continue;
+            }
+
+            try {
+                WolfCryptUtil.convertKeyStoreToWKS(loadKeyStoreFile(path),
+                    wrongPassword, PASSWORD, true);
+                fail("Conversion should fail with wrong password: " + path);
+
+            } catch (IOException e) {
+                assertFalse("Wrong password for " + path + " should not be " +
+                    "reported as a format error: " + e.getMessage(),
+                    e.getMessage().contains("neither WKS, JKS nor PKCS12"));
+
+                assertTrue("Expected UnrecoverableKeyException cause for " +
+                    path + ", got: " + e.getCause(),
+                    e.getCause() instanceof UnrecoverableKeyException);
+            }
+        }
+    }
+
+    /**
+     * Test converting a PKCS12 KeyStore supplied through a mark-limited
+     * BufferedInputStream, covering the third detection branch.
+     */
+    @Test
+    public void testConvertP12FromBufferedStream() throws Exception {
+        assumeTestFileExists(TEST_P12_PATH);
+
+        byte[] p12Bytes = loadKeyStoreBytes(TEST_P12_PATH);
+
+        InputStream wksStream = WolfCryptUtil.convertKeyStoreToWKS(
+            new BufferedInputStream(new ByteArrayInputStream(p12Bytes)),
+            PASSWORD, PASSWORD, true);
+
+        KeyStore wksStore = KeyStore.getInstance("WKS", WKS_PROVIDER);
+        wksStore.load(wksStream, PASSWORD);
+
+        assertTrue("RSA key entry should exist",
+            wksStore.isKeyEntry("client"));
+        assertNotNull("RSA private key should exist",
+            wksStore.getKey("client", PASSWORD));
+    }
+
+    /**
+     * Test that input in no supported KeyStore format fails with a
+     * descriptive exception.
+     */
+    @Test
+    public void testConvertInvalidKeyStoreFormat() throws Exception {
+
+        byte[] garbage = new byte[1024];
+        Arrays.fill(garbage, (byte)0xAB);
+
+        try {
+            WolfCryptUtil.convertKeyStoreToWKS(
+                new ByteArrayInputStream(garbage), PASSWORD, PASSWORD, true);
+            fail("Conversion should fail for invalid KeyStore data");
+        } catch (IOException e) {
+            assertTrue("Exception should indicate unsupported format: " +
+                e.getMessage(),
+                e.getMessage().contains("neither WKS, JKS nor PKCS12"));
+        }
     }
 
     @Test
