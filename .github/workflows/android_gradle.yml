@@ -57,51 +57,20 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Cache AVD snapshot for faster emulator boot. The v2 key retires
-      # snapshots saved before the settle script below was added.
-      - name: AVD cache
-        uses: actions/cache@v4
-        id: avd-cache
-        with:
-          path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: avd-wolfcryptjni-30-x86_64-google_apis-v2
-
-      # Create AVD and generate snapshot for caching. Wait for the
-      # system to fully settle (boot complete plus the input service
-      # registered) before the emulator exits and the snapshot is
-      # saved. Snapshots saved mid-boot resume into a half-settled
-      # system on restore, where the emulator-runner action's keyguard
-      # dismiss (input keyevent 82) intermittently fails with
-      # "No service published for: input".
-      - name: Create AVD and generate snapshot
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2.37.0
-        with:
-          api-level: 30
-          arch: x86_64
-          target: google_apis
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: true
-          script: |
-            adb wait-for-device
-            adb shell 'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 1; done'
-            adb shell 'while ! service check input | grep -q found; do sleep 1; done'
-            sleep 15
-            echo "Generated AVD snapshot for caching"
-
-      # Run instrumented tests on Android emulator
+      # Cold boot with -no-snapshot. Restoring a snapshot brings back
+      # sys.boot_completed already set, so the action runs its keyguard
+      # dismiss (input keyevent 82) before the input service registers
+      # and fails with "No service published for: input".
+      # AOSP "default" image, these tests need no Play services.
       - name: Run Android Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2.37.0
-        timeout-minutes: 15
+        timeout-minutes: 20
         with:
           api-level: 30
           arch: x86_64
-          target: google_apis
+          target: default
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
             adb wait-for-device
@@ -110,7 +79,11 @@ jobs:
             adb shell mkdir -p /data/local/tmp/examples/certs/crl
             adb push ./examples/certs/ /data/local/tmp/examples/
             adb logcat -c
-            cd IDE/Android && ./gradlew connectedDebugAndroidTest --no-daemon --no-watch-fs || { adb logcat -d > /tmp/logcat.txt 2>&1; echo "=== LOGCAT (errors) ==="; grep -i "exception\|error\|fatal" /tmp/logcat.txt || true; exit 1; }
+            # Shard the run, AGP returns results over gRPC with a 4MB cap
+            # that the full suite exceeds, failing with RESOURCE_EXHAUSTED
+            # even when every test passes. The action runs each line below
+            # as its own shell, so the whole loop must stay on one line.
+            cd IDE/Android && for S in 0 1; do echo "=== test shard $S of 2 ==="; ./gradlew connectedDebugAndroidTest --no-daemon --no-watch-fs -Pandroid.testInstrumentationRunnerArguments.numShards=2 -Pandroid.testInstrumentationRunnerArguments.shardIndex=$S || { adb logcat -d > /tmp/logcat.txt 2>&1; echo "=== LOGCAT (errors) ==="; grep -i "exception\|error\|fatal" /tmp/logcat.txt || true; exit 1; }; cp -r app/build/reports/androidTests/connected/debug app/build/reports/androidTests/shard-$S 2>/dev/null || true; done
             adb logcat -d > /tmp/logcat.txt 2>&1 || true
             pgrep -f '[q]emu-system' | xargs -r kill -9 2>/dev/null || true
             pgrep -f '[c]rashpad' | xargs -r kill -9 2>/dev/null || true
