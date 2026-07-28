@@ -95,8 +95,8 @@ public class Lms extends NativeStruct {
 
                 synchronized (pointerLock) {
                     wc_LmsKey_free();
+                    super.releaseNativeStruct();
                 }
-                super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }
         }

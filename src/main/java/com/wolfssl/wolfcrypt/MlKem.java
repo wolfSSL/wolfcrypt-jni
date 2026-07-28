@@ -124,8 +124,8 @@ public class MlKem extends NativeStruct {
 
                 synchronized (pointerLock) {
                     wc_mlkem_free();
+                    super.releaseNativeStruct();
                 }
-                super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }
         }

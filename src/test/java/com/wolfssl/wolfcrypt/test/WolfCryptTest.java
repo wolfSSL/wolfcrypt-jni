@@ -32,13 +32,16 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.KeyPairGenerator;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 
 /**
@@ -539,6 +542,83 @@ public class WolfCryptTest {
         WolfCrypt.certPemToDer(invalidPem);
     }
 
+    /**
+     * Pad a PEM buffer out to the requested total size with newlines. The
+     * PEM block stays parseable, so only the input size limit can reject it.
+     */
+    private static byte[] padPem(byte[] pem, int totalSz) {
+
+        if (totalSz < pem.length) {
+            throw new IllegalArgumentException(
+                "totalSz must be >= PEM length");
+        }
+
+        byte[] padded = new byte[totalSz];
+
+        Arrays.fill(padded, (byte)'\n');
+        System.arraycopy(pem, 0, padded, 0, pem.length);
+
+        return padded;
+    }
+
+    /* Input over the native size limit should be rejected before any large
+     * native buffer is allocated, even though PEM block itself is valid. */
+    @Test
+    public void testCertPemToDerOversizedInput() throws Exception {
+
+        if (!fileExists(clientCertPem)) {
+            System.out.println("Skipping: test file not found");
+            return;
+        }
+
+        /* One byte past the inclusive limit is the first rejected size */
+        int[] tooBig = { 1024 * 1024 + 1, 2 * 1024 * 1024 };
+        for (int size : tooBig) {
+            try {
+                WolfCrypt.certPemToDer(
+                    padPem(readFile(clientCertPem), size));
+                fail("Should reject PEM input of " + size + " bytes");
+
+            } catch (WolfCryptException e) {
+                /* expected */
+            }
+        }
+    }
+
+    @Test
+    public void testKeyPemToDerOversizedInput() throws Exception {
+
+        if (!fileExists(clientKeyPem)) {
+            System.out.println("Skipping: test file not found");
+            return;
+        }
+
+        try {
+            WolfCrypt.keyPemToDer(
+                padPem(readFile(clientKeyPem), 2 * 1024 * 1024), null);
+            fail("Should reject PEM input larger than the size limit");
+
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testCertPemToDerAtSizeLimitStillWorks() throws Exception {
+
+        if (!fileExists(clientCertPem) || !fileExists(clientCertDer)) {
+            System.out.println("Skipping: test files not found");
+            return;
+        }
+
+        /* Exactly at the limit, which is inclusive, must still convert */
+        byte[] der = WolfCrypt.certPemToDer(
+            padPem(readFile(clientCertPem), 1024 * 1024));
+
+        assertArrayEquals("DER output should match expected",
+            readFile(clientCertDer), der);
+    }
+
     @Test
     public void testCertPemToDerOutputSmallerThanInput() throws Exception {
 
@@ -576,6 +656,91 @@ public class WolfCryptTest {
                    (der[0] & 0xFF) == 0x30);
     }
 
+    /* AES-256 encrypted PKCS#8 RSA-2048 private key, password below.
+     * This is a test key only, so safe to ship here with password.  */
+    private static final String encKeyPassword = "wolfsslpassword";
+    private static final String encKeyPem =
+        "-----BEGIN ENCRYPTED PRIVATE KEY-----\n" +
+        "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\n" +
+        "-----END ENCRYPTED PRIVATE KEY-----\n";
+
+    /**
+     * Decrypt the embedded key, or return null when the native build lacks
+     * PKCS#8 encryption, PBKDF2, or AES-256-CBC support.
+     */
+    private static byte[] decryptEncKeyPem() throws Exception {
+        try {
+            return WolfCrypt.keyPemToDer(
+                encKeyPem.getBytes("UTF-8"), encKeyPassword);
+
+        } catch (WolfCryptException e) {
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                return null;
+            }
+            throw e;
+        }
+    }
+
+    @Test
+    public void testKeyPemToDerWithPassword() throws Exception {
+
+        byte[] der = decryptEncKeyPem();
+        if (der == null) {
+            System.out.println("Skipping: encrypted PKCS#8 not compiled in");
+            return;
+        }
+
+        assertEquals("DER should start with SEQUENCE tag",
+                     0x30, der[0] & 0xFF);
+    }
+
+    @Test
+    public void testKeyPemToDerWrongPassword() throws Exception {
+
+        /* Confirm the correct password works first, otherwise the negative
+         * case below could pass for the wrong reason */
+        if (decryptEncKeyPem() == null) {
+            System.out.println("Skipping: encrypted PKCS#8 not compiled in");
+            return;
+        }
+
+        try {
+            WolfCrypt.keyPemToDer(
+                encKeyPem.getBytes("UTF-8"), "wrongpassword");
+            fail("Should reject an incorrect password");
+
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
+
     @Test(expected = WolfCryptException.class)
     public void testPubKeyPemToDerNullInput() throws Exception {
         WolfCrypt.pubKeyPemToDer(null);
@@ -590,6 +755,45 @@ public class WolfCryptTest {
     public void testPubKeyPemToDerInvalidPem() throws Exception {
         byte[] invalidPem = "This is not a valid public key PEM".getBytes();
         WolfCrypt.pubKeyPemToDer(invalidPem);
+    }
+
+    /**
+     * Build a SubjectPublicKeyInfo PEM. No standalone public key PEM ships
+     * under examples/certs, so one is generated here.
+     */
+    private static byte[] generatePubKeyPem() throws Exception {
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        byte[] spki = kpg.generateKeyPair().getPublic().getEncoded();
+
+        StringBuilder sb = new StringBuilder("-----BEGIN PUBLIC KEY-----\n");
+        String b64 = Base64.getEncoder().encodeToString(spki);
+        for (int i = 0; i < b64.length(); i += 64) {
+            sb.append(b64, i, Math.min(i + 64, b64.length())).append('\n');
+        }
+        sb.append("-----END PUBLIC KEY-----\n");
+
+        return sb.toString().getBytes("UTF-8");
+    }
+
+    @Test(expected = WolfCryptException.class)
+    public void testPubKeyPemToDerOversizedInput() throws Exception {
+        WolfCrypt.pubKeyPemToDer(
+            padPem(generatePubKeyPem(), 2 * 1024 * 1024));
+    }
+
+    @Test
+    public void testPubKeyPemToDerAtSizeLimitStillWorks() throws Exception {
+
+        byte[] pem = generatePubKeyPem();
+        byte[] expectedDer = WolfCrypt.pubKeyPemToDer(pem);
+
+        /* Exactly at the limit, which is inclusive, must still convert */
+        byte[] der = WolfCrypt.pubKeyPemToDer(padPem(pem, 1024 * 1024));
+
+        assertArrayEquals("DER output should match unpadded conversion",
+            expectedDer, der);
     }
 
     @Test

@@ -337,6 +337,14 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_RsaPssEnable
 
 /*
  * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    RsaPssLongSaltEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_RsaPssLongSaltEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
  * Method:    RsaOaepEnabled
  * Signature: ()Z
  */

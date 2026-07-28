@@ -41,6 +41,18 @@
     #define RNG WC_RNG
 #endif
 
+/* Some FIPS versions don't have DH_MIN_SIZE defined. Values match those
+ * used by wolfSSL settings.h. */
+#ifndef DH_MIN_SIZE
+    #ifdef HAVE_FIPS
+        #define DH_MIN_SIZE 2048
+    #elif defined(WOLFSSL_MIN_DHKEY_BITS)
+        #define DH_MIN_SIZE WOLFSSL_MIN_DHKEY_BITS
+    #else
+        #define DH_MIN_SIZE 1024
+    #endif
+#endif
+
 /* Some FIPS versions don't have DH_MAX_SIZE defined */
 #ifndef DH_MAX_SIZE
     #ifdef USE_FAST_MATH
@@ -59,6 +71,19 @@
         #endif
     #endif
 #endif
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Dh_dhMinSize
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+
+#if !defined(NO_DH)
+    return (jint)DH_MIN_SIZE;
+#else
+    return 0;
+#endif
+}
 
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Dh_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)

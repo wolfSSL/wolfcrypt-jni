@@ -280,8 +280,8 @@ public class WolfCryptSignature extends SignatureSpi {
                     "Unsupported signature algorithm digest type");
         }
 
-        /* Initialize PSS parameters if PSS padding */
-        if (ptype == PaddingType.WC_RSA_PSS) {
+        /* Set default PSS parameters, only if caller has not already */
+        if (ptype == PaddingType.WC_RSA_PSS && this.pssParams == null) {
             String digestAlg = digestTypeToJavaName(dtype);
             MGF1ParameterSpec mgf1Spec = getMGF1SpecForDigest(digestAlg);
             int saltLen = this.digestSz;  /* Use actual hash length */
@@ -1244,6 +1244,24 @@ public class WolfCryptSignature extends SignatureSpi {
         if (!"MGF1".equalsIgnoreCase(mgfAlg)) {
             throw new InvalidAlgorithmParameterException(
                 "Only MGF1 supported, got " + mgfAlg);
+        }
+
+        /* Validate spec type and MGF1 inner digest */
+        AlgorithmParameterSpec mgfParams = pss.getMGFParameters();
+        if (mgfParams != null) {
+            /* Different spec type silently falls back to the default digest */
+            if (!(mgfParams instanceof MGF1ParameterSpec)) {
+                throw new InvalidAlgorithmParameterException(
+                    "MGF1 parameters must be of type MGF1ParameterSpec, got " +
+                    mgfParams.getClass().getName());
+            }
+
+            String mgfDigest =
+                ((MGF1ParameterSpec)mgfParams).getDigestAlgorithm();
+            if (!isDigestSupported(mgfDigest)) {
+                throw new InvalidAlgorithmParameterException(
+                    "MGF1 digest not supported: " + mgfDigest);
+            }
         }
 
         /* Validate salt length is reasonable */

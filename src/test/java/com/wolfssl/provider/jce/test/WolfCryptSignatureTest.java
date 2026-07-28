@@ -1737,9 +1737,7 @@ public class WolfCryptSignatureTest {
 
     @Test
     public void testRsaPssEdgeCases()
-        throws NoSuchProviderException, NoSuchAlgorithmException,
-               SignatureException, InvalidKeyException,
-               InvalidAlgorithmParameterException {
+        throws Exception {
 
         if (!enabledAlgos.contains("RSASSA-PSS") ||
             !com.wolfssl.wolfcrypt.FeatureDetect.RsaPssEnabled()) {
@@ -1819,9 +1817,13 @@ public class WolfCryptSignatureTest {
     }
 
     private void testRsaPssMaxSaltLengths()
-        throws NoSuchProviderException, NoSuchAlgorithmException,
-               SignatureException, InvalidKeyException,
-               InvalidAlgorithmParameterException {
+        throws Exception {
+
+        if (!FeatureDetect.RsaPssLongSaltEnabled()) {
+            System.out.println("\tSkipping max salt lengths, " +
+                "WOLFSSL_PSS_LONG_SALT not compiled in");
+            return;
+        }
 
         String message = "Testing maximum salt lengths";
         byte[] messageBytes = message.getBytes();
@@ -2093,14 +2095,130 @@ public class WolfCryptSignatureTest {
     }
 
     @Test
-    public void testRsaPssMultipleUpdates()
+    public void testRsaPssPreservesCallerParameters()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                SignatureException, InvalidKeyException,
-               InvalidAlgorithmParameterException {
+               InvalidAlgorithmParameterException, Exception {
 
         if (!enabledAlgos.contains("RSASSA-PSS") ||
             !com.wolfssl.wolfcrypt.FeatureDetect.RsaPssEnabled()) {
             /* Skip if RSA-PSS not enabled at JCE or native level */
+            return;
+        }
+
+        byte[] data = "PSS parameter test".getBytes();
+
+        /* RFC 4055 style parameters, MGF1 inner digest and salt length
+         * both differ from the message digest */
+        PSSParameterSpec spec = new PSSParameterSpec(
+            "SHA-256", "MGF1", MGF1ParameterSpec.SHA1, 20, 1);
+
+        Signature signer = Signature.getInstance("RSASSA-PSS", "wolfJCE");
+        signer.setParameter(spec);
+
+        /* Parameters must survive the internal digest initialization */
+        AlgorithmParameters algParams = signer.getParameters();
+        assertNotNull(algParams);
+        PSSParameterSpec effective =
+            algParams.getParameterSpec(PSSParameterSpec.class);
+
+        assertEquals("Message digest should be preserved",
+            "SHA-256", effective.getDigestAlgorithm());
+        assertEquals("Salt length should be preserved",
+            20, effective.getSaltLength());
+        assertTrue("MGF parameters should be MGF1ParameterSpec",
+            effective.getMGFParameters() instanceof MGF1ParameterSpec);
+        assertEquals("MGF1 inner digest should be preserved", "SHA-1",
+            ((MGF1ParameterSpec)effective.getMGFParameters())
+                .getDigestAlgorithm());
+
+        signer.initSign(rsaPair.getPrivate());
+        signer.update(data);
+        byte[] signature = signer.sign();
+
+        Signature verifier = Signature.getInstance("RSASSA-PSS", "wolfJCE");
+        verifier.setParameter(spec);
+        verifier.initVerify(rsaPair.getPublic());
+        verifier.update(data);
+        assertTrue("wolfJCE should verify its own PSS signature",
+            verifier.verify(signature));
+
+        /* Signature must also verify under another provider using the same
+         * parameters, proving the requested values were actually used */
+        try {
+            Signature interop =
+                Signature.getInstance("RSASSA-PSS", "SunRsaSign");
+            interop.setParameter(spec);
+            interop.initVerify(rsaPair.getPublic());
+            interop.update(data);
+            assertTrue("SunRsaSign should verify with requested params",
+                interop.verify(signature));
+
+        } catch (NoSuchProviderException | NoSuchAlgorithmException e) {
+            /* SunRsaSign RSASSA-PSS not available, skip interop check */
+        }
+    }
+
+    @Test
+    public void testRsaPssRejectsNonMgf1ParameterSpec()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               SignatureException, InvalidKeyException {
+
+        if (!enabledAlgos.contains("RSASSA-PSS") ||
+            !com.wolfssl.wolfcrypt.FeatureDetect.RsaPssEnabled()) {
+            /* Skip if RSA-PSS not enabled at JCE or native level */
+            return;
+        }
+
+        Signature signer = Signature.getInstance("RSASSA-PSS", "wolfJCE");
+
+        try {
+            signer.setParameter(new PSSParameterSpec("SHA-256", "MGF1",
+                new ECGenParameterSpec("secp256r1"), 32, 1));
+            fail("Should reject MGF parameters that are not MGF1ParameterSpec");
+
+        } catch (InvalidAlgorithmParameterException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testRsaPssRejectsUnsupportedMgf1Digest()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               SignatureException, InvalidKeyException {
+
+        if (!enabledAlgos.contains("RSASSA-PSS") ||
+            !com.wolfssl.wolfcrypt.FeatureDetect.RsaPssEnabled()) {
+            /* Skip if RSA-PSS not enabled at JCE or native level */
+            return;
+        }
+
+        Signature signer = Signature.getInstance("RSASSA-PSS", "wolfJCE");
+
+        try {
+            signer.setParameter(new PSSParameterSpec(
+                "SHA-256", "MGF1", new MGF1ParameterSpec("MD5"), 32, 1));
+            fail("Should reject unsupported MGF1 inner digest");
+
+        } catch (InvalidAlgorithmParameterException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testRsaPssMultipleUpdates()
+        throws Exception {
+
+        if (!enabledAlgos.contains("RSASSA-PSS") ||
+            !com.wolfssl.wolfcrypt.FeatureDetect.RsaPssEnabled()) {
+            /* Skip if RSA-PSS not enabled at JCE or native level */
+            return;
+        }
+
+        /* Uses the maximum salt length for each digest */
+        if (!FeatureDetect.RsaPssLongSaltEnabled()) {
+            System.out.println(
+                "\tSkipping, WOLFSSL_PSS_LONG_SALT not compiled in");
             return;
         }
 

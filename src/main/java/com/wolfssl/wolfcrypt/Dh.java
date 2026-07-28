@@ -38,6 +38,13 @@ public class Dh extends NativeStruct {
     /** Lock around object state */
     protected final Object stateLock = new Object();
 
+    /**
+     * Minimum DH prime size in bits accepted by the native wolfSSL build.
+     * Tracks native DH_MIN_SIZE, which is build configurable through
+     * WOLFSSL_MIN_DHKEY_BITS.
+     */
+    public static final int DH_MIN_SIZE = Dh.dhMinSize();
+
     /* Named DH group constants (FFDHE from RFC 7919) */
     /** FFDHE 2048-bit group */
     public static final int WC_FFDHE_2048 = 256;
@@ -93,16 +100,17 @@ public class Dh extends NativeStruct {
 
                 synchronized (pointerLock) {
                     wc_FreeDhKey();
+                    super.releaseNativeStruct();
                 }
                 setPrivateKey(new byte[0]);
                 setPublicKey(new byte[0]);
 
-                super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }
         }
     }
 
+    private static native int dhMinSize();
     private native long mallocNativeStruct_internal() throws OutOfMemoryError;
     private native void wc_InitDhKey();
     private native void wc_FreeDhKey();

@@ -51,6 +51,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import java.lang.reflect.Field;
 import com.wolfssl.provider.jce.WolfCryptDHPublicKey;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
@@ -487,6 +488,81 @@ public class WolfCryptDHKeyFactoryTest {
 
         } catch (InvalidKeySpecException e) {
             /* Expected */
+        }
+    }
+
+    @Test
+    public void testPKCS8RejectsOversizedDERFieldLength() throws Exception {
+
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+
+        KeyFactory kf = KeyFactory.getInstance("DH", "wolfJCE");
+
+        /* PKCS#8 that parses up to the p INTEGER, whose length is a 4-byte
+         * long-form 0x7FFFFFFF. Guard must reject it as a clean
+         * InvalidKeySpecException instead. */
+        byte[] malicious = new byte[] {
+            (byte)0x30, (byte)0x30,
+            (byte)0x02, (byte)0x01, (byte)0x00,
+            (byte)0x30, (byte)0x03,
+            (byte)0x06, (byte)0x01, (byte)0x2A,
+            (byte)0x30, (byte)0x09,
+            (byte)0x02,
+            (byte)0x84, (byte)0x7F, (byte)0xFF, (byte)0xFF, (byte)0xFF
+        };
+
+        try {
+            kf.generatePrivate(new PKCS8EncodedKeySpec(malicious));
+            fail("Should reject PKCS#8 with oversized DER field length");
+
+        } catch (InvalidKeySpecException e) {
+            /* Expected */
+        }
+
+        /* Positive test: a well-formed key still parses */
+        if (enabledKeySizes.contains(2048)) {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("DH", "wolfJCE");
+            kpg.initialize(2048);
+            byte[] valid = kpg.generateKeyPair().getPrivate().getEncoded();
+            assertNotNull(kf.generatePrivate(new PKCS8EncodedKeySpec(valid)));
+        }
+    }
+
+    @Test
+    public void testX509RejectsOversizedDERFieldLength() throws Exception {
+
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+
+        KeyFactory kf = KeyFactory.getInstance("DH", "wolfJCE");
+
+        /* X.509 SPKI that parses up to the p INTEGER, whose length is a
+         * 4-byte long-form 0x7FFFFFFF. Guard must reject it as a clean
+         * InvalidKeySpecException instead. */
+        byte[] malicious = new byte[] {
+            (byte)0x30, (byte)0x30,
+            (byte)0x30, (byte)0x03,
+            (byte)0x06, (byte)0x01, (byte)0x2A,
+            (byte)0x30, (byte)0x09,
+            (byte)0x02,
+            (byte)0x84, (byte)0x7F, (byte)0xFF, (byte)0xFF, (byte)0xFF
+        };
+
+        try {
+            kf.generatePublic(new X509EncodedKeySpec(malicious));
+            fail("Should reject X.509 with oversized DER field length");
+
+        } catch (InvalidKeySpecException e) {
+            /* Expected */
+        }
+
+        /* Positive test: a well-formed key still parses */
+        if (enabledKeySizes.contains(2048)) {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("DH", "wolfJCE");
+            kpg.initialize(2048);
+            byte[] valid = kpg.generateKeyPair().getPublic().getEncoded();
+            assertNotNull(kf.generatePublic(new X509EncodedKeySpec(valid)));
         }
     }
 
@@ -994,5 +1070,95 @@ public class WolfCryptDHKeyFactoryTest {
         assertEquals("Public key p should match",
             originalPub.getParams().getP(), roundTripPubDH.getParams().getP());
     }
-}
 
+    /**
+     * Replace the cached DER of a key and clear its lazily-extracted fields,
+     * so the next getter re-parses the supplied bytes. Mirrors the state a
+     * key is left in after deserialization, where transient caches are null
+     * but the encoded form is populated.
+     */
+    private static void resetEncoded(Object key, byte[] der,
+        String... cacheFields) throws Exception {
+
+        Field enc = key.getClass().getDeclaredField("encoded");
+        enc.setAccessible(true);
+        enc.set(key, der);
+
+        for (String name : cacheFields) {
+            Field f = key.getClass().getDeclaredField(name);
+            f.setAccessible(true);
+            f.set(key, null);
+        }
+    }
+
+    /* X.509 SPKI whose p INTEGER carries a 4-byte long-form 0x7FFFFFFF
+     * length, used to drive the lazy extraction guards */
+    private static final byte[] oversizedSpki = new byte[] {
+        (byte)0x30, (byte)0x30,
+        (byte)0x30, (byte)0x03,
+        (byte)0x06, (byte)0x01, (byte)0x2A,
+        (byte)0x30, (byte)0x09,
+        (byte)0x02,
+        (byte)0x84, (byte)0x7F, (byte)0xFF, (byte)0xFF, (byte)0xFF
+    };
+
+    @Test
+    public void testPublicKeyLazyExtractRejectsOversizedLength()
+        throws Exception {
+
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
+        kpg.initialize(2048);
+        DHPublicKey pub = (DHPublicKey)kpg.generateKeyPair().getPublic();
+
+        resetEncoded(pub, oversizedSpki, "paramSpec", "publicValue");
+
+        try {
+            pub.getParams();
+            fail("getParams() should reject an oversized DER length");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        try {
+            pub.getY();
+            fail("getY() should reject an oversized DER length");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testPrivateKeyLazyExtractRejectsOversizedLength()
+        throws Exception {
+
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+        Assume.assumeTrue(enabledKeySizes.contains(2048));
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
+        kpg.initialize(2048);
+        DHPrivateKey priv = (DHPrivateKey)kpg.generateKeyPair().getPrivate();
+
+        /* PKCS#8 variant, adds the version INTEGER ahead of the params */
+        byte[] oversizedPkcs8 = new byte[] {
+            (byte)0x30, (byte)0x30,
+            (byte)0x02, (byte)0x01, (byte)0x00,
+            (byte)0x30, (byte)0x03,
+            (byte)0x06, (byte)0x01, (byte)0x2A,
+            (byte)0x30, (byte)0x09,
+            (byte)0x02,
+            (byte)0x84, (byte)0x7F, (byte)0xFF, (byte)0xFF, (byte)0xFF
+        };
+
+        resetEncoded(priv, oversizedPkcs8, "paramSpec", "privateValue");
+
+        try {
+            priv.getParams();
+            fail("getParams() should reject an oversized DER length");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+    }
+}

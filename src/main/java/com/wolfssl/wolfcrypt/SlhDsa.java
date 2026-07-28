@@ -189,8 +189,8 @@ public class SlhDsa extends NativeStruct {
 
                 synchronized (pointerLock) {
                     wc_SlhDsaKey_free();
+                    super.releaseNativeStruct();
                 }
-                super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }
         }

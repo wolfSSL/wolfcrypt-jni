@@ -326,6 +326,14 @@ public class FeatureDetect {
     public static native boolean RsaPssEnabled();
 
     /**
+     * Tests if RSA-PSS salt lengths longer than the digest are compiled into
+     * the native wolfSSL library (WOLFSSL_PSS_LONG_SALT).
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean RsaPssLongSaltEnabled();
+
+    /**
      * Tests if RSA-OAEP is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.

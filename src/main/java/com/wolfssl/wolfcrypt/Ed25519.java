@@ -63,8 +63,8 @@ public class Ed25519 extends NativeStruct {
 
                 synchronized (pointerLock) {
                     wc_ed25519_free();
+                    super.releaseNativeStruct();
                 }
-                super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }
         }

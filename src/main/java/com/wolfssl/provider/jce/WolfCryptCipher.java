@@ -793,6 +793,33 @@ public class WolfCryptCipher extends CipherSpi {
         }
     }
 
+    /**
+     * Convert an AEAD tag length from bits to bytes.
+     *
+     * Rejects lengths that are not a whole number of bytes, since the byte
+     * count is what reaches native wolfSSL and a non-multiple of 8 would be
+     * silently truncated. Native validates which sizes the mode supports.
+     *
+     * @param modeName mode label used in the error message
+     * @param tagBits requested tag length in bits
+     *
+     * @return tag length in bytes
+     *
+     * @throws InvalidAlgorithmParameterException if tagBits is not a
+     *         positive multiple of 8
+     */
+    private static int tagLenToBytes(String modeName, int tagBits)
+        throws InvalidAlgorithmParameterException {
+
+        if (tagBits <= 0 || (tagBits % 8) != 0) {
+            throw new InvalidAlgorithmParameterException(
+                modeName + " tag length must be a positive multiple of " +
+                "8 bits, got " + tagBits);
+        }
+
+        return (tagBits / 8);
+    }
+
     private void wolfCryptSetIV(AlgorithmParameterSpec spec,
             SecureRandom random) throws InvalidAlgorithmParameterException {
 
@@ -853,13 +880,7 @@ public class WolfCryptCipher extends CipherSpi {
                 }
 
                 this.iv = gcmSpec.getIV().clone();
-
-                /* store tag length as bytes */
-                if (gcmSpec.getTLen() == 0) {
-                    throw new InvalidAlgorithmParameterException(
-                        "Tag length cannot be zero");
-                }
-                this.gcmTagLen = (gcmSpec.getTLen() / 8);
+                this.gcmTagLen = tagLenToBytes("AES-GCM", gcmSpec.getTLen());
             }
             else if (cipherMode == CipherMode.WC_CCM) {
                 /*
@@ -891,13 +912,7 @@ public class WolfCryptCipher extends CipherSpi {
                 }
 
                 this.iv = ccmSpec.getIV().clone();
-
-                /* store tag length as bytes */
-                if (ccmSpec.getTLen() == 0) {
-                    throw new InvalidAlgorithmParameterException(
-                        "Tag length cannot be zero");
-                }
-                this.gcmTagLen = (ccmSpec.getTLen() / 8);
+                this.gcmTagLen = tagLenToBytes("AES-CCM", ccmSpec.getTLen());
             }
             else {
                 if (!(spec instanceof IvParameterSpec)) {

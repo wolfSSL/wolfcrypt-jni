@@ -21,6 +21,14 @@ extern "C" {
 #define com_wolfssl_wolfcrypt_Dh_WC_FFDHE_8192 260L
 /*
  * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    dhMinSize
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Dh_dhMinSize
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
  * Method:    mallocNativeStruct_internal
  * Signature: ()J
  */

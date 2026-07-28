@@ -82,8 +82,8 @@ public class Xmss extends NativeStruct {
 
                 synchronized (pointerLock) {
                     wc_XmssKey_free();
+                    super.releaseNativeStruct();
                 }
-                super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }
         }

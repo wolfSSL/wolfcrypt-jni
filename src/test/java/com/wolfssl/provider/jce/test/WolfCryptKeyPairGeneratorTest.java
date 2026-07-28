@@ -67,6 +67,7 @@ import java.security.interfaces.ECPrivateKey;
 import java.security.spec.ECParameterSpec;
 
 import com.wolfssl.wolfcrypt.Rsa;
+import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.Ecc;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.FeatureDetect;
@@ -598,7 +599,7 @@ public class WolfCryptKeyPairGeneratorTest {
                 KeyPairGenerator.getInstance("DH", "wolfJCE");
 
             DHParameterSpec spec = new DHParameterSpec(
-                    new BigInteger(prime),
+                    new BigInteger(1, prime),
                     new BigInteger(base),
                     testDHKeySizes[i]);
 
@@ -607,6 +608,103 @@ public class WolfCryptKeyPairGeneratorTest {
 
             assertNotNull(pair);
         }
+    }
+
+    @Test
+    public void testKeyPairGeneratorDhRejectsSmallPrimeSpec()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
+
+        /* 255-bit prime (Curve25519 field prime), below the 512-bit min,
+         * must be rejected before key generation */
+        DHParameterSpec weakSpec = new DHParameterSpec(
+            new BigInteger("7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" +
+                "FFFFFFFFFFFFFFFFFFED", 16),
+            new BigInteger(base));
+
+        try {
+            kpg.initialize(weakSpec);
+            fail("initialize(DHParameterSpec) should reject a prime " +
+                 "below the native minimum");
+        } catch (InvalidAlgorithmParameterException e) {
+            /* expected */
+        }
+
+        /* Positive check: 2048-bit prime spec should be accepted */
+        DHParameterSpec goodSpec = new DHParameterSpec(
+            new BigInteger(1, prime), new BigInteger(base));
+        kpg.initialize(goodSpec);
+        assertNotNull(kpg.generateKeyPair());
+    }
+
+    @Test
+    public void testKeyPairGeneratorDhRejectsNonPositiveParams()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
+        BigInteger goodP = new BigInteger(1, prime);
+        BigInteger goodG = new BigInteger(base);
+
+        /* A negative p can still clear the minimum bit length check */
+        BigInteger[][] bad = new BigInteger[][] {
+            { goodP.negate(), goodG },
+            { goodP, goodG.negate() },
+            { BigInteger.ZERO, goodG },
+            { goodP, BigInteger.ZERO }
+        };
+
+        for (BigInteger[] pg : bad) {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("DH", "wolfJCE");
+            try {
+                kpg.initialize(new DHParameterSpec(pg[0], pg[1]));
+                fail("initialize() should reject non-positive DH params");
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+        }
+    }
+
+    @Test
+    public void testKeyPairGeneratorDhRejectedSpecLeavesStateIntact()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH", "wolfJCE");
+        kpg.initialize(2048);
+
+        DHParameterSpec weakSpec = new DHParameterSpec(
+            BigInteger.ONE.shiftLeft(255).setBit(0), new BigInteger(base));
+
+        try {
+            kpg.initialize(weakSpec);
+            fail("initialize(DHParameterSpec) should reject a prime " +
+                 "below the native minimum");
+        } catch (InvalidAlgorithmParameterException e) {
+            /* expected */
+        }
+
+        /* The rejected spec must not have replaced the 2048-bit params */
+        DHPrivateKey priv = (DHPrivateKey)kpg.generateKeyPair().getPrivate();
+        assertTrue("Rejected spec must not weaken generator state",
+            priv.getParams().getP().bitLength() >= Dh.DH_MIN_SIZE);
     }
 
     @Test
@@ -684,7 +782,7 @@ public class WolfCryptKeyPairGeneratorTest {
             KeyPairGenerator.getInstance("DH", "wolfJCE");
 
         DHParameterSpec spec = new DHParameterSpec(
-                new BigInteger(prime), new BigInteger(base), 512);
+                new BigInteger(1, prime), new BigInteger(base), 512);
 
         kpg.initialize(spec);
         kpg.initialize(spec);
@@ -704,7 +802,7 @@ public class WolfCryptKeyPairGeneratorTest {
             KeyPairGenerator.getInstance("DH", "wolfJCE");
 
         DHParameterSpec spec = new DHParameterSpec(
-                new BigInteger(prime), new BigInteger(base), 512);
+                new BigInteger(1, prime), new BigInteger(base), 512);
 
         kpg.initialize(spec);
 

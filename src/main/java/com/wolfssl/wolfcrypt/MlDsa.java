@@ -144,8 +144,8 @@ public class MlDsa extends NativeStruct {
 
                 synchronized (pointerLock) {
                     wc_dilithium_free();
+                    super.releaseNativeStruct();
                 }
-                super.releaseNativeStruct();
                 state = WolfCryptState.RELEASED;
             }
         }
