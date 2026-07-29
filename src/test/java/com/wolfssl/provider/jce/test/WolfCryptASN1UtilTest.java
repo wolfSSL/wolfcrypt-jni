@@ -538,5 +538,77 @@ public class WolfCryptASN1UtilTest {
         assertEquals("Should contain parameters SEQUENCE", ASN1_SEQUENCE,
             result[idx]);
     }
+
+    @Test
+    public void testGetDERLengthShortForm() throws Exception {
+        /* Length byte plus that many content bytes present */
+        assertEquals(0, WolfCryptASN1Util.getDERLength(
+            new byte[] { 0x00 }, 0));
+        assertEquals(1, WolfCryptASN1Util.getDERLength(
+            new byte[] { 0x01, 0x00 }, 0));
+        byte[] data = new byte[1 + 127];
+        data[0] = 0x7F;
+        assertEquals(127, WolfCryptASN1Util.getDERLength(data, 0));
+    }
+
+    /* Short form length larger than the content present must be rejected */
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetDERLengthShortFormBeyondDataThrows() throws Exception {
+        WolfCryptASN1Util.getDERLength(new byte[] { 0x7F }, 0);
+    }
+
+    @Test
+    public void testGetDERLengthLongForm() throws Exception {
+        /* 1 length byte, value 200, plus 200 content bytes */
+        byte[] data = new byte[2 + 200];
+        data[0] = (byte)0x81;
+        data[1] = (byte)0xC8;
+        assertEquals(200, WolfCryptASN1Util.getDERLength(data, 0));
+
+        /* 2 length bytes, value 256, plus 256 content bytes */
+        data = new byte[3 + 256];
+        data[0] = (byte)0x82;
+        data[1] = 0x01;
+        data[2] = 0x00;
+        assertEquals(256, WolfCryptASN1Util.getDERLength(data, 0));
+    }
+
+    /* More than 4 length bytes must be rejected, not truncated */
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetDERLengthFiveBytesThrows() throws Exception {
+        byte[] data = new byte[] {
+            (byte)0x85, 0x01, 0x7F, (byte)0xFF, (byte)0xFF, (byte)0xFF };
+        WolfCryptASN1Util.getDERLength(data, 0);
+    }
+
+    /* A 5 byte length whose low 32 bits are a small positive must be
+     * rejected, not truncated to that small value */
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetDERLengthTruncationToSmallThrows() throws Exception {
+        byte[] data = new byte[] {
+            (byte)0x85, 0x01, 0x00, 0x00, 0x00, 0x01, (byte)0xAA };
+        WolfCryptASN1Util.getDERLength(data, 0);
+    }
+
+    /* A 4 byte length near Integer.MAX_VALUE must be rejected before a
+     * caller attempts the allocation */
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetDERLengthHugeFourByteThrows() throws Exception {
+        byte[] data = new byte[] {
+            (byte)0x84, 0x7F, (byte)0xFF, (byte)0xFF, (byte)0xFF };
+        WolfCryptASN1Util.getDERLength(data, 0);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetDERLengthIndefiniteThrows() throws Exception {
+        WolfCryptASN1Util.getDERLength(new byte[] { (byte)0x80 }, 0);
+    }
+
+    /* Claims 200 content bytes but only 1 is present */
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetDERLengthContentBeyondDataThrows() throws Exception {
+        byte[] data = new byte[] { (byte)0x81, (byte)0xC8, 0x00 };
+        WolfCryptASN1Util.getDERLength(data, 0);
+    }
 }
 
