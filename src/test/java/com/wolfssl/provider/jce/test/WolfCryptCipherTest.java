@@ -29,6 +29,7 @@ import org.junit.runner.Description;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
@@ -2301,6 +2302,193 @@ public class WolfCryptCipherTest {
 
             /* Decrypted matches vector input? */
             assertArrayEquals(vIn, plain);
+        }
+    }
+
+    /*
+     * Test that many small update() calls match a single call. GCM buffers
+     * everything until doFinal(), so this drives buffer growth only.
+     */
+    @Test
+    public void testAesGcmChunkedUpdateMatchesSingle() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding") ||
+            !FeatureDetect.Aes256Enabled()) {
+            /* skip if AES-256-GCM is not enabled */
+            return;
+        }
+
+        byte[] keyBytes = new byte[32];
+        byte[] iv = new byte[12];
+        byte[] plaintext = new byte[4096];
+
+        for (int i = 0; i < keyBytes.length; i++) {
+            keyBytes[i] = (byte)i;
+        }
+        for (int i = 0; i < iv.length; i++) {
+            iv[i] = (byte)(0xB0 + i);
+        }
+        for (int i = 0; i < plaintext.length; i++) {
+            plaintext[i] = (byte)(i & 0xFF);
+        }
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        GCMParameterSpec spec = new GCMParameterSpec(128, iv);
+
+        Cipher single = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        single.init(Cipher.ENCRYPT_MODE, key, spec);
+        byte[] expected = single.doFinal(plaintext);
+
+        /* Same plaintext, sent one byte per update() call */
+        Cipher chunked = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        chunked.init(Cipher.ENCRYPT_MODE, key, spec);
+        for (int i = 0; i < plaintext.length; i++) {
+            chunked.update(plaintext, i, 1);
+        }
+
+        assertArrayEquals("Chunked update should match single doFinal",
+            expected, chunked.doFinal());
+    }
+
+    /*
+     * Test reusing a Cipher after a message large enough that the internal
+     * buffer capacity is released rather than kept. Drives the release and
+     * regrow path, where a stale buffered length would corrupt the next
+     * message.
+     */
+    @Test
+    public void testAesGcmLargeThenSmallReusesCipher() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding") ||
+            !FeatureDetect.Aes256Enabled()) {
+            /* skip if AES-256-GCM is not enabled */
+            return;
+        }
+
+        /* Larger than the buffer capacity kept across operations */
+        byte[] large = new byte[256 * 1024];
+        byte[] small = new byte[64];
+        new Random(1234).nextBytes(large);
+        new Random(5678).nextBytes(small);
+
+        SecretKeySpec key = new SecretKeySpec(new byte[32], "AES");
+        byte[] iv = new byte[12];
+
+        Cipher c = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+
+        /* Large message fed in chunks, so capacity grows well past the
+         * retention limit */
+        c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        for (int i = 0; i < large.length; i += 4096) {
+            c.update(large, i, Math.min(4096, large.length - i));
+        }
+        byte[] largeCipher = c.doFinal();
+
+        /* Same instance, smaller message with a different IV */
+        iv[0] = (byte)0x01;
+        c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        byte[] smallCipher = c.doFinal(small);
+
+        /* Both must match a fresh Cipher doing the same work */
+        Cipher refLarge = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        byte[] iv0 = new byte[12];
+        refLarge.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv0));
+        assertArrayEquals("Large message should match fresh Cipher",
+            refLarge.doFinal(large), largeCipher);
+
+        Cipher refSmall = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        refSmall.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        assertArrayEquals("Reused Cipher should match fresh Cipher",
+            refSmall.doFinal(small), smallCipher);
+
+        /* Round trip the reused instance output */
+        Cipher dec = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        assertArrayEquals("Reused Cipher output should decrypt",
+            small, dec.doFinal(smallCipher));
+    }
+
+    /*
+     * Test CBC round trips with non block aligned update() sizes. Unlike
+     * GCM, CBC drains the buffer each call, so this drives the grow then
+     * partial consume path that shifts leftover bytes to the front.
+     */
+    @Test
+    public void testAesCbcUnalignedChunkedUpdateRoundTrip()
+        throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/CBC/NoPadding") ||
+            !enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            /* skip if AES-CBC is not enabled */
+            return;
+        }
+
+        /* Sizes that leave a partial block buffered across most calls */
+        int[] chunkSizes = { 1, 3, 7, 13, 31, 127, 5, 999, 17 };
+        int[] inputSizes = { 4096, 64 * 1024, 300 * 1024 };
+        String[] transforms =
+            { "AES/CBC/NoPadding", "AES/CBC/PKCS5Padding" };
+
+        SecretKeySpec key = new SecretKeySpec(new byte[16], "AES");
+        IvParameterSpec iv = new IvParameterSpec(new byte[16]);
+
+        for (String transform : transforms) {
+            for (int size : inputSizes) {
+
+                byte[] plaintext = new byte[size];
+                new Random(size).nextBytes(plaintext);
+
+                Cipher enc = Cipher.getInstance(transform, jceProvider);
+                enc.init(Cipher.ENCRYPT_MODE, key, iv);
+                byte[] expected = enc.doFinal(plaintext);
+
+                /* Encrypt again, feeding rotating unaligned chunk sizes */
+                enc.init(Cipher.ENCRYPT_MODE, key, iv);
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                int offset = 0;
+                int idx = 0;
+                while (offset < plaintext.length) {
+                    int n = chunkSizes[idx % chunkSizes.length];
+                    idx++;
+                    if (n > (plaintext.length - offset)) {
+                        n = plaintext.length - offset;
+                    }
+                    byte[] part = enc.update(plaintext, offset, n);
+                    if (part != null) {
+                        out.write(part);
+                    }
+                    offset += n;
+                }
+                out.write(enc.doFinal());
+                byte[] chunkedCipher = out.toByteArray();
+
+                assertArrayEquals(transform + " chunked encrypt at " + size +
+                    " should match single doFinal", expected, chunkedCipher);
+
+                /* Decrypt the same way and confirm the round trip */
+                Cipher dec = Cipher.getInstance(transform, jceProvider);
+                dec.init(Cipher.DECRYPT_MODE, key, iv);
+                ByteArrayOutputStream plain = new ByteArrayOutputStream();
+                offset = 0;
+                idx = 0;
+                while (offset < chunkedCipher.length) {
+                    int n = chunkSizes[idx % chunkSizes.length];
+                    idx++;
+                    if (n > (chunkedCipher.length - offset)) {
+                        n = chunkedCipher.length - offset;
+                    }
+                    byte[] part = dec.update(chunkedCipher, offset, n);
+                    if (part != null) {
+                        plain.write(part);
+                    }
+                    offset += n;
+                }
+                plain.write(dec.doFinal());
+
+                assertArrayEquals(transform + " chunked decrypt at " + size +
+                    " should recover plaintext", plaintext,
+                    plain.toByteArray());
+            }
         }
     }
 
