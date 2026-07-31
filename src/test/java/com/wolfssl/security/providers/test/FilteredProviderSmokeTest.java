@@ -63,6 +63,16 @@ public class FilteredProviderSmokeTest {
     private static Provider sunEc;
     private static Provider sunRsa;
 
+    /** Properties pinned to benign values while registering providers. */
+    private static final String[] PIN_PROPS = {
+        "wolfssl.filtered.useOriginalNames",
+        "wolfssl.filtered.sun.additionalServices",
+        "wolfssl.filtered.sunec.additionalServices",
+        "wolfssl.filtered.sunrsasign.additionalServices" };
+
+    /** Benign pin values for PIN_PROPS. */
+    private static final String[] PIN_VALS = { "false", "", "", "" };
+
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
@@ -74,14 +84,29 @@ public class FilteredProviderSmokeTest {
 
         System.out.println("FilteredSun* provider smoke test");
 
-        /* Construct all three providers; must not throw. */
-        sun    = new FilteredSun();
-        sunEc  = new FilteredSunEC();
-        sunRsa = new FilteredSunRsaSign();
+        /* Pin properties to benign values during registration so names
+         * stay FilteredSun* and no extra services are granted, even if
+         * the test JVM's java.security sets them. Restore afterward. */
+        String[] prev = new String[PIN_PROPS.length];
+        for (int i = 0; i < PIN_PROPS.length; i++) {
+            prev[i] = Security.getProperty(PIN_PROPS[i]);
+            Security.setProperty(PIN_PROPS[i], PIN_VALS[i]);
+        }
+        try {
+            /* Construct all three providers; must not throw. */
+            sun    = new FilteredSun();
+            sunEc  = new FilteredSunEC();
+            sunRsa = new FilteredSunRsaSign();
 
-        Security.addProvider(sun);
-        Security.addProvider(sunEc);
-        Security.addProvider(sunRsa);
+            Security.addProvider(sun);
+            Security.addProvider(sunEc);
+            Security.addProvider(sunRsa);
+        } finally {
+            for (int i = 0; i < PIN_PROPS.length; i++) {
+                Security.setProperty(PIN_PROPS[i],
+                    (prev[i] != null) ? prev[i] : PIN_VALS[i]);
+            }
+        }
     }
 
     /**

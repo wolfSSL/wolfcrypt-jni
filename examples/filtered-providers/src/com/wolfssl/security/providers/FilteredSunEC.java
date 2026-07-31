@@ -24,13 +24,25 @@ import java.security.Provider;
 import java.util.Set;
 
 /**
- * FilteredSunEC is a custom security provider that filters out
- * cryptographic services from the original SunEC provider, retaining
- * only the supporting non-cryptographic services.
+ * FilteredSunEC is a custom security provider that filters out cryptographic
+ * services from the original SunEC provider, retaining only the supporting
+ * non-cryptographic services.
  *
  * It retains only:
  *
  *     - AlgorithmParameters.EC
+ *
+ * Set the wolfssl.filtered.useOriginalNames Security property to "true" (in
+ * java.security, or via Security.setProperty() before this provider is first
+ * instantiated) to register this provider under the original "SunEC" name
+ * instead of "FilteredSunEC". This keeps applications and JDK code with
+ * hardcoded provider names working. Only the allow-listed services above are
+ * exposed regardless of the registered name.
+ *
+ * Set the wolfssl.filtered.sunec.additionalServices Security property to
+ * a comma-separated list of Type.Algorithm entries to allow additional
+ * SunEC services through the filter. See
+ * ProviderServiceCopier.serviceAllowedByProperty() for entry syntax.
  *
  * Set the system property wolfssl.filtered.debug=true to enable verbose
  * load/copy logging to stderr. Requires Java 9+ and the JVM module flags
@@ -43,11 +55,13 @@ public class FilteredSunEC extends Provider {
 
     public FilteredSunEC() {
 
-        super("FilteredSunEC",
+        super(ProviderServiceCopier.resolveName("FilteredSunEC", "SunEC"),
             System.getProperty("java.specification.version"),
             "Filtered SunEC for non-crypto ops");
 
         try {
+            ProviderServiceCopier.warnIgnoredSystemProperties("sunec",
+                "FilteredSunEC");
             if (DEBUG) {
                 System.err.println("Loading original SunEC...");
             }
@@ -64,9 +78,15 @@ public class FilteredSunEC extends Provider {
                     "available: " + original.getServices().size());
             }
 
+            String addProp =
+                ProviderServiceCopier.additionalServicesProperty("sunec");
+            Set<String> grants =
+                ProviderServiceCopier.additionalServiceKeys(addProp);
+
             Set<Provider.Service> services = original.getServices();
             for (Provider.Service s : services) {
-                if (serviceSupported(s)) {
+                if (serviceSupported(s) ||
+                    ProviderServiceCopier.serviceAllowedByProperty(grants, s)) {
                     if (DEBUG) {
                         System.err.println("Copying " + s.getType() + "." +
                             s.getAlgorithm() + " with class: " +
@@ -77,6 +97,10 @@ public class FilteredSunEC extends Provider {
                         ProviderServiceCopier.buildService(this, s, true));
                 }
             }
+
+            ProviderServiceCopier.warnIgnoredEntries("sunec", "FilteredSunEC",
+                addProp, original);
+
             if (DEBUG) {
                 System.err.println("FilteredSunEC initialized successfully " +
                     "with " + getServices().size() + " services.");
@@ -93,11 +117,11 @@ public class FilteredSunEC extends Provider {
     }
 
     /**
-     * Checks if the given service is supported by this provider.
-     * This is the filtering logic that determines which services
-     * are retained in the FilteredSunEC provider.
+     * Compiled-in allow-list controlling which services are retained.
+     * Services can also pass the filter through the
+     * wolfssl.filtered.sunec.additionalServices Security property.
      *
-     * Edit this method to change the filtering logic.
+     * Edit this method to change the compiled-in filtering logic.
      *
      * @param service the service to check
      *
