@@ -356,6 +356,55 @@ public class WolfCryptKeyAgreementTest {
         assertArrayEquals(secretA2, secretC);
     }
 
+    /**
+     * Test that generateSecret() rejects a negative output offset with
+     * ShortBufferException and stays usable afterwards.
+     */
+    @Test
+    public void testDHGenerateSecretNegativeOffset()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidKeyException, InvalidAlgorithmParameterException,
+               ShortBufferException {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
+        byte[][] pg = Dh.getNamedDhParams(Dh.WC_FFDHE_2048);
+        BigInteger p = new BigInteger(1, pg[0]);
+        BigInteger g = new BigInteger(1, pg[1]);
+
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("DH", "wolfJCE");
+        keyGen.initialize(new DHParameterSpec(p, g));
+        KeyPair aPair = keyGen.generateKeyPair();
+        KeyPair bPair = keyGen.generateKeyPair();
+
+        KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
+        KeyAgreement bKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
+        aKeyAgree.init(aPair.getPrivate());
+        bKeyAgree.init(bPair.getPrivate());
+        aKeyAgree.doPhase(bPair.getPublic(), true);
+        bKeyAgree.doPhase(aPair.getPublic(), true);
+
+        byte secretA[] = new byte[256];
+        byte secretB[] = new byte[256];
+
+        try {
+            aKeyAgree.generateSecret(secretA, -1);
+            fail("Negative offset should throw ShortBufferException");
+        } catch (ShortBufferException e) {
+            /* expected */
+        }
+
+        /* object must remain usable after rejected offset */
+        int secretASz = aKeyAgree.generateSecret(secretA, 0);
+        int secretBSz = bKeyAgree.generateSecret(secretB, 0);
+        assertEquals(secretASz, secretBSz);
+        assertArrayEquals(secretA, secretB);
+    }
+
     /* Minimal DHPublicKey holding a caller-chosen Y, for feeding malicious
      * peer public key values into engineDoPhase() during testing. */
     private static DHPublicKey makeDHPublicKey(final BigInteger y,
@@ -727,6 +776,47 @@ public class WolfCryptKeyAgreementTest {
 
         assertEquals(secretA2Sz, secretCSz);
         assertArrayEquals(secretA2, secretC);
+    }
+
+    /**
+     * Test that generateSecret() rejects a negative output offset with
+     * ShortBufferException and stays usable afterwards.
+     */
+    @Test
+    public void testECDHGenerateSecretNegativeOffset()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidKeyException, InvalidAlgorithmParameterException,
+               ShortBufferException {
+
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("EC", "wolfJCE");
+        keyGen.initialize(new ECGenParameterSpec("secp256r1"));
+
+        KeyPair aPair = keyGen.generateKeyPair();
+        KeyPair bPair = keyGen.generateKeyPair();
+
+        KeyAgreement aKeyAgree = KeyAgreement.getInstance("ECDH", "wolfJCE");
+        KeyAgreement bKeyAgree = KeyAgreement.getInstance("ECDH", "wolfJCE");
+        aKeyAgree.init(aPair.getPrivate());
+        bKeyAgree.init(bPair.getPrivate());
+        aKeyAgree.doPhase(bPair.getPublic(), true);
+        bKeyAgree.doPhase(aPair.getPublic(), true);
+
+        byte secretA[] = new byte[256];
+        byte secretB[] = new byte[256];
+
+        try {
+            aKeyAgree.generateSecret(secretA, -1);
+            fail("Negative offset should throw ShortBufferException");
+        } catch (ShortBufferException e) {
+            /* expected */
+        }
+
+        /* object must remain usable after rejected offset */
+        int secretASz = aKeyAgree.generateSecret(secretA, 0);
+        int secretBSz = bKeyAgree.generateSecret(secretB, 0);
+        assertEquals(secretASz, secretBSz);
+        assertArrayEquals(secretA, secretB);
     }
 
     @Test

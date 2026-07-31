@@ -24,6 +24,8 @@ package com.wolfssl.provider.jce;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.Arrays;
+import java.util.Objects;
+import java.security.MessageDigest;
 import java.security.spec.InvalidKeySpecException;
 import javax.crypto.interfaces.PBEKey;
 
@@ -242,35 +244,52 @@ public class WolfCryptPBEKey implements PBEKey {
         }
     }
 
+    /* equals() and hashCode() do not throw after destroy(), but the hash
+     * changes when key bytes are cleared, remove from maps before destroy */
     @Override
     public synchronized int hashCode() {
         return Arrays.hashCode(encoded);
     }
 
     @Override
-    public synchronized boolean equals(Object obj) {
+    public boolean equals(Object obj) {
 
-        PBEKey pKey = null;
+        byte[] pKeyEncoded = null;
+        byte[] thisEncoded = null;
+        byte[] pKeySalt = null;
+        byte[] thisSalt = null;
+        char[] pKeyPass = null;
+        char[] thisPass = null;
+        PBEKey pKey;
 
-        synchronized (destroyedLock) {
-            if (obj == this) {
-                return true;
-            }
+        if (obj == this) {
+            return true;
+        }
 
-            if (!(obj instanceof PBEKey)) {
+        if (!(obj instanceof PBEKey)) {
+            return false;
+        }
+        pKey = (PBEKey)obj;
+
+        try {
+            pKeyEncoded = pKey.getEncoded();
+            pKeySalt = pKey.getSalt();
+            pKeyPass = pKey.getPassword();
+
+            thisEncoded = getEncoded();
+            thisSalt = getSalt();
+            thisPass = getPassword();
+
+            /* MessageDigest.isEqual() for constant-time comparison */
+            if (!MessageDigest.isEqual(pKeyEncoded, thisEncoded)) {
                 return false;
             }
-            pKey = (PBEKey)obj;
 
-            if (!Arrays.equals(pKey.getEncoded(), getEncoded())) {
+            if (!Arrays.equals(pKeySalt, thisSalt)) {
                 return false;
             }
 
-            if (!Arrays.equals(pKey.getSalt(), getSalt())) {
-                return false;
-            }
-
-            if (!Arrays.equals(pKey.getPassword(), getPassword())) {
+            if (!Arrays.equals(pKeyPass, thisPass)) {
                 return false;
             }
 
@@ -278,15 +297,32 @@ public class WolfCryptPBEKey implements PBEKey {
                 return false;
             }
 
-            if (!pKey.getAlgorithm().equals(getAlgorithm())) {
+            if (!Objects.equals(pKey.getAlgorithm(), getAlgorithm())) {
                 return false;
             }
 
-            if (!pKey.getFormat().equals(getFormat())) {
+            if (!Objects.equals(pKey.getFormat(), getFormat())) {
                 return false;
             }
 
             return true;
+
+        } catch (Exception e) {
+            /* Destroyed keys cannot be compared, treat as not equal */
+            return false;
+
+        } finally {
+            /* Only our own copies, the other key's accessors may return
+             * internal references and zeroizing those would destroy it */
+            if (thisEncoded != null) {
+                Arrays.fill(thisEncoded, (byte)0);
+            }
+            if (thisSalt != null) {
+                Arrays.fill(thisSalt, (byte)0);
+            }
+            if (thisPass != null) {
+                Arrays.fill(thisPass, (char)0);
+            }
         }
     }
 

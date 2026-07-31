@@ -252,6 +252,7 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
         throws IllegalStateException, ShortBufferException {
 
         byte tmp[] = null;
+        byte paddedSecret[] = null;
         int returnLen = 0;
 
         if (this.state != EngineState.WC_PUBKEY_DONE)
@@ -263,107 +264,115 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
             throw new ShortBufferException("Input buffer is null");
         }
 
-        switch (this.type) {
-            case WC_DH:
+        if (offset < 0) {
+            throw new ShortBufferException(
+                "Output buffer offset cannot be negative: " + offset);
+        }
 
-                /* public key has been stored inside this.dh already */
-                tmp = this.dh.makeSharedSecret();
-                if (tmp == null) {
-                    throw new RuntimeException("Error when creating DH " +
-                            "shared secret");
-                }
+        try {
+            switch (this.type) {
+                case WC_DH:
 
-                /* DH shared secrets can vary in length depending on if they
-                 * are padded or not at the beginning with zero bytes to make
-                 * a total output size matching the prime length.
-                 *
-                 * Native wolfCrypt does not prepend zero bytes to DH shared
-                 * secrets, following RFC 5246 (8.1.2) which instructs to
-                 * strip leading zero bytes.
-                 *
-                 * Sun KeyAgreement DH implementations as of after Java 8
-                 * prepend zero bytes if total length is not equal to prime
-                 * length. This was changed with OpenJDK bug fix JDK-7146728.
-                 *
-                 * BouncyCastle also behaves the same way, prepending zero
-                 * bytes if total secret size is not prime length. This
-                 * follows RFC 2631 (2.1.2).
-                 *
-                 * To match Sun and BC behavior, we pad the secret to primeLen
-                 * by prepending zeros for both generateSecret() methods.
-                 */
-                byte[] paddedSecret = new byte[this.primeLen];
-                Arrays.fill(paddedSecret, (byte)0);
-                System.arraycopy(tmp, 0, paddedSecret,
-                    paddedSecret.length - tmp.length, tmp.length);
+                    /* public key has been stored inside this.dh already */
+                    tmp = this.dh.makeSharedSecret();
+                    if (tmp == null) {
+                        throw new RuntimeException("Error when creating DH " +
+                                "shared secret");
+                    }
 
-                if ((sharedSecret.length - offset) < paddedSecret.length) {
-                    zeroArray(tmp);
-                    zeroArray(paddedSecret);
-                    throw new ShortBufferException(
-                        "Output buffer too small when generating " +
-                        "DH shared secret");
-                }
+                    /* DH shared secrets can vary in length depending on if
+                     * they are padded or not at the beginning with zero bytes
+                     * to make a total output size matching the prime length.
+                     *
+                     * Native wolfCrypt does not prepend zero bytes to DH
+                     * shared secrets, following RFC 5246 (8.1.2) which
+                     * instructs to strip leading zero bytes.
+                     *
+                     * Sun KeyAgreement DH implementations as of after Java 8
+                     * prepend zero bytes if total length is not equal to
+                     * prime length. This was changed with OpenJDK bug fix
+                     * JDK-7146728.
+                     *
+                     * BouncyCastle also behaves the same way, prepending
+                     * zero bytes if total secret size is not prime length.
+                     * This follows RFC 2631 (2.1.2).
+                     *
+                     * To match Sun and BC behavior, we pad the secret to
+                     * primeLen by prepending zeros for both generateSecret()
+                     * methods.
+                     */
+                    paddedSecret = new byte[this.primeLen];
+                    Arrays.fill(paddedSecret, (byte)0);
+                    System.arraycopy(tmp, 0, paddedSecret,
+                        paddedSecret.length - tmp.length, tmp.length);
 
-                /* copy padded array back to output offset */
-                System.arraycopy(paddedSecret, 0, sharedSecret, offset,
-                    paddedSecret.length);
+                    if ((sharedSecret.length - offset) <
+                            paddedSecret.length) {
+                        throw new ShortBufferException(
+                            "Output buffer too small when generating " +
+                            "DH shared secret");
+                    }
 
-                returnLen = this.primeLen;
+                    /* copy padded array back to output offset */
+                    System.arraycopy(paddedSecret, 0, sharedSecret, offset,
+                        paddedSecret.length);
 
-                /* reset state, using same private info and alg params */
-                this.state = EngineState.WC_PRIVKEY_DONE;
+                    returnLen = this.primeLen;
 
-                zeroArray(paddedSecret);
+                    /* reset state, using same private info and alg params */
+                    this.state = EngineState.WC_PRIVKEY_DONE;
 
-                break;
+                    break;
 
-            case WC_ECDH:
+                case WC_ECDH:
 
-                tmp = this.ecPrivate.makeSharedSecret(this.ecPublic);
-                if (tmp == null) {
-                    throw new RuntimeException("Error when creating ECDH " +
-                            "shared secret");
-                }
+                    tmp = this.ecPrivate.makeSharedSecret(this.ecPublic);
+                    if (tmp == null) {
+                        throw new RuntimeException("Error when creating " +
+                                "ECDH shared secret");
+                    }
 
-                if ((sharedSecret.length - offset) < tmp.length) {
-                    zeroArray(tmp);
-                    throw new ShortBufferException(
-                        "Output buffer too small when generating " +
-                        "ECDH shared secret");
-                }
+                    if ((sharedSecret.length - offset) < tmp.length) {
+                        throw new ShortBufferException(
+                            "Output buffer too small when generating " +
+                            "ECDH shared secret");
+                    }
 
-                /* copy array back to output ofset */
-                System.arraycopy(tmp, 0, sharedSecret, offset, tmp.length);
+                    /* copy array back to output offset */
+                    System.arraycopy(tmp, 0, sharedSecret, offset,
+                        tmp.length);
 
-                returnLen = tmp.length;
+                    returnLen = tmp.length;
 
-                /* reset state, using same private info and alg params */
-                byte[] priv = this.ecPrivate.exportPrivate();
-                if (priv == null) {
-                    throw new RuntimeException("Error reseting native " +
-                            "wolfCrypt state during ECDH operation");
-                }
+                    /* reset state, using same private info and alg params */
+                    byte[] priv = this.ecPrivate.exportPrivate();
+                    if (priv == null) {
+                        throw new RuntimeException("Error reseting native " +
+                                "wolfCrypt state during ECDH operation");
+                    }
 
-                this.ecPublic.releaseNativeStruct();
-                this.ecPublic = new Ecc();
-                this.ecPrivate.releaseNativeStruct();
-                this.ecPrivate = new Ecc();
-                try {
-                    this.ecPrivate.importPrivateOnCurve(priv, null,
-                                                        this.curveName);
-                } finally {
-                    zeroArray(priv);
-                }
+                    this.ecPublic.releaseNativeStruct();
+                    this.ecPublic = new Ecc();
+                    this.ecPrivate.releaseNativeStruct();
+                    this.ecPrivate = new Ecc();
+                    try {
+                        this.ecPrivate.importPrivateOnCurve(priv, null,
+                                                            this.curveName);
+                    } finally {
+                        zeroArray(priv);
+                    }
 
-                this.state = EngineState.WC_PRIVKEY_DONE;
+                    this.state = EngineState.WC_PRIVKEY_DONE;
 
-                break;
-        };
+                    break;
+            };
+
+        } finally {
+            zeroArray(tmp);
+            zeroArray(paddedSecret);
+        }
 
         log("generated secret, len: " + returnLen);
-
-        zeroArray(tmp);
 
         return returnLen;
     }

@@ -70,15 +70,6 @@ public class WolfCryptUtil {
     }
 
     /**
-     * Maximum size of the keystore buffer to mark. We try to set this
-     * high enough to handle any large keystore. Although there is no
-     * upper limit on the size of a keystore, looking at the JDK 23 cacerts
-     * KeyStore file, that is 190kB. We leave ample room for growth here
-     * with 512kB.
-     */
-    private static final int MAX_KEYSTORE_SIZE = 512 * 1024;
-
-    /**
      * Chunk size for reading the keystore. We use 4kB as a happy medium
      * between memory usage and performance.
      */
@@ -98,10 +89,10 @@ public class WolfCryptUtil {
      * format.
      *
      * This method detects the type of the input KeyStore (WKS, JKS, or PKCS12)
-     * and converts it to WKS format if needed. All certificates and keys from
-     * the source KeyStore are transferred to the destination KeyStore. If the
-     * input KeyStore is already of type WKS, the method will return the same
-     * InputStream.
+     * and converts it to WKS format. All certificates and keys from the source
+     * KeyStore are transferred to a newly created WKS KeyStore, including when
+     * the input is already WKS. The input stream is read to the end but not
+     * closed, and the returned stream is always a new InputStream.
      *
      * @param stream Input stream containing a WKS, JKS, or PKCS12 KeyStore
      * @param oldPassword Password used to decrypt KeyStore entries.
@@ -129,6 +120,7 @@ public class WolfCryptUtil {
         boolean wksFound = false;
         boolean jksFound = false;
         KeyStore sourceStore = null;
+        IOException passwordError = null;
 
         log("converting KeyStore InputStream to WKS format");
 
@@ -169,17 +161,15 @@ public class WolfCryptUtil {
             log("JKS to WKS mapping enabled: " + mapJksToWks);
             log("PKCS12 to WKS mapping enabled: " + mapPkcs12ToWks);
 
-            /* Since we will be doing KeyStore type detection by trying to
-             * read the KeyStore, we want to make sure we have the ability
-             * to mark() the stream. If we don't have the ability, we copy
-             * the stream into a ByteArrayOutputStream and then into a
-             * ByteArrayInputStream which is markable. */
-            if (!stream.markSupported()) {
+            /* Copy into a ByteArrayInputStream, which ignores the mark()
+             * read limit, so reset() works after type detection reads any
+             * amount. Other stream types drop the mark on large KeyStores. */
+            if (!(stream instanceof ByteArrayInputStream)) {
                 try {
                     ByteArrayOutputStream buffer = new ByteArrayOutputStream();
                     int numRead;
                     byte[] data = new byte[KEYSTORE_CHUNK_SIZE];
-                    while ((numRead = stream.read(data, 0, data.length)) != -1) {
+                    while ((numRead = stream.read(data)) != -1) {
                         buffer.write(data, 0, numRead);
                     }
                     buffer.flush();
@@ -189,8 +179,8 @@ public class WolfCryptUtil {
                 }
             }
 
-            /* Mark the current position in the stream */
-            stream.mark(MAX_KEYSTORE_SIZE);
+            /* ByteArrayInputStream ignores the read limit */
+            stream.mark(Integer.MAX_VALUE);
 
             /* Try WKS */
             try {
@@ -228,9 +218,11 @@ public class WolfCryptUtil {
                     jksFound = true;
 
                     log("Input KeyStore is in JKS format");
-                } catch (IOException | NoSuchAlgorithmException |
-                        CertificateException e) {
-                    /* Not a JKS KeyStore, continue with other formats */
+                } catch (KeyStoreException | IOException |
+                        NoSuchAlgorithmException | CertificateException e) {
+                    /* Not a JKS KeyStore, or no JKS on this platform as on
+                     * Android, continue with other formats */
+                    passwordError = getPasswordError(e);
                 } finally {
                     stream.reset();
                 }
@@ -258,7 +250,20 @@ public class WolfCryptUtil {
 
                     log("Input KeyStore is in PKCS12 format");
                 } catch (KeyStoreException | NoSuchAlgorithmException |
-                         CertificateException ex) {
+                         CertificateException | IOException ex) {
+                    /* A valid KeyStore opened with the wrong password also
+                     * fails detection, report that over a format error */
+                    IOException pwError = getPasswordError(ex);
+                    if (pwError == null) {
+                        pwError = passwordError;
+                    }
+                    if (pwError != null) {
+                        /* Keep PKCS12 failure visible */
+                        if (pwError != ex) {
+                            pwError.addSuppressed(ex);
+                        }
+                        throw pwError;
+                    }
                     throw new IOException(
                         "Input KeyStore is neither WKS, JKS nor " +
                         "PKCS12 KeyStore format", ex);
@@ -323,6 +328,27 @@ public class WolfCryptUtil {
                  CertificateException e) {
             throw new IOException("Error during KeyStore conversion", e);
         }
+    }
+
+    /**
+     * Return the exception if it reports a wrong KeyStore password.
+     *
+     * KeyStore.load() signals a bad password with an IOException caused by
+     * UnrecoverableKeyException, otherwise indistinguishable from a format
+     * mismatch.
+     *
+     * @param e exception thrown by KeyStore.load()
+     *
+     * @return e if it reports a bad password, otherwise null
+     */
+    private static IOException getPasswordError(Exception e) {
+
+        if ((e instanceof IOException) &&
+            (e.getCause() instanceof UnrecoverableKeyException)) {
+            return (IOException)e;
+        }
+
+        return null;
     }
 
     /**

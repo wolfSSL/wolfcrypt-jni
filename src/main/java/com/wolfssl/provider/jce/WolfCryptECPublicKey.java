@@ -139,6 +139,39 @@ public class WolfCryptECPublicKey implements ECPublicKey, Destroyable {
     }
 
     /**
+     * Convert one EC point coordinate to a fixed size byte array.
+     *
+     * Native raw import reinterprets the bytes unsigned, so a negative
+     * value would silently import as value + 2^(8 * curveSize).
+     *
+     * @param value coordinate to convert
+     * @param name coordinate name used in error messages, "X" or "Y"
+     * @param curveName curve name used in error messages
+     * @param curveSize expected coordinate size in bytes
+     *
+     * @return coordinate as a curveSize byte array
+     *
+     * @throws IllegalArgumentException if the coordinate is negative or
+     *         too large for the curve
+     */
+    private static byte[] coordinateToBytes(BigInteger value, String name,
+        String curveName, int curveSize) throws IllegalArgumentException {
+
+        if (value.signum() < 0) {
+            throw new IllegalArgumentException(name +
+                " coordinate cannot be negative");
+        }
+
+        try {
+            return Ecc.bigIntToFixedSizeByteArray(value, curveSize);
+
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(name +
+                " coordinate too large for curve " + curveName);
+        }
+    }
+
+    /**
      * Generate DER-encoded form from public point and parameters.
      *
      * @return DER-encoded X.509 public key
@@ -148,6 +181,7 @@ public class WolfCryptECPublicKey implements ECPublicKey, Destroyable {
     private byte[] generateDerFromParameters()
         throws IllegalArgumentException {
 
+        int curveSize = 0;
         byte[] xBytes = null;
         byte[] yBytes = null;
         Ecc ecc = null;
@@ -180,12 +214,18 @@ public class WolfCryptECPublicKey implements ECPublicKey, Destroyable {
             }
 
             /* Convert coordinates to byte[] */
-            xBytes = Ecc.bigIntToByteArrayNoLeadingZeros(x);
-            yBytes = Ecc.bigIntToByteArrayNoLeadingZeros(y);
+            curveSize = Ecc.getCurveSizeFromName(curveName);
+            if (curveSize <= 0) {
+                throw new IllegalArgumentException(
+                    "Unable to get curve size for " + curveName);
+            }
+            xBytes = coordinateToBytes(x, "X", curveName, curveSize);
+            yBytes = coordinateToBytes(y, "Y", curveName, curveSize);
 
             /* Import public key into Ecc using raw import */
             ecc = new Ecc();
             ecc.importPublicRaw(xBytes, yBytes, curveName);
+            ecc.checkKey();
 
             /* Export as X.509 DER */
             byte[] derEncoded = ecc.publicKeyEncode();

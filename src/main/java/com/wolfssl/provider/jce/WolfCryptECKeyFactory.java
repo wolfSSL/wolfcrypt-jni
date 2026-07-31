@@ -584,9 +584,12 @@ public class WolfCryptECKeyFactory extends KeyFactorySpi {
             y = validateAndConvertBigIntegerToBytes(
                 keySpec.getW().getAffineY(), "Y coordinate", curveName);
 
-            /* Import public key {x, y} into Ecc object */
+            /* Import public key {x, y} into Ecc object. Raw import only
+             * validates the point when native wolfSSL is built with
+             * WOLFSSL_VALIDATE_ECC_IMPORT, so check it explicitly. */
             ecc = new Ecc();
             ecc.importPublicRaw(x, y, curveName);
+            ecc.checkKey();
 
             /* Export as DER encoded format */
             derData = ecc.publicKeyEncode();

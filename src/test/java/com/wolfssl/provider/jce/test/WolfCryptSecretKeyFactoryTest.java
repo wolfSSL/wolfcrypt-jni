@@ -50,6 +50,7 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.IvParameterSpec;
+import javax.security.auth.DestroyFailedException;
 
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.Aes;
@@ -1149,6 +1150,170 @@ public class WolfCryptSecretKeyFactoryTest {
         }
     }
 
+    /**
+     * Test PBEKey equals() and hashCode() behavior, including that
+     * destroyed keys compare as not equal instead of throwing.
+     */
+    @Test
+    public void testPBKDF2WithHmacSHA256_KeyEquals()
+        throws NoSuchAlgorithmException, InvalidKeySpecException,
+               NoSuchProviderException, DestroyFailedException {
+
+        char[] pass = "passwordpassword".toCharArray();
+        byte[] saltA = {
+            (byte)0x78, (byte)0x57, (byte)0x8E, (byte)0x5a,
+            (byte)0x5d, (byte)0x63, (byte)0xcb, (byte)0x06
+        };
+        byte[] saltB = {
+            (byte)0x78, (byte)0x57, (byte)0x8E, (byte)0x5a,
+            (byte)0x5d, (byte)0x63, (byte)0xcb, (byte)0x07
+        };
+        int iterations = 2048;
+        int kLen = 192;
+
+        if (!FeatureDetect.Pbkdf2Enabled() ||
+            !FeatureDetect.HmacSha256Enabled() ||
+            !algoSupported("PBKDF2WithHmacSHA256")) {
+            System.out.println(
+                "Skipped: SecretKeyFactory PBEKey equals test");
+            Assume.assumeTrue(false);
+        }
+
+        SecretKeyFactory sf =
+            SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256", provider);
+
+        SecretKey keyA = sf.generateSecret(
+            new PBEKeySpec(pass, saltA, iterations, kLen));
+        SecretKey keyB = sf.generateSecret(
+            new PBEKeySpec(pass, saltA, iterations, kLen));
+        SecretKey keyC = sf.generateSecret(
+            new PBEKeySpec(pass, saltB, iterations, kLen));
+
+        assertTrue(keyA.equals(keyA));
+        assertTrue(keyA.equals(keyB));
+        assertTrue(keyB.equals(keyA));
+        assertEquals(keyA.hashCode(), keyB.hashCode());
+
+        assertFalse(keyA.equals(keyC));
+        assertFalse(keyC.equals(keyA));
+        assertFalse(keyA.equals(null));
+        assertFalse(keyA.equals("not a key"));
+
+        keyB.destroy();
+        assertFalse(keyA.equals(keyB));
+        assertFalse(keyB.equals(keyA));
+    }
+
+    /**
+     * Test that PBEKey equals() does not deadlock when two threads
+     * compare the same pair of keys in opposite order.
+     */
+    @Test
+    public void testPBKDF2WithHmacSHA256_ThreadedKeyEquals()
+        throws NoSuchAlgorithmException, InvalidKeySpecException,
+               NoSuchProviderException, InterruptedException {
+
+        char[] pass = "passwordpassword".toCharArray();
+        byte[] salt = {
+            (byte)0x78, (byte)0x57, (byte)0x8E, (byte)0x5a,
+            (byte)0x5d, (byte)0x63, (byte)0xcb, (byte)0x06
+        };
+        int iterations = 2048;
+        int kLen = 192;
+
+        if (!FeatureDetect.Pbkdf2Enabled() ||
+            !FeatureDetect.HmacSha256Enabled() ||
+            !algoSupported("PBKDF2WithHmacSHA256")) {
+            System.out.println(
+                "Skipped: SecretKeyFactory PBEKey equals threaded test");
+            Assume.assumeTrue(false);
+        }
+
+        SecretKeyFactory sf =
+            SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256", provider);
+
+        final SecretKey keyA = sf.generateSecret(
+            new PBEKeySpec(pass, salt, iterations, kLen));
+        final SecretKey keyB = sf.generateSecret(
+            new PBEKeySpec(pass, salt, iterations, kLen));
+
+        assertNoDeadlockOnCrossThreadEquals(keyA, keyB, "PBEKey");
+    }
+
+    /**
+     * Compare two equal keys from two threads in opposite order, so both
+     * are inside equals() on both keys at once and the opposite lock
+     * ordering can deadlock.
+     */
+    private void assertNoDeadlockOnCrossThreadEquals(final SecretKey keyA,
+        final SecretKey keyB, final String label)
+        throws InterruptedException {
+
+        final LinkedBlockingQueue<Integer> results =
+            new LinkedBlockingQueue<>();
+        final CountDownLatch startGate = new CountDownLatch(1);
+
+        Thread threadA = new Thread(new Runnable() {
+            @Override public void run() {
+                results.add(compareRepeatedly(startGate, keyA, keyB));
+            }
+        });
+        Thread threadB = new Thread(new Runnable() {
+            @Override public void run() {
+                results.add(compareRepeatedly(startGate, keyB, keyA));
+            }
+        });
+
+        /* Daemon threads so the JVM can exit if equals() deadlocks */
+        threadA.setDaemon(true);
+        threadB.setDaemon(true);
+        threadA.start();
+        threadB.start();
+        startGate.countDown();
+        threadA.join(30000);
+        threadB.join(30000);
+
+        if (threadA.isAlive() || threadB.isAlive()) {
+            fail("Deadlock in " + label +
+                ".equals() cross-thread comparison");
+        }
+
+        /* Both threads must have reported, a thread that died on an unchecked
+         * throwable never reaches results.add() */
+        assertEquals("Both threads should report a result for " + label,
+            2, results.size());
+
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur == 1) {
+                fail(label + ".equals() returned false for equal keys");
+            }
+        }
+    }
+
+    /**
+     * Wait on the start gate then compare repeatedly, returning 0 if every
+     * comparison matched and 1 otherwise.
+     */
+    private static int compareRepeatedly(CountDownLatch startGate,
+        SecretKey first, SecretKey second) {
+
+        try {
+            startGate.await();
+        } catch (InterruptedException e) {
+            return 1;
+        }
+
+        for (int i = 0; i < 10000; i++) {
+            if (!first.equals(second)) {
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
     @Test
     public void testGetAESSecretKeyFactoryFromProvider()
         throws NoSuchProviderException, NoSuchAlgorithmException {
@@ -1476,6 +1641,76 @@ public class WolfCryptSecretKeyFactoryTest {
 
         /* Verify round-trip */
         assertTrue(Arrays.equals(plaintext, decrypted));
+    }
+
+    /**
+     * Test SecretKey equals() and hashCode() behavior, including that
+     * destroyed keys compare as not equal instead of throwing.
+     */
+    @Test
+    public void testAESKeyEquals()
+        throws NoSuchAlgorithmException, InvalidKeySpecException,
+               NoSuchProviderException, DestroyFailedException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        byte[] keyBytesA = new byte[Aes.KEY_SIZE_128];
+        Arrays.fill(keyBytesA, (byte)0x2A);
+        byte[] keyBytesB = new byte[Aes.KEY_SIZE_128];
+        Arrays.fill(keyBytesB, (byte)0x2B);
+
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+
+        SecretKey keyA = skf.generateSecret(
+            new SecretKeySpec(keyBytesA, "AES"));
+        SecretKey keyB = skf.generateSecret(
+            new SecretKeySpec(keyBytesA, "AES"));
+        SecretKey keyC = skf.generateSecret(
+            new SecretKeySpec(keyBytesB, "AES"));
+
+        assertTrue(keyA.equals(keyA));
+        assertTrue(keyA.equals(keyB));
+        assertTrue(keyB.equals(keyA));
+        assertEquals(keyA.hashCode(), keyB.hashCode());
+
+        assertFalse(keyA.equals(keyC));
+        assertFalse(keyC.equals(keyA));
+        assertFalse(keyA.equals(null));
+        assertFalse(keyA.equals("not a key"));
+
+        keyB.destroy();
+        assertFalse(keyA.equals(keyB));
+        assertFalse(keyB.equals(keyA));
+    }
+
+    /**
+     * Test that SecretKey equals() does not deadlock when two threads
+     * compare the same pair of keys in opposite order.
+     */
+    @Test
+    public void testAESThreadedKeyEquals()
+        throws NoSuchAlgorithmException, InvalidKeySpecException,
+               NoSuchProviderException, InterruptedException {
+
+        if (!algoSupported("AES")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[Aes.KEY_SIZE_128];
+        Arrays.fill(keyBytes, (byte)0x2A);
+
+        SecretKeyFactory skf =
+            SecretKeyFactory.getInstance("AES", provider);
+
+        final SecretKey keyA = skf.generateSecret(
+            new SecretKeySpec(keyBytes, "AES"));
+        final SecretKey keyB = skf.generateSecret(
+            new SecretKeySpec(keyBytes, "AES"));
+
+        assertNoDeadlockOnCrossThreadEquals(keyA, keyB, "SecretKey");
     }
 }
 
