@@ -28,14 +28,22 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
+import java.io.PrintStream;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.UUID;
 
 import java.security.Provider;
 import java.security.Security;
 import java.security.AlgorithmParameters;
+import java.security.KeyFactory;
+import java.security.MessageDigest;
+import java.security.Signature;
 import java.security.spec.ECGenParameterSpec;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
@@ -59,9 +67,10 @@ import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
  * Also asserts "no crypto leaked". Iterating each provider's getServices()
  * must not surface any service whose type is in the blocked crypto set.
  *
- * Also covers the wolfssl.filtered.useOriginalNames Security property, which
- * makes the providers register under the original Sun provider names for
- * compatibility with code that hardcodes those names.
+ * Also covers the wolfssl.filtered.useOriginalNames Security property
+ * (register under the original Sun names) and the
+ * wolfssl.filtered.[provider].additionalServices properties (grant individual
+ * services, ex: MessageDigest.MD5 for java.util.UUID.nameUUIDFromBytes()).
  *
  * Requires Java 9+. See examples/filtered-providers/docs/add-opens.md for the
  * required (JDK-version-dependent) JVM module flags.
@@ -78,7 +87,27 @@ public class FilteredProviderFunctionalTest {
     private static String caEccCertDer;
 
     /** Security property controlling filtered provider registration names. */
-    private static final String NAME_PROP = "wolfssl.filtered.useOriginalNames";
+    private static final String NAME_PROP =
+        "wolfssl.filtered.useOriginalNames";
+
+    /** Security property granting additional FilteredSun services. */
+    private static final String ADD_PROP =
+        "wolfssl.filtered.sun.additionalServices";
+
+    /** Security property granting additional FilteredSunEC services. */
+    private static final String EC_ADD_PROP =
+        "wolfssl.filtered.sunec.additionalServices";
+
+    /** Security property granting additional FilteredSunRsaSign services. */
+    private static final String RSA_ADD_PROP =
+        "wolfssl.filtered.sunrsasign.additionalServices";
+
+    /** Properties pinned to benign values while registering providers. */
+    private static final String[] PIN_PROPS = {
+        NAME_PROP, ADD_PROP, EC_ADD_PROP, RSA_ADD_PROP };
+
+    /** Benign pin values for PIN_PROPS. */
+    private static final String[] PIN_VALS = { "false", "", "", "" };
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
@@ -91,19 +120,24 @@ public class FilteredProviderFunctionalTest {
 
         System.out.println("FilteredSun* provider functional test");
 
-        /* Pin the name override property to "false" while constructing and
-         * registering the providers, so registration names stay FilteredSun*
-         * even if the test JVM's java.security sets
-         * wolfssl.filtered.useOriginalNames=true (e.g. on a hardened
-         * image). Restore the prior value afterward. */
-        String prev = Security.getProperty(NAME_PROP);
-        Security.setProperty(NAME_PROP, "false");
+        /* Pin properties to benign values during registration so names stay
+         * FilteredSun* and no extra services are granted, even if the test
+         * JVM's java.security sets them. Restore afterward. */
+        String[] prev = new String[PIN_PROPS.length];
+        for (int i = 0; i < PIN_PROPS.length; i++) {
+            prev[i] = Security.getProperty(PIN_PROPS[i]);
+            Security.setProperty(PIN_PROPS[i], PIN_VALS[i]);
+        }
+
         try {
             Security.addProvider(new FilteredSun());
             Security.addProvider(new FilteredSunEC());
             Security.addProvider(new FilteredSunRsaSign());
         } finally {
-            Security.setProperty(NAME_PROP, (prev != null) ? prev : "false");
+            for (int i = 0; i < PIN_PROPS.length; i++) {
+                Security.setProperty(PIN_PROPS[i],
+                    (prev[i] != null) ? prev[i] : PIN_VALS[i]);
+            }
         }
 
         /* Relative path from repo root; forked tests have cwd = basedir. */
@@ -190,18 +224,12 @@ public class FilteredProviderFunctionalTest {
         }
     }
 
-    /**
-     * Restore the Security property to its prior value, or to "false"
-     * (equivalent to unset for name resolution) if it was never set.
-     */
+    /** Restore NAME_PROP to prev, or "false" (equivalent to unset). */
     private static void restoreSecurityProperty(String prev) {
         Security.setProperty(NAME_PROP, (prev != null) ? prev : "false");
     }
 
-    /**
-     * Return the 1-based registration position of the named provider,
-     * or -1 if not registered.
-     */
+    /** 1-based registration position of the named provider, or -1. */
     private static int providerPosition(String name) {
 
         Provider[] providers = Security.getProviders();
@@ -255,12 +283,19 @@ public class FilteredProviderFunctionalTest {
         String prev = Security.getProperty(NAME_PROP);
 
         try {
-            /* Only the Security property controls the name. A system property
-             * of the same name must have no effect. */
+            /* A system property of the same name must have no effect and must
+             * trigger the ignored-property warning */
             Security.setProperty(NAME_PROP, "false");
             System.setProperty(NAME_PROP, "true");
 
-            assertEquals("FilteredSun", new FilteredSun().getName());
+            final Provider[] holder = new Provider[1];
+            String err = captureStderr(() -> {
+                holder[0] = new FilteredSun();
+            });
+
+            assertEquals("FilteredSun", holder[0].getName());
+            assertTrue("no ignored-system-property warning printed",
+                err.contains("system property") && err.contains(NAME_PROP));
 
         } finally {
             System.clearProperty(NAME_PROP);
@@ -275,9 +310,8 @@ public class FilteredProviderFunctionalTest {
         try {
             Security.setProperty(NAME_PROP, "true");
 
-            /* getInfo() must keep identifying the provider as filtered even
-             * when registered under the original name, so audits and telemetry
-             * can distinguish it from the stock SUN. */
+            /* getInfo() must keep identifying the provider as filtered so
+             * audits can distinguish it from the stock SUN */
             Provider p = new FilteredSun();
             assertEquals("SUN", p.getName());
             assertEquals("Filtered SUN for non-crypto ops", p.getInfo());
@@ -303,9 +337,8 @@ public class FilteredProviderFunctionalTest {
             filtered = new FilteredSun();
             assertEquals("SUN", filtered.getName());
 
-            /* Simulate the hardened JRE: the real SUN is not registered, the
-             * filtered provider takes its place. On a stock test JDK the real
-             * SUN is registered, so swap it out for the test duration. */
+            /* Simulate the hardened JRE: swap the real SUN out and register
+             * the filtered provider in its place */
             if (realSun != null) {
                 Security.removeProvider("SUN");
             }
@@ -313,8 +346,7 @@ public class FilteredProviderFunctionalTest {
                 Security.addProvider(filtered) != -1);
             filteredAdded = true;
 
-            /* Hardcoded provider name lookup must now resolve to the
-             * filtered provider instance */
+            /* Hardcoded name lookup must resolve to the filtered instance */
             CertificateFactory cf =
                 CertificateFactory.getInstance("X.509", "SUN");
             assertNotNull("CertificateFactory X.509 not resolved from " +
@@ -334,6 +366,428 @@ public class FilteredProviderFunctionalTest {
                 }
             }
             restoreSecurityProperty(prev);
+        }
+    }
+
+    /** Restore ADD_PROP to prev, or "" (equivalent to unset). */
+    private static void restoreAdditionalServices(String prev) {
+        Security.setProperty(ADD_PROP, (prev != null) ? prev : "");
+    }
+
+    /** Return lowercase hex encoding of the given bytes. */
+    private static String toHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
+    /** Return the set of "Type.Algorithm" keys exposed by a provider. */
+    private static Set<String> serviceKeys(Provider p) {
+        Set<String> keys = new HashSet<>();
+        for (Provider.Service svc : p.getServices()) {
+            keys.add(svc.getType() + "." + svc.getAlgorithm());
+        }
+        return keys;
+    }
+
+    /** Run r with System.err captured, return output, restore stream. */
+    private static String captureStderr(Runnable r) {
+        PrintStream prevErr = System.err;
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        PrintStream capture = new PrintStream(buf, true);
+        try {
+            System.setErr(capture);
+            r.run();
+        } finally {
+            System.setErr(prevErr);
+            capture.close();
+        }
+        return buf.toString();
+    }
+
+    @Test
+    public void testAdditionalServicesDefaultBlocked() {
+        String prev = Security.getProperty(ADD_PROP);
+
+        try {
+            Security.setProperty(ADD_PROP, "");
+
+            Provider p = new FilteredSun();
+            assertNull("MessageDigest.MD5 exposed without property grant",
+                p.getService("MessageDigest", "MD5"));
+
+        } finally {
+            restoreAdditionalServices(prev);
+        }
+    }
+
+    @Test
+    public void testAdditionalServicesGrantsMd5() throws Exception {
+        String prev = Security.getProperty(ADD_PROP);
+
+        try {
+            Security.setProperty(ADD_PROP, "MessageDigest.MD5");
+
+            Provider p = new FilteredSun();
+            assertNotNull("MessageDigest.MD5 not granted by property",
+                p.getService("MessageDigest", "MD5"));
+
+            /* Only the listed algorithm is granted, not the whole type */
+            assertNull("MessageDigest.SHA-256 leaked by MD5 grant",
+                p.getService("MessageDigest", "SHA-256"));
+
+            /* Granted service must be usable end-to-end. RFC 1321 test
+             * vector: MD5("abc") */
+            MessageDigest md = MessageDigest.getInstance("MD5", p);
+            byte[] digest = md.digest("abc".getBytes("UTF-8"));
+            assertEquals("granted MD5 service computed wrong digest",
+                "900150983cd24fb0d6963f7d28e17f72", toHex(digest));
+
+        } finally {
+            restoreAdditionalServices(prev);
+        }
+    }
+
+    @Test
+    public void testAdditionalServicesCaseInsensitive() {
+        String prev = Security.getProperty(ADD_PROP);
+
+        try {
+            Security.setProperty(ADD_PROP, "messagedigest.md5");
+
+            Provider p = new FilteredSun();
+            assertNotNull("case-insensitive entry not matched",
+                p.getService("MessageDigest", "MD5"));
+
+        } finally {
+            restoreAdditionalServices(prev);
+        }
+    }
+
+    @Test
+    public void testAdditionalServicesMalformedIgnored() {
+        String prev = Security.getProperty(ADD_PROP);
+
+        try {
+            /* Baseline service set with no grants */
+            Security.setProperty(ADD_PROP, "");
+            Set<String> baseline = serviceKeys(new FilteredSun());
+
+            /* Malformed entries must not throw and must leave the service
+             * set identical to the no-grant baseline */
+            Security.setProperty(ADD_PROP,
+                "MessageDigest, .MD5, MessageDigest., , ,,");
+
+            assertEquals("malformed entries changed the service set",
+                baseline, serviceKeys(new FilteredSun()));
+
+        } finally {
+            restoreAdditionalServices(prev);
+        }
+    }
+
+    @Test
+    public void testUuidNameFromBytesUsesGrantedMd5() throws Exception {
+
+        String prevAdd = Security.getProperty(ADD_PROP);
+        String prevName = Security.getProperty(NAME_PROP);
+
+        /* Swap out every provider offering MessageDigest.MD5 (SUN on a
+         * stock JDK, possibly more elsewhere) plus the default FilteredSun
+         * from setup, keyed by 1-based registration position */
+        TreeMap<Integer, Provider> removed = new TreeMap<>();
+
+        Provider[] md5Provs = Security.getProviders("MessageDigest.MD5");
+        if (md5Provs != null) {
+            for (Provider p : md5Provs) {
+                int pos = providerPosition(p.getName());
+                assertTrue("registered provider has no position", pos > 0);
+                removed.put(pos, p);
+            }
+        }
+        Provider prevFiltered = Security.getProvider("FilteredSun");
+        if (prevFiltered != null) {
+            int pos = providerPosition("FilteredSun");
+            assertTrue("FilteredSun has no position", pos > 0);
+            removed.put(pos, prevFiltered);
+        }
+
+        Provider granting = null;
+        boolean grantingAdded = false;
+
+        try {
+            Security.setProperty(NAME_PROP, "false");
+            Security.setProperty(ADD_PROP, "MessageDigest.MD5");
+
+            granting = new FilteredSun();
+
+            /* Simulate the hardened JRE: no registered provider offers MD5
+             * until the granting filtered provider is registered */
+            for (Provider p : removed.values()) {
+                Security.removeProvider(p.getName());
+            }
+            assertTrue("could not register granting filtered provider",
+                Security.addProvider(granting) != -1);
+            grantingAdded = true;
+
+            /* UUID.nameUUIDFromBytes()'s no-provider MD5 lookup must
+             * resolve to the granting filtered provider */
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            assertSame("MD5 did not resolve to the filtered provider",
+                granting, md.getProvider());
+
+            /* Must produce the deterministic version 3 UUID for "test" */
+            UUID uuid = UUID.nameUUIDFromBytes("test".getBytes("UTF-8"));
+            assertEquals("UUID is not version 3 (MD5)", 3, uuid.version());
+            assertEquals("098f6bcd-4621-3373-8ade-4e832627b4f6",
+                uuid.toString());
+
+        } finally {
+            if (grantingAdded) {
+                Security.removeProvider(granting.getName());
+            }
+            /* Reinsert removed providers at original positions, ascending */
+            for (Map.Entry<Integer, Provider> e : removed.entrySet()) {
+                if (Security.getProvider(e.getValue().getName()) == null) {
+                    Security.insertProviderAt(e.getValue(), e.getKey());
+                }
+            }
+            restoreAdditionalServices(prevAdd);
+            restoreSecurityProperty(prevName);
+        }
+    }
+
+    @Test
+    public void testAdditionalServicesGrantsSunEc() throws Exception {
+        String prev = Security.getProperty(EC_ADD_PROP);
+
+        try {
+            Security.setProperty(EC_ADD_PROP, "KeyFactory.EC");
+
+            Provider p = new FilteredSunEC();
+            assertNotNull("KeyFactory.EC not granted by property",
+                p.getService("KeyFactory", "EC"));
+
+            /* Instantiation exercises the delegating newInstance() path */
+            assertNotNull("granted KeyFactory.EC failed to instantiate",
+                KeyFactory.getInstance("EC", p));
+
+        } finally {
+            Security.setProperty(EC_ADD_PROP, (prev != null) ? prev : "");
+        }
+    }
+
+    @Test
+    public void testAdditionalServicesGrantsSunRsaSign() throws Exception {
+        String prev = Security.getProperty(RSA_ADD_PROP);
+
+        try {
+            Security.setProperty(RSA_ADD_PROP, "Signature.SHA256withRSA");
+
+            Provider p = new FilteredSunRsaSign();
+            assertNotNull("Signature.SHA256withRSA not granted by property",
+                p.getService("Signature", "SHA256withRSA"));
+
+            /* Instantiation exercises the delegating newInstance() path */
+            assertNotNull("granted Signature failed to instantiate",
+                Signature.getInstance("SHA256withRSA", p));
+
+        } finally {
+            Security.setProperty(RSA_ADD_PROP, (prev != null) ? prev : "");
+        }
+    }
+
+    @Test
+    public void testAdditionalServicesWithOriginalNames() {
+        String prevName = Security.getProperty(NAME_PROP);
+        String prevAdd = Security.getProperty(ADD_PROP);
+
+        try {
+            /* With both properties set, the provider registers under the
+             * original name and carries the granted service */
+            Security.setProperty(NAME_PROP, "true");
+            Security.setProperty(ADD_PROP, "MessageDigest.MD5");
+
+            Provider p = new FilteredSun();
+            assertEquals("SUN", p.getName());
+            assertNotNull("MessageDigest.MD5 not granted with name override",
+                p.getService("MessageDigest", "MD5"));
+
+        } finally {
+            restoreAdditionalServices(prevAdd);
+            restoreSecurityProperty(prevName);
+        }
+    }
+
+    @Test
+    public void testAdditionalServicesUnmatchedEntryWarns() {
+        String prev = Security.getProperty(ADD_PROP);
+
+        try {
+            /* Baseline service set with no grants */
+            Security.setProperty(ADD_PROP, "");
+            Set<String> baseline = serviceKeys(new FilteredSun());
+
+            /* A wrong-provider entry (KeyFactory.EC lives in SunEC) and
+             * an OID alias entry must both warn and grant nothing */
+            Security.setProperty(ADD_PROP,
+                "KeyFactory.EC, MessageDigest.1.2.840.113549.2.5");
+
+            final Provider[] holder = new Provider[1];
+            String err = captureStderr(() -> {
+                holder[0] = new FilteredSun();
+            });
+
+            assertTrue("no warning for unmatched entry KeyFactory.EC",
+                err.contains("'KeyFactory.EC'"));
+            assertTrue("no warning for OID alias entry",
+                err.contains("'MessageDigest.1.2.840.113549.2.5'"));
+            assertTrue("warning does not name the property",
+                err.contains(ADD_PROP));
+            assertEquals("unmatched entries changed the service set",
+                baseline, serviceKeys(holder[0]));
+
+        } finally {
+            restoreAdditionalServices(prev);
+        }
+    }
+
+    @Test
+    public void testAdditionalServicesMalformedEntryWarns() {
+        String prev = Security.getProperty(ADD_PROP);
+        String prevSys = System.getProperty(ADD_PROP);
+
+        /* Clear any environment-set system property so its ignored-property
+         * warning cannot pollute the captured stderr */
+        System.clearProperty(ADD_PROP);
+
+        try {
+            /* A malformed entry must warn without blocking a valid grant
+             * in the same list */
+            Security.setProperty(ADD_PROP,
+                "MessageDigest, MessageDigest.MD5");
+
+            final Provider[] holder = new Provider[1];
+            String err = captureStderr(() -> {
+                holder[0] = new FilteredSun();
+            });
+
+            assertTrue("no malformed-entry warning printed",
+                err.contains("malformed") &&
+                err.contains("'MessageDigest'"));
+            assertNotNull("valid entry not granted alongside malformed one",
+                holder[0].getService("MessageDigest", "MD5"));
+
+            /* Empty entries from stray commas must stay silent */
+            Security.setProperty(ADD_PROP, " , ,,");
+            String err2 = captureStderr(() -> {
+                new FilteredSun();
+            });
+            assertFalse("empty entries should not warn",
+                err2.contains(ADD_PROP));
+
+        } finally {
+            if (prevSys != null) {
+                System.setProperty(ADD_PROP, prevSys);
+            }
+            restoreAdditionalServices(prev);
+        }
+    }
+
+    @Test
+    public void testUnrecognizedUseOriginalNamesValueWarns() {
+        String prev = Security.getProperty(NAME_PROP);
+        String prevSys = System.getProperty(NAME_PROP);
+
+        /* Clear any environment-set system property so its ignored-property
+         * warning cannot pollute the captured stderr */
+        System.clearProperty(NAME_PROP);
+
+        try {
+            /* Unrecognized value must warn and fall back to the filtered
+             * name (ex: inline-comment mistake "true # comment") */
+            Security.setProperty(NAME_PROP, "yes");
+
+            final Provider[] holder = new Provider[1];
+            String err = captureStderr(() -> {
+                holder[0] = new FilteredSun();
+            });
+
+            assertTrue("no unrecognized-value warning printed",
+                err.contains("'yes'") && err.contains(NAME_PROP));
+            assertEquals("unrecognized value did not fall back to " +
+                "filtered name", "FilteredSun", holder[0].getName());
+
+            /* "false" must not warn */
+            Security.setProperty(NAME_PROP, "false");
+            String err2 = captureStderr(() -> {
+                new FilteredSun();
+            });
+            assertFalse("value 'false' must not warn",
+                err2.contains(NAME_PROP));
+
+        } finally {
+            if (prevSys != null) {
+                System.setProperty(NAME_PROP, prevSys);
+            }
+            restoreSecurityProperty(prev);
+        }
+    }
+
+    @Test
+    public void testAdditionalServicesSystemPropertyIsIgnored() {
+        String prev = Security.getProperty(ADD_PROP);
+
+        try {
+            /* A system property must not grant services and must trigger
+             * the ignored-property warning */
+            Security.setProperty(ADD_PROP, "");
+            System.setProperty(ADD_PROP, "MessageDigest.MD5");
+
+            final Provider[] holder = new Provider[1];
+            String err = captureStderr(() -> {
+                holder[0] = new FilteredSun();
+            });
+
+            assertNull("system property must not grant services",
+                holder[0].getService("MessageDigest", "MD5"));
+            assertTrue("no ignored-system-property warning printed",
+                err.contains("system property") && err.contains(ADD_PROP));
+
+        } finally {
+            System.clearProperty(ADD_PROP);
+            restoreAdditionalServices(prev);
+        }
+    }
+
+    @Test
+    public void testAdditionalServicesUnmatchedEntryWarnsEcRsa() {
+        String prevEc = Security.getProperty(EC_ADD_PROP);
+        String prevRsa = Security.getProperty(RSA_ADD_PROP);
+
+        try {
+            /* MessageDigest.MD5 exists in neither SunEC nor SunRsaSign;
+             * each warning must name its own property */
+            Security.setProperty(EC_ADD_PROP, "MessageDigest.MD5");
+            Security.setProperty(RSA_ADD_PROP, "MessageDigest.MD5");
+
+            String err = captureStderr(() -> {
+                new FilteredSunEC();
+                new FilteredSunRsaSign();
+            });
+
+            assertTrue("warning does not name the sunec property",
+                err.contains(EC_ADD_PROP));
+            assertTrue("warning does not name the sunrsasign property",
+                err.contains(RSA_ADD_PROP));
+
+        } finally {
+            Security.setProperty(EC_ADD_PROP,
+                (prevEc != null) ? prevEc : "");
+            Security.setProperty(RSA_ADD_PROP,
+                (prevRsa != null) ? prevRsa : "");
         }
     }
 }

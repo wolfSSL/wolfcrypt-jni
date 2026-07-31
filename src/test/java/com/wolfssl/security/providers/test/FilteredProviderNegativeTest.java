@@ -54,8 +54,15 @@ import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
  */
 public class FilteredProviderNegativeTest {
 
-    /** Security property controlling filtered provider registration names. */
-    private static final String NAME_PROP = "wolfssl.filtered.useOriginalNames";
+    /** Properties pinned to benign values while registering providers. */
+    private static final String[] PIN_PROPS = {
+        "wolfssl.filtered.useOriginalNames",
+        "wolfssl.filtered.sun.additionalServices",
+        "wolfssl.filtered.sunec.additionalServices",
+        "wolfssl.filtered.sunrsasign.additionalServices" };
+
+    /** Benign pin values for PIN_PROPS. */
+    private static final String[] PIN_VALS = { "false", "", "", "" };
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
@@ -68,19 +75,23 @@ public class FilteredProviderNegativeTest {
 
         System.out.println("FilteredSun* provider negative test");
 
-        /* Pin the name override property to "false" while constructing and
-         * registering the providers, so registration names stay FilteredSun*
-         * even if the test JVM's java.security sets
-         * wolfssl.filtered.useOriginalNames=true (e.g. on a hardened image).
-         * Restore the prior value afterward. */
-        String prev = Security.getProperty(NAME_PROP);
-        Security.setProperty(NAME_PROP, "false");
+        /* Pin properties to benign values during registration so names stay
+         * FilteredSun* and no extra services are granted, even if the test
+         * JVM's java.security sets them. Restore afterward. */
+        String[] prev = new String[PIN_PROPS.length];
+        for (int i = 0; i < PIN_PROPS.length; i++) {
+            prev[i] = Security.getProperty(PIN_PROPS[i]);
+            Security.setProperty(PIN_PROPS[i], PIN_VALS[i]);
+        }
         try {
             Security.addProvider(new FilteredSun());
             Security.addProvider(new FilteredSunEC());
             Security.addProvider(new FilteredSunRsaSign());
         } finally {
-            Security.setProperty(NAME_PROP, (prev != null) ? prev : "false");
+            for (int i = 0; i < PIN_PROPS.length; i++) {
+                Security.setProperty(PIN_PROPS[i],
+                    (prev[i] != null) ? prev[i] : PIN_VALS[i]);
+            }
         }
     }
 

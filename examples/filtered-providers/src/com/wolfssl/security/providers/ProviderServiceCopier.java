@@ -26,9 +26,12 @@ import java.security.Provider;
 import java.security.Security;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * Shared helper for the FilteredSun, FilteredSunEC, and FilteredSunRsaSign
@@ -48,6 +51,15 @@ import java.util.Map.Entry;
 final class ProviderServiceCopier {
 
     private ProviderServiceCopier() {
+    }
+
+    /** Security property enabling original Sun provider names. */
+    private static final String USE_ORIGINAL_NAMES_PROP =
+        "wolfssl.filtered.useOriginalNames";
+
+    /** Name of the per-provider additionalServices Security property. */
+    private static String additionalServicesPropName(String providerKey) {
+        return "wolfssl.filtered." + providerKey + ".additionalServices";
     }
 
     /**
@@ -73,13 +85,206 @@ final class ProviderServiceCopier {
      */
     static String resolveName(String filteredName, String originalName) {
 
-        String prop = Security.getProperty("wolfssl.filtered.useOriginalNames");
+        String prop = Security.getProperty(USE_ORIGINAL_NAMES_PROP);
 
-        if (prop != null && "true".equalsIgnoreCase(prop.trim())) {
-            return originalName;
+        if (prop != null) {
+            String val = prop.trim();
+
+            if ("true".equalsIgnoreCase(val)) {
+                return originalName;
+            }
+
+            /* Warn on values other than "true"/"false"/"", such as a
+             * java.security inline comment mistake like: "true # comment" */
+            if (!val.isEmpty() && !"false".equalsIgnoreCase(val)) {
+                System.err.println(filteredName + ": unrecognized value '" +
+                    val + "' for Security property " +
+                    USE_ORIGINAL_NAMES_PROP + ", treating as false");
+            }
         }
 
         return filteredName;
+    }
+
+    /**
+     * Split a trimmed Type.Algorithm entry on its first '.' only, since
+     * algorithm names may themselves contain dots
+     * (ex: CertStore.com.sun.security.IndexedCollection).
+     *
+     * @param entry trimmed Type.Algorithm entry
+     *
+     * @return array of type and algorithm, or null if malformed (no dot,
+     *         empty type, or empty algorithm)
+     */
+    private static String[] parseEntry(String entry) {
+
+        int dot;
+        String type, algo;
+
+        dot = entry.indexOf('.');
+        if (dot <= 0 || dot == entry.length() - 1) {
+            return null;
+        }
+
+        type = entry.substring(0, dot).trim();
+        algo = entry.substring(dot + 1).trim();
+
+        if (type.isEmpty() || algo.isEmpty()) {
+            return null;
+        }
+
+        return new String[] { type, algo };
+    }
+
+    /** Lowercase "type.algorithm" key used for grant matching. */
+    private static String serviceKey(String type, String algo) {
+        return (type + "." + algo).toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Read the per-provider additionalServices Security property. Read once
+     * per construction and passed to both additionalServiceKeys() and
+     * warnIgnoredEntries(), so the grant and warning passes see the same
+     * value.
+     *
+     * @param providerKey lowercase key: "sun", "sunec", or "sunrsasign"
+     *
+     * @return property value, or null if unset
+     */
+    static String additionalServicesProperty(String providerKey) {
+        return Security.getProperty(additionalServicesPropName(providerKey));
+    }
+
+    /**
+     * Parse an additionalServices property value into grant keys for
+     * serviceAllowedByProperty(). The value is a comma-separated list of
+     * Type.Algorithm entries, for example:
+     *
+     *     wolfssl.filtered.sun.additionalServices=MessageDigest.MD5
+     *
+     * Entries match case-insensitively against canonical service names.
+     * Aliases cannot specify a grant, though a granted copy keeps its
+     * aliases. Malformed entries are ignored here and reported by
+     * warnIgnoredEntries(). Security property only, a System property of
+     * the same name would have no effect.
+     *
+     * @param prop property value from additionalServicesProperty()
+     *
+     * @return grant keys, empty if the property is unset or empty
+     */
+    static Set<String> additionalServiceKeys(String prop) {
+
+        Set<String> keys = new HashSet<>();
+
+        if (prop == null || prop.trim().isEmpty()) {
+            return keys;
+        }
+
+        for (String entry : prop.split(",")) {
+            String[] parts = parseEntry(entry.trim());
+            if (parts != null) {
+                keys.add(serviceKey(parts[0], parts[1]));
+            }
+        }
+
+        return keys;
+    }
+
+    /**
+     * Check if grantKeys (from additionalServiceKeys()) grants a service.
+     *
+     * @param grantKeys parsed grant keys
+     * @param service candidate service from the original Sun provider
+     *
+     * @return true if granted
+     */
+    static boolean serviceAllowedByProperty(Set<String> grantKeys,
+        Provider.Service service) {
+
+        return grantKeys.contains(
+            serviceKey(service.getType(), service.getAlgorithm()));
+    }
+
+    /**
+     * Warn to System.err for each additionalServices entry that will
+     * never grant a service: malformed entries and entries matching no
+     * original provider service. Called after each constructor's copy
+     * loop so misconfigured grants show at startup. Empty entries are
+     * skipped.
+     *
+     * @param providerKey lowercase key: "sun", "sunec", or "sunrsasign"
+     * @param providerName fixed filtered name to prefix warnings with
+     *        (not getName(), which may be the original Sun name)
+     * @param prop property value from additionalServicesProperty(), the
+     *        same value the grant pass parsed
+     * @param original the original Sun provider
+     */
+    static void warnIgnoredEntries(String providerKey, String providerName,
+        String prop, Provider original) {
+
+        String propName = additionalServicesPropName(providerKey);
+
+        if (prop == null || prop.trim().isEmpty()) {
+            return;
+        }
+
+        /* Canonical keys only, matching the grant pass. Must not use
+         * original.getService(), it resolves aliases and would report an
+         * alias/OID entry as matched when the grant pass never matches
+         * it. */
+        Set<String> originalKeys = new HashSet<>();
+        for (Provider.Service s : original.getServices()) {
+            originalKeys.add(serviceKey(s.getType(), s.getAlgorithm()));
+        }
+
+        for (String rawEntry : prop.split(",")) {
+            String entry = rawEntry.trim();
+            if (entry.isEmpty()) {
+                continue;
+            }
+
+            String[] parts = parseEntry(entry);
+            if (parts == null) {
+                System.err.println(providerName +
+                    ": ignored malformed entry '" + entry + "' in " +
+                    propName + " (expected Type.Algorithm)");
+                continue;
+            }
+
+            if (!originalKeys.contains(serviceKey(parts[0], parts[1]))) {
+                System.err.println(providerName + ": entry '" + entry +
+                    "' in " + propName + " matches no " +
+                    original.getName() + " service, entry ignored (use " +
+                    "canonical Type.Algorithm names, aliases and OIDs do " +
+                    "not match)");
+            }
+        }
+    }
+
+    /**
+     * Warn to System.err when a system property matching one of the Security
+     * properties this provider reads is set. System properties are ignored.
+     * This catches -Dwolfssl.filtered...=... configs (ex: via
+     * JAVA_TOOL_OPTIONS, which can only set system properties).
+     *
+     * @param providerKey lowercase key: "sun", "sunec", or "sunrsasign"
+     * @param providerName filtered provider name to prefix warnings with
+     */
+    static void warnIgnoredSystemProperties(String providerKey,
+        String providerName) {
+
+        String[] propNames = {
+            USE_ORIGINAL_NAMES_PROP,
+            additionalServicesPropName(providerKey) };
+
+        for (String propName : propNames) {
+            if (System.getProperty(propName) != null) {
+                System.err.println(providerName + ": system property " +
+                    propName + " is ignored, set it as a Security " +
+                    "property in java.security or with " +
+                    "Security.setProperty() before provider construction");
+            }
+        }
     }
 
     /**

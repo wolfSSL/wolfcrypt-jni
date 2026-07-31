@@ -38,6 +38,11 @@ import java.util.Set;
  * with hardcoded provider names working. Only the allow-listed services above
  * are exposed regardless of the registered name.
  *
+ * Set the wolfssl.filtered.sunrsasign.additionalServices Security property
+ * to a comma-separated list of Type.Algorithm entries to allow additional
+ * SunRsaSign services through the filter. See
+ * ProviderServiceCopier.serviceAllowedByProperty() for entry syntax.
+ *
  * Set the system property wolfssl.filtered.debug=true to enable verbose
  * load/copy logging to stderr. Requires Java 9+ and the JVM module flags
  * documented in docs/add-opens.md.
@@ -55,6 +60,8 @@ public class FilteredSunRsaSign extends Provider {
             "Filtered SunRsaSign for non-crypto ops");
 
         try {
+            ProviderServiceCopier.warnIgnoredSystemProperties("sunrsasign",
+                "FilteredSunRsaSign");
             if (DEBUG) {
                 System.err.println("Loading original SunRsaSign...");
             }
@@ -67,9 +74,15 @@ public class FilteredSunRsaSign extends Provider {
                     "Services available: " + original.getServices().size());
             }
 
+            String addProp = ProviderServiceCopier
+                .additionalServicesProperty("sunrsasign");
+            Set<String> grants =
+                ProviderServiceCopier.additionalServiceKeys(addProp);
+
             Set<Provider.Service> services = original.getServices();
             for (Provider.Service s : services) {
-                if (serviceSupported(s)) {
+                if (serviceSupported(s) ||
+                    ProviderServiceCopier.serviceAllowedByProperty(grants, s)) {
                     if (DEBUG) {
                         System.err.println("Copying " + s.getType() + "." +
                             s.getAlgorithm() + " with class: " +
@@ -81,10 +94,12 @@ public class FilteredSunRsaSign extends Provider {
                 }
             }
 
+            ProviderServiceCopier.warnIgnoredEntries("sunrsasign",
+                "FilteredSunRsaSign", addProp, original);
+
             if (DEBUG) {
                 System.err.println("FilteredSunRsaSign initialized " +
-                    "successfully with " + getServices().size() +
-                    " services.");
+                    "successfully with " + getServices().size() + " services.");
             }
 
         } catch (Exception e) {
@@ -98,11 +113,11 @@ public class FilteredSunRsaSign extends Provider {
     }
 
     /**
-     * Checks if the given service is supported by this provider.
-     * This is the filtering logic that determines which services
-     * are retained in the FilteredSunRsaSign provider.
+     * Compiled-in allow-list controlling which services are retained.
+     * Services can also pass the filter through the
+     * wolfssl.filtered.sunrsasign.additionalServices Security property.
      *
-     * Edit this method to change the filtering logic.
+     * Edit this method to change the compiled-in filtering logic.
      *
      * @param service the service to check
      *
