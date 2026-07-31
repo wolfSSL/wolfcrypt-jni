@@ -174,8 +174,93 @@ public class WolfCryptCipher extends CipherSpi {
     /* Has this Cipher been inintialized? */
     private boolean cipherInitialized = false;
 
-    /* buffered data from update calls */
+    /* Buffered data from update calls, only the first bufferedLen bytes
+     * are valid. Capacity grows to max(2 * capacity, needed). */
     private byte[] buffered = new byte[0];
+    private int bufferedLen = 0;
+
+    /* Max buffered size. Below Integer.MAX_VALUE, which is not allocatable
+     * in full because VMs reserve array header words. */
+    private static final int MAX_BUFFERED_SIZE = Integer.MAX_VALUE - 8;
+
+    /* Capacity above this is released on reset instead of kept, so one
+     * large message does not pin memory for the life of the Cipher. */
+    private static final int MAX_RETAINED_SIZE = 64 * 1024;
+
+    /**
+     * Append len bytes of src to the buffered data.
+     *
+     * Any buffer replaced during growth is zeroized before being dropped.
+     *
+     * @param src array to append from
+     * @param offset offset into src to start at
+     * @param len number of bytes to append
+     *
+     * @throws IllegalArgumentException if the total buffered size would
+     *         exceed MAX_BUFFERED_SIZE
+     */
+    private void bufferedAppend(byte[] src, int offset, int len) {
+
+        int newCap, needed;
+
+        if (len > (MAX_BUFFERED_SIZE - this.bufferedLen)) {
+            throw new IllegalArgumentException(
+                "Buffered input would exceed maximum size of " +
+                MAX_BUFFERED_SIZE + " bytes");
+        }
+        needed = this.bufferedLen + len;
+
+        if (needed > this.buffered.length) {
+            newCap = this.buffered.length * 2;
+            if (newCap < 0 || newCap > MAX_BUFFERED_SIZE) {
+                /* Doubling overflowed or passed the cap, pin to max */
+                newCap = MAX_BUFFERED_SIZE;
+            }
+            if (newCap < needed) {
+                /* Single append larger than double, cap at needed */
+                newCap = needed;
+            }
+
+            byte[] tmp = new byte[newCap];
+            System.arraycopy(this.buffered, 0, tmp, 0, this.bufferedLen);
+            Arrays.fill(this.buffered, 0, this.bufferedLen, (byte)0);
+            this.buffered = tmp;
+        }
+
+        System.arraycopy(src, offset, this.buffered, this.bufferedLen, len);
+        this.bufferedLen = needed;
+    }
+
+    /**
+     * Drop and zeroize all buffered data.
+     *
+     * Bytes at or past bufferedLen are always zero already, so only the
+     * used prefix is cleared. Capacity is kept for reuse unless it is
+     * above MAX_RETAINED_SIZE, which is released instead.
+     */
+    private void bufferedReset() {
+
+        Arrays.fill(this.buffered, 0, this.bufferedLen, (byte)0);
+        this.bufferedLen = 0;
+
+        if (this.buffered.length > MAX_RETAINED_SIZE) {
+            this.buffered = new byte[0];
+        }
+    }
+
+    /**
+     * Drop the first count bytes, shifting the remainder to the front.
+     *
+     * @param count bytes to drop, must be between 0 and bufferedLen
+     */
+    private void bufferedConsume(int count) {
+
+        int remaining = this.bufferedLen - count;
+
+        System.arraycopy(this.buffered, count, this.buffered, 0, remaining);
+        Arrays.fill(this.buffered, remaining, this.bufferedLen, (byte)0);
+        this.bufferedLen = remaining;
+    }
 
     private WolfCryptCipher(CipherType type, CipherMode mode,
             PaddingType pad) {
@@ -609,8 +694,8 @@ public class WolfCryptCipher extends CipherSpi {
 
         /* Add buffered data size to input length, calculate total blocks */
         if (isBlockCipher()) {
-            if (buffered != null && buffered.length > 0) {
-                totalSz = inputLen + buffered.length;
+            if (bufferedLen > 0) {
+                totalSz = inputLen + bufferedLen;
             } else {
                 totalSz = inputLen;
             }
@@ -654,8 +739,8 @@ public class WolfCryptCipher extends CipherSpi {
                 }
                 else if (paddingType == PaddingType.WC_PKCS5) {
                     outSize = inputLen;
-                    if (buffered != null && buffered.length > 0) {
-                        outSize += buffered.length;
+                    if (bufferedLen > 0) {
+                        outSize += bufferedLen;
                     }
                     /* Only add padding size when encrypting. When decrypting,
                      * the output size should not include padding bytes since
@@ -679,8 +764,8 @@ public class WolfCryptCipher extends CipherSpi {
                 }
                 else if (paddingType == PaddingType.WC_PKCS5) {
                     outSize = inputLen;
-                    if (buffered != null && buffered.length > 0) {
-                        outSize += buffered.length;
+                    if (bufferedLen > 0) {
+                        outSize += bufferedLen;
                     }
                     /* Only add padding size when encrypting. When decrypting,
                      * the output size should not include padding bytes since
@@ -1203,7 +1288,7 @@ public class WolfCryptCipher extends CipherSpi {
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
         /* Reset buffered data from any previous operation */
-        buffered = new byte[0];
+        bufferedReset();
 
         InitializeNativeStructs();
         wolfCryptSetDirection(opmode);
@@ -1340,7 +1425,6 @@ public class WolfCryptCipher extends CipherSpi {
         int  bytesToProcess = 0;
         byte[] output  = null;
         byte[] tmpIn   = null;
-        byte[] tmpBuf  = null;
 
         if (input == null || len < 0 || inputOffset < 0) {
             throw new IllegalArgumentException(
@@ -1363,34 +1447,31 @@ public class WolfCryptCipher extends CipherSpi {
 
         this.operationStarted = true;
 
-        if ((buffered.length + len) == 0) {
+        if ((bufferedLen + len) == 0) {
             /* no data to process */
             return null;
         }
 
         if (len > 0) {
             /* add input bytes to buffered */
-            tmpIn = new byte[buffered.length + len];
-            System.arraycopy(buffered, 0, tmpIn, 0, buffered.length);
-            System.arraycopy(input, inputOffset, tmpIn, buffered.length, len);
-            buffered = tmpIn;
+            bufferedAppend(input, inputOffset, len);
         }
 
         /* Some algos/modes keep data buffered until the doFinal() call, like
          * RSA or AES-GCM/CCM without stream mode compiled natively. Just
          * return an empty byte array in those cases here. */
-        if (isNoOpUpdate(len + buffered.length)) {
+        if (isNoOpUpdate(bufferedLen)) {
             return new byte[0];
         }
 
         /* Calculate blocks and partial non-block size remaining */
-        blocks = buffered.length / blockSize;
+        blocks = bufferedLen / blockSize;
         bytesToProcess = blocks * blockSize;
 
         /* CTR and OFB are stream ciphers, process all available data */
         if (cipherMode == CipherMode.WC_CTR ||
             cipherMode == CipherMode.WC_OFB) {
-            bytesToProcess = buffered.length;
+            bytesToProcess = bufferedLen;
         }
 
         /* If PKCS#5/7 padding, and decrypting, hold on to last block for
@@ -1409,10 +1490,8 @@ public class WolfCryptCipher extends CipherSpi {
         tmpIn = new byte[bytesToProcess];
         System.arraycopy(buffered, 0, tmpIn, 0, bytesToProcess);
 
-        /* buffer remaining non-block size input, or reset */
-        tmpBuf = new byte[buffered.length - bytesToProcess];
-        System.arraycopy(buffered, bytesToProcess, tmpBuf, 0, tmpBuf.length);
-        buffered = tmpBuf;
+        /* keep remaining non-block size input buffered */
+        bufferedConsume(bytesToProcess);
 
         /* process tmpIn[] */
         switch (this.cipherType) {
@@ -1499,7 +1578,7 @@ public class WolfCryptCipher extends CipherSpi {
         byte tmpOut[] = null;
 
         this.operationStarted = true;
-        totalSz = buffered.length + len;
+        totalSz = bufferedLen + len;
 
         /* AES-CTS requires input length >= 16 bytes (RFC 3962/8009).
          * For exactly 16 bytes, CTS reduces to plain CBC, handled in JNI. */
@@ -1523,16 +1602,16 @@ public class WolfCryptCipher extends CipherSpi {
             (totalSz % blockSize != 0)) {
             throw new IllegalBlockSizeException(
                 "Input length (" + totalSz + ") not multiple of " +
-                blockSize + " bytes. (" + buffered.length +" buffered)");
+                blockSize + " bytes. (" + bufferedLen +" buffered)");
         }
 
         /* do final encrypt over totalSz */
         tmpIn = new byte[totalSz];
         if (totalSz > 0) {
-            System.arraycopy(buffered, 0, tmpIn, 0, buffered.length);
+            System.arraycopy(buffered, 0, tmpIn, 0, bufferedLen);
             if (input != null && len > 0) {
                 System.arraycopy(input, inputOffset, tmpIn,
-                    buffered.length, len);
+                    bufferedLen, len);
             }
         }
 
@@ -1779,7 +1858,7 @@ public class WolfCryptCipher extends CipherSpi {
 
         /* reset state, user doesn't need to call init again before use */
         try {
-            buffered = new byte[0];
+            bufferedReset();
 
             wolfCryptSetDirection(this.storedOpMode);
 
@@ -1943,7 +2022,7 @@ public class WolfCryptCipher extends CipherSpi {
         }
 
         log("final (offset: " + inputOffset + ", len: " + inputLen +
-            ", buffered: " + buffered.length + ")");
+            ", buffered: " + bufferedLen + ")");
 
         return wolfCryptFinal(input, inputOffset, inputLen);
     }
@@ -1963,7 +2042,7 @@ public class WolfCryptCipher extends CipherSpi {
 
         log("final (inputOffset: " + inputOffset + ", inputLen: " +
             inputLen + ", outputOffset: " + outputOffset + ", buffered: " +
-            buffered.length + ")");
+            bufferedLen + ")");
 
         if (output == null || (outputOffset > output.length)) {
             throw new IllegalArgumentException(
