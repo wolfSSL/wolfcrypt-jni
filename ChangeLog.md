@@ -1,3 +1,95 @@
+### wolfCrypt JNI Release 1.11.0 (08/10/2026)
+
+Release 1.11.0 of wolfCrypt JNI and JCE changes the open source license from
+GPLv2 to GPLv3 to match native wolfSSL, and has bug fixes and new features
+including:
+
+**New JCE Functionality:**
+- Add ML-DSA (FIPS 204) Signature, KeyPairGenerator, and KeyFactory support (PR 228)
+- Add ML-KEM (FIPS 203) KeyPairGenerator KeyFactory, and KEM support (PR 232)
+- Add SLH-DSA (FIPS 205) Signature, KeyPairGenerator, and KeyFactory support (PR 235)
+- Add LMS/HSS Signature and KeyFactory support, verify only (PR 233)
+- Add XMSS/XMSS^MT Signature and KeyFactory support, verify only (PR 234)
+- Add PQC key and cert storage to WKS KeyStore (PR 228, 232, 233, 234, 235)
+- Add filtered `SUN`, `SunEC`, and `SunRsaSign` providers for hardened FIPS JREs (PR 226)
+- Add OID alias `1.2.840.10045.2.1` for EC KeyFactory (PR 230)
+
+**New JNI Functionality:**
+- Add ML-DSA (FIPS 204) support via new `MlDsa` class (PR 228)
+- Add ML-KEM (FIPS 203) support via new `MlKem` class (PR 232)
+- Add SLH-DSA (FIPS 205) support via new `SlhDsa` class (PR 235)
+- Add LMS/HSS verify support via new `Lms` class (PR 233)
+- Add XMSS/XMSS^MT verify support via new `Xmss` class (PR 234)
+
+**New Property Support:**
+- Add `wolfjce.wks.maxEntrySize` property to bound WKS KeyStore load allocations (PR 238)
+- Add `wolfssl.filtered.useOriginalNames` property to register filtered providers under original names (PR 246)
+- Add `wolfssl.filtered.*.additionalServices` properties to grant individual filtered services (PR 246)
+- Support `jdk.mlkem.pkcs8.encoding` property when encoding ML-KEM private keys (PR 232)
+
+**JNI and JCE Changes:**
+- Fix AES-GCM encryption failing with an external IV on FIPS v5.1 and later builds (PR 242)
+- Fix PBKDF2 and Ed25519/ML-DSA/ML-KEM/SLH-DSA key export failures on FIPS builds (PR 242)
+- Throw `BadPaddingException` on RSA PKCS#1 v1.5 and OAEP decrypt failures (PR 216)
+- Throw `IllegalBlockSizeException` when RSA decrypt input length does not match the modulus size (PR 216)
+- Use constant-time PKCS#7 unpadding with a uniform `BadPaddingException` (PR 237)
+- Reject AES-GCM and AES-GMAC key and IV reuse for encryption (PR 237, 240)
+- Fix caller-supplied `PSSParameterSpec` being lost during RSASSA-PSS Signature init (PR 248)
+- Fix RSA-PSS verify ignoring the caller-provided salt length (PR 236)
+- Accept legacy RSA OID `1.3.14.3.2.15` in RSA KeyFactory X.509 public key decode (PR 231)
+- Pin internal `KeyFactory` lookups to wolfJCE so generated keys keep CRT parameters (PR 215)
+- Accept `RSAPrivateKey` without `RSAPrivateCrtKey` when its PKCS#8 encoding has CRT components (PR 215)
+- Validate peer DH and ECC public keys in `KeyAgreement.doPhase()` (PR 237)
+- Reject out-of-range DH public keys at KeyFactory and X.509 import (PR 237, 245)
+- Validate EC public keys imported from raw `{x, y}` coordinates (PR 249)
+- Throw `ShortBufferException` for a negative offset in `KeyAgreement.generateSecret()` (PR 249)
+- Reject unsupported DH parameter generation sizes at `AlgorithmParameterGenerator.init()` (PR 229)
+- Reject an invalid `DHParameterSpec` at `KeyPairGenerator.initialize()` rather than at key generation (PR 248)
+- Fix potential deadlock comparing two `WolfCryptPBEKey` or `WolfCryptSecretKey` objects (PR 249)
+- Allow `equals()` and `hashCode()` after `destroy()` so destroyed keys stay usable in a Map or Set (PR 249)
+- Fix usage-scoped `jdk.certpath.disabledAlgorithms` entries acting as blanket disables (PR 240)
+- Match qualified `jdk.certpath.disabledAlgorithms` entries by algorithm name (PR 237)
+- Enforce BasicConstraints `pathLenConstraint` in the Java fallback CertPathBuilder (PR 245)
+- Enforce PKIX `maxPathLength` as a per-iteration depth budget in CertPathBuilder (PR 247)
+- Fix FIPS signature provider comparison in `WolfCryptPKIXCertPathValidator` (PR 238)
+- Fix use-after-free race in the `WolfSSLCertManager` native verify callback (PR 237)
+- Fix race on concurrent FIPS error callback access (PR 237)
+- Fix release and free race in `Curve25519`, `Ed25519`, and other `NativeStruct` subclasses (PR 237, 248)
+- Fix `convertKeyStoreToWKS()` failing on KeyStores larger than 512kB (PR 249)
+- Report password errors instead of format errors when converting a KeyStore with the wrong password (PR 249)
+- Bound allocations and enforce the exact HMAC length when loading a WKS KeyStore (PR 238)
+- Commit WKS KeyStore entries only after the HMAC integrity check passes (PR 238)
+- Throw `UnrecoverableKeyException` instead of `WolfCryptException` from `WolfSSLKeyStore` (PR 212)
+- Bound DER field lengths when parsing DH private and public keys (PR 248)
+- Reject oversized and out-of-range DER lengths in `WolfCryptASN1Util` (PR 245, 247)
+- Bound maximum PEM input size in the PEM to DER conversion functions (PR 248)
+- Fix native `authTag` buffer leak in the AES-GCM and AES-CCM encrypt wrappers (PR 236)
+- Validate caller-provided buffer sizes in the `Rsa`, `Asn`, and `WolfSSLCertManager` JNI wrappers (PR 236)
+- Fix null file and directory argument handling in `CertManagerLoadCA()` (PR 236)
+- Zeroize password, key, and secret buffers across the JNI and JCE layers (PR 212, 245, 247, 248, 249)
+- Fix JNI wrappers ignoring the caller-supplied output offset when writing results (PR 212)
+- Throw exceptions instead of returning error values on JNI wrapper failures (PR 212)
+
+**Example Changes:**
+- Add `MlDsaExample` ML-DSA sign and verify example (PR 228)
+- Add `MlKemExample` ML-KEM encapsulation and decapsulation example (PR 232)
+- Add `XmssExample` XMSS signature verification example (PR 234)
+- Add `SlhDsaExample` SLH-DSA sign and verify example (PR 235)
+- Add ML-DSA certs and WKS KeyStores to `examples/certs` (PR 228)
+- Update Android example project CMakeLists.txt file exclusion list (PR 226, 238, 241)
+- Update Android example project Gradle wrapper scripts (PR 236)
+
+**Testing Changes:**
+- Add GitHub Actions workflows covering LMS, XMSS, and SLH-DSA native build options (PR 233, 234, 235)
+- Add GitHub Actions workflow for filtered providers across JDK 8 through 25 (PR 226)
+- Add known-answer and NIST KAT tests for PQC algorithm support (PR 228, 232, 233, 234, 235)
+- Add wolfJCE and SunJCE interop tests for ML-DSA and ML-KEM (PR 228, 232)
+- GitHub workflow performance and stability improvements (PR 227, 244, 245, 249)
+
+The wolfCrypt JNI/JCE Manual is available at:
+https://www.wolfssl.com/documentation/manuals/wolfcryptjni/. For build
+instructions and more details, please check the manual.
+
 ### wolfCrypt JNI Release 1.10.0 (04/15/2026)
 
 Release 1.10.0 of wolfCrypt JNI and JCE has bug fixes and new features including:
