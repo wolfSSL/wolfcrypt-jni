@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import com.wolfssl.wolfcrypt.Rng;
@@ -206,7 +207,9 @@ public class RngTest {
         }
 
         /* wait for all threads to complete */
-        latch.await();
+        assertTrue("timed out waiting for threads to finish",
+            latch.await(120, TimeUnit.SECONDS));
+        service.shutdown();
 
         Iterator<byte[]> listIterator = results.iterator();
         byte[] current = listIterator.next();

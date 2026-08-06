@@ -36,6 +36,7 @@ import java.security.KeyPairGenerator;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1017,7 +1018,8 @@ public class WolfCryptTest {
             });
         }
 
-        latch.await();
+        assertTrue("timed out waiting for threads to finish",
+            latch.await(120, TimeUnit.SECONDS));
         executor.shutdown();
 
         assertEquals("No thread failures should occur", 0, failures.get());
@@ -1062,7 +1064,8 @@ public class WolfCryptTest {
             });
         }
 
-        latch.await();
+        assertTrue("timed out waiting for threads to finish",
+            latch.await(120, TimeUnit.SECONDS));
         executor.shutdown();
 
         assertEquals("No thread failures should occur", 0, failures.get());
@@ -1177,7 +1180,8 @@ public class WolfCryptTest {
             });
         }
 
-        latch.await();
+        assertTrue("timed out waiting for threads to finish",
+            latch.await(120, TimeUnit.SECONDS));
         executor.shutdown();
 
         assertEquals("No thread failures should occur", 0, failures.get());
