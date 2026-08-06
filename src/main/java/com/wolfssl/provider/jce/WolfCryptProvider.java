@@ -91,7 +91,7 @@ public final class WolfCryptProvider extends Provider {
      */
     @SuppressWarnings("deprecation")
     public WolfCryptProvider() {
-        super("wolfJCE", 1.10, "wolfCrypt JCE Provider");
+        super("wolfJCE", 1.11, "wolfCrypt JCE Provider");
 
         /* Refresh debug flags in case system properties were set after
          * WolfCryptDebug class was first loaded (e.g., via JAVA_OPTS) */
