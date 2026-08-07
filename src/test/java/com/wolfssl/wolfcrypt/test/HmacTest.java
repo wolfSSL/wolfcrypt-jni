@@ -38,6 +38,7 @@ import java.util.Iterator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import com.wolfssl.wolfcrypt.Fips;
@@ -535,21 +536,17 @@ public class HmacTest {
                         failed = 1;
 
                     } finally {
+                        results.add(failed);
                         latch.countDown();
-                    }
-
-                    if (failed == 1) {
-                        results.add(1);
-                    }
-                    else {
-                        results.add(0);
                     }
                 }
             });
         }
 
         /* wait for all threads to complete */
-        latch.await();
+        assertTrue("timed out waiting for threads to finish",
+            latch.await(120, TimeUnit.SECONDS));
+        service.shutdown();
 
         /* Look for any failures that happened */
         Iterator<Integer> listIterator = results.iterator();

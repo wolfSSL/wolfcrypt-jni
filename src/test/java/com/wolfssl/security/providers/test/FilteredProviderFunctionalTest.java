@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import java.security.Provider;
 import java.security.Security;
@@ -480,8 +481,20 @@ public class FilteredProviderFunctionalTest {
             Security.setProperty(ADD_PROP,
                 "MessageDigest, .MD5, MessageDigest., , ,,");
 
+            /* Warnings are expected here: capture them to keep the suite
+             * log quiet, assert them so they cannot go missing */
+            AtomicReference<Set<String>> observed = new AtomicReference<>();
+            String warnings = captureStderr(
+                () -> observed.set(serviceKeys(new FilteredSun())));
+
             assertEquals("malformed entries changed the service set",
-                baseline, serviceKeys(new FilteredSun()));
+                baseline, observed.get());
+
+            for (String bad : new String[] {
+                    "'MessageDigest'", "'.MD5'", "'MessageDigest.'" }) {
+                assertTrue("no warning for malformed entry " + bad +
+                    ", stderr was: " + warnings, warnings.contains(bad));
+            }
 
         } finally {
             restoreAdditionalServices(prev);

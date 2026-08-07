@@ -39,6 +39,7 @@ import java.util.Iterator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import com.wolfssl.wolfcrypt.Aes;
@@ -315,7 +316,8 @@ public class AesCmacTest {
             });
         }
 
-        latch.await();
+        assertTrue("timed out waiting for threads to finish",
+            latch.await(120, TimeUnit.SECONDS));
         service.shutdown();
 
         Iterator<Object> i = results.iterator();
