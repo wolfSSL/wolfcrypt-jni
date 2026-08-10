@@ -553,7 +553,7 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1verif
   (JNIEnv* env, jobject this, jbyteArray sig_in, jbyteArray msg_in)
 {
     int result = -1;
-#if defined(HAVE_ED25519) && defined(HAVE_ED25519_SIGN)
+#if defined(HAVE_ED25519) && defined(HAVE_ED25519_VERIFY)
     int ret = 0;
     word32 msglen, siglen;
     ed25519_key* ed25519 = NULL;
