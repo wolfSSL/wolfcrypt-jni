@@ -30,6 +30,7 @@ import java.util.Iterator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
 import javax.crypto.ShortBufferException;
 
@@ -224,7 +225,9 @@ public class Sha224Test {
         }
 
         /* wait for all threads to complete */
-        latch.await();
+        assertTrue("timed out waiting for threads to finish",
+            latch.await(120, TimeUnit.SECONDS));
+        service.shutdown();
 
         /* compare all digests, all should be the same across threads */
         Iterator<byte[]> listIterator = results.iterator();

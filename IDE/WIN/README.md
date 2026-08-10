@@ -138,6 +138,8 @@ section titled `/* Configuration */`:
 #define WOLFSSL_KEY_GEN
 #define HAVE_CRL
 #define OPENSSL_ALL
+#define ERROR_QUEUE_PER_THREAD
+#define HAVE_THREAD_LS
 #define WOLFSSL_SHA224
 #define HAVE_FFDHE_2048
 #define HAVE_FFDHE_3072
@@ -216,6 +218,7 @@ and set the values for `HAVE_FIPS`, `HAVE_FIPS_VERSION`, and
 #define WOLFSSL_KEY_GEN
 #define HAVE_CRL
 #define OPENSSL_ALL
+#define ERROR_QUEUE_PER_THREAD
 #define HAVE_FFDHE_2048
 ```
 

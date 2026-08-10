@@ -28,6 +28,7 @@ import java.util.Iterator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.junit.Assume;
@@ -780,7 +781,8 @@ public class AesCcmTest {
             });
         }
 
-        latch.await();
+        assertTrue("timed out waiting for threads to finish",
+            latch.await(120, TimeUnit.SECONDS));
         service.shutdown();
 
         if (exceptions.size() > 0) {
@@ -843,7 +845,8 @@ public class AesCcmTest {
             });
         }
 
-        latch.await();
+        assertTrue("timed out waiting for threads to finish",
+            latch.await(120, TimeUnit.SECONDS));
         service.shutdown();
 
         if (exceptions.size() > 0) {
@@ -906,7 +909,8 @@ public class AesCcmTest {
             });
         }
 
-        latch.await();
+        assertTrue("timed out waiting for threads to finish",
+            latch.await(120, TimeUnit.SECONDS));
         service.shutdown();
 
         if (exceptions.size() > 0) {
@@ -1266,7 +1270,8 @@ public class AesCcmTest {
             });
         }
 
-        latch.await();
+        assertTrue("timed out waiting for threads to finish",
+            latch.await(120, TimeUnit.SECONDS));
         service.shutdown();
 
         if (exceptions.size() > 0) {
