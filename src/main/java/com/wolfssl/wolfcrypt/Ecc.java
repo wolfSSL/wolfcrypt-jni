@@ -120,6 +120,7 @@ public class Ecc extends NativeStruct {
     private native void wc_ecc_make_key(Rng rng, int size);
     private native void wc_ecc_make_key_ex(Rng rng, int size, String curveName);
     private native void wc_ecc_check_key();
+    private native void wc_ecc_set_rng(Rng rng);
     private native byte[] wc_ecc_shared_secret(Ecc pubKey, Rng rng);
     private native void wc_ecc_import_private(byte[] privKey, byte[] x963Key,
                                               String curveName);
@@ -290,6 +291,33 @@ public class Ecc extends NativeStruct {
 
         synchronized (pointerLock) {
             wc_ecc_check_key();
+        }
+    }
+
+    /**
+     * Associate Rng with this Ecc key.
+     *
+     * @param rng initialized Rng object
+     *
+     * @throws WolfCryptException if native operation fails
+     * @throws IllegalStateException if object has been released
+     */
+    public synchronized void setRng(Rng rng)
+        throws WolfCryptException, IllegalStateException {
+
+        checkStateAndInitialize();
+
+        synchronized (pointerLock) {
+            wc_ecc_set_rng(rng);
+        }
+
+        synchronized (rngLock) {
+            if (this.weOwnRng && this.rng != null && this.rng != rng) {
+                this.rng.free();
+                this.rng.releaseNativeStruct();
+            }
+            this.rng = rng;
+            this.weOwnRng = false;
         }
     }
 

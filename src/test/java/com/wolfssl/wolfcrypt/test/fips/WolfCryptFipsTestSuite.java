@@ -29,7 +29,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @SuiteClasses({ FipsStatusTest.class, AesFipsTest.class, Des3FipsTest.class,
         ShaFipsTest.class, Sha256FipsTest.class, Sha384FipsTest.class,
         Sha512FipsTest.class, HmacFipsTest.class, RngFipsTest.class,
-        RsaFipsTest.class })
+        RsaFipsTest.class, DhFipsTest.class, EccFipsTest.class })
 public class WolfCryptFipsTestSuite {
 
 }
