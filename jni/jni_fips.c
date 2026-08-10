@@ -2160,7 +2160,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaSSL_1Sign_1fips__L
         return BAD_FUNC_ARG;
     }
 
-    rng = (RNG*) getNativeStruct(env, rsa_object);
+    rng = (RNG*) getNativeStruct(env, rng_object);
     if ((*env)->ExceptionOccurred(env)) {
         /* prevent additional JNI calls with pending exception */
         return BAD_FUNC_ARG;
@@ -2217,7 +2217,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaSSL_1Sign_1fips___
         return BAD_FUNC_ARG;
     }
 
-    rng = (RNG*) getNativeStruct(env, rsa_object);
+    rng = (RNG*) getNativeStruct(env, rng_object);
     if ((*env)->ExceptionOccurred(env)) {
         /* prevent additional JNI calls with pending exception */
         return BAD_FUNC_ARG;
