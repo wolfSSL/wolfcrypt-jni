@@ -138,6 +138,29 @@ static int addCallbackCtx(WOLFSSL_CERT_MANAGER* cm, VerifyCallbackCtx* ctx)
     return 0;
 }
 
+/* Swap newCtx into the CallbackNode matching cm, in place.
+ *
+ * Caller must hold g_callbackMutex.
+ *
+ * Returns the displaced ctx, or NULL if no node matched. */
+static VerifyCallbackCtx* swapCallbackCtx(WOLFSSL_CERT_MANAGER* cm,
+    VerifyCallbackCtx* newCtx)
+{
+    CallbackNode* node = g_callbackList;
+    VerifyCallbackCtx* oldCtx = NULL;
+
+    while (node != NULL) {
+        if (node->cm == cm) {
+            oldCtx = node->ctx;
+            node->ctx = newCtx;
+            return oldCtx;
+        }
+        node = node->next;
+    }
+
+    return NULL;
+}
+
 /* Remove CallbackNode from global g_callbackList.
  *
  * Caller must hold g_callbackMutex. */
@@ -959,6 +982,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     int ret = 0;
     WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
     VerifyCallbackCtx* ctx = NULL;
+    VerifyCallbackCtx* oldCtx = NULL;
     JavaVM* jvm = NULL;
     (void)jcl;
 
@@ -987,18 +1011,31 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     }
     ctx->jvm = jvm;
 
-    /* Add context to global list */
+    /* Swap into any existing entry for this cm so repeated SetVerify does
+     * not leak the prior context */
     if (wc_LockMutex(&g_callbackMutex) != 0) {
         (*env)->DeleteGlobalRef(env, ctx->callback);
         XFREE(ctx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         return BAD_MUTEX_E;
     }
 
-    ret = addCallbackCtx(cm, ctx);
+    oldCtx = swapCallbackCtx(cm, ctx);
+    if (oldCtx == NULL) {
+        /* No existing entry, add new node */
+        ret = addCallbackCtx(cm, ctx);
+    }
 
     wc_UnLockMutex(&g_callbackMutex);
 
+    if (oldCtx != NULL) {
+        if (oldCtx->callback != NULL) {
+            (*env)->DeleteGlobalRef(env, oldCtx->callback);
+        }
+        XFREE(oldCtx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
     if (ret != 0) {
+        /* Registration failed, no callback was registered */
         (*env)->DeleteGlobalRef(env, ctx->callback);
         XFREE(ctx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         return ret;
