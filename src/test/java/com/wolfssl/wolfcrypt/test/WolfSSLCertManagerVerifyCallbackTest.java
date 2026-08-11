@@ -33,6 +33,7 @@ import org.junit.runner.Description;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -177,6 +178,49 @@ public class WolfSSLCertManagerVerifyCallbackTest {
             if (cm != null) {
                 cm.free();
             }
+        }
+    }
+
+    /**
+     * Test callback object is collectible after free(), which must release
+     * the native global reference to it.
+     */
+    @Test
+    public void testVerifyCallbackCollectibleAfterFree() throws Exception {
+
+        WolfSSLCertManager cm = new WolfSSLCertManager();
+        WolfSSLCertManagerVerifyCallback cb =
+            new WolfSSLCertManagerVerifyCallback() {
+                public int verify(int preverify, int error, int errorDepth) {
+                    return 1;
+                }
+            };
+        WeakReference<WolfSSLCertManagerVerifyCallback> ref =
+            new WeakReference<WolfSSLCertManagerVerifyCallback>(cb);
+        byte[] gcPressure = null;
+
+        try {
+            cm.setVerifyCallback(cb);
+        } finally {
+            cm.free();
+        }
+        cm = null;
+        cb = null;
+
+        /* Android ART does not reliably collect within the retry window
+         * even after the native global reference is deleted. */
+        if (!isAndroid()) {
+            /* Retry GC up to ~500ms, small allocations encourage
+             * collectors that treat System.gc() as advisory */
+            for (int i = 0; i < 50 && ref.get() != null; i++) {
+                gcPressure = new byte[4096];
+                gcPressure[0] = (byte)i;
+                System.gc();
+                Thread.sleep(10);
+            }
+
+            assertNull("callback not collected, native global reference " +
+                "leaked", ref.get());
         }
     }
 
