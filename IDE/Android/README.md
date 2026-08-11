@@ -142,6 +142,36 @@ project located in the wolfcrypt-jni/IDE directory.
 This will ask for permissions to access the certificates in the /sdcard/
 directory and then print out the server certificate information on success.
 
+## Gradle Dependency Verification
+
+This project pins SHA-256 checksums for all remotely downloaded Gradle build
+dependencies in `gradle/verification-metadata.xml`. Gradle enforces these
+automatically on every build because the file is present. If an artifact
+downloaded from a repository does not match its pinned checksum, the build
+fails. The Gradle distribution itself is separately pinned via
+`distributionSha256Sum` in `gradle/wrapper/gradle-wrapper.properties`.
+
+When changing the Android Gradle Plugin version or any dependency version, the
+metadata file must be regenerated from a trusted network environment:
+
+```
+cd IDE/Android
+./gradlew -I gradle/update-verification-metadata.gradle \
+    --write-verification-metadata sha256 help
+```
+
+The `update-verification-metadata.gradle` init script captures artifacts that
+the Android Gradle Plugin only resolves while tasks execute (AAPT2 and the
+Unified Test Platform used by instrumented tests). These would otherwise be
+missing from the regenerated file and would fail verification during CI builds.
+The version coordinates inside that init script must be updated to match the
+new Android Gradle Plugin version, as described in the comments at the top of
+the script.
+
+Review the diff of `gradle/verification-metadata.xml` before committing an
+update, and confirm new checksums come from a trusted build of the upstream
+artifacts.
+
 ## Support
 
 Please contact wolfSSL support at support@wolfssl.com with any questions or

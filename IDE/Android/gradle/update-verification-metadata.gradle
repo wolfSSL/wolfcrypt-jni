@@ -1,0 +1,70 @@
+/*
+ * update-verification-metadata.gradle
+ *
+ * Helper init script used when regenerating the Gradle dependency
+ * verification metadata file (gradle/verification-metadata.xml).
+ *
+ * The Android Gradle Plugin resolves some artifacts only while a task is
+ * executing, not at configuration time. Those artifacts are missed by the
+ * normal bootstrap command and would fail dependency verification later, for
+ * example AAPT2 during assemble tasks and the Unified Test Platform (UTP)
+ * stack during connectedDebugAndroidTest. This script declares those artifacts
+ * in regular configurations so the bootstrap records them. All three AAPT2
+ * platform classifiers are captured so Linux CI, macOS, and Windows developer
+ * machines all pass verification.
+ *
+ * Usage, from the IDE/Android directory:
+ *
+ *   ./gradlew -I gradle/update-verification-metadata.gradle \
+ *       --write-verification-metadata sha256 help
+ *
+ * Review the resulting gradle/verification-metadata.xml diff before
+ * committing it.
+ *
+ * When the Android Gradle Plugin version changes, update the
+ * versions below to match the new plugin:
+ *
+ *   - aapt2: version is "<AGP version>-<build number>". Read it
+ *     from aapt2_version.properties inside the AGP jar:
+ *       unzip -p <gradle-X.Y.Z.jar> \
+ *           com/android/build/gradle/internal/res/aapt2_version.properties
+ *   - com.android.tools.utp artifacts: version is the AGP version
+ *     plus 23 in the major number (AGP 8.3.1 -> 31.3.1).
+ *   - com.google.testing.platform artifacts: version comes from the
+ *     UtpDependency class in the AGP jar. It also appears as the
+ *     core-proto version pulled in by the normal bootstrap.
+ */
+gradle.allprojects { project ->
+    if (project.name != 'app') {
+        return
+    }
+    def coords = [
+        'com.android.tools.build:aapt2:8.3.1-10880808:linux',
+        'com.android.tools.build:aapt2:8.3.1-10880808:osx',
+        'com.android.tools.build:aapt2:8.3.1-10880808:windows',
+        'com.google.testing.platform:launcher:0.0.9-alpha02',
+        'com.google.testing.platform:core:0.0.9-alpha02',
+        'com.google.testing.platform:android-driver-instrumentation:' +
+            '0.0.9-alpha02',
+        'com.google.testing.platform:android-test-plugin:0.0.9-alpha02',
+        'com.android.tools.utp:android-device-provider-ddmlib:31.3.1',
+        'com.android.tools.utp:android-device-provider-gradle:31.3.1',
+        'com.android.tools.utp:android-test-plugin-host-device-info:31.3.1',
+        'com.android.tools.utp:android-test-plugin-host-additional-' +
+            'test-output:31.3.1',
+        'com.android.tools.utp:android-test-plugin-host-apk-installer:31.3.1',
+        'com.android.tools.utp:android-test-plugin-host-coverage:31.3.1',
+        'com.android.tools.utp:android-test-plugin-host-logcat:31.3.1',
+        'com.android.tools.utp:android-test-plugin-host-emulator-' +
+            'control:31.3.1',
+        'com.android.tools.utp:android-test-plugin-host-retention:31.3.1',
+        'com.android.tools.utp:android-test-plugin-result-listener-' +
+            'gradle:31.3.1',
+    ]
+    coords.eachWithIndex { coord, idx ->
+        def cfg = project.configurations.create("verifyMetadataCapture${idx}")
+        cfg.canBeConsumed = false
+        cfg.transitive = true
+        project.dependencies.add(cfg.name, coord)
+    }
+}
