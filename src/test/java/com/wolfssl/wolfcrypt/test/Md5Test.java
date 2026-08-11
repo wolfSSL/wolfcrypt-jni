@@ -76,6 +76,23 @@ public class Md5Test {
     }
 
     @Test
+    public void updateWithWrappedOffsetAndLenShouldThrow() {
+        Md5 md5 = new Md5();
+        byte[] data = new byte[8];
+
+        /* offset + len wraps int arithmetic, update must reject it */
+        try {
+            md5.update(data, 1, Integer.MAX_VALUE);
+            fail("update() should have thrown for wrapped offset + len");
+        } catch (IllegalStateException e) {
+            /* init failure is not the bounds rejection */
+            throw e;
+        } catch (RuntimeException e) {
+            /* expected */
+        }
+    }
+
+    @Test
     public void hashShouldMatchUsingByteBuffer() throws ShortBufferException {
         String[] dataVector = new String[] {
             "",

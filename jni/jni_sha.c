@@ -319,7 +319,7 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update_1internal___3BII(
     dataSz = getByteArrayLength(env, data_buffer);
 
     if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
-        (word32)(offset + len) > dataSz) {
+        ((jlong)offset + (jlong)len) > (jlong)dataSz) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -536,7 +536,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1update_1interna
     dataSz = getByteArrayLength(env, data_buffer);
 
     if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
-        (word32)(offset + len) > dataSz) {
+        ((jlong)offset + (jlong)len) > (jlong)dataSz) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -763,7 +763,7 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update_1internal___3BII(
     dataSz = getByteArrayLength(env, data_buffer);
 
     if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
-        (word32)(offset + len) > dataSz) {
+        ((jlong)offset + (jlong)len) > (jlong)dataSz) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -969,7 +969,7 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1update_1internal___3BII(
     dataSz = getByteArrayLength(env, data_buffer);
 
     if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
-        (word32)(offset + len) > dataSz) {
+        ((jlong)offset + (jlong)len) > (jlong)dataSz) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -1176,7 +1176,7 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1update_1internal___3BII(
     dataSz = getByteArrayLength(env, data_buffer);
 
     if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
-        (word32)(offset + len) > dataSz) {
+        ((jlong)offset + (jlong)len) > (jlong)dataSz) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -1471,7 +1471,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1update_1internal_
     dataSz = getByteArrayLength(env, data_buffer);
 
     if (sha == NULL || data == NULL || offset < 0 || len < 0 ||
-        (word32)(offset + len) > dataSz) {
+        ((jlong)offset + (jlong)len) > (jlong)dataSz) {
         ret = BAD_FUNC_ARG;
     }
 

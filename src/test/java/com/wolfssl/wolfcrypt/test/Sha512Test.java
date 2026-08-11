@@ -76,6 +76,23 @@ public class Sha512Test {
     }
 
     @Test
+    public void updateWithWrappedOffsetAndLenShouldThrow() {
+        Sha512 sha = new Sha512();
+        byte[] data = new byte[8];
+
+        /* offset + len wraps int arithmetic, update must reject it */
+        try {
+            sha.update(data, 1, Integer.MAX_VALUE);
+            fail("update() should have thrown for wrapped offset + len");
+        } catch (IllegalStateException e) {
+            /* init failure is not the bounds rejection */
+            throw e;
+        } catch (RuntimeException e) {
+            /* expected */
+        }
+    }
+
+    @Test
     public void hashShouldMatchUsingByteBuffer() throws ShortBufferException {
         String[] dataVector = new String[] { "", "20580a530f01e771",
                 "f4be10fcc53147e49c3ac0fb14da0cda",
