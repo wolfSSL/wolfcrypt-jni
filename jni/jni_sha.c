@@ -1306,16 +1306,16 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1init_1internal
     if (ret == 0) {
         switch (hashType) {
             case WC_HASH_TYPE_SHA3_224:
-                ret = wc_InitSha3_224(sha, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+                ret = wc_InitSha3_224(sha, NULL, INVALID_DEVID);
                 break;
             case WC_HASH_TYPE_SHA3_256:
-                ret = wc_InitSha3_256(sha, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+                ret = wc_InitSha3_256(sha, NULL, INVALID_DEVID);
                 break;
             case WC_HASH_TYPE_SHA3_384:
-                ret = wc_InitSha3_384(sha, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+                ret = wc_InitSha3_384(sha, NULL, INVALID_DEVID);
                 break;
             case WC_HASH_TYPE_SHA3_512:
-                ret = wc_InitSha3_512(sha, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+                ret = wc_InitSha3_512(sha, NULL, INVALID_DEVID);
                 break;
             default:
                 ret = BAD_FUNC_ARG;
