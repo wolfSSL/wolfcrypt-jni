@@ -603,6 +603,17 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                 "ECC curve is null, please check algorithm parameters");
         }
 
+        /* Release and recreate native structs to support re-initialization.
+         * JCE requires KeyAgreement.init() to be callable multiple times. */
+        if (this.ecPrivate != null) {
+            this.ecPrivate.releaseNativeStruct();
+        }
+        this.ecPrivate = new Ecc();
+        if (this.ecPublic != null) {
+            this.ecPublic.releaseNativeStruct();
+        }
+        this.ecPublic = new Ecc();
+
         privKeyBytes = ecKey.getS().toByteArray();
 
         try {
