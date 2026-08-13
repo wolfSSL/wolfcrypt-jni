@@ -221,6 +221,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final_1internal__Ljava_nio_ByteBuffer_2I(
     int ret = 0;
     Md5*  md5  = NULL;
     byte* hash = NULL;
+    jlong hashSz = 0;
 
     md5 = (Md5*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -229,8 +230,10 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final_1internal__Ljava_nio_ByteBuffer_2I(
     }
 
     hash = getDirectBufferAddress(env, hash_buffer);
+    hashSz = (*env)->GetDirectBufferCapacity(env, hash_buffer);
 
-    if (!md5 || !hash) {
+    if (!md5 || !hash || (position < 0) ||
+        ((jlong)position + MD5_DIGEST_SIZE) > hashSz) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
     } else {
         ret = wc_Md5Final(md5, hash + position);

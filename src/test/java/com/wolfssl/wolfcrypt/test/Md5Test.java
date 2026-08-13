@@ -75,6 +75,37 @@ public class Md5Test {
         assertEquals(NativeStruct.NULL, new Md5().getNativeStruct());
     }
 
+    /* Exposes protected native_final() to test its position validation */
+    private static class ExposedMd5 extends Md5 {
+        public void finalAt(ByteBuffer hash, int position) {
+            native_final(hash, position);
+        }
+    }
+
+    @Test
+    public void finalWithInvalidPositionShouldThrow() {
+        ExposedMd5 md5 = new ExposedMd5();
+        ByteBuffer hash = ByteBuffer.allocateDirect(Md5.DIGEST_SIZE);
+
+        /* initialize digest state */
+        md5.update(new byte[4]);
+
+        try {
+            md5.finalAt(hash, -1);
+            fail("native_final() should have thrown for negative position");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        try {
+            md5.finalAt(hash, 1);
+            fail("native_final() should have thrown for position leaving " +
+                "less than DIGEST_SIZE bytes");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
+
     @Test
     public void hashShouldMatchUsingByteBuffer() throws ShortBufferException {
         String[] dataVector = new String[] {
