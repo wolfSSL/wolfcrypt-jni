@@ -206,14 +206,20 @@ public class AesGmac extends NativeStruct {
      * @param authIn data that was authenticated
      * @param authTag authentication tag to verify
      *
-     * @return true if verification succeeds, false otherwise
+     * @return true if verification succeeds, false if the authentication
+     *         tag does not match
      *
-     * @throws WolfCryptException if native operation fails
+     * @throws WolfCryptException if the native operation fails for any
+     *         reason other than authentication tag mismatch
      */
     public static synchronized boolean verify(byte[] key, byte[] iv,
         byte[] authIn, byte[] authTag) throws WolfCryptException {
 
         int ret = wc_GmacVerify(key, iv, authIn, authTag);
+
+        if ((ret != 0) && (ret != WolfCryptError.AES_GCM_AUTH_E.getCode())) {
+            throw new WolfCryptException(ret);
+        }
 
         return (ret == 0);
     }

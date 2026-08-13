@@ -134,6 +134,34 @@ public class AesGmacTest {
     }
 
     @Test
+    public void testVerifyInvalidArgsShouldThrow() {
+        if (!FeatureDetect.AesGmacEnabled()) {
+            /* skip test if AES-GMAC is not compiled in native wolfCrypt */
+            return;
+        }
+
+        byte[] iv = new byte[12];
+        byte[] authIn = new byte[16];
+        byte[] authTag = new byte[Aes.BLOCK_SIZE];
+
+        /* null key is an operational error, not a tag mismatch */
+        try {
+            AesGmac.verify(null, iv, authIn, authTag);
+            fail("verify() should have thrown for null key");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* invalid key length is an operational error, not a tag mismatch */
+        try {
+            AesGmac.verify(new byte[5], iv, authIn, authTag);
+            fail("verify() should have thrown for invalid key length");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
+
+    @Test
     public void testAes128GmacTestVector2() {
         if (!FeatureDetect.AesGmacEnabled()) {
             /* skip test if AES-GMAC is not compiled in native wolfCrypt */
