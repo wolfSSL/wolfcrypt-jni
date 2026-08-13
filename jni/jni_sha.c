@@ -349,6 +349,7 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1final_1internal__Ljava_nio_ByteBuffer_2I(
     int ret = 0;
     Sha*  sha  = NULL;
     byte* hash = NULL;
+    jlong hashSz = 0;
 
     sha = (Sha*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -357,8 +358,10 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1final_1internal__Ljava_nio_ByteBuffer_2I(
     }
 
     hash = getDirectBufferAddress(env, hash_buffer);
+    hashSz = (*env)->GetDirectBufferCapacity(env, hash_buffer);
 
-    ret = (!sha || !hash)
+    ret = (!sha || !hash || position < 0 ||
+           ((jlong)position + SHA_DIGEST_SIZE) > hashSz)
         ? BAD_FUNC_ARG
         : wc_ShaFinal(sha, hash + position);
 
@@ -571,6 +574,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1final_1internal
     int ret = 0;
     Sha224* sha = NULL;
     byte*  hash = NULL;
+    jlong hashSz = 0;
 
     sha = (Sha224*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -579,8 +583,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1final_1internal
     }
 
     hash = getDirectBufferAddress(env, hash_buffer);
+    hashSz = (*env)->GetDirectBufferCapacity(env, hash_buffer);
 
-    if (sha == NULL || hash == NULL) {
+    if (sha == NULL || hash == NULL || position < 0 ||
+        ((jlong)position + SHA224_DIGEST_SIZE) > hashSz) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -794,6 +800,7 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1final_1internal__Ljava_nio_ByteBuffer_
     int ret = 0;
     Sha256* sha = NULL;
     byte*  hash = NULL;
+    jlong hashSz = 0;
 
     sha = (Sha256*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -802,8 +809,10 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1final_1internal__Ljava_nio_ByteBuffer_
     }
 
     hash = getDirectBufferAddress(env, hash_buffer);
+    hashSz = (*env)->GetDirectBufferCapacity(env, hash_buffer);
 
-    ret = (!sha || !hash)
+    ret = (!sha || !hash || position < 0 ||
+           ((jlong)position + SHA256_DIGEST_SIZE) > hashSz)
         ? BAD_FUNC_ARG
         : wc_Sha256Final(sha, hash + position);
 
@@ -1000,6 +1009,7 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1final_1internal__Ljava_nio_ByteBuffer_
     int ret = 0;
     Sha384* sha = NULL;
     byte*  hash = NULL;
+    jlong hashSz = 0;
 
     sha = (Sha384*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1008,8 +1018,10 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1final_1internal__Ljava_nio_ByteBuffer_
     }
 
     hash = getDirectBufferAddress(env, hash_buffer);
+    hashSz = (*env)->GetDirectBufferCapacity(env, hash_buffer);
 
-    ret = (!sha || !hash)
+    ret = (!sha || !hash || position < 0 ||
+           ((jlong)position + SHA384_DIGEST_SIZE) > hashSz)
         ? BAD_FUNC_ARG
         : wc_Sha384Final(sha, hash + position);
 
@@ -1207,6 +1219,7 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1final_1internal__Ljava_nio_ByteBuffer_
     int ret = 0;
     Sha512* sha = NULL;
     byte*  hash = NULL;
+    jlong hashSz = 0;
 
     sha = (Sha512*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1215,8 +1228,10 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1final_1internal__Ljava_nio_ByteBuffer_
     }
 
     hash = getDirectBufferAddress(env, hash_buffer);
+    hashSz = (*env)->GetDirectBufferCapacity(env, hash_buffer);
 
-    ret = (!sha || !hash)
+    ret = (!sha || !hash || position < 0 ||
+           ((jlong)position + SHA512_DIGEST_SIZE) > hashSz)
         ? BAD_FUNC_ARG
         : wc_Sha512Final(sha, hash + position);
 
@@ -1524,6 +1539,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1final_1internal__
     int ret = 0;
     wc_Sha3* sha = NULL;
     byte* hash = NULL;
+    jlong hashSz = 0;
+    word32 digestSz = 0;
 
     sha = (wc_Sha3*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1532,8 +1549,34 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1final_1internal__
     }
 
     hash = getDirectBufferAddress(env, hash_buffer);
+    hashSz = (*env)->GetDirectBufferCapacity(env, hash_buffer);
 
     if (sha == NULL || hash == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        switch(hashType) {
+            case WC_HASH_TYPE_SHA3_224:
+                digestSz = WC_SHA3_224_DIGEST_SIZE;
+                break;
+            case WC_HASH_TYPE_SHA3_256:
+                digestSz = WC_SHA3_256_DIGEST_SIZE;
+                break;
+            case WC_HASH_TYPE_SHA3_384:
+                digestSz = WC_SHA3_384_DIGEST_SIZE;
+                break;
+            case WC_HASH_TYPE_SHA3_512:
+                digestSz = WC_SHA3_512_DIGEST_SIZE;
+                break;
+            default:
+                ret = BAD_FUNC_ARG;
+                break;
+        }
+    }
+
+    if (ret == 0 &&
+        (position < 0 || ((jlong)position + digestSz) > hashSz)) {
         ret = BAD_FUNC_ARG;
     }
 

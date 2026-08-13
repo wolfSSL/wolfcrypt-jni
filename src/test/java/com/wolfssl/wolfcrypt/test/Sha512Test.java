@@ -75,6 +75,37 @@ public class Sha512Test {
         assertEquals(NativeStruct.NULL, new Sha512().getNativeStruct());
     }
 
+    /* Exposes protected native_final() to test its position validation */
+    private static class ExposedSha512 extends Sha512 {
+        public void finalAt(ByteBuffer hash, int position) {
+            native_final(hash, position);
+        }
+    }
+
+    @Test
+    public void finalWithInvalidPositionShouldThrow() {
+        ExposedSha512 sha = new ExposedSha512();
+        ByteBuffer hash = ByteBuffer.allocateDirect(Sha512.DIGEST_SIZE);
+
+        /* initialize digest state */
+        sha.update(new byte[4]);
+
+        try {
+            sha.finalAt(hash, -1);
+            fail("native_final() should have thrown for negative position");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        try {
+            sha.finalAt(hash, 1);
+            fail("native_final() should have thrown for position leaving " +
+                "less than DIGEST_SIZE bytes");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
+
     @Test
     public void hashShouldMatchUsingByteBuffer() throws ShortBufferException {
         String[] dataVector = new String[] { "", "20580a530f01e771",

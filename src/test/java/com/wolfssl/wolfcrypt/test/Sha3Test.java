@@ -75,6 +75,40 @@ public class Sha3Test {
                     new Sha3(Sha3.TYPE_SHA3_256).getNativeStruct());
     }
 
+    /* Exposes protected native_final() to test its position validation */
+    private static class ExposedSha3 extends Sha3 {
+        public ExposedSha3(int hashType) {
+            super(hashType);
+        }
+        public void finalAt(ByteBuffer hash, int position) {
+            native_final(hash, position);
+        }
+    }
+
+    @Test
+    public void finalWithInvalidPositionShouldThrow() {
+        ExposedSha3 sha = new ExposedSha3(Sha3.TYPE_SHA3_256);
+        ByteBuffer hash = ByteBuffer.allocateDirect(Sha3.DIGEST_SIZE_256);
+
+        /* initialize digest state */
+        sha.update(new byte[4]);
+
+        try {
+            sha.finalAt(hash, -1);
+            fail("native_final() should have thrown for negative position");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        try {
+            sha.finalAt(hash, 1);
+            fail("native_final() should have thrown for position leaving " +
+                "less than the SHA3-256 digest size");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
+
     @Test
     public void sha3_256HashShouldMatchUsingByteArray() {
         /* Test vectors from NIST FIPS 202 - SHA-3 Standard */
