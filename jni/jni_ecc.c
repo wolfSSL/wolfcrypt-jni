@@ -1471,6 +1471,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1public_1r
     word32 ySz = 0;
     const char* name = NULL;
     int curveId = 0;
+    int curveSz = 0;
     word32 expectedSz = 0;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
@@ -1498,15 +1499,18 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1public_1r
     if (ret == 0) {
         curveId = wc_ecc_get_curve_id_from_name(name);
         /* Get expected size for curve */
-        expectedSz = wc_ecc_get_curve_size_from_id(curveId);
+        curveSz = wc_ecc_get_curve_size_from_id(curveId);
         (*env)->ReleaseStringUTFChars(env, curveName, name);
 
-        if (curveId < 0 || expectedSz <= 0) {
+        if (curveId < 0 || curveSz <= 0) {
             ret = BAD_FUNC_ARG;
+        }
+        else {
+            expectedSz = (word32)curveSz;
         }
     }
 
-    if (xSz != expectedSz || ySz != expectedSz) {
+    if (ret == 0 && (xSz != expectedSz || ySz != expectedSz)) {
         LogStr("ECC x or y size does not match expected size for curve\n");
         ret = BAD_FUNC_ARG;
     }
