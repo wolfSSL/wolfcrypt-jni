@@ -297,6 +297,12 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
     if (ret == 0) {
         if (curveName != NULL) {
             name = (*env)->GetStringUTFChars(env, curveName, 0);
+            if (name == NULL) {
+                /* OutOfMemoryError pending, release arrays and return */
+                releaseByteArray(env, priv_object, priv, JNI_ABORT);
+                releaseByteArray(env, pub_object, pub, JNI_ABORT);
+                return;
+            }
             ret = wc_ecc_get_curve_id_from_name(name);
             (*env)->ReleaseStringUTFChars(env, curveName, name);
 
@@ -1018,8 +1024,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1curve_1size_
         ret = BAD_FUNC_ARG;
     } else {
         name = (*env)->GetStringUTFChars(env, curveName, 0);
-        ret = wc_ecc_get_curve_size_from_name(name);
-        (*env)->ReleaseStringUTFChars(env, curveName, name);
+        if (name == NULL) {
+            /* OutOfMemoryError pending */
+            ret = MEMORY_E;
+        }
+        else {
+            ret = wc_ecc_get_curve_size_from_name(name);
+            (*env)->ReleaseStringUTFChars(env, curveName, name);
+        }
     }
 
 #else
