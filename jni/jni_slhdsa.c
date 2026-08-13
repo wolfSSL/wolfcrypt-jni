@@ -307,6 +307,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_SlhDsa_wc_1SlhDsaKey_1make_1ke
     word32 skSeedLen = 0;
     word32 skPrfLen = 0;
     word32 pkSeedLen = 0;
+    jboolean skSeedIsCopy = JNI_FALSE;
+    jboolean skPrfIsCopy = JNI_FALSE;
 
     key = (SlhDsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -314,12 +316,12 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_SlhDsa_wc_1SlhDsaKey_1make_1ke
     }
 
     if (skSeed_object != NULL) {
-        skSeed = getByteArray(env, skSeed_object);
+        skSeed = getSecretByteArray(env, skSeed_object, &skSeedIsCopy);
         skSeedLen = getByteArrayLength(env, skSeed_object);
     }
 
     if (skPrf_object != NULL) {
-        skPrf = getByteArray(env, skPrf_object);
+        skPrf = getSecretByteArray(env, skPrf_object, &skPrfIsCopy);
         skPrfLen = getByteArrayLength(env, skPrf_object);
     }
 
@@ -332,12 +334,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_SlhDsa_wc_1SlhDsaKey_1make_1ke
         (skPrf_object != NULL && skPrf == NULL) ||
         (pkSeed_object != NULL && pkSeed == NULL)) {
 
-        if (skSeed != NULL) {
-            releaseByteArray(env, skSeed_object, skSeed, JNI_ABORT);
-        }
-        if (skPrf != NULL) {
-            releaseByteArray(env, skPrf_object, skPrf, JNI_ABORT);
-        }
+        releaseSecretByteArray(env, skSeed_object, skSeed, skSeedLen,
+            skSeedIsCopy);
+        releaseSecretByteArray(env, skPrf_object, skPrf, skPrfLen,
+            skPrfIsCopy);
         if (pkSeed != NULL) {
             releaseByteArray(env, pkSeed_object, pkSeed, JNI_ABORT);
         }
@@ -358,12 +358,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_SlhDsa_wc_1SlhDsaKey_1make_1ke
 
     LogStr("wc_SlhDsaKey_MakeKeyWithRandom(key=%p) = %d\n", key, ret);
 
-    if (skSeed_object != NULL) {
-        releaseByteArray(env, skSeed_object, skSeed, JNI_ABORT);
-    }
-    if (skPrf_object != NULL) {
-        releaseByteArray(env, skPrf_object, skPrf, JNI_ABORT);
-    }
+    releaseSecretByteArray(env, skSeed_object, skSeed, skSeedLen,
+        skSeedIsCopy);
+    releaseSecretByteArray(env, skPrf_object, skPrf, skPrfLen,
+        skPrfIsCopy);
     if (pkSeed_object != NULL) {
         releaseByteArray(env, pkSeed_object, pkSeed, JNI_ABORT);
     }
@@ -1315,13 +1313,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_SlhDsa_wc_1SlhDsaKey_1import_1
     SlhDsaKey* key = NULL;
     byte* in = NULL;
     word32 inLen = 0;
+    jboolean inIsCopy = JNI_FALSE;
 
     key = (SlhDsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         return;
     }
 
-    in = getByteArray(env, in_object);
+    in = getSecretByteArray(env, in_object, &inIsCopy);
     inLen = getByteArrayLength(env, in_object);
 
     if (key == NULL || in == NULL) {
@@ -1337,7 +1336,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_SlhDsa_wc_1SlhDsaKey_1import_1
 
     LogStr("wc_SlhDsaKey_ImportPrivate(key=%p) = %d\n", key, ret);
 
-    releaseByteArray(env, in_object, in, JNI_ABORT);
+    releaseSecretByteArray(env, in_object, in, inLen, inIsCopy);
 #else
     (void)env;
     (void)this;
@@ -1523,13 +1522,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_SlhDsa_wc_1SlhDsaKey_1PrivateK
     byte* derCopy = NULL;
     word32 derLen = 0;
     word32 idx = 0;
+    jboolean derIsCopy = JNI_FALSE;
 
     key = (SlhDsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         return;
     }
 
-    der = getByteArray(env, der_object);
+    der = getSecretByteArray(env, der_object, &derIsCopy);
     derLen = getByteArrayLength(env, der_object);
 
     if (key == NULL || der == NULL || derLen == 0) {
@@ -1561,7 +1561,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_SlhDsa_wc_1SlhDsaKey_1PrivateK
         wc_ForceZero(derCopy, derLen);
         XFREE(derCopy, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
-    releaseByteArray(env, der_object, der, JNI_ABORT);
+    releaseSecretByteArray(env, der_object, der, derLen, derIsCopy);
 #else
     (void)env;
     (void)this;
