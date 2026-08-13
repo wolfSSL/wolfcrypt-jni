@@ -1120,7 +1120,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1private_1ke
         if (ret == LENGTH_ONLY_E) {
             ret = 0;
         }
+    }
 
+    if (ret == 0) {
         pkcs8 = (byte*)XMALLOC(pkcs8Sz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         if (pkcs8 == NULL) {
             ret = MEMORY_E;
