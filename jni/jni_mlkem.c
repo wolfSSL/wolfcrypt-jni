@@ -200,16 +200,17 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1make_1key_1fr
     MlKemKey* key = NULL;
     byte* seed = NULL;
     word32 seedSz = 0;
+    jboolean seedIsCopy = JNI_FALSE;
 
     key = (MlKemKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         return;
     }
 
-    seed = getByteArray(env, seed_object);
+    seed = getSecretByteArray(env, seed_object, &seedIsCopy);
     seedSz = getByteArrayLength(env, seed_object);
 
-    /* getByteArray() can return NULL with a pending exception */
+    /* getSecretByteArray() can return NULL with a pending exception */
     if (seed_object != NULL && seed == NULL) {
         return;
     }
@@ -228,7 +229,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1make_1key_1fr
     LogStr("wc_MlKemKey_MakeKeyWithRandom(key=%p, seedSz=%u) = %d\n",
         key, (word32)seedSz, ret);
 
-    releaseByteArray(env, seed_object, seed, JNI_ABORT);
+    releaseSecretByteArray(env, seed_object, seed, seedSz, seedIsCopy);
 #else
     (void)this;
     (void)seed_object;
@@ -324,6 +325,7 @@ Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1encapsulate_1with_1random(
     MlKemKey* key = NULL;
     byte* rand = NULL;
     word32 randSz = 0;
+    jboolean randIsCopy = JNI_FALSE;
     byte* output = NULL;
     word32 ctSz = 0;
     word32 ssSz = 0;
@@ -334,16 +336,16 @@ Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1encapsulate_1with_1random(
         return NULL;
     }
 
-    rand = getByteArray(env, rand_object);
+    rand = getSecretByteArray(env, rand_object, &randIsCopy);
     randSz = getByteArrayLength(env, rand_object);
 
-    /* getByteArray() can return NULL with a pending exception */
+    /* getSecretByteArray() can return NULL with a pending exception */
     if (rand_object != NULL && rand == NULL) {
         return NULL;
     }
 
     if (key == NULL || rand == NULL) {
-        releaseByteArray(env, rand_object, rand, JNI_ABORT);
+        releaseSecretByteArray(env, rand_object, rand, randSz, randIsCopy);
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
         return NULL;
     }
@@ -353,7 +355,7 @@ Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1encapsulate_1with_1random(
         ret = wc_MlKemKey_SharedSecretSize(key, &ssSz);
     }
     if (ret != 0) {
-        releaseByteArray(env, rand_object, rand, JNI_ABORT);
+        releaseSecretByteArray(env, rand_object, rand, randSz, randIsCopy);
         throwWolfCryptExceptionFromError(env, ret);
         return NULL;
     }
@@ -361,7 +363,7 @@ Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1encapsulate_1with_1random(
     totalSz = ctSz + ssSz;
     output = (byte*)XMALLOC(totalSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (output == NULL) {
-        releaseByteArray(env, rand_object, rand, JNI_ABORT);
+        releaseSecretByteArray(env, rand_object, rand, randSz, randIsCopy);
         throwOutOfMemoryException(env, "Failed to allocate encapsulation");
         return NULL;
     }
@@ -390,7 +392,7 @@ Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1encapsulate_1with_1random(
 
     MLKEM_FORCE_ZERO(output, totalSz);
     XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
-    releaseByteArray(env, rand_object, rand, JNI_ABORT);
+    releaseSecretByteArray(env, rand_object, rand, randSz, randIsCopy);
 #else
     (void)this;
     (void)rand_object;
@@ -659,16 +661,17 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1import_1priva
     MlKemKey* key = NULL;
     byte* priv = NULL;
     word32 privSz = 0;
+    jboolean privIsCopy = JNI_FALSE;
 
     key = (MlKemKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         return;
     }
 
-    priv = getByteArray(env, priv_object);
+    priv = getSecretByteArray(env, priv_object, &privIsCopy);
     privSz = getByteArrayLength(env, priv_object);
 
-    /* getByteArray() can return NULL with a pending exception */
+    /* getSecretByteArray() can return NULL with a pending exception */
     if (priv_object != NULL && priv == NULL) {
         return;
     }
@@ -687,7 +690,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlKem_wc_1mlkem_1import_1priva
     LogStr("wc_MlKemKey_DecodePrivateKey(key=%p, privSz=%u) = %d\n",
         key, (word32)privSz, ret);
 
-    releaseByteArray(env, priv_object, priv, JNI_ABORT);
+    releaseSecretByteArray(env, priv_object, priv, privSz, privIsCopy);
 #else
     (void)this;
     (void)priv_object;
