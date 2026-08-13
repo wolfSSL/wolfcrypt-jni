@@ -219,7 +219,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1Gmac(
     byte* iv = NULL;
     byte* authIn = NULL;
     byte* authTag = NULL;
-    word32 keySz, ivSz, authInSz, authTagSz;
+    word32 keySz = 0, ivSz = 0, authInSz = 0, authTagSz = 0;
 
     key = getByteArray(env, key_object);
     iv = getByteArray(env, iv_object);
@@ -294,7 +294,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacVerify(
     byte* iv = NULL;
     byte* authIn = NULL;
     byte* authTag = NULL;
-    word32 keySz, ivSz, authInSz, authTagSz;
+    word32 keySz = 0, ivSz = 0, authInSz = 0, authTagSz = 0;
 
     key = getByteArray(env, key_object);
     iv = getByteArray(env, iv_object);
