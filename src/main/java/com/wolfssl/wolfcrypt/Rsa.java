@@ -921,9 +921,11 @@ public class Rsa extends NativeStruct {
      * @param mgf mask generation function (WC_MGF1SHA256 for MGF1 with SHA-256)
      * @param saltLen salt length in bytes, or special value
      *
-     * @return true if signature is valid, false otherwise
+     * @return true if signature is valid, false if the signature does not
+     *         verify against the provided digest
      *
-     * @throws WolfCryptException if native operation fails
+     * @throws WolfCryptException on invalid arguments or memory
+     *         allocation failure
      * @throws IllegalStateException if public key has not been set, if object
      *         fails to initialize, or if releaseNativeStruct() has been
      *         called and object has been released.

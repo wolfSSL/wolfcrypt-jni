@@ -1379,6 +1379,44 @@ public class RsaTest {
             assertTrue("RSA-PSS check verification failed with " +
                 "RSA_PSS_SALT_LEN_DEFAULT", verified);
 
+            /* Operational errors must throw, not report false */
+            try {
+                key.rsaPssVerifyWithDigest(null, message, digest,
+                    WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32);
+                fail("rsaPssVerifyWithDigest should have thrown for " +
+                    "null signature");
+            } catch (WolfCryptException e) {
+                /* expected */
+            }
+
+            /* Corrupted signatures must report false, not throw. PSS
+             * decode of garbage fails with position dependent error
+             * codes, exercise first, middle and last bytes */
+            signature = key.rsaPssSign(digest,
+                WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32, rng);
+            int[] flipPos = new int[] { 0, signature.length / 2,
+                signature.length - 1 };
+            for (int pos : flipPos) {
+                byte[] badSig = signature.clone();
+                badSig[pos] ^= (byte)0x80;
+                verified = key.rsaPssVerifyWithDigest(badSig, message,
+                    digest, WolfCrypt.WC_HASH_TYPE_SHA256,
+                    Rsa.WC_MGF1SHA256, 32);
+                assertFalse("corrupted RSA-PSS signature verified, " +
+                    "flipped byte " + pos, verified);
+            }
+
+            /* Mismatched digest must report false, not throw */
+            signature = key.rsaPssSign(digest,
+                WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32, rng);
+            byte[] wrongDigest = digest.clone();
+            wrongDigest[0] ^= 1;
+            verified = key.rsaPssVerifyWithDigest(signature, message,
+                wrongDigest, WolfCrypt.WC_HASH_TYPE_SHA256,
+                Rsa.WC_MGF1SHA256, 32);
+            assertFalse("RSA-PSS signature verified with wrong digest",
+                verified);
+
         } catch (Exception e) {
             fail("RSA-PSS check verification test failed: " + e.getMessage());
         }
