@@ -470,37 +470,35 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
                     "AlgorithmParameterSpec is not of type DHParameterSpec");
             }
 
+            /* reject spec that conflicts with the key's own parameters */
+            if (dhKey.getParams() != null &&
+                (!dhKey.getParams().getP().equals(
+                    ((DHParameterSpec)params).getP()) ||
+                 !dhKey.getParams().getG().equals(
+                    ((DHParameterSpec)params).getG()))) {
+                throw new InvalidAlgorithmParameterException(
+                    "DHParameterSpec does not match key parameters");
+            }
+
             paramP = ((DHParameterSpec)params).getP().toByteArray();
             paramG = ((DHParameterSpec)params).getG().toByteArray();
 
-            if (paramP != null && paramG != null) {
-
-                this.dh.setParams(paramP, paramG);
-
-                primeLen = paramP.length;
-
-                /* prime may have leading zero */
-                if (paramP[0] == 0x00) {
-                    primeLen--;
-                }
-
-                return;
-
-            } else {
+            if (paramP == null || paramG == null) {
                 throw new InvalidParameterException(
                     "AlgorithmParameterSpec does not include required " +
                     "DH parameters (P,G)");
             }
         }
+        else {
+            /* try to import params from key */
+            paramP = dhKey.getParams().getP().toByteArray();
+            paramG = dhKey.getParams().getG().toByteArray();
 
-        /* try to import params from key */
-        paramP = dhKey.getParams().getP().toByteArray();
-        paramG = dhKey.getParams().getG().toByteArray();
-
-        if (paramP == null || paramG == null) {
-            throw new InvalidKeyException(
-                "Key must include DH parameters when not called " +
-                "with explicit AlgorithmParameterSpec");
+            if (paramP == null || paramG == null) {
+                throw new InvalidKeyException(
+                    "Key must include DH parameters when not called " +
+                    "with explicit AlgorithmParameterSpec");
+            }
         }
 
         this.dh.setParams(paramP, paramG);
