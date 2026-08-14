@@ -1020,11 +1020,13 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
      *       a. CertPath.getType() is "X.509"
      *       b. CertPath.getEncoding() contains "PkiPath"
      *   3. If wolfCrypt FIPS, verify params.getSigProvider() is wolfJCE
-     *   4. Sanitize Certificate objects in CertPath chain
+     *   4. Load TrustAnchors into WolfSSLCertManager, done before checker
+     *      initialization since OCSP needs anchors to verify responses
+     *   5. Initialize any registered CertPathCheckers
+     *   6. Sanitize Certificate objects in CertPath chain
      *       a. Check target certificate constraints meet target cert
      *       b. Check cert policies are not used (not supported)
-     *   5. Call any registered CertPathCheckers
-     *   6. Load TrustAnchors into WolfSSLCertManager
+     *       c. Call registered CertPathCheckers on each certificate
      *   7. Enable CRL if requested, load CRLs from getCertStores()
      *   8. Verify X.509 certificate chain
      *   9. Find top-most TrustAnchor for return object
