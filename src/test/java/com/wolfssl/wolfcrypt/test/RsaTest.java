@@ -1471,6 +1471,37 @@ public class RsaTest {
                 WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32);
             assertTrue("RSA-PSS check padding failed", verified);
 
+            /* Corrupted signatures must report false, not throw. PSS decode
+             * of garbage fails with position dependent error codes, exercise
+             * first, middle and last bytes */
+            int[] flipPos = new int[] { 0, signature.length / 2,
+                signature.length - 1 };
+            for (int pos : flipPos) {
+                byte[] badSig = signature.clone();
+                badSig[pos] ^= (byte)0x80;
+                verified = key.rsaPssCheckPadding(badSig, digest,
+                    WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32);
+                assertFalse("corrupted signature passed padding check, " +
+                    "flipped byte " + pos, verified);
+            }
+
+            /* Mismatched digest must report false, not throw */
+            byte[] wrongDigest = digest.clone();
+            wrongDigest[0] ^= 1;
+            verified = key.rsaPssCheckPadding(signature, wrongDigest,
+                WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32);
+            assertFalse("padding check passed with wrong digest", verified);
+
+            /* Operational errors must throw, not report false */
+            try {
+                key.rsaPssCheckPadding(signature, new byte[0],
+                    WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32);
+                fail("rsaPssCheckPadding should have thrown for empty " +
+                    "digest");
+            } catch (WolfCryptException e) {
+                /* expected */
+            }
+
         } catch (Exception e) {
             fail("RSA-PSS check padding test failed: " + e.getMessage());
         }
