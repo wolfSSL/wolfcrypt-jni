@@ -55,6 +55,7 @@ import com.wolfssl.wolfcrypt.WolfSSLCertManager;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
+import com.wolfssl.wolfcrypt.test.Util;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.provider.jce.WolfCryptPKIXRevocationChecker;
 
@@ -865,6 +866,89 @@ public class WolfCryptPKIXRevocationCheckerTest {
         try {
             checker.check(serverCert, null);
             fail("A revoked certificate must hard-fail even under SOFT_FAIL");
+        } catch (CertPathValidatorException e) {
+            assertEquals("Revoked cert must fail with BasicReason.REVOKED",
+                BasicReason.REVOKED, e.getReason());
+        }
+
+        cm.free();
+    }
+
+    /* DER encoded OCSP response for server-cert.der, status successful, signed
+     * by ca-cert.pem, generated with openssl ocsp. Contains no nextUpdate so
+     * it never expires. Only needs to pass native response status parsing,
+     * response verification itself is mocked below. */
+    private static final String OCSP_RESPONSE_HEX =
+        "308202330a0100a082022c3082022806092b0601050507300101048202193082" +
+        "02153081fea18197308194310b30090603550406130255533110300e06035504" +
+        "080c074d6f6e74616e613110300e06035504070c07426f7a656d616e3111300f" +
+        "060355040a0c08536177746f6f746831133011060355040b0c0a436f6e73756c" +
+        "74696e673118301606035504030c0f7777772e776f6c6673736c2e636f6d311f" +
+        "301d06092a864886f70d0109011610696e666f40776f6c6673736c2e636f6d18" +
+        "0f32303236303831343232353035335a3051304f303a300906052b0e03021a05" +
+        "000414ff66218a6ec5866184259abad65539fb25512cdd0414278e671174c326" +
+        "1d3fed3363b3a4d81d30e5e8d50201018000180f323032363038313432323530" +
+        "35335a300d06092a864886f70d01010b0500038201010076d97a9999d345fc6f" +
+        "071b127d806865c588e0bea677757ec370396aea7020ef0db922251f8ba6bb45" +
+        "8abd4aeb310d9ff024b733a483ed8c8b7cfd116e003b5db9ab5d69f640973c93" +
+        "856562fef0d4eeef3115877c3867bcfbe5910b47fad0e5c9dfa1d487bc6048be" +
+        "7a0900a7505d9a2a59210921c359a95ebc94f12d2b8def4489a26a39253be4a7" +
+        "6084f4f42dfc46d800536ebbff8bc85111408e221b6d5e8462588994d4ca338b" +
+        "62d22bf0496dc53677f91892a6036040216851124f3abdb781d6c96a0358b0ad" +
+        "a97563122e9c1d8fd99d2cd38b78373f0ad4c841dc11727fdbeac44efd9a75da" +
+        "060e70d1c02774b5de05d3bd9a9fced3c73d65d3cc750d";
+
+    /* CertManager that simulates a definitive OCSP "revoked" status for a
+     * pre-loaded response by throwing WolfCryptException(OCSP_CERT_REVOKED)
+     * from CertManagerCheckOCSPResponse, like native wolfSSL does for a
+     * revoked certificate. */
+    private static class RevokedOcspResponseCertManager
+        extends WolfSSLCertManager {
+
+        @Override
+        public synchronized void CertManagerCheckOCSPResponse(
+            byte[] response, int responseSz, byte[] cert, int certSz) {
+            throw new WolfCryptException(
+                WolfCryptError.OCSP_CERT_REVOKED.getCode());
+        }
+    }
+
+    @Test
+    public void testPreloadedOcspRevokedUsesRevokedReason() throws Exception {
+
+        if (!WolfCrypt.OcspEnabled()) {
+            /* Skip test if OCSP not compiled in */
+            return;
+        }
+
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX", provider);
+        WolfCryptPKIXRevocationChecker checker =
+            (WolfCryptPKIXRevocationChecker)cpv.getRevocationChecker();
+
+        FileInputStream fis = new FileInputStream(caCertDer);
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        X509Certificate caCert = (X509Certificate)cf.generateCertificate(fis);
+        fis.close();
+
+        fis = new FileInputStream(serverCertDer);
+        X509Certificate serverCert =
+            (X509Certificate)cf.generateCertificate(fis);
+        fis.close();
+
+        /* Preload OCSP response so check() takes the stapled path */
+        Map<X509Certificate, byte[]> responses =
+            new HashMap<X509Certificate, byte[]>();
+        responses.put(serverCert, Util.h2b(OCSP_RESPONSE_HEX));
+        checker.setOcspResponses(responses);
+
+        WolfSSLCertManager cm = new RevokedOcspResponseCertManager();
+        cm.CertManagerLoadCA(caCert);
+        checker.setCertManager(cm);
+        checker.init(false);
+
+        try {
+            checker.check(serverCert, null);
+            fail("A revoked pre-loaded OCSP status must fail validation");
         } catch (CertPathValidatorException e) {
             assertEquals("Revoked cert must fail with BasicReason.REVOKED",
                 BasicReason.REVOKED, e.getReason());

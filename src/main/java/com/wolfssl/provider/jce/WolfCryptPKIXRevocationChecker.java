@@ -330,16 +330,7 @@ public class WolfCryptPKIXRevocationChecker extends PKIXRevocationChecker {
                 "Failed to encode certificate", e);
 
         } catch (WolfCryptException e) {
-            /* A definitive OCSP "revoked" status must always be a hard fail,
-             * with BasicReason.REVOKED. Other codes SOFT_FAIL may suppress. */
-            if (e.getCode() == WolfCryptError.OCSP_CERT_REVOKED.getCode()) {
-                throw new CertPathValidatorException(
-                    "Certificate revoked (OCSP): " + e.getMessage(), e,
-                    null, -1, BasicReason.REVOKED);
-            }
-            throw new CertPathValidatorException(
-                "OCSP check failed: " + e.getMessage(), e,
-                null, -1, BasicReason.UNDETERMINED_REVOCATION_STATUS);
+            throw mapOcspException("OCSP check failed", e);
         }
     }
 
@@ -503,10 +494,32 @@ public class WolfCryptPKIXRevocationChecker extends PKIXRevocationChecker {
                 "Failed to encode certificate", e);
 
         } catch (WolfCryptException e) {
-            throw new CertPathValidatorException(
-                "OCSP response check failed: " + e.getMessage(), e,
-                null, -1, BasicReason.UNDETERMINED_REVOCATION_STATUS);
+            throw mapOcspException("OCSP response check failed", e);
         }
+    }
+
+    /**
+     * Map a native OCSP exception to CertPathValidatorException. An OCSP
+     * "revoked" status must always be a hard fail with BasicReason.REVOKED.
+     * Other codes map to UNDETERMINED_REVOCATION_STATUS, which SOFT_FAIL may
+     * suppress.
+     *
+     * @param msgPrefix message prefix for non-revoked failures
+     * @param e native exception from OCSP check
+     *
+     * @return CertPathValidatorException for caller to throw
+     */
+    private CertPathValidatorException mapOcspException(String msgPrefix,
+        WolfCryptException e) {
+
+        if (e.getCode() == WolfCryptError.OCSP_CERT_REVOKED.getCode()) {
+            return new CertPathValidatorException(
+                "Certificate revoked (OCSP): " + e.getMessage(), e,
+                null, -1, BasicReason.REVOKED);
+        }
+        return new CertPathValidatorException(
+            msgPrefix + ": " + e.getMessage(), e,
+            null, -1, BasicReason.UNDETERMINED_REVOCATION_STATUS);
     }
 
     /**
