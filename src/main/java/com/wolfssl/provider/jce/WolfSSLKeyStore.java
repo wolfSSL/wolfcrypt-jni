@@ -2544,8 +2544,8 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      * Load the KeyStore from the provided InputStream.
      *
      * @param stream InputStream from which to load KeyStore
-     * @param password password used to check KeyStore integrity, must not
-     *        be null
+     * @param password password used to check KeyStore integrity, may be
+     *        null or empty to skip the whole KeyStore HMAC integrity check
      *
      * @throws IOException on I/O problem or issue with the
      *         KeyStore data format
