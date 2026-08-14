@@ -45,6 +45,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.AesCmac;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -217,6 +218,33 @@ public class AesCmacTest {
             } else {
                 throw e;
             }
+        }
+    }
+
+    @Test
+    public void aesCmacVerifyInvalidArgsShouldThrow() {
+        if (!FeatureDetect.AesCmacEnabled()) {
+            /* skip test if AES-CMAC is not compiled in native wolfCrypt */
+            return;
+        }
+
+        byte[] mac = new byte[16];
+        byte[] data = new byte[16];
+
+        /* zero length key is an operational error, not a MAC mismatch */
+        try {
+            AesCmac.verify(mac, data, new byte[0]);
+            fail("verify() should have thrown for zero length key");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* invalid key length is an operational error, not a MAC mismatch */
+        try {
+            AesCmac.verify(mac, data, new byte[5]);
+            fail("verify() should have thrown for invalid key length");
+        } catch (WolfCryptException e) {
+            /* expected */
         }
     }
 

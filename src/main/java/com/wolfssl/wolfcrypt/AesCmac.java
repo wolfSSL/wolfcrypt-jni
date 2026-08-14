@@ -336,13 +336,21 @@ public class AesCmac extends NativeStruct {
      *
      * @return true if verification succeeds, false otherwise
      *
-     * @throws WolfCryptException if native operation fails
+     * @throws WolfCryptException if the native operation fails for any
+     *         reason other than MAC comparison mismatch
      */
     public static synchronized boolean verify(byte[] mac, byte[] data,
         byte[] key) throws WolfCryptException {
 
         int ret = wc_AesCmacVerify(mac, mac.length, data, data.length,
-                                   key, key.length);
+            key, key.length);
+
+        /* Native returns MAC_CMP_FAILED_E for a MAC mismatch, wolfSSL
+         * versions before 5.9.2 return 1 */
+        if ((ret != 0) && (ret != 1) &&
+            (ret != WolfCryptError.MAC_CMP_FAILED_E.getCode())) {
+            throw new WolfCryptException(ret);
+        }
 
         return (ret == 0);
     }
