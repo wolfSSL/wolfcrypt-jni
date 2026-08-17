@@ -201,7 +201,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1p
     if (!ed25519 || !priv) {
         ret = BAD_FUNC_ARG;
     } else {
-        /* detect, and later skip, leading zero byte */
+        /* Select private only import when no public key is supplied,
+         * raw fixed width key bytes are passed unchanged */
         if (!pub)
             ret = wc_ed25519_import_private_only(priv, privSz, ed25519);
         else
@@ -275,7 +276,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1p
     if (!ed25519 || !priv) {
         ret = BAD_FUNC_ARG;
     } else {
-        /* detect, and later skip, leading zero byte */
+        /* Import raw fixed width private key bytes unchanged */
         ret = wc_ed25519_import_private_only(priv, privSz, ed25519);
     }
 

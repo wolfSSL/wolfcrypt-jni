@@ -127,6 +127,38 @@ public class AesEcbTest {
     }
 
     @Test
+    public void updateWithInvalidLengthShouldThrow() {
+
+        AesEcb enc = new AesEcb();
+        enc.setKey(KEY_128, AesEcb.ENCRYPT_MODE);
+
+        byte[] in = new byte[AesEcb.BLOCK_SIZE];
+
+        try {
+            enc.update(null, 0, AesEcb.BLOCK_SIZE);
+            fail("null input should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        try {
+            enc.update(in, 0, -1);
+            fail("negative length should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        try {
+            enc.update(in, AesEcb.BLOCK_SIZE, AesEcb.BLOCK_SIZE);
+            fail("offset plus length beyond input should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        enc.releaseNativeStruct();
+    }
+
+    @Test
     public void checkUpdateParams() throws ShortBufferException {
         byte[] input = new byte[AesEcb.BLOCK_SIZE];
         byte[] output = new byte[AesEcb.BLOCK_SIZE];

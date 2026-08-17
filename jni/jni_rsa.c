@@ -1989,6 +1989,14 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaExportCrtKey(
         q == NULL || dP == NULL || dQ == NULL || u == NULL) {
         ret = BAD_FUNC_ARG;
     }
+    /* Supplied buffer sizes must not exceed actual array lengths */
+    else if (nSz < 0 || nSz > (jlong)(*env)->GetArrayLength(env, n_object) ||
+        eSz < 0 || eSz > (jlong)(*env)->GetArrayLength(env, e_object) ||
+        dSz < 0 || dSz > (jlong)(*env)->GetArrayLength(env, d_object) ||
+        pSz < 0 || pSz > (jlong)(*env)->GetArrayLength(env, p_object) ||
+        qSz < 0 || qSz > (jlong)(*env)->GetArrayLength(env, q_object)) {
+        ret = BAD_FUNC_ARG;
+    }
     else {
         /* Export e, n, d, p, q using wc_RsaExportKey() */
         nSz32 = (word32)nSz;

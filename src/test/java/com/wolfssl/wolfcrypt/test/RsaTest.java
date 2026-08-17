@@ -732,6 +732,27 @@ public class RsaTest {
         assertTrue(dQSz[0] >= 127 && dQSz[0] <= 129);
         assertTrue(uSz[0] >= 127 && uSz[0] <= 129);
 
+        /* Capacity larger than the actual array must be rejected */
+        byte[] shortN = new byte[1];
+        nSz[0] = 256;
+        try {
+            key.exportRawPrivateKey(shortN, nSz, e, eSz, d, dSz, p, pSz,
+                q, qSz, dP, dPSz, dQ, dQSz, u, uSz);
+            fail("exportRawPrivateKey should reject oversized nSz");
+        } catch (WolfCryptException ex) {
+            /* expected */
+        }
+
+        /* Negative capacity must be rejected */
+        nSz[0] = -1;
+        try {
+            key.exportRawPrivateKey(n, nSz, e, eSz, d, dSz, p, pSz,
+                q, qSz, dP, dPSz, dQ, dQSz, u, uSz);
+            fail("exportRawPrivateKey should reject negative nSz");
+        } catch (WolfCryptException ex) {
+            /* expected */
+        }
+
         key.releaseNativeStruct();
     }
 

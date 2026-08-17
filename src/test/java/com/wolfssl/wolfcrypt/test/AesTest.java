@@ -423,6 +423,32 @@ public class AesTest {
     }
 
     @Test
+    public void updateWithPartialLengthShouldSizeOutputToLength() {
+
+        byte[] key = Util.h2b("2b7e151628aed2a6abf7158809cf4f3c");
+        byte[] iv = Util.h2b("000102030405060708090A0B0C0D0E0F");
+        byte[] input = Util.h2b("6bc1bee22e409f96e93d7e117393172a" +
+                                "ae2d8a571e03ac9c9eb76fac45af8e51");
+        byte[] expected = Util.h2b("7649abac8119b246cee98e9b12e9197d");
+
+        /* process only the first block, output must be sized to length */
+        Aes enc = new Aes();
+        enc.setKey(key, iv, Aes.ENCRYPT_MODE);
+        byte[] cipher = enc.update(input, 0, Aes.BLOCK_SIZE);
+        assertEquals(Aes.BLOCK_SIZE, cipher.length);
+        assertArrayEquals(expected, cipher);
+
+        Aes dec = new Aes();
+        dec.setKey(key, iv, Aes.DECRYPT_MODE);
+        byte[] plain = dec.update(cipher, 0, Aes.BLOCK_SIZE);
+        assertEquals(Aes.BLOCK_SIZE, plain.length);
+        assertArrayEquals(Arrays.copyOf(input, Aes.BLOCK_SIZE), plain);
+
+        enc.releaseNativeStruct();
+        dec.releaseNativeStruct();
+    }
+
+    @Test
     public void reuseObject() {
 
         byte[] key = Util.h2b("2b7e151628aed2a6abf7158809cf4f3c");
@@ -455,6 +481,41 @@ public class AesTest {
         /* free again */
         enc.releaseNativeStruct();
         dec.releaseNativeStruct();
+    }
+
+    @Test
+    public void updateWithInvalidLengthShouldThrow() {
+
+        byte[] key = Util.h2b("2b7e151628aed2a6abf7158809cf4f3c");
+        byte[] iv = Util.h2b("000102030405060708090A0B0C0D0E0F");
+
+        Aes enc = new Aes();
+        enc.setKey(key, iv, Aes.ENCRYPT_MODE);
+
+        byte[] in = new byte[Aes.BLOCK_SIZE];
+
+        try {
+            enc.update(null, 0, Aes.BLOCK_SIZE);
+            fail("null input should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        try {
+            enc.update(in, 0, -1);
+            fail("negative length should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        try {
+            enc.update(in, Aes.BLOCK_SIZE, Aes.BLOCK_SIZE);
+            fail("offset plus length beyond input should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        enc.releaseNativeStruct();
     }
 
     @Test
