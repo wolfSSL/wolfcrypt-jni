@@ -59,12 +59,15 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
     /* Initialize WolfSSLCertManager global mutex for thread-safe callback
      * handling. Done here so it is before any CertManager ops happen. */
     if (wolfSSL_CertManager_init() != 0) {
+        g_vm = NULL;
         return JNI_ERR;
     }
 
     /* Initialize FIPS callback mutex for thread-safe error callback handling.
      * No-op in non-FIPS builds. */
     if (wolfCrypt_JNI_FipsCb_init() != 0) {
+        wolfSSL_CertManager_cleanup();
+        g_vm = NULL;
         return JNI_ERR;
     }
 
