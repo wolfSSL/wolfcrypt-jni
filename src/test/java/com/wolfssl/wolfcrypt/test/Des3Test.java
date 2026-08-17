@@ -255,6 +255,42 @@ public class Des3Test {
     }
 
     @Test
+    public void updateWithInvalidLengthShouldThrow() {
+
+        byte[] key = Util.h2b("e61a38548694f1fd8cef251c518" +
+                              "cc70bb613751c1ce52aa8");
+        byte[] iv = Util.h2b("48a8ceb8551fd4ad");
+
+        Des3 enc = new Des3();
+        enc.setKey(key, iv, Des3.ENCRYPT_MODE);
+
+        byte[] in = new byte[Des3.BLOCK_SIZE];
+
+        try {
+            enc.update(null, 0, Des3.BLOCK_SIZE);
+            fail("null input should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        try {
+            enc.update(in, 0, -1);
+            fail("negative length should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        try {
+            enc.update(in, Des3.BLOCK_SIZE, Des3.BLOCK_SIZE);
+            fail("offset plus length beyond input should throw");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        enc.releaseNativeStruct();
+    }
+
+    @Test
     public void reuseObject() {
 
         byte[] key = Util.h2b("e61a38548694f1fd8cef251c518" +
