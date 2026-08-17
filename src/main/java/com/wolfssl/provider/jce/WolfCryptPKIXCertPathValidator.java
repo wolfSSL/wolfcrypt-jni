@@ -547,8 +547,8 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
                 revChecker.setTrustAnchors(params.getTrustAnchors());
             }
 
-            /* Initialize the checker. wolfSSL validates in reverse order
-             * (leaf to root), so forward is false */
+            /* Initialize the checker for reverse order cert presentation,
+             * so forward is false */
             checker.init(false);
         }
 
@@ -1167,6 +1167,12 @@ public class WolfCryptPKIXCertPathValidator extends CertPathValidatorSpi {
             /* Sanity checks on certs from PKIXParameters constraints */
             for (i = 0; i < certs.size(); i++) {
                 sanitizeX509Certificate(certs.get(i), i, certPath, pkixParams);
+            }
+
+            /* Call registered CertPathCheckers from the cert closest
+             * to the trust anchor toward the target, matching
+             * init(false) reverse presentation order */
+            for (i = certs.size() - 1; i >= 0; i--) {
                 callCertPathCheckers(certs.get(i), pathCheckers);
             }
 

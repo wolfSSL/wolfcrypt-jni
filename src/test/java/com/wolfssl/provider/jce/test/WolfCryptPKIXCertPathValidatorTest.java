@@ -57,6 +57,7 @@ import java.security.cert.CertPath;
 import java.security.cert.CertPathValidator;
 import java.security.cert.CertPathValidatorResult;
 import java.security.cert.PKIXParameters;
+import java.security.cert.PKIXCertPathChecker;
 import java.security.cert.PKIXCertPathValidatorResult;
 import java.security.cert.CertificateException;
 import java.security.cert.CertPathValidatorException;
@@ -593,6 +594,100 @@ public class WolfCryptPKIXCertPathValidatorTest {
         CertPathValidatorResult result = cpv.validate(path, params);
 
         checkPKIXCertPathValidatorResult(result, caCert, certPubKey);
+    }
+
+    /* Records init() direction and the order certs reach check().
+     * PKIXParameters clones registered checkers, clone() explicitly
+     * shares these references so results stay visible on the original. */
+    private static class RecordingCertPathChecker extends PKIXCertPathChecker {
+        List<X509Certificate> seen = new ArrayList<>();
+        boolean[] initForward = new boolean[] { true };
+
+        @Override
+        public Object clone() {
+            RecordingCertPathChecker copy = new RecordingCertPathChecker();
+            copy.seen = this.seen;
+            copy.initForward = this.initForward;
+            return copy;
+        }
+
+        @Override
+        public void init(boolean forward) {
+            this.initForward[0] = forward;
+            this.seen.clear();
+        }
+
+        @Override
+        public boolean isForwardCheckingSupported() {
+            return false;
+        }
+
+        @Override
+        public Set<String> getSupportedExtensions() {
+            return null;
+        }
+
+        @Override
+        public void check(Certificate cert, Collection<String> unresolved) {
+            seen.add((X509Certificate)cert);
+        }
+    }
+
+    /**
+     * Registered CertPathCheckers are initialized with init(false), so
+     * certs must be presented in reverse order, trust anchor side first.
+     */
+    @Test
+    public void testCertPathCheckerReverseOrder() throws Exception {
+
+        KeyStore store = null;
+        CertificateFactory certFactory = null;
+        InputStream fis = null;
+        Certificate cert = null;
+        List<Certificate> certList = new ArrayList<>();
+
+        store = createKeyStoreFromFile(jksCaServerRSA2048, keyStorePass);
+        if (store == null || store.size() != 1) {
+            throw new Exception("Error creating KeyStore");
+        }
+
+        /* Build cert chain, going from peer to last intermediate */
+        certFactory = CertificateFactory.getInstance("X.509");
+
+        fis = new FileInputStream(intRsaServerCertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        fis = new FileInputStream(intRsaInt2CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        fis = new FileInputStream(intRsaInt1CertDer);
+        cert = certFactory.generateCertificate(fis);
+        certList.add(cert);
+        fis.close();
+
+        PKIXParameters params = new PKIXParameters(store);
+        params.setRevocationEnabled(false);
+
+        RecordingCertPathChecker recorder = new RecordingCertPathChecker();
+        params.addCertPathChecker(recorder);
+
+        CertPath path = certFactory.generateCertPath(certList);
+        CertPathValidator cpv =
+            CertPathValidator.getInstance("PKIX", provider);
+        cpv.validate(path, params);
+
+        assertFalse("checker must be initialized with forward false",
+            recorder.initForward[0]);
+        assertEquals("checker must see every cert in the path",
+            certList.size(), recorder.seen.size());
+        for (int j = 0; j < certList.size(); j++) {
+            assertEquals("checker cert order must be reverse of CertPath",
+                certList.get(certList.size() - 1 - j), recorder.seen.get(j));
+        }
     }
 
     /**
