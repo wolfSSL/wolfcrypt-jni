@@ -37,7 +37,7 @@ verify_sha256() {
 # Function to download Bouncy Castle JARs with pinned version
 download_bc_jars() {
   local bc_version="$BC_VERSION"
-  local lib_dir="../../../lib"
+  local lib_dir="$LIB_DIR"
   local bc_url="https://repo1.maven.org/maven2/org/bouncycastle"
 
   echo -n "Downloading Bouncy Castle JARs (version $bc_version)... "
@@ -81,25 +81,29 @@ download_bc_jars() {
 
 # Function to cleanup BC JARs
 cleanup_bc_jars() {
-  local lib_dir="../../../lib"
+  local lib_dir="$LIB_DIR"
   echo -n "Removing Bouncy Castle JARs... "
   rm -f "$lib_dir/bcprov-jdk18on-"*".jar" "$lib_dir/bctls-jdk18on-"*".jar" && echo "done" || echo "failed"
 }
 
-cd ./examples/build/provider || {
-  echo "Error: Cannot change to ./examples/build/provider"
+# Paths anchored to this script location, runs from any directory
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
+LIB_DIR="$SCRIPT_DIR/../../lib"
+
+cd "$SCRIPT_DIR/../build/provider" || {
+  echo "Error: Cannot change to $SCRIPT_DIR/../build/provider"
   exit 1
 }
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:../../../lib:/usr/local/lib
-CLASSPATH="../../../lib/wolfcrypt-jni.jar:."
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$LIB_DIR:/usr/local/lib"
+CLASSPATH="$LIB_DIR/wolfcrypt-jni.jar:."
 
 # Check for existing Bouncy Castle JARs (any version)
-if ls "../../../lib/bcprov-jdk18on-"*".jar" "../../../lib/bctls-jdk18on-"*".jar" 2>/dev/null; then
-  latest_bc_jar=$(ls -t "../../../lib/bcprov-jdk18on-"*".jar" | head -n 1)
+if ls "$LIB_DIR/bcprov-jdk18on-"*".jar" "$LIB_DIR/bctls-jdk18on-"*".jar" 2>/dev/null; then
+  latest_bc_jar=$(ls -t "$LIB_DIR/bcprov-jdk18on-"*".jar" | head -n 1)
   bc_version=$(basename "$latest_bc_jar" | sed -e 's/bcprov-jdk18on-//' -e 's/.jar$//')
   echo "Running crypto benchmark with Bouncy Castle (version $bc_version)"
-  CLASSPATH="$CLASSPATH:$latest_bc_jar:../../../lib/bctls-jdk18on-$bc_version.jar"
+  CLASSPATH="$CLASSPATH:$latest_bc_jar:$LIB_DIR/bctls-jdk18on-$bc_version.jar"
 else
   echo "Bouncy Castle JARs not found in lib directory"
   read -p "Would you like to download Bouncy Castle JARs? (y/n) " -n 1 -r
@@ -107,7 +111,7 @@ else
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     if download_bc_jars; then
       echo "Running crypto benchmark with Bouncy Castle (version $BC_VERSION)"
-      CLASSPATH="$CLASSPATH:../../../lib/bcprov-jdk18on-$BC_VERSION.jar:../../../lib/bctls-jdk18on-$BC_VERSION.jar"
+      CLASSPATH="$CLASSPATH:$LIB_DIR/bcprov-jdk18on-$BC_VERSION.jar:$LIB_DIR/bctls-jdk18on-$BC_VERSION.jar"
     else
       echo "Running crypto benchmark without Bouncy Castle due to download failure"
     fi
@@ -125,7 +129,7 @@ java -Xint \
      -XX:+UseG1GC \
      -XX:MaxGCPauseMillis=100 \
      -classpath "$CLASSPATH" \
-     -Dsun.boot.library.path=../../../lib/ \
+     -Dsun.boot.library.path="$LIB_DIR/" \
      CryptoBenchmark "$@"
 
 if [ "$BC_DOWNLOADED" = true ]; then
