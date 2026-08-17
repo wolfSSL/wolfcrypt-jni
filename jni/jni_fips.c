@@ -108,10 +108,11 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
 #ifdef HAVE_FIPS
     JNIEnv* env;
     jobject localCb = NULL;
-    jclass class;
-    jmethodID method;
+    jclass class = NULL;
+    jmethodID method = NULL;
     jint ret;
-    jstring hashStr;
+    jstring hashStr = NULL;
+    int needsDetach = 0;
 
     if (g_vm == NULL) {
         return;
@@ -128,6 +129,7 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
             printf("Failed to attach JNIEnv to thread\n");
             return;
         }
+        needsDetach = 1;
     }
     else if (ret != JNI_OK) {
         printf("Unable to get JNIEnv from JavaVM\n");
@@ -138,63 +140,43 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
      * so a concurrent wolfCrypt_1SetCb_1fips() cannot free the global
      * reference while we use it. The rest of this function uses only the
      * local reference and never touches g_errCb again. */
-    if (!g_fipsCbMutexInit || wc_LockMutex(&g_fipsCbMutex) != 0) {
-        return;
-    }
-    if (g_errCb != NULL &&
-        (*env)->GetObjectRefType(env, g_errCb) == JNIGlobalRefType) {
-        localCb = (*env)->NewLocalRef(env, g_errCb);
-    }
-    wc_UnLockMutex(&g_fipsCbMutex);
-
-    /* Return silently if no valid callback was registered */
-    if (localCb == NULL) {
-        if ((*env)->ExceptionOccurred(env)) {
-            (*env)->ExceptionDescribe(env);
-            (*env)->ExceptionClear(env);
+    if (g_fipsCbMutexInit && wc_LockMutex(&g_fipsCbMutex) == 0) {
+        if (g_errCb != NULL &&
+            (*env)->GetObjectRefType(env, g_errCb) == JNIGlobalRefType) {
+            localCb = (*env)->NewLocalRef(env, g_errCb);
         }
-        return;
+        wc_UnLockMutex(&g_fipsCbMutex);
     }
 
-    class = (*env)->GetObjectClass(env, localCb);
-    if (!class) {
-        if ((*env)->ExceptionOccurred(env)) {
-            (*env)->ExceptionDescribe(env);
-            (*env)->ExceptionClear(env);
-        }
-        (*env)->DeleteLocalRef(env, localCb);
-        return;
+    if (localCb != NULL) {
+        class = (*env)->GetObjectClass(env, localCb);
     }
-
-    method = (*env)->GetMethodID(env, class, "errorCallback",
-        "(IILjava/lang/String;)V");
-    if (!method) {
-        if ((*env)->ExceptionOccurred(env)) {
-            (*env)->ExceptionDescribe(env);
-            (*env)->ExceptionClear(env);
-        }
-        (*env)->DeleteLocalRef(env, localCb);
-        return;
+    if (class != NULL) {
+        method = (*env)->GetMethodID(env, class, "errorCallback",
+            "(IILjava/lang/String;)V");
     }
-
-    hashStr = (*env)->NewStringUTF(env, hash);
-    if (!hashStr) {
-        if ((*env)->ExceptionOccurred(env)) {
-            (*env)->ExceptionDescribe(env);
-            (*env)->ExceptionClear(env);
-        }
-        (*env)->DeleteLocalRef(env, localCb);
-        return;
+    if (method != NULL) {
+        hashStr = (*env)->NewStringUTF(env, hash);
     }
-
-    (*env)->CallVoidMethod(env, localCb, method, ok, err, hashStr);
-
-    (*env)->DeleteLocalRef(env, hashStr);
-    (*env)->DeleteLocalRef(env, localCb);
+    if (hashStr != NULL) {
+        (*env)->CallVoidMethod(env, localCb, method, ok, err, hashStr);
+        (*env)->DeleteLocalRef(env, hashStr);
+    }
 
     if ((*env)->ExceptionOccurred(env)) {
         (*env)->ExceptionDescribe(env);
         (*env)->ExceptionClear(env);
+    }
+
+    if (class != NULL) {
+        (*env)->DeleteLocalRef(env, class);
+    }
+    if (localCb != NULL) {
+        (*env)->DeleteLocalRef(env, localCb);
+    }
+
+    if (needsDetach) {
+        (*g_vm)->DetachCurrentThread(g_vm);
     }
 #endif
 }
