@@ -77,13 +77,13 @@ lib/wolfcrypt-jni.jar:
 	ant build-jni-release
 
 install: all lib/wolfcrypt-jni.jar
-	$(INSTALL) -d $(INSTALL_DIR)/$(LIBDIR)
-	$(INSTALL) lib/libwolfcryptjni.so $(INSTALL_DIR)/$(LIBDIR)
-	$(INSTALL) lib/wolfcrypt-jni.jar $(INSTALL_DIR)/$(LIBDIR)
+	$(INSTALL) -d "$(INSTALL_DIR)/$(LIBDIR)"
+	$(INSTALL) lib/libwolfcryptjni.so "$(INSTALL_DIR)/$(LIBDIR)"
+	$(INSTALL) lib/wolfcrypt-jni.jar "$(INSTALL_DIR)/$(LIBDIR)"
 
 uninstall:
-	rm -f $(INSTALL_DIR)/$(LIBDIR)/libwolfcryptjni.so
-	rm -f $(INSTALL_DIR)/$(LIBDIR)/wolfcrypt-jni.jar
+	rm -f "$(INSTALL_DIR)/$(LIBDIR)/libwolfcryptjni.so"
+	rm -f "$(INSTALL_DIR)/$(LIBDIR)/wolfcrypt-jni.jar"
 
 .PHONY: clean
 
