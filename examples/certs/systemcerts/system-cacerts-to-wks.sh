@@ -23,20 +23,30 @@
 # WKS type.
 #
 
-# Export library paths for Linux and Mac to find shared JNI library
-export LD_LIBRARY_PATH=../../../lib:$LD_LIBRARY_PATH
-export DYLD_LIBRARY_PATH=../../../lib:$DYLD_LIBRARY_PATH
+# Paths anchored to this script location, runs from any directory
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
 
-OUTDIR=`pwd`
+# Export library paths for Linux and Mac to find shared JNI library
+export LD_LIBRARY_PATH="$SCRIPT_DIR/../../../lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export DYLD_LIBRARY_PATH="$SCRIPT_DIR/../../../lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+
+# Converted KeyStores are written next to this script
+OUTDIR="$SCRIPT_DIR"
 
 # First argument can be passed in to represent path to
-# wolfcrypt-jni.jar provider JAR. If not given, use default.
+# wolfcrypt-jni.jar provider JAR, must be a single JAR file
+# path. If not given, use default.
 if [ -z "$1" ]; then
     # default wolfcrypt-jni.jar path
-    PROVIDER_PATH="../../../lib/wolfcrypt-jni.jar"
+    PROVIDER_PATH="$SCRIPT_DIR/../../../lib/wolfcrypt-jni.jar"
 else
     # use custom provider path
     PROVIDER_PATH=$1
+fi
+
+if [ ! -f "$PROVIDER_PATH" ]; then
+    echo "Provider JAR not found: $PROVIDER_PATH"
+    exit 1
 fi
 
 # ARGS: <input-keystore-name> <output-keystore-name> <in-password> <out-password> <java home>
@@ -97,8 +107,8 @@ echo "    $OS $ARCH"
 echo "Java Home = $javaHome"
 echo ""
 
-if [ ! -d $OUTDIR ]; then
-    mkdir $OUTDIR
+if [ ! -d "$OUTDIR" ]; then
+    mkdir "$OUTDIR"
 fi
 
 if [ -f "$javaHome/$CACERTS_JDK9" ]; then
@@ -107,8 +117,8 @@ if [ -f "$javaHome/$CACERTS_JDK9" ]; then
     echo "    TO:   $OUTDIR/cacerts.wks"
     echo "    IN PASS (default): changeit"
     echo "    OUT PASS: changeitchangeit"
-    if [ -f $OUTDIR/cacerts.wks ]; then
-        rm $OUTDIR/cacerts.wks
+    if [ -f "$OUTDIR/cacerts.wks" ]; then
+        rm "$OUTDIR/cacerts.wks"
     fi
     jks_to_wks "$javaHome/$CACERTS_JDK9" "$OUTDIR/cacerts" "changeit" "changeitchangeit" $javaHome
 fi
@@ -119,8 +129,8 @@ if [ -f "$javaHome/$CACERTS_JDK8" ]; then
     echo "    TO:   $OUTDIR/cacerts.wks"
     echo "    IN PASS (default): changeit"
     echo "    OUT PASS: changeitchangeit"
-    if [ -f $OUTDIR/cacerts.wks ]; then
-        rm $OUTDIR/cacerts.wks
+    if [ -f "$OUTDIR/cacerts.wks" ]; then
+        rm "$OUTDIR/cacerts.wks"
     fi
     jks_to_wks "$javaHome/$CACERTS_JDK8" "$OUTDIR/cacerts" "changeit" "changeitchangeit" $javaHome
 fi
@@ -131,8 +141,8 @@ if [ -f "$javaHome/$JSSECERTS_JDK9" ]; then
     echo "    TO:   $OUTDIR/jssecacerts.wks"
     echo "    IN PASS (default): changeit"
     echo "    OUT PASS: changeitchangeit"
-    if [ -f $OUTDIR/jssecacerts.wks ]; then
-        rm $OUTDIR/jssecacerts.wks
+    if [ -f "$OUTDIR/jssecacerts.wks" ]; then
+        rm "$OUTDIR/jssecacerts.wks"
     fi
     jks_to_wks "$javaHome/$JSSECACERTS_JDK9" "$OUTDIR/jssecacerts" "changeit" "changeitchangeit" $javaHome
 fi
@@ -143,8 +153,8 @@ if [ -f "$javaHome/$JSSECERTS_JDK8" ]; then
     echo "    TO:   $OUTDIR/jssecacerts.wks"
     echo "    IN PASS (default): changeit"
     echo "    OUT PASS: changeitchangeit"
-    if [ -f $OUTDIR/jssecacerts.wks ]; then
-        rm $OUTDIR/jssecacerts.wks
+    if [ -f "$OUTDIR/jssecacerts.wks" ]; then
+        rm "$OUTDIR/jssecacerts.wks"
     fi
     jks_to_wks "$javaHome/$JSSECACERTS_JDK8" "$OUTDIR/jssecacerts" "changeit" "changeitchangeit" $javaHome
 fi
