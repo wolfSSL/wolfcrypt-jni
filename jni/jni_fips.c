@@ -1231,10 +1231,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmDecrypt_1fips__
     LogStr(
         "AesGcmDecrypt_fips(aes=%p, out, in, iv, authTag, authIn) = %d\n",
         aes, ret);
-    LogStr("in[%u]: [%p]\n", (word32)AES_BLOCK_SIZE, in);
-    LogHex(in, 0, AES_BLOCK_SIZE);
-    LogStr("out[%u]: [%p]\n", (word32)AES_BLOCK_SIZE, out);
-    LogHex(out, 0, AES_BLOCK_SIZE);
+    LogStr("in[%u]: [%p]\n", (word32)size, in);
+    LogHex(in, 0, size);
+    LogStr("out[%u]: [%p]\n", (word32)size, out);
+    LogHex(out, 0, size);
     LogStr("iv[%u]: [%p]\n", (word32)ivSz, iv);
     LogHex(iv, 0, ivSz);
     LogStr("authTag[%u]: [%p]\n", (word32)authTagSz, authTag);
@@ -1293,10 +1293,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmDecrypt_1fips__
     LogStr(
         "AesGcmDecrypt_fips(aes=%p, out, in, iv, authTag, authIn) = %d\n",
         aes, ret);
-    LogStr("in[%u]: [%p]\n", (word32)AES_BLOCK_SIZE, in);
-    LogHex(in, 0, AES_BLOCK_SIZE);
-    LogStr("out[%u]: [%p]\n", (word32)AES_BLOCK_SIZE, out);
-    LogHex(out, 0, AES_BLOCK_SIZE);
+    LogStr("in[%u]: [%p]\n", (word32)size, in);
+    LogHex(in, 0, size);
+    LogStr("out[%u]: [%p]\n", (word32)size, out);
+    LogHex(out, 0, size);
     LogStr("iv[%u]: [%p]\n", (word32)ivSz, iv);
     LogHex(iv, 0, ivSz);
     LogStr("authTag[%u]: [%p]\n", (word32)authTagSz, authTag);
