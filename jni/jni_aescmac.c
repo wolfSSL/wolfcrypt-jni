@@ -37,6 +37,11 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+#if (LIBWOLFSSL_VERSION_HEX >= 0x05006006) && (!defined(HAVE_FIPS) || \
+    (defined(HAVE_FIPS_VERSION) && (HAVE_FIPS_VERSION >= 6)))
+    #define WC_JNI_CMAC_HAVE_FREE
+#endif
+
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
@@ -94,10 +99,19 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_native_1free(
     LogStr("free Cmac %p\n", cmac);
 
     if (cmac) {
-        /* Only clear the CMAC struct - do NOT free the memory here.
-         * The base class NativeStruct.xfree() will handle the actual
-         * memory deallocation to avoid double-free. */
+        /* Release and zeroize CMAC context contents, not freeing the
+         * memory since base class NativeStruct.xfree() will handle that
+         * deallocation. */
+#ifdef WC_JNI_CMAC_HAVE_FREE
+        if (cmac->type == WC_CMAC_AES) {
+            wc_CmacFree(cmac);
+        }
+        else {
+            XMEMSET(cmac, 0, sizeof(Cmac));
+        }
+#else
         XMEMSET(cmac, 0, sizeof(Cmac));
+#endif
     }
 #else
     throwNotCompiledInException(env);
@@ -125,6 +139,13 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1CmacSetKey(
     if (!cmac || !key) {
         ret = BAD_FUNC_ARG;
     } else {
+#ifdef WC_JNI_CMAC_HAVE_FREE
+        /* Free any active context first, reset() and repeated setKey() calls
+         * reinitialize the same struct */
+        if (cmac->type == WC_CMAC_AES) {
+            wc_CmacFree(cmac);
+        }
+#endif
         /* Initialize CMAC with the provided key */
         ret = wc_InitCmac(cmac, key, keySz, WC_CMAC_AES, NULL);
     }

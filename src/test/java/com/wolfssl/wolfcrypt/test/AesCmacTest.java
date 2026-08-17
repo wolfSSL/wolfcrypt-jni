@@ -221,6 +221,27 @@ public class AesCmacTest {
     }
 
     @Test
+    public void aesCmacResetAndRekeyMidStreamShouldWork() {
+        byte[] keyBytes = Util.h2b("2b7e151628aed2a6abf7158809cf4f3c");
+        byte[] dataBytes = Util.h2b("6bc1bee22e409f96e93d7e117393172a");
+        byte[] expectedBytes = Util.h2b("070a16b46b4d4144f79bdd9dd04a287c");
+
+        /* reset() mid stream must reinitialize the active context */
+        AesCmac cmac = new AesCmac();
+        cmac.setKey(keyBytes);
+        cmac.update(new byte[8]);
+        cmac.reset();
+        cmac.update(dataBytes);
+        assertArrayEquals(expectedBytes, cmac.doFinal());
+
+        /* setKey() again without doFinal() must also reinitialize */
+        cmac.setKey(keyBytes);
+        cmac.update(new byte[4]);
+        cmac.setKey(keyBytes);
+        assertArrayEquals(expectedBytes, cmac.doFinal(dataBytes));
+    }
+
+    @Test
     public void aesCmacAlgorithmInfoShouldWork() {
         try {
             String key = "2b7e151628aed2a6abf7158809cf4f3c";
