@@ -720,8 +720,8 @@
         <taskdef
             resource="edu/umd/cs/findbugs/anttask/tasks.properties">
             <classpath>
-                <fileset dir="${env.SPOTBUGS_HOME}/lib"
-                         includes="*.jar"/>
+                <pathelement
+                    location="${env.SPOTBUGS_HOME}/lib/spotbugs-ant.jar"/>
             </classpath>
         </taskdef>
     </target>
