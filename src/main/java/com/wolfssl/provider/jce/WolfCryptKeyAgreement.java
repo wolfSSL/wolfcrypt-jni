@@ -227,10 +227,12 @@ public class WolfCryptKeyAgreement extends KeyAgreementSpi {
              * running on a Java version later than Java 8.
              */
             if (this.type == KeyAgreeType.WC_DH) {
+                zeroArray(tmp);
                 tmp = new byte[this.primeLen];
                 Arrays.fill(tmp, (byte)0);
                 System.arraycopy(secret, 0, tmp,
                     tmp.length - secret.length, secret.length);
+                zeroArray(secret);
                 secret = tmp.clone();
             }
 
