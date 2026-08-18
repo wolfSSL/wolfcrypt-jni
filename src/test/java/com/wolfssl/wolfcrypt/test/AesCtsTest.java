@@ -206,6 +206,29 @@ public class AesCtsTest {
     }
 
     @Test
+    public void releaseAndReuseShouldWork() {
+        AesCts aesCts = new AesCts();
+
+        try {
+            aesCts.setKey(KEY_128, IV, AesCts.ENCRYPT_MODE);
+            aesCts.releaseNativeStruct();
+
+            /* second release must be a safe no-op */
+            aesCts.releaseNativeStruct();
+
+            /* object must re-init cleanly after release and still work
+             * right */
+            aesCts.setKey(KEY_128, IV, AesCts.ENCRYPT_MODE);
+            byte[] ciphertext = aesCts.update(PLAINTEXT_17);
+
+            assertArrayEquals("AES-128-CTS encryption failed after re-init",
+                CIPHERTEXT_17, ciphertext);
+        } finally {
+            aesCts.releaseNativeStruct();
+        }
+    }
+
+    @Test
     public void aes128CtsEncryptDecrypt17BytesTest() {
         AesCts aesCts = new AesCts();
 
