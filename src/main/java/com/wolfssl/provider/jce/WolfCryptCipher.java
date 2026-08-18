@@ -2218,37 +2218,41 @@ public class WolfCryptCipher extends CipherSpi {
             throw new InvalidKeyException("Failed to unwrap key");
         }
 
-        switch (wrappedKeyType) {
-            case Cipher.SECRET_KEY:
-                return new SecretKeySpec(unwrappedKey, wrappedKeyAlgo);
+        try {
+            switch (wrappedKeyType) {
+                case Cipher.SECRET_KEY:
+                    return new SecretKeySpec(unwrappedKey, wrappedKeyAlgo);
 
-            case Cipher.PUBLIC_KEY:
-                try {
-                    KeyFactory kf = KeyFactory.getInstance(wrappedKeyAlgo);
-                    return kf.generatePublic(
-                        new X509EncodedKeySpec(unwrappedKey));
+                case Cipher.PUBLIC_KEY:
+                    try {
+                        KeyFactory kf = KeyFactory.getInstance(wrappedKeyAlgo);
+                        return kf.generatePublic(
+                            new X509EncodedKeySpec(unwrappedKey));
 
-                } catch (InvalidKeySpecException e) {
-                    throw new InvalidKeyException(
-                        "Failed to reconstruct public key: " +
-                        e.getMessage(), e);
-                }
+                    } catch (InvalidKeySpecException e) {
+                        throw new InvalidKeyException(
+                            "Failed to reconstruct public key: " +
+                            e.getMessage(), e);
+                    }
 
-            case Cipher.PRIVATE_KEY:
-                try {
-                    KeyFactory kf = KeyFactory.getInstance(wrappedKeyAlgo);
-                    return kf.generatePrivate(
-                        new PKCS8EncodedKeySpec(unwrappedKey));
+                case Cipher.PRIVATE_KEY:
+                    try {
+                        KeyFactory kf = KeyFactory.getInstance(wrappedKeyAlgo);
+                        return kf.generatePrivate(
+                            new PKCS8EncodedKeySpec(unwrappedKey));
 
-                } catch (InvalidKeySpecException e) {
-                    throw new InvalidKeyException(
-                        "Failed to reconstruct private key: " +
-                        e.getMessage(), e);
-                }
+                    } catch (InvalidKeySpecException e) {
+                        throw new InvalidKeyException(
+                            "Failed to reconstruct private key: " +
+                            e.getMessage(), e);
+                    }
 
-            default:
-                throw new InvalidKeyException("Invalid wrappedKeyType: " +
-                    wrappedKeyType);
+                default:
+                    throw new InvalidKeyException("Invalid wrappedKeyType: " +
+                        wrappedKeyType);
+            }
+        } finally {
+            zeroArray(unwrappedKey);
         }
     }
 
