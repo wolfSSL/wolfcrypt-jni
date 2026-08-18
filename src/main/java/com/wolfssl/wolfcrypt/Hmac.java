@@ -213,6 +213,18 @@ public class Hmac extends NativeStruct {
     }
 
     /**
+     * Release native Hmac structure.
+     * Synchronized on this object so a concurrent release cannot free
+     * the native struct while another synchronized method is using it.
+     */
+    @Override
+    public synchronized void releaseNativeStruct() {
+        synchronized (pointerLock) {
+            super.releaseNativeStruct();
+        }
+    }
+
+    /**
      * Perform HMAC update operation
      *
      * @param data single input data byte to update HMAC with
