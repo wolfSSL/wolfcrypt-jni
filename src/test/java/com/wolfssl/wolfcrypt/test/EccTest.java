@@ -32,6 +32,7 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
 import java.lang.ref.WeakReference;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.Executors;
@@ -224,6 +225,37 @@ public class EccTest {
         alice2.importPrivate(alice.exportPrivate(), alice.exportX963());
 
         assertTrue(alice2.verify(hash, signature));
+    }
+
+    @Test
+    public void signWithFreedRngShouldThrow() {
+        Ecc alice = new Ecc();
+        Rng callerRng = new Rng();
+        callerRng.init();
+
+        alice.makeKey(callerRng, 32);
+        byte[] hash =
+            "Everyone gets Friday off.".getBytes(StandardCharsets.UTF_8);
+
+        /* A freed Rng makes native signing fail after the native signature
+         * buffer is allocated, exercising error cleanup */
+        callerRng.free();
+
+        try {
+            alice.sign(hash, callerRng);
+            fail("Ecc.sign() should throw with a freed Rng");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
+        /* Object must still sign correctly after the failed attempt */
+        callerRng.init();
+        byte[] signature = alice.sign(hash, callerRng);
+        assertTrue(alice.verify(hash, signature));
+
+        callerRng.free();
+        callerRng.releaseNativeStruct();
+        alice.releaseNativeStruct();
     }
 
     @Test

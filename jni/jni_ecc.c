@@ -962,14 +962,11 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
             (*env)->SetByteArrayRegion(env, result, 0, signatureSz,
                                        (const jbyte*)signature);
         } else {
-            releaseByteArray(env, hash_object, hash, JNI_ABORT);
             throwWolfCryptException(env, "Failed to allocate signature");
-            return NULL;
         }
-    } else {
-        releaseByteArray(env, hash_object, hash, JNI_ABORT);
+    } else if (!(*env)->ExceptionOccurred(env)) {
+        /* BUFFER_E sanity check above already threw its own message */
         throwWolfCryptExceptionFromError(env, ret);
-        return NULL;
     }
 
     LogStr("wc_ecc_sign_hash(input, inSz, output, &outSz, rng, ecc) = %d\n",
