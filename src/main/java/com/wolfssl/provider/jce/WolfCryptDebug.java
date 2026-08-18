@@ -120,6 +120,10 @@ class WolfCryptDebug {
             if (message == null) {
                 message = "";
             }
+            else {
+                /* Escape CR and LF */
+                message = message.replace("\r", "\\r").replace("\n", "\\n");
+            }
 
             return String.format("%s [%s %s: TID %d: %s] %s\n",
                     TimeFormatter.format(
