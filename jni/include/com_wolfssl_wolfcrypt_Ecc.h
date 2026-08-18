@@ -59,6 +59,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1check_1key
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Ecc
+ * Method:    wc_ecc_set_rng
+ * Signature: (Lcom/wolfssl/wolfcrypt/Rng;)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1set_1rng
+  (JNIEnv *, jobject, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ecc
  * Method:    wc_ecc_shared_secret
  * Signature: (Lcom/wolfssl/wolfcrypt/Ecc;Lcom/wolfssl/wolfcrypt/Rng;)[B
  */

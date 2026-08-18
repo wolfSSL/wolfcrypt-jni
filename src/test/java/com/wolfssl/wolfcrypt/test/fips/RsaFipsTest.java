@@ -371,6 +371,74 @@ public class RsaFipsTest extends FipsTest {
     }
 
     @Test
+    public void PrivateKeyDecodeBadInputUsingByteBuffer() {
+        Rsa rsa = new Rsa();
+        long[] idx = { 0 };
+        ByteBuffer badKey = ByteBuffer.allocateDirect(8);
+
+        /* not a DER sequence */
+        badKey.put(Util.h2b("0102030405060708"));
+        badKey.rewind();
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRsaKey_fips(rsa, null));
+
+        assertTrue(Fips.RsaPrivateKeyDecode_fips(badKey, idx, rsa,
+                badKey.remaining()) < 0);
+
+        Fips.FreeRsaKey_fips(rsa);
+    }
+
+    @Test
+    public void PrivateKeyDecodeBadInputUsingByteArray() {
+        Rsa rsa = new Rsa();
+        long[] idx = { 0 };
+
+        /* not a DER sequence */
+        byte[] badKey = Util.h2b("0102030405060708");
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRsaKey_fips(rsa, null));
+
+        assertTrue(Fips.RsaPrivateKeyDecode_fips(badKey, idx, rsa,
+            badKey.length) < 0);
+
+        Fips.FreeRsaKey_fips(rsa);
+    }
+
+    @Test
+    public void PublicKeyDecodeBadInputUsingByteBuffer() {
+        Rsa rsa = new Rsa();
+        long[] idx = { 0 };
+        ByteBuffer badKey = ByteBuffer.allocateDirect(8);
+
+        /* not a DER sequence */
+        badKey.put(Util.h2b("0102030405060708"));
+        badKey.rewind();
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRsaKey_fips(rsa, null));
+
+        assertTrue(Fips.RsaPublicKeyDecode_fips(badKey, idx, rsa,
+            badKey.remaining()) < 0);
+
+        Fips.FreeRsaKey_fips(rsa);
+    }
+
+    @Test
+    public void PublicKeyDecodeBadInputUsingByteArray() {
+        Rsa rsa = new Rsa();
+        long[] idx = { 0 };
+
+        /* not a DER sequence */
+        byte[] badKey = Util.h2b("0102030405060708");
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRsaKey_fips(rsa, null));
+
+        assertTrue(Fips.RsaPublicKeyDecode_fips(badKey, idx, rsa,
+            badKey.length) < 0);
+
+        Fips.FreeRsaKey_fips(rsa);
+    }
+
+    @Test
     public void PrivateKeyDecodeUsingByteArray() {
         byte[] privKey = Util
                 .h2b("308204a40201000282010100c303d12bfe39a432453b53c8842b2a7c"

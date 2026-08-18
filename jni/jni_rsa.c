@@ -1467,6 +1467,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Sign(
     JNIEnv* env, jobject this, jbyteArray data_object, jlong hashType,
     jint mgf, jint saltLen, jobject rng_object)
 {
+    jbyteArray result = NULL;
 #if !defined(NO_RSA) && defined(WC_RSA_PSS)
     int ret = 0;
     int encSz = 0;
@@ -1476,7 +1477,6 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Sign(
     byte*   signature = NULL;
     word32  dataSz = 0;
     word32  signatureSz = 0;
-    jbyteArray result = NULL;
 
     /* get RsaKey pointer from Java object */
     key = (RsaKey*) getNativeStruct(env, this);
@@ -1572,6 +1572,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify(
     JNIEnv* env, jobject this, jbyteArray signature_object,
     jbyteArray data_object, jlong hashType, jint mgf, jint saltLen)
 {
+    jboolean result = JNI_FALSE;
 #if !defined(NO_RSA) && defined(WC_RSA_PSS)
     int ret = 0;
     RsaKey* key = NULL;
@@ -1582,7 +1583,6 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify(
     word32  dataSz = 0;
     word32  outputSz = 0;
     int encSz = 0;
-    jboolean result = JNI_FALSE;
 
     /* get RsaKey pointer from Java object */
     key = (RsaKey*) getNativeStruct(env, this);
@@ -1670,6 +1670,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyCheck(
     jbyteArray data_object, jbyteArray digest_object, jlong hashType,
     jint mgf, jint saltLen)
 {
+    jboolean result = JNI_FALSE;
 #if !defined(NO_RSA) && defined(WC_RSA_PSS)
     int ret = 0;
     RsaKey* key = NULL;
@@ -1679,7 +1680,6 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1VerifyCheck(
     word32  signatureSz = 0;
     word32  dataSz = 0;
     word32  digestSz = 0;
-    jboolean result = JNI_FALSE;
 
     /* get RsaKey pointer from Java object */
     key = (RsaKey*) getNativeStruct(env, this);
@@ -1795,6 +1795,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1CheckPadding(
     JNIEnv* env, jobject this, jbyteArray signature_object,
     jbyteArray digest_object, jint hashType, jint mgf, jint saltLen)
 {
+    jboolean result = JNI_FALSE;
 #if !defined(NO_RSA) && defined(WC_RSA_PSS)
     int ret = 0;
     int encSz = 0;
@@ -1805,7 +1806,6 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1CheckPadding(
     word32  signatureSz = 0;
     word32  digestSz = 0;
     word32  pssDataSz = 0;
-    jboolean result = JNI_FALSE;
 
     /* get RsaKey pointer from Java object */
     key = (RsaKey*) getNativeStruct(env, this);

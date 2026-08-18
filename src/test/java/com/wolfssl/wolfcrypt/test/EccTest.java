@@ -31,6 +31,7 @@ import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
+import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.Executors;
@@ -107,6 +108,74 @@ public class EccTest {
         alice2.importPrivate(alice.exportPrivate(), alice.exportX963());
 
         assertArrayEquals(sharedSecretA, alice2.makeSharedSecret(bob));
+    }
+
+    private static boolean isAndroid() {
+        return System.getProperty("java.runtime.name").contains("Android");
+    }
+
+    @Test
+    public void setRngShouldRetainRngReference() {
+        /* skip on Android, debuggable build GC behavior is unreliable */
+        if (isAndroid()) {
+            return;
+        }
+
+        Ecc ecc = new Ecc();
+        Rng callerRng = new Rng();
+        callerRng.init();
+
+        try {
+            ecc.setRng(callerRng);
+        } catch (WolfCryptException e) {
+            /* skip on FIPS v2 and selftest bundles */
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                Assume.assumeNoException(e);
+            }
+            throw e;
+        }
+
+        /* Drop our only strong reference, the Ecc object must keep the Rng
+         * reachable while native holds a pointer to it */
+        WeakReference<Rng> ref = new WeakReference<Rng>(callerRng);
+        callerRng = null;
+        System.gc();
+
+        assertNotNull("Ecc must retain a strong reference to the Rng " +
+            "set via setRng()", ref.get());
+
+        /* Recover the strong reference for cleanup */
+        callerRng = ref.get();
+        ecc.releaseNativeStruct();
+        if (callerRng != null) {
+            callerRng.free();
+            callerRng.releaseNativeStruct();
+        }
+    }
+
+    @Test
+    public void sharedSecretShouldMatchUsingSetRng() {
+        Ecc alice = new Ecc();
+        Ecc bob = new Ecc();
+
+        synchronized (rngLock) {
+            try {
+                alice.setRng(rng);
+                bob.setRng(rng);
+            } catch (WolfCryptException e) {
+                /* skip on FIPS v2 and selftest bundles */
+                if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                    Assume.assumeNoException(e);
+                }
+                throw e;
+            }
+
+            alice.makeKey(rng, 32);
+            bob.makeKey(rng, 32);
+        }
+
+        assertArrayEquals(alice.makeSharedSecret(bob),
+            bob.makeSharedSecret(alice));
     }
 
     @Test

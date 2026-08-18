@@ -253,6 +253,45 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1check_1key(
 #endif
 }
 
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1set_1rng
+    (JNIEnv* env, jobject this, jobject rng_object)
+{
+/* wc_ecc_set_rng() is not available in FIPS v2 or selftest bundles */
+#if defined(HAVE_ECC) && (!defined(HAVE_FIPS) || \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION != 2))) && \
+    !defined(HAVE_SELFTEST)
+    int ret = 0;
+    ecc_key* ecc = NULL;
+    RNG* rng = NULL;
+
+    ecc = (ecc_key*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        return;
+    }
+
+    if (ecc == NULL || rng == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_ecc_set_rng(ecc, rng);
+    }
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_ecc_set_rng(ecc=%p, rng=%p) = %d\n", ecc, rng, ret);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
   (JNIEnv* env, jobject this, jbyteArray priv_object,
    jbyteArray pub_object, jstring curveName)
