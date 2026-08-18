@@ -1470,11 +1470,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private_1
     }
 
     if (ret == 0) {
-        /* Initialize ECC key structure */
-        ret = wc_ecc_init(ecc);
-    }
-
-    if (ret == 0) {
         ret = wc_ecc_import_private_key_ex(privKey, privKeySz, NULL, 0,
             ecc, curveId);
     }
@@ -1543,10 +1538,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1public_1r
     if (xSz != expectedSz || ySz != expectedSz) {
         LogStr("ECC x or y size does not match expected size for curve\n");
         ret = BAD_FUNC_ARG;
-    }
-
-    if (ret == 0) {
-        ret = wc_ecc_init(ecc);
     }
 
     if (ret == 0) {
