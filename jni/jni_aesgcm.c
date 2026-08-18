@@ -200,6 +200,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
 
     /* in may be null, users might only pass in AAD to generate tag */
     if (authTagSz > AES_BLOCK_SIZE || iv == NULL || ivSz == 0 ||
+        (inLen != 0 && in == NULL) ||
         ((authTagSz > 0) && (authTag == NULL)) ||
         ((authInSz > 0) && (authIn == NULL))) {
         ret = BAD_FUNC_ARG;
