@@ -44,9 +44,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfObject_init
      * com.wolfssl.wolfcrypt.Fips.runAllCast_fips() method. runAllCast_fips()
      * includes a synchronized check that only runs the CASTs once as long
      * as they were successful. Fips.runAllCast_fips() is called at both
-     * the JNI-only level (WolfObject.init()), and the JCE level
-     * (WolfCryptProvider constructor). Both of these runAllCast_fips()
-     * at JNI/JCE levels are called before this wolfCrypt_Init() below. */
+     * the JNI-only level (WolfObject static initializer), and the JCE level
+     * (WolfCryptProvider constructor). Both of these calls happen after
+     * this wolfCrypt_Init() below has returned. */
 
     return (jint)wolfCrypt_Init();
 }

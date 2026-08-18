@@ -76,11 +76,10 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
  *     1. Certificate policies, and the related setters/getters. As such,
  *        validation will not return PolicyNode in CertPathBuilderResult
  *
- * Revocation checking is supported via:
- *     - CRL: If PKIXParameters.isRevocationEnabled() is true and appropriate
- *       CRLs have been loaded into CertStore Set
- *     - OCSP: via getRevocationChecker() which returns a
- *       WolfCryptPKIXRevocationChecker supporting OCSP and options
+ *     2. CRL and OCSP revocation checking during path building, configured
+ *        CertPathCheckers are not executed by engineBuild(). To check
+ *        revocation, validate the returned CertPath with CertPathValidator
+ *        and PKIXParameters configured for revocation.
  */
 public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
 
@@ -1205,14 +1204,13 @@ public class WolfCryptPKIXCertPathBuilder extends CertPathBuilderSpi {
     }
 
     /**
-     * Returns a CertPathChecker that this implementation uses to check
-     * the revocation status of certificates.
+     * Returns a WolfCryptPKIXRevocationChecker supporting OCSP and CRL
+     * checking.
      *
-     * This implementation returns a WolfCryptPKIXRevocationChecker that
-     * supports both OCSP and CRL checking.
+     * Path building does not execute this checker. To check revocation, add
+     * it to PKIXParameters and validate the built path with CertPathValidator.
      *
-     * @return a CertPathChecker object that this implementation uses to
-     *         check the revocation status of certificates.
+     * @return a WolfCryptPKIXRevocationChecker for use with CertPathValidator
      */
     @Override
     public CertPathChecker engineGetRevocationChecker() {

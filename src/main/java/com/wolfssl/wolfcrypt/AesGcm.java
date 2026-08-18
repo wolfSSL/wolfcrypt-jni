@@ -218,10 +218,10 @@ public class AesGcm extends NativeStruct {
      * @param authIn additional data to be authenticated but not encrypted,
      *        can be null if no additional data desired or available.
      *
-     * @return encrypted cipertext buffer
+     * @return encrypted ciphertext buffer
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if key has already been set, if object
+     * @throws IllegalStateException if key has not been set, if object
      *         fails to initialize, or if releaseNativeStruct() has been
      *         called and object has been released.
      */
@@ -252,7 +252,7 @@ public class AesGcm extends NativeStruct {
      * @return decrypted plaintext buffer
      *
      * @throws WolfCryptException if native operation fails
-     * @throws IllegalStateException if key has already been set, if object
+     * @throws IllegalStateException if key has not been set, if object
      *         fails to initialize, or if releaseNativeStruct() has been
      *         called and object has been released.
      */

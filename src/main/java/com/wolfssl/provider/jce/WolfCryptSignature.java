@@ -1249,7 +1249,6 @@ public class WolfCryptSignature extends SignatureSpi {
         /* Validate spec type and MGF1 inner digest */
         AlgorithmParameterSpec mgfParams = pss.getMGFParameters();
         if (mgfParams != null) {
-            /* Different spec type silently falls back to the default digest */
             if (!(mgfParams instanceof MGF1ParameterSpec)) {
                 throw new InvalidAlgorithmParameterException(
                     "MGF1 parameters must be of type MGF1ParameterSpec, got " +

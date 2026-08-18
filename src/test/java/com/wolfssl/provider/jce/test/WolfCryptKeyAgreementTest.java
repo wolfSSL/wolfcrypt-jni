@@ -405,6 +405,50 @@ public class WolfCryptKeyAgreementTest {
         assertArrayEquals(secretA, secretB);
     }
 
+    @Test
+    public void testDHKeyAgreementWithExplicitParams()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidKeyException, InvalidAlgorithmParameterException {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
+        byte[][] pg = Dh.getNamedDhParams(Dh.WC_FFDHE_2048);
+        BigInteger p = new BigInteger(1, pg[0]);
+        BigInteger g = new BigInteger(1, pg[1]);
+        DHParameterSpec dhParams = new DHParameterSpec(p, g);
+
+        KeyPairGenerator keyGen =
+            KeyPairGenerator.getInstance("DH", "wolfJCE");
+        keyGen.initialize(dhParams);
+        KeyPair aPair = keyGen.generateKeyPair();
+        KeyPair bPair = keyGen.generateKeyPair();
+
+        /* init() with explicit DHParameterSpec must import private key */
+        KeyAgreement aKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
+        KeyAgreement bKeyAgree = KeyAgreement.getInstance("DH", "wolfJCE");
+        aKeyAgree.init(aPair.getPrivate(), dhParams);
+        bKeyAgree.init(bPair.getPrivate(), dhParams);
+        aKeyAgree.doPhase(bPair.getPublic(), true);
+        bKeyAgree.doPhase(aPair.getPublic(), true);
+
+        byte secretA[] = aKeyAgree.generateSecret();
+        byte secretB[] = bKeyAgree.generateSecret();
+        assertTrue(secretA.length > 0);
+        assertArrayEquals(secretA, secretB);
+
+        /* spec that conflicts with key params must be rejected */
+        try {
+            aKeyAgree.init(aPair.getPrivate(),
+                new DHParameterSpec(p, g.add(BigInteger.ONE)));
+            fail("init() should reject mismatched DHParameterSpec");
+        } catch (InvalidAlgorithmParameterException e) {
+            /* expected */
+        }
+    }
+
     /* Minimal DHPublicKey holding a caller-chosen Y, for feeding malicious
      * peer public key values into engineDoPhase() during testing. */
     private static DHPublicKey makeDHPublicKey(final BigInteger y,
