@@ -161,16 +161,14 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
         ret = BAD_FUNC_ARG;
     }
 
-    if (ret == 0) {
+    if (ret == 0 && inputSz > 0) {
         output = (byte*)XMALLOC(inputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         if (output == NULL) {
             releaseByteArray(env, input_obj, input, JNI_ABORT);
-            throwOutOfMemoryException(env, "Failed to allocate key buffer");
+            throwOutOfMemoryException(env, "Failed to allocate output buffer");
             return result;
         }
-    }
 
-    if (ret == 0) {
         XMEMSET(output, 0, inputSz);
 
         ret = wc_Chacha_Process(chacha, output, input, inputSz);
@@ -179,12 +177,13 @@ Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1process(
     if (ret == 0) {
         result = (*env)->NewByteArray(env, inputSz);
 
-        if (result) {
-            (*env)->SetByteArrayRegion(env, result, 0, inputSz,
-                                       (const jbyte*) output);
-        } else {
+        if (result == NULL) {
             throwWolfCryptException(env,
                 "Failed to allocate memory for Chacha_process");
+        }
+        else if (inputSz > 0) {
+            (*env)->SetByteArrayRegion(env, result, 0, inputSz,
+                                       (const jbyte*) output);
         }
     } else {
         throwWolfCryptExceptionFromError(env, ret);

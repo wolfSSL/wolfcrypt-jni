@@ -151,6 +151,28 @@ public class ChachaTest {
     }
 
     @Test
+    public void processWithEmptyInputShouldReturnEmptyArray() {
+        Chacha chacha = new Chacha();
+
+        try {
+            chacha.setKey(KEY);
+            chacha.setIV(IV);
+
+            /* Empty input is a no-op that must return an empty array,
+             * not throw */
+            byte[] empty = chacha.process(new byte[0]);
+            assertNotNull(empty);
+            assertEquals(0, empty.length);
+
+            /* Keystream position must be unchanged by the empty call */
+            byte[] cipher = chacha.process(INPUT);
+            assertArrayEquals(EXPECTED, cipher);
+        } finally {
+            chacha.releaseNativeStruct();
+        }
+    }
+
+    @Test
     public void checkChachaVectors() {
 
         int i = 0;
