@@ -138,6 +138,29 @@ static int addCallbackCtx(WOLFSSL_CERT_MANAGER* cm, VerifyCallbackCtx* ctx)
     return 0;
 }
 
+/* Swap newCtx into the CallbackNode matching cm, in place.
+ *
+ * Caller must hold g_callbackMutex.
+ *
+ * Returns the displaced ctx, or NULL if no node matched. */
+static VerifyCallbackCtx* swapCallbackCtx(WOLFSSL_CERT_MANAGER* cm,
+    VerifyCallbackCtx* newCtx)
+{
+    CallbackNode* node = g_callbackList;
+    VerifyCallbackCtx* oldCtx = NULL;
+
+    while (node != NULL) {
+        if (node->cm == cm) {
+            oldCtx = node->ctx;
+            node->ctx = newCtx;
+            return oldCtx;
+        }
+        node = node->next;
+    }
+
+    return NULL;
+}
+
 /* Remove CallbackNode from global g_callbackList.
  *
  * Caller must hold g_callbackMutex. */
@@ -168,6 +191,35 @@ static void removeCallbackCtx(WOLFSSL_CERT_MANAGER* cm)
         prev = node;
         node = node->next;
     }
+}
+
+/* Remove and free the callback context registered for cm, deleting JNI global
+ * reference. Used by CertManagerClearVerify and CertManagerFree.
+ *
+ * Returns 0 on success, BAD_MUTEX_E if the list mutex cannot be locked. */
+static int freeCallbackCtx(JNIEnv* env, WOLFSSL_CERT_MANAGER* cm)
+{
+    VerifyCallbackCtx* ctx = NULL;
+
+    if (wc_LockMutex(&g_callbackMutex) != 0) {
+        return BAD_MUTEX_E;
+    }
+
+    ctx = findCallbackCtx(cm);
+    if (ctx != NULL) {
+        removeCallbackCtx(cm);
+    }
+
+    wc_UnLockMutex(&g_callbackMutex);
+
+    if (ctx != NULL) {
+        if (env != NULL && ctx->callback != NULL) {
+            (*env)->DeleteGlobalRef(env, ctx->callback);
+        }
+        XFREE(ctx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
+    return 0;
 }
 
 /* Extract cert DER bytes at given depth from WOLFSSL_X509_STORE_CTX into
@@ -384,10 +436,25 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManage
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerFree
   (JNIEnv* env, jclass jcl, jlong cmPtr)
 {
-    (void)env;
+    WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
     (void)jcl;
 
-    wolfSSL_CertManagerFree((WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr);
+    if (cm == NULL) {
+        return;
+    }
+
+#ifndef NO_WOLFSSL_CM_VERIFY
+    /* Reset cm callback to NULL in wolfSSL */
+    wolfSSL_CertManagerSetVerify(cm, NULL);
+#endif
+
+    /* Remove callback context for this manager so the list node and JNI
+     * global reference do not outlive it */
+    if (freeCallbackCtx(env, cm) != 0) {
+        LogStr("CertManagerFree: mutex lock failed, ctx may leak\n");
+    }
+
+    wolfSSL_CertManagerFree(cm);
 }
 
 JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerLoadCA
@@ -915,6 +982,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     int ret = 0;
     WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
     VerifyCallbackCtx* ctx = NULL;
+    VerifyCallbackCtx* oldCtx = NULL;
     JavaVM* jvm = NULL;
     (void)jcl;
 
@@ -943,18 +1011,31 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
     }
     ctx->jvm = jvm;
 
-    /* Add context to global list */
+    /* Swap into any existing entry for this cm so repeated SetVerify does
+     * not leak the prior context */
     if (wc_LockMutex(&g_callbackMutex) != 0) {
         (*env)->DeleteGlobalRef(env, ctx->callback);
         XFREE(ctx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         return BAD_MUTEX_E;
     }
 
-    ret = addCallbackCtx(cm, ctx);
+    oldCtx = swapCallbackCtx(cm, ctx);
+    if (oldCtx == NULL) {
+        /* No existing entry, add new node */
+        ret = addCallbackCtx(cm, ctx);
+    }
 
     wc_UnLockMutex(&g_callbackMutex);
 
+    if (oldCtx != NULL) {
+        if (oldCtx->callback != NULL) {
+            (*env)->DeleteGlobalRef(env, oldCtx->callback);
+        }
+        XFREE(oldCtx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
     if (ret != 0) {
+        /* Registration failed, no callback was registered */
         (*env)->DeleteGlobalRef(env, ctx->callback);
         XFREE(ctx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         return ret;
@@ -979,7 +1060,6 @@ Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerClearVerify
 {
 #ifndef NO_WOLFSSL_CM_VERIFY
     WOLFSSL_CERT_MANAGER* cm = (WOLFSSL_CERT_MANAGER*)(uintptr_t)cmPtr;
-    VerifyCallbackCtx* ctx = NULL;
     (void)jcl;
 
     if (env == NULL || cm == NULL) {
@@ -989,28 +1069,8 @@ Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManagerClearVerify
     /* Clear callback in wolfSSL first */
     wolfSSL_CertManagerSetVerify(cm, NULL);
 
-    /* Lock mutex and find/remove callback context */
-    if (wc_LockMutex(&g_callbackMutex) != 0) {
+    if (freeCallbackCtx(env, cm) != 0) {
         return BAD_MUTEX_E;
-    }
-
-    ctx = findCallbackCtx(cm);
-    if (ctx != NULL) {
-        /* Remove from global list */
-        removeCallbackCtx(cm);
-    }
-
-    wc_UnLockMutex(&g_callbackMutex);
-
-    /* Free context if it existed */
-    if (ctx != NULL) {
-        /* Delete global reference to callback object */
-        if (ctx->callback != NULL) {
-            (*env)->DeleteGlobalRef(env, ctx->callback);
-        }
-
-        /* Free context structure */
-        XFREE(ctx, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
     return WOLFSSL_SUCCESS;

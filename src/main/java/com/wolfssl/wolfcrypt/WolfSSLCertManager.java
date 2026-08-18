@@ -807,6 +807,7 @@ public class WolfSSLCertManager extends WolfObject {
                 /* free Java resources */
                 this.active = false;
                 this.cmPtr = 0;
+                this.verifyCallback = null;
             }
         }
     }

@@ -169,9 +169,8 @@ public abstract class MessageDigest extends NativeStruct {
 
         checkStateAndInitialize();
 
-        if (((offset + len) > data.length) || offset < 0 || len < 0) {
-            throw new RuntimeException(
-                "Invalid offset or length");
+        if (offset < 0 || len < 0 || len > (data.length - offset)) {
+            throw new RuntimeException("Invalid offset or length");
         }
 
         native_update(data, offset, len);

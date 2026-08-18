@@ -33,6 +33,7 @@ import org.junit.runner.Description;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -177,6 +178,138 @@ public class WolfSSLCertManagerVerifyCallbackTest {
             if (cm != null) {
                 cm.free();
             }
+        }
+    }
+
+    /**
+     * Test callback object is collectible after free(), which must release
+     * the native global reference to it.
+     */
+    @Test
+    public void testVerifyCallbackCollectibleAfterFree() throws Exception {
+
+        WolfSSLCertManager cm = new WolfSSLCertManager();
+        WolfSSLCertManagerVerifyCallback cb =
+            new WolfSSLCertManagerVerifyCallback() {
+                public int verify(int preverify, int error, int errorDepth) {
+                    return 1;
+                }
+            };
+        WeakReference<WolfSSLCertManagerVerifyCallback> ref =
+            new WeakReference<WolfSSLCertManagerVerifyCallback>(cb);
+        byte[] gcPressure = null;
+
+        try {
+            cm.setVerifyCallback(cb);
+        } finally {
+            cm.free();
+        }
+        cm = null;
+        cb = null;
+
+        /* Android ART does not reliably collect within the retry window
+         * even after the native global reference is deleted. */
+        if (!isAndroid()) {
+            /* Retry GC up to ~500ms, small allocations encourage
+             * collectors that treat System.gc() as advisory */
+            for (int i = 0; i < 50 && ref.get() != null; i++) {
+                gcPressure = new byte[4096];
+                gcPressure[0] = (byte)i;
+                System.gc();
+                Thread.sleep(10);
+            }
+
+            assertNull("callback not collected, native global reference " +
+                "leaked", ref.get());
+        }
+    }
+
+    /* Register a first callback on cm then replace with a second.
+     *
+     * Return a WeakReference to the replaced first callback. */
+    private static WeakReference<WolfSSLCertManagerVerifyCallback>
+        registerThenReplaceCallback(WolfSSLCertManager cm,
+            final AtomicBoolean firstInvoked,
+            final AtomicBoolean secondInvoked) throws Exception {
+
+        WolfSSLCertManagerVerifyCallback first =
+            new WolfSSLCertManagerVerifyCallback() {
+                public int verify(int preverify, int error, int errorDepth) {
+                    firstInvoked.set(true);
+                    return 1;
+                }
+            };
+
+        WeakReference<WolfSSLCertManagerVerifyCallback> firstRef =
+            new WeakReference<WolfSSLCertManagerVerifyCallback>(first);
+
+        cm.setVerifyCallback(first);
+
+        cm.setVerifyCallback(new WolfSSLCertManagerVerifyCallback() {
+            public int verify(int preverify, int error, int errorDepth) {
+                secondInvoked.set(true);
+                return 1;
+            }
+        });
+
+        return firstRef;
+    }
+
+    /**
+     * Test that a second setVerifyCallback() replaces the first callback and
+     * releases the native global reference to it.
+     */
+    @Test
+    public void testVerifyCallbackReplaceReleasesPrevious() throws Exception {
+
+        final AtomicBoolean firstInvoked = new AtomicBoolean(false);
+        final AtomicBoolean secondInvoked = new AtomicBoolean(false);
+        WolfSSLCertManager cm = new WolfSSLCertManager();
+        byte[] gcPressure = null;
+        WeakReference<WolfSSLCertManagerVerifyCallback> firstRef = null;
+
+        byte[] caDer = readFile(caCertDer);
+        byte[] serverDer = readFile(serverCertDer);
+
+        try {
+            cm.CertManagerLoadCABuffer(caDer, caDer.length,
+                WolfCrypt.SSL_FILETYPE_ASN1);
+
+            firstRef = registerThenReplaceCallback(cm, firstInvoked,
+                secondInvoked);
+
+            try {
+                cm.CertManagerVerifyBuffer(serverDer, serverDer.length,
+                    WolfCrypt.SSL_FILETYPE_ASN1);
+            } catch (WolfCryptException e) {
+                /* Verification result itself is not what we assert here */
+            }
+
+            assertTrue("second callback should have been invoked",
+                secondInvoked.get());
+            assertFalse("first callback should not have been invoked",
+                firstInvoked.get());
+
+            /* Android ART does not reliably collect within the retry
+             * window even after the native global reference is deleted,
+             * so the collectibility assert runs on non-Android JVMs only.
+             * The dispatch asserts above still run everywhere. */
+            if (!isAndroid()) {
+                /* Retry GC up to ~500ms, small allocations encourage
+                 * collectors that treat System.gc() as advisory */
+                for (int i = 0; i < 50 && firstRef.get() != null; i++) {
+                    gcPressure = new byte[4096];
+                    gcPressure[0] = (byte)i;
+                    System.gc();
+                    Thread.sleep(10);
+                }
+
+                assertNull("replaced callback not collected, native " +
+                    "global reference leaked", firstRef.get());
+            }
+
+        } finally {
+            cm.free();
         }
     }
 

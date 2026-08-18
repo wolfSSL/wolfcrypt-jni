@@ -76,6 +76,23 @@ public class Sha3Test {
     }
 
     @Test
+    public void updateWithWrappedOffsetAndLenShouldThrow() {
+        Sha3 sha = new Sha3(Sha3.TYPE_SHA3_256);
+        byte[] data = new byte[8];
+
+        /* offset + len wraps int arithmetic, update must reject it */
+        try {
+            sha.update(data, 1, Integer.MAX_VALUE);
+            fail("update() should have thrown for wrapped offset + len");
+        } catch (IllegalStateException e) {
+            /* init failure is not the bounds rejection */
+            throw e;
+        } catch (RuntimeException e) {
+            /* expected */
+        }
+    }
+
+    @Test
     public void sha3_256HashShouldMatchUsingByteArray() {
         /* Test vectors from NIST FIPS 202 - SHA-3 Standard */
         String[] dataVector = new String[] {
