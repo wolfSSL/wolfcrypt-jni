@@ -37,6 +37,7 @@ import java.security.NoSuchProviderException;
 import java.security.InvalidParameterException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.spec.AlgorithmParameterSpec;
+import java.util.Arrays;
 
 /**
  * wolfCrypt JCE KeyGenerator implementation.
@@ -251,6 +252,7 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
     protected SecretKey engineGenerateKey() {
 
         byte[] keyArr = null;
+        SecretKey result = null;
 
         try {
             if (this.random == null) {
@@ -261,26 +263,36 @@ public class WolfCryptKeyGenerator extends KeyGeneratorSpi {
             return null;
         }
 
-        keyArr = new byte[(this.keySizeBits + 7) / 8];
-        this.random.nextBytes(keyArr);
+        try {
+            keyArr = new byte[(this.keySizeBits + 7) / 8];
+            this.random.nextBytes(keyArr);
 
-        log("Generating key: " + keyArr.length + " bytes");
+            log("Generating key: " + keyArr.length + " bytes");
 
-        switch (this.algoType) {
-            case WC_AES:
-            case WC_HMAC_SHA1:
-            case WC_HMAC_SHA224:
-            case WC_HMAC_SHA256:
-            case WC_HMAC_SHA384:
-            case WC_HMAC_SHA512:
-            case WC_HMAC_SHA3_224:
-            case WC_HMAC_SHA3_256:
-            case WC_HMAC_SHA3_384:
-            case WC_HMAC_SHA3_512:
-                return new SecretKeySpec(keyArr, this.algString);
-            default:
-                return null;
+            switch (this.algoType) {
+                case WC_AES:
+                case WC_HMAC_SHA1:
+                case WC_HMAC_SHA224:
+                case WC_HMAC_SHA256:
+                case WC_HMAC_SHA384:
+                case WC_HMAC_SHA512:
+                case WC_HMAC_SHA3_224:
+                case WC_HMAC_SHA3_256:
+                case WC_HMAC_SHA3_384:
+                case WC_HMAC_SHA3_512:
+                    /* SecretKeySpec clones the key bytes */
+                    result = new SecretKeySpec(keyArr, this.algString);
+                    break;
+                default:
+                    result = null;
+            }
+        } finally {
+            if (keyArr != null) {
+                Arrays.fill(keyArr, (byte)0);
+            }
         }
+
+        return result;
     }
 
     /**
