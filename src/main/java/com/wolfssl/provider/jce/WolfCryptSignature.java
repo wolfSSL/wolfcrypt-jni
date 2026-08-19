@@ -910,114 +910,125 @@ public class WolfCryptSignature extends SignatureSpi {
         byte[] encDigest = new byte[Asn.MAX_ENCODED_SIG_SIZE];
         byte[] verify    = new byte[Asn.MAX_ENCODED_SIG_SIZE];
 
-        /* get final digest */
         try {
-            synchronized (hashLock) {
-                switch (this.digestType) {
-                    case WC_MD5:
-                        this.md5.digest(digest);
-                        break;
+            /* get final digest */
+            try {
+                synchronized (hashLock) {
+                    switch (this.digestType) {
+                        case WC_MD5:
+                            this.md5.digest(digest);
+                            break;
 
-                    case WC_SHA1:
-                        this.sha.digest(digest);
-                        break;
+                        case WC_SHA1:
+                            this.sha.digest(digest);
+                            break;
 
-                    case WC_SHA224:
-                        this.sha224.digest(digest);
-                        break;
+                        case WC_SHA224:
+                            this.sha224.digest(digest);
+                            break;
 
-                    case WC_SHA256:
-                        this.sha256.digest(digest);
-                        break;
+                        case WC_SHA256:
+                            this.sha256.digest(digest);
+                            break;
 
-                    case WC_SHA384:
-                        this.sha384.digest(digest);
-                        break;
+                        case WC_SHA384:
+                            this.sha384.digest(digest);
+                            break;
 
-                    case WC_SHA512:
-                        this.sha512.digest(digest);
-                        break;
+                        case WC_SHA512:
+                            this.sha512.digest(digest);
+                            break;
 
-                    case WC_SHA3_224:
-                    case WC_SHA3_256:
-                    case WC_SHA3_384:
-                    case WC_SHA3_512:
-                        this.sha3.digest(digest);
-                        break;
+                        case WC_SHA3_224:
+                        case WC_SHA3_256:
+                        case WC_SHA3_384:
+                        case WC_SHA3_512:
+                            this.sha3.digest(digest);
+                            break;
+                    }
                 }
+
+            } catch (ShortBufferException e) {
+                throw new SignatureException(e.getMessage());
             }
 
-        } catch (ShortBufferException e) {
-            throw new SignatureException(e.getMessage());
-        }
+            /* verify digest */
+            switch (this.keyType) {
+                case WC_RSA:
+                    if (this.paddingType == PaddingType.WC_RSA_PSS) {
+                        /* RSA-PSS verification */
+                        int mgfType = getMgfTypeFromParams();
+                        int saltLen = this.pssParams.getSaltLength();
 
-        /* verify digest */
-        switch (this.keyType) {
-            case WC_RSA:
-                if (this.paddingType == PaddingType.WC_RSA_PSS) {
-                    /* RSA-PSS verification */
-                    int mgfType = getMgfTypeFromParams();
-                    int saltLen = this.pssParams.getSaltLength();
+                        /* Convert -1 (default) to digest length */
+                        if (saltLen == -1) {
+                            saltLen = this.digestSz;
+                        }
 
-                    /* Convert -1 (default) to digest length */
-                    if (saltLen == -1) {
-                        saltLen = this.digestSz;
-                    }
+                        try {
+                            /* Use rsaPssVerifyWithDigest for pre-computed
+                             * digest verification. Pass digest as both data
+                             * and digest since we only have the final digest
+                             * here */
+                            verified = this.rsa.rsaPssVerifyWithDigest(
+                                sigBytes, digest, digest,
+                                digestTypeToHashType(this.digestType), mgfType,
+                                saltLen);
 
-                    try {
-                        /* Use rsaPssVerifyWithDigest for pre-computed digest
-                         * verification. Pass digest as both data and digest
-                         * since we only have the final digest here */
-                        verified = this.rsa.rsaPssVerifyWithDigest(
-                            sigBytes, digest, digest,
-                            digestTypeToHashType(this.digestType), mgfType,
-                            saltLen);
+                        } catch (WolfCryptException e) {
+                            verified = false;
+                        }
 
-                    } catch (WolfCryptException e) {
-                        verified = false;
-                    }
+                    } else {
+                        /* Existing PKCS#1 v1.5 verification code */
+                        encodedSz = Asn.encodeSignature(encDigest, digest,
+                                        digest.length, this.internalHashSum);
 
-                } else {
-                    /* Existing PKCS#1 v1.5 verification code */
-                    encodedSz = Asn.encodeSignature(encDigest, digest,
-                                    digest.length, this.internalHashSum);
+                        if (encodedSz < 0) {
+                            throw new SignatureException(
+                                "Failed to DER encode digest during sig " +
+                                "verify");
+                        }
 
-                    if (encodedSz < 0) {
-                        throw new SignatureException(
-                            "Failed to DER encode digest during sig verify");
-                    }
+                        try {
+                            verify = this.rsa.verify(sigBytes);
+                        } catch (WolfCryptException e) {
+                            verified = false;
+                        }
 
-                    try {
-                        verify = this.rsa.verify(sigBytes);
-                    } catch (WolfCryptException e) {
-                        verified = false;
-                    }
-
-                    /* compare expected digest to one unwrapped from verify */
-                    if ((encodedSz > encDigest.length) ||
-                        (verify.length != encodedSz)) {
-                        verified = false;
-                    }
-                    else {
-                        for (int i = 0; i < verify.length; i++) {
-                            if (verify[i] != encDigest[i]) {
-                                verified = false;
+                        /* compare expected digest to one unwrapped from
+                         * verify */
+                        if ((encodedSz > encDigest.length) ||
+                            (verify.length != encodedSz)) {
+                            verified = false;
+                        }
+                        else {
+                            for (int i = 0; i < verify.length; i++) {
+                                if (verify[i] != encDigest[i]) {
+                                    verified = false;
+                                }
                             }
                         }
                     }
-                }
 
-                break;
+                    break;
 
-            case WC_ECDSA:
+                case WC_ECDSA:
 
-                try {
-                    verified = this.ecc.verify(digest, sigBytes);
-                } catch (WolfCryptException we) {
-                    verified = false;
-                }
+                    try {
+                        verified = this.ecc.verify(digest, sigBytes);
+                    } catch (WolfCryptException we) {
+                        verified = false;
+                    }
 
-                break;
+                    break;
+            }
+
+        } finally {
+            /* Zero arrays before refs drop */
+            zeroArray(digest);
+            zeroArray(encDigest);
+            zeroArray(verify);
         }
 
         if (sigBytes != null) {
