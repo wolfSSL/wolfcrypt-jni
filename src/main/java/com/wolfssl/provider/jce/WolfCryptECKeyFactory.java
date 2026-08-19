@@ -263,6 +263,9 @@ public class WolfCryptECKeyFactory extends KeyFactorySpi {
             if (ecc != null) {
                 ecc.releaseNativeStruct();
             }
+            if (pkcs8Der != null) {
+                Arrays.fill(pkcs8Der, (byte)0);
+            }
             if (privDer != null) {
                 Arrays.fill(privDer, (byte)0);
             }
