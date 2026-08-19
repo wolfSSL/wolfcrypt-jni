@@ -52,7 +52,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
     jbyteArray result = NULL;
     (void)jcl;
 
-    if (env == NULL || kLen == 0) {
+    if (env == NULL || kLen <= 0) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
         return NULL;
     }
@@ -147,7 +147,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
     jbyteArray result = NULL;
     (void)jcl;
 
-    if (env == NULL || kLen == 0) {
+    if (env == NULL || kLen <= 0) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
         return NULL;
     }
