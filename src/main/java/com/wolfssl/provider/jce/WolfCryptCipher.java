@@ -2025,15 +2025,20 @@ public class WolfCryptCipher extends CipherSpi {
             return 0;
         }
 
-        if (output.length - outputOffset < tmpOut.length) {
-            throw new ShortBufferException(
-                "Output buffer too small, need " + tmpOut.length +
-                " bytes, got " + (output.length - outputOffset));
+        try {
+            if (output.length - outputOffset < tmpOut.length) {
+                throw new ShortBufferException(
+                    "Output buffer too small, need " + tmpOut.length +
+                    " bytes, got " + (output.length - outputOffset));
+            }
+
+            System.arraycopy(tmpOut, 0, output, outputOffset, tmpOut.length);
+
+            return tmpOut.length;
+        } finally {
+            /* Zeroize intermediate copy, holds plaintext when decrypting */
+            zeroArray(tmpOut);
         }
-
-        System.arraycopy(tmpOut, 0, output, outputOffset, tmpOut.length);
-
-        return tmpOut.length;
     }
 
     private void zeroArray(byte[] in) {
@@ -2098,15 +2103,20 @@ public class WolfCryptCipher extends CipherSpi {
 
         tmpOut = wolfCryptFinal(input, inputOffset, inputLen);
 
-        if (output.length - outputOffset < tmpOut.length) {
-            throw new ShortBufferException(
-                "Output buffer too small, need " + tmpOut.length +
-                " bytes, got " + (output.length - outputOffset));
+        try {
+            if (output.length - outputOffset < tmpOut.length) {
+                throw new ShortBufferException(
+                    "Output buffer too small, need " + tmpOut.length +
+                    " bytes, got " + (output.length - outputOffset));
+            }
+
+            System.arraycopy(tmpOut, 0, output, outputOffset, tmpOut.length);
+
+            return tmpOut.length;
+
+        } finally {
+            zeroArray(tmpOut);
         }
-
-        System.arraycopy(tmpOut, 0, output, outputOffset, tmpOut.length);
-
-        return tmpOut.length;
     }
 
     @Override
