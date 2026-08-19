@@ -1493,41 +1493,48 @@ public class WolfCryptCipher extends CipherSpi {
         /* keep remaining non-block size input buffered */
         bufferedConsume(bytesToProcess);
 
-        /* process tmpIn[] */
-        switch (this.cipherType) {
+        try {
+            /* process tmpIn[] */
+            switch (this.cipherType) {
 
-            /* Only CBC/ECB/CTR/OFB mode reaches this point currently,
-             * GCM/CCM/CTS cache all data internally above until final call */
-            case WC_AES:
-                if (cipherMode == CipherMode.WC_ECB) {
-                    output = this.aesEcb.update(tmpIn, 0, tmpIn.length);
+                /* Only CBC/ECB/CTR/OFB mode reaches this point currently,
+                 * GCM/CCM/CTS cache all data internally above until final
+                 * call */
+                case WC_AES:
+                    if (cipherMode == CipherMode.WC_ECB) {
+                        output = this.aesEcb.update(tmpIn, 0, tmpIn.length);
+                    }
+                    else if (cipherMode == CipherMode.WC_CTR) {
+                        output = this.aesCtr.update(tmpIn, 0, tmpIn.length);
+                    }
+                    else if (cipherMode == CipherMode.WC_OFB) {
+                        output = this.aesOfb.update(tmpIn, 0, tmpIn.length);
+                    }
+                    else {
+                        byte[] full = this.aes.update(tmpIn, 0, tmpIn.length);
+                        /* truncate, zeroize untruncated copy */
+                        output = Arrays.copyOfRange(full, 0, tmpIn.length);
+                        zeroArray(full);
+                    }
+
+                    break;
+
+                case WC_DES3: {
+                    byte[] full = this.des3.update(tmpIn, 0, tmpIn.length);
+                    /* truncate, zeroize untruncated copy */
+                    output = Arrays.copyOfRange(full, 0, tmpIn.length);
+                    zeroArray(full);
+
+                    break;
                 }
-                else if (cipherMode == CipherMode.WC_CTR) {
-                    output = this.aesCtr.update(tmpIn, 0, tmpIn.length);
-                }
-                else if (cipherMode == CipherMode.WC_OFB) {
-                    output = this.aesOfb.update(tmpIn, 0, tmpIn.length);
-                }
-                else {
-                    output = this.aes.update(tmpIn, 0, tmpIn.length);
 
-                    /* truncate */
-                    output = Arrays.copyOfRange(output, 0, tmpIn.length);
-                }
-
-                break;
-
-            case WC_DES3:
-                output = this.des3.update(tmpIn, 0, tmpIn.length);
-
-                /* truncate */
-                output = Arrays.copyOfRange(output, 0, tmpIn.length);
-
-                break;
-
-            default:
-                throw new RuntimeException("Unsupported algorithm type");
-        };
+                default:
+                    throw new RuntimeException("Unsupported algorithm type");
+            };
+        } finally {
+            /* Zero internal input plaintext copy */
+            zeroArray(tmpIn);
+        }
 
         if (output == null) {
             /* For interop compatibility, return empty byte array */
@@ -1615,246 +1622,275 @@ public class WolfCryptCipher extends CipherSpi {
             }
         }
 
-        /* add padding if encrypting and PKCS5 padding is used. PKCS#5 padding
-         * is treated the same as PKCS#7 padding here, using each algorithm's
-         * specific block size. CCM, CTR, CTS, and OFB modes do not use
-         * padding */
-        if (this.direction == OpMode.WC_ENCRYPT &&
-            this.paddingType == PaddingType.WC_PKCS5 &&
-            cipherMode != CipherMode.WC_CCM &&
-            cipherMode != CipherMode.WC_CTR &&
-            cipherMode != CipherMode.WC_CTS &&
-            cipherMode != CipherMode.WC_OFB) {
-            if (this.cipherType == CipherType.WC_AES) {
-                tmpIn = Aes.padPKCS7(tmpIn, Aes.BLOCK_SIZE);
-            } else if (this.cipherType == CipherType.WC_DES3) {
-                tmpIn = Des3.padPKCS7(tmpIn, Des3.BLOCK_SIZE);
-            }
-        }
-
         /* Flatten accumulated AAD to a single array for GCM/CCM calls below */
         byte[] aad = (this.aadStream != null) ?
             this.aadStream.toByteArray() : null;
 
-        switch (this.cipherType) {
+        try {
+            /* Add padding if encrypting and PKCS5 padding is used, PKCS#5
+             * padding is treated the same as PKCS#7 padding here, using
+             * each algorithm's specific block size. CCM, CTR, CTS, and OFB
+             * modes do not use padding */
+            if (this.direction == OpMode.WC_ENCRYPT &&
+                this.paddingType == PaddingType.WC_PKCS5 &&
+                cipherMode != CipherMode.WC_CCM &&
+                cipherMode != CipherMode.WC_CTR &&
+                cipherMode != CipherMode.WC_CTS &&
+                cipherMode != CipherMode.WC_OFB) {
+                if (this.cipherType == CipherType.WC_AES) {
+                    byte[] padded = Aes.padPKCS7(tmpIn, Aes.BLOCK_SIZE);
+                    /* Zeroize plaintext copy orphaned by padding */
+                    zeroArray(tmpIn);
+                    tmpIn = padded;
+                } else if (this.cipherType == CipherType.WC_DES3) {
+                    byte[] padded = Des3.padPKCS7(tmpIn, Des3.BLOCK_SIZE);
+                    /* Zeroize plaintext copy orphaned by padding */
+                    zeroArray(tmpIn);
+                    tmpIn = padded;
+                }
+            }
 
-            case WC_AES:
-                if (cipherMode == CipherMode.WC_GCM) {
-                    if (this.direction == OpMode.WC_ENCRYPT) {
+            switch (this.cipherType) {
 
-                        /* A second encryption without re-init would reuse
-                         * the same key and IV (GCM nonce reuse) */
-                        if (this.gcmEncryptNeedsReinit) {
-                            throw new IllegalStateException(
-                                "Must use either different key or iv for " +
-                                "GCM encryption");
-                        }
+                case WC_AES:
+                    if (cipherMode == CipherMode.WC_GCM) {
+                        if (this.direction == OpMode.WC_ENCRYPT) {
 
-                        byte[] tag = new byte[this.gcmTagLen];
-                        tmpOut = this.aesGcm.encrypt(tmpIn, this.iv, tag,
-                                    aad);
-
-                        this.gcmEncryptNeedsReinit = true;
-
-                        /* Concatenate auth tag to end of ciphertext */
-                        byte[] totalOut = new byte[tmpOut.length + tag.length];
-                        System.arraycopy(tmpOut, 0, totalOut, 0, tmpOut.length);
-                        System.arraycopy(tag, 0, totalOut, tmpOut.length,
-                                         tag.length);
-                        tmpOut = totalOut;
-                    }
-                    else {
-                        /* Case where input is only the authentication tag,
-                         * zero-length plaintext */
-                        if (tmpIn.length < this.gcmTagLen) {
-                            throw new AEADBadTagException(
-                                "Input too short for GCM tag, got " +
-                                tmpIn.length + " bytes, need at least " +
-                                this.gcmTagLen);
-                        }
-
-                        /* Get auth tag from end of ciphertext */
-                        byte[] tag = Arrays.copyOfRange(tmpIn,
-                                        tmpIn.length - this.gcmTagLen,
-                                        tmpIn.length);
-
-                        /* Shrink ciphertext array down to not include tag */
-                        tmpIn = Arrays.copyOfRange(tmpIn, 0,
-                                    tmpIn.length - this.gcmTagLen);
-
-                        try {
-                            tmpOut = this.aesGcm.decrypt(tmpIn, this.iv,
-                                tag, aad);
-
-                        } catch (WolfCryptException e) {
-                            /* Convert to AEADBadTagException */
-                            if (e.getCode() ==
-                                WolfCryptError.AES_GCM_AUTH_E.getCode()) {
-                                /* Authentication check fail */
-                                throw new AEADBadTagException(e.getMessage());
+                            /* A second encryption without re-init would reuse
+                             * the same key and IV (GCM nonce reuse) */
+                            if (this.gcmEncryptNeedsReinit) {
+                                throw new IllegalStateException(
+                                    "Must use either different key or iv for " +
+                                    "GCM encryption");
                             }
-                            throw e;
+
+                            byte[] tag = new byte[this.gcmTagLen];
+                            tmpOut = this.aesGcm.encrypt(tmpIn, this.iv, tag,
+                                        aad);
+
+                            this.gcmEncryptNeedsReinit = true;
+
+                            /* Concatenate auth tag to end of ciphertext */
+                            byte[] totalOut =
+                                new byte[tmpOut.length + tag.length];
+                            System.arraycopy(tmpOut, 0, totalOut, 0,
+                                tmpOut.length);
+                            System.arraycopy(tag, 0, totalOut, tmpOut.length,
+                                             tag.length);
+                            tmpOut = totalOut;
+                        }
+                        else {
+                            /* Case where input is only the authentication tag,
+                             * zero-length plaintext */
+                            if (tmpIn.length < this.gcmTagLen) {
+                                throw new AEADBadTagException(
+                                    "Input too short for GCM tag, got " +
+                                    tmpIn.length + " bytes, need at least " +
+                                    this.gcmTagLen);
+                            }
+
+                            /* Get auth tag from end of ciphertext */
+                            byte[] tag = Arrays.copyOfRange(tmpIn,
+                                            tmpIn.length - this.gcmTagLen,
+                                            tmpIn.length);
+
+                            /* Shrink ciphertext array to not include tag */
+                            tmpIn = Arrays.copyOfRange(tmpIn, 0,
+                                        tmpIn.length - this.gcmTagLen);
+
+                            try {
+                                tmpOut = this.aesGcm.decrypt(tmpIn, this.iv,
+                                    tag, aad);
+
+                            } catch (WolfCryptException e) {
+                                /* Convert to AEADBadTagException */
+                                if (e.getCode() ==
+                                    WolfCryptError.AES_GCM_AUTH_E.getCode()) {
+                                    /* Authentication check fail */
+                                    throw new AEADBadTagException(
+                                        e.getMessage());
+                                }
+                                throw e;
+                            }
                         }
                     }
-                }
-                else if (cipherMode == CipherMode.WC_CCM) {
-                    if (this.direction == OpMode.WC_ENCRYPT) {
-                        byte[] tag = new byte[this.gcmTagLen];
-                        tmpOut = this.aesCcm.encrypt(tmpIn, this.iv, tag,
-                                    aad);
+                    else if (cipherMode == CipherMode.WC_CCM) {
+                        if (this.direction == OpMode.WC_ENCRYPT) {
+                            byte[] tag = new byte[this.gcmTagLen];
+                            tmpOut = this.aesCcm.encrypt(tmpIn, this.iv, tag,
+                                        aad);
 
-                        /* Concatenate auth tag to end of ciphertext */
-                        byte[] totalOut = new byte[tmpOut.length + tag.length];
-                        System.arraycopy(tmpOut, 0, totalOut, 0, tmpOut.length);
-                        System.arraycopy(tag, 0, totalOut, tmpOut.length,
-                                         tag.length);
-                        tmpOut = totalOut;
+                            /* Concatenate auth tag to end of ciphertext */
+                            byte[] totalOut =
+                                new byte[tmpOut.length + tag.length];
+                            System.arraycopy(tmpOut, 0, totalOut, 0,
+                                tmpOut.length);
+                            System.arraycopy(tag, 0, totalOut, tmpOut.length,
+                                             tag.length);
+                            tmpOut = totalOut;
+                        }
+                        else {
+                            /* Case where input is only the authentication tag,
+                             * zero-length plaintext */
+                            if (tmpIn.length < this.gcmTagLen) {
+                                throw new AEADBadTagException(
+                                    "Input too short for CCM tag, got " +
+                                    tmpIn.length + " bytes, need at least " +
+                                    this.gcmTagLen);
+                            }
+
+                            /* Get auth tag from end of ciphertext */
+                            byte[] tag = Arrays.copyOfRange(tmpIn,
+                                            tmpIn.length - this.gcmTagLen,
+                                            tmpIn.length);
+
+                            /* Shrink ciphertext array to not include tag */
+                            tmpIn = Arrays.copyOfRange(tmpIn, 0,
+                                        tmpIn.length - this.gcmTagLen);
+
+                            tmpOut = this.aesCcm.decrypt(tmpIn, this.iv, tag,
+                                        aad);
+                        }
+                    }
+                    else if (cipherMode == CipherMode.WC_ECB) {
+                        tmpOut = this.aesEcb.update(tmpIn, 0, tmpIn.length);
+                    }
+                    else if (cipherMode == CipherMode.WC_CTR) {
+                        tmpOut = this.aesCtr.update(tmpIn, 0, tmpIn.length);
+                    }
+                    else if (cipherMode == CipherMode.WC_CTS) {
+                        tmpOut = this.aesCts.update(tmpIn, 0, tmpIn.length);
+                    }
+                    else if (cipherMode == CipherMode.WC_OFB) {
+                        tmpOut = this.aesOfb.update(tmpIn, 0, tmpIn.length);
                     }
                     else {
-                        /* Case where input is only the authentication tag,
-                         * zero-length plaintext */
-                        if (tmpIn.length < this.gcmTagLen) {
-                            throw new AEADBadTagException(
-                                "Input too short for CCM tag, got " +
-                                tmpIn.length + " bytes, need at least " +
-                                this.gcmTagLen);
-                        }
-
-                        /* Get auth tag from end of ciphertext */
-                        byte[] tag = Arrays.copyOfRange(tmpIn,
-                                        tmpIn.length - this.gcmTagLen,
-                                        tmpIn.length);
-
-                        /* Shrink ciphertext array down to not include tag */
-                        tmpIn = Arrays.copyOfRange(tmpIn, 0,
-                                    tmpIn.length - this.gcmTagLen);
-
-                        tmpOut = this.aesCcm.decrypt(tmpIn, this.iv, tag,
-                                    aad);
+                        byte[] full = this.aes.update(tmpIn, 0, tmpIn.length);
+                        tmpOut = Arrays.copyOfRange(full, 0, tmpIn.length);
+                        zeroArray(full);
                     }
-                }
-                else if (cipherMode == CipherMode.WC_ECB) {
-                    tmpOut = this.aesEcb.update(tmpIn, 0, tmpIn.length);
-                }
-                else if (cipherMode == CipherMode.WC_CTR) {
-                    tmpOut = this.aesCtr.update(tmpIn, 0, tmpIn.length);
-                }
-                else if (cipherMode == CipherMode.WC_CTS) {
-                    tmpOut = this.aesCts.update(tmpIn, 0, tmpIn.length);
-                }
-                else if (cipherMode == CipherMode.WC_OFB) {
-                    tmpOut = this.aesOfb.update(tmpIn, 0, tmpIn.length);
-                }
-                else {
-                    tmpOut = this.aes.update(tmpIn, 0, tmpIn.length);
 
-                    /* truncate */
-                    tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
-                }
-
-                /* strip PKCS#5/PKCS#7 padding if required,
-                 * CCM, CTR, CTS, and OFB modes do not use padding */
-                if (tmpOut != null && tmpOut.length > 0) {
-                    if (this.direction == OpMode.WC_DECRYPT &&
-                        this.paddingType == PaddingType.WC_PKCS5 &&
-                        cipherMode != CipherMode.WC_CCM &&
-                        cipherMode != CipherMode.WC_CTR &&
-                        cipherMode != CipherMode.WC_CTS &&
-                        cipherMode != CipherMode.WC_OFB) {
-                        try {
-                            tmpOut = Aes.unPadPKCS7(tmpOut, Aes.BLOCK_SIZE);
-                        } catch (WolfCryptException e) {
-                            throw new BadPaddingException("Decryption error");
+                    /* strip PKCS#5/PKCS#7 padding if required,
+                     * CCM, CTR, CTS, and OFB modes do not use padding */
+                    if (tmpOut != null && tmpOut.length > 0) {
+                        if (this.direction == OpMode.WC_DECRYPT &&
+                            this.paddingType == PaddingType.WC_PKCS5 &&
+                            cipherMode != CipherMode.WC_CCM &&
+                            cipherMode != CipherMode.WC_CTR &&
+                            cipherMode != CipherMode.WC_CTS &&
+                            cipherMode != CipherMode.WC_OFB) {
+                            try {
+                                byte[] padded = tmpOut;
+                                tmpOut = Aes.unPadPKCS7(padded, Aes.BLOCK_SIZE);
+                                zeroArray(padded);
+                            } catch (WolfCryptException e) {
+                                zeroArray(tmpOut);
+                                throw new BadPaddingException(
+                                    "Decryption error");
+                            }
                         }
                     }
-                }
 
-                break;
+                    break;
 
-            case WC_DES3:
-                tmpOut = this.des3.update(tmpIn, 0, tmpIn.length);
+                case WC_DES3: {
+                    byte[] fullDes = this.des3.update(tmpIn, 0, tmpIn.length);
+                    tmpOut = Arrays.copyOfRange(fullDes, 0, tmpIn.length);
+                    zeroArray(fullDes);
 
-                /* truncate */
-                tmpOut = Arrays.copyOfRange(tmpOut, 0, tmpIn.length);
-
-                /* strip PKCS#5/PKCS#7 padding if required */
-                if (tmpOut != null && tmpOut.length > 0) {
-                    if (this.direction == OpMode.WC_DECRYPT &&
-                        this.paddingType == PaddingType.WC_PKCS5) {
-                        try {
-                            tmpOut = Des3.unPadPKCS7(tmpOut, Des3.BLOCK_SIZE);
-                        } catch (WolfCryptException e) {
-                            throw new BadPaddingException("Decryption error");
+                    /* strip PKCS#5/PKCS#7 padding if required */
+                    if (tmpOut != null && tmpOut.length > 0) {
+                        if (this.direction == OpMode.WC_DECRYPT &&
+                            this.paddingType == PaddingType.WC_PKCS5) {
+                            try {
+                                byte[] padded = tmpOut;
+                                tmpOut = Des3.unPadPKCS7(padded,
+                                    Des3.BLOCK_SIZE);
+                                zeroArray(padded);
+                            } catch (WolfCryptException e) {
+                                zeroArray(tmpOut);
+                                throw new BadPaddingException(
+                                    "Decryption error");
+                            }
                         }
                     }
+
+                    break;
                 }
 
-                break;
+                case WC_RSA:
 
-            case WC_RSA:
+                    if (this.paddingType == PaddingType.WC_OAEP_SHA256 ||
+                        this.paddingType == PaddingType.WC_OAEP_SHA1) {
+                        /* OAEP only supports public key encrypt and
+                         * private key decrypt */
+                        if (this.direction == OpMode.WC_ENCRYPT) {
+                            if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
+                                throw new IllegalStateException(
+                                    "OAEP padding requires public key for " +
+                                    "encryption");
+                            }
 
-                if (this.paddingType == PaddingType.WC_OAEP_SHA256 ||
-                    this.paddingType == PaddingType.WC_OAEP_SHA1) {
-                    /* OAEP only supports public key encrypt, private decrypt */
-                    if (this.direction == OpMode.WC_ENCRYPT) {
-                        if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
-                            throw new IllegalStateException(
-                                "OAEP padding requires public key for " +
-                                "encryption");
-                        }
-
-                        tmpOut = this.rsa.encryptOaep(tmpIn, this.rng,
-                            this.oaepHashType, this.oaepMgf);
-
-                    } else {
-                        if (this.rsaKeyType == RsaKeyType.WC_RSA_PUBLIC) {
-                            throw new IllegalStateException(
-                                "OAEP padding requires private key for " +
-                                "decryption");
-                        }
-
-                        try {
-                            tmpIn = leftPadRSACiphertext(tmpIn,
-                                this.rsa.getEncryptSize());
-
-                            tmpOut = this.rsa.decryptOaep(tmpIn,
+                            tmpOut = this.rsa.encryptOaep(tmpIn, this.rng,
                                 this.oaepHashType, this.oaepMgf);
 
-                        } catch (WolfCryptException e) {
-                            throw new BadPaddingException("Decryption error");
-                        }
-                    }
-                } else {
-                    /* PKCS#1 v1.5 padding */
-                    if (this.direction == OpMode.WC_ENCRYPT) {
-
-                        if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
-                            tmpOut = this.rsa.sign(tmpIn, this.rng);
-
                         } else {
-                            tmpOut = this.rsa.encrypt(tmpIn, this.rng);
-                        }
+                            if (this.rsaKeyType == RsaKeyType.WC_RSA_PUBLIC) {
+                                throw new IllegalStateException(
+                                    "OAEP padding requires private key for " +
+                                    "decryption");
+                            }
 
+                            try {
+                                tmpIn = leftPadRSACiphertext(tmpIn,
+                                    this.rsa.getEncryptSize());
+
+                                tmpOut = this.rsa.decryptOaep(tmpIn,
+                                    this.oaepHashType, this.oaepMgf);
+
+                            } catch (WolfCryptException e) {
+                                throw new BadPaddingException(
+                                    "Decryption error");
+                            }
+                        }
                     } else {
-                        try {
-                            tmpIn = leftPadRSACiphertext(tmpIn,
-                                this.rsa.getEncryptSize());
+                        /* PKCS#1 v1.5 padding */
+                        if (this.direction == OpMode.WC_ENCRYPT) {
 
                             if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
-                                tmpOut = this.rsa.decrypt(tmpIn);
+                                tmpOut = this.rsa.sign(tmpIn, this.rng);
+
                             } else {
-                                tmpOut = this.rsa.verify(tmpIn);
+                                tmpOut = this.rsa.encrypt(tmpIn, this.rng);
                             }
-                        } catch (WolfCryptException e) {
-                            throw new BadPaddingException("Decryption error");
+
+                        } else {
+                            try {
+                                tmpIn = leftPadRSACiphertext(tmpIn,
+                                    this.rsa.getEncryptSize());
+
+                                if (this.rsaKeyType ==
+                                        RsaKeyType.WC_RSA_PRIVATE) {
+                                    tmpOut = this.rsa.decrypt(tmpIn);
+                                } else {
+                                    tmpOut = this.rsa.verify(tmpIn);
+                                }
+                            } catch (WolfCryptException e) {
+                                throw new BadPaddingException(
+                                    "Decryption error");
+                            }
                         }
                     }
-                }
-                break;
+                    break;
 
-            default:
-                throw new RuntimeException("Unsupported algorithm type");
-        };
+                default:
+                    throw new RuntimeException("Unsupported algorithm type");
+            };
+
+        } finally {
+            /* Zeroize the internal input copy for both directions */
+            zeroArray(tmpIn);
+        }
 
         /* reset state, user doesn't need to call init again before use */
         try {
