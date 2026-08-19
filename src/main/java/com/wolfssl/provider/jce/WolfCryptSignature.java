@@ -724,95 +724,103 @@ public class WolfCryptSignature extends SignatureSpi {
         byte[] digest    = new byte[this.digestSz];
         byte[] encDigest = new byte[Asn.MAX_ENCODED_SIG_SIZE];
         byte[] signature = new byte[Asn.MAX_ENCODED_SIG_SIZE];
+        byte[] tmp       = null;
 
-        /* get final digest */
         try {
-            synchronized (hashLock) {
-                switch (this.digestType) {
-                    case WC_MD5:
-                        this.md5.digest(digest);
-                        break;
+            /* get final digest */
+            try {
+                synchronized (hashLock) {
+                    switch (this.digestType) {
+                        case WC_MD5:
+                            this.md5.digest(digest);
+                            break;
 
-                    case WC_SHA1:
-                        this.sha.digest(digest);
-                        break;
+                        case WC_SHA1:
+                            this.sha.digest(digest);
+                            break;
 
-                    case WC_SHA224:
-                        this.sha224.digest(digest);
-                        break;
+                        case WC_SHA224:
+                            this.sha224.digest(digest);
+                            break;
 
-                    case WC_SHA256:
-                        this.sha256.digest(digest);
-                        break;
+                        case WC_SHA256:
+                            this.sha256.digest(digest);
+                            break;
 
-                    case WC_SHA384:
-                        this.sha384.digest(digest);
-                        break;
+                        case WC_SHA384:
+                            this.sha384.digest(digest);
+                            break;
 
-                    case WC_SHA512:
-                        this.sha512.digest(digest);
-                        break;
+                        case WC_SHA512:
+                            this.sha512.digest(digest);
+                            break;
 
-                    case WC_SHA3_224:
-                    case WC_SHA3_256:
-                    case WC_SHA3_384:
-                    case WC_SHA3_512:
-                        this.sha3.digest(digest);
-                        break;
+                        case WC_SHA3_224:
+                        case WC_SHA3_256:
+                        case WC_SHA3_384:
+                        case WC_SHA3_512:
+                            this.sha3.digest(digest);
+                            break;
+                    }
                 }
+            } catch (ShortBufferException e) {
+                throw new SignatureException(e.getMessage());
             }
-        } catch (ShortBufferException e) {
-            throw new SignatureException(e.getMessage());
-        }
 
-        /* sign digest */
-        switch (this.keyType) {
-            case WC_RSA:
-                if (this.paddingType == PaddingType.WC_RSA_PSS) {
-                    /* RSA-PSS signature */
-                    int mgfType = getMgfTypeFromParams();
-                    int saltLen = this.pssParams.getSaltLength();
+            /* sign digest */
+            switch (this.keyType) {
+                case WC_RSA:
+                    if (this.paddingType == PaddingType.WC_RSA_PSS) {
+                        /* RSA-PSS signature */
+                        int mgfType = getMgfTypeFromParams();
+                        int saltLen = this.pssParams.getSaltLength();
 
-                    /* Convert -1 (default) to digest length */
-                    if (saltLen == -1) {
-                        saltLen = this.digestSz;
+                        /* Convert -1 (default) to digest length */
+                        if (saltLen == -1) {
+                            saltLen = this.digestSz;
+                        }
+
+                        synchronized (rngLock) {
+                            signature = this.rsa.rsaPssSign(digest,
+                                digestTypeToHashType(this.digestType),
+                                mgfType, saltLen, this.rng);
+                        }
+                    } else {
+                        /* Existing PKCS#1 v1.5 signature code */
+                        encodedSz = (int)Asn.encodeSignature(encDigest,
+                            digest, digest.length, this.internalHashSum);
+
+                        if (encodedSz < 0) {
+                            throw new SignatureException(
+                                "Failed to DER encode digest during sig gen");
+                        }
+
+                        tmp = new byte[encodedSz];
+                        System.arraycopy(encDigest, 0, tmp, 0, encodedSz);
+                        synchronized (rngLock) {
+                            signature = this.rsa.sign(tmp, this.rng);
+                        }
                     }
 
-                    synchronized (rngLock) {
-                        signature = this.rsa.rsaPssSign(digest,
-                            digestTypeToHashType(this.digestType),
-                            mgfType, saltLen, this.rng);
-                    }
-                } else {
-                    /* Existing PKCS#1 v1.5 signature code */
-                    encodedSz = (int)Asn.encodeSignature(encDigest, digest,
-                                    digest.length, this.internalHashSum);
+                    break;
 
-                    if (encodedSz < 0) {
-                        throw new SignatureException(
-                            "Failed to DER encode digest during sig gen");
-                    }
+                case WC_ECDSA:
 
-                    byte[] tmp = new byte[encodedSz];
-                    System.arraycopy(encDigest, 0, tmp, 0, encodedSz);
-                    synchronized (rngLock) {
-                        signature = this.rsa.sign(tmp, this.rng);
-                    }
-                    zeroArray(tmp);
-                }
+                    /* Ecc.sign() internally has a rngLock unlike Rsa.sign() */
+                    signature = this.ecc.sign(digest, this.rng);
 
-                break;
+                    break;
 
-            case WC_ECDSA:
+                default:
+                    throw new SignatureException(
+                        "Invalid signature algorithm type");
+            }
 
-                /* Ecc.sign() internally has a rngLock unlike Rsa.sign() */
-                signature = this.ecc.sign(digest, this.rng);
-
-                break;
-
-            default:
-                throw new SignatureException(
-                    "Invalid signature algorithm type");
+        } finally {
+            /* Zeroize message digest and DER encoding before refs drop */
+            zeroArray(digest);
+            zeroArray(encDigest);
+            zeroArray(tmp);
         }
 
         if (signature != null) {
