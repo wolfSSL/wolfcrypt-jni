@@ -378,6 +378,9 @@ public class WolfCryptRSAKeyFactory extends KeyFactorySpi {
             if (rsa != null) {
                 rsa.releaseNativeStruct();
             }
+            if (pkcs8Der != null) {
+                Arrays.fill(pkcs8Der, (byte)0);
+            }
         }
     }
 
