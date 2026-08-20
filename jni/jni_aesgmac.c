@@ -111,6 +111,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacSetKey(
     Gmac* gmac = NULL;
     byte* key  = NULL;
     word32 keySz = 0;
+    jboolean keyIsCopy = JNI_FALSE;
 
     gmac = (Gmac*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -118,7 +119,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacSetKey(
         return;
     }
 
-    key   = getByteArray(env, key_object);
+    key   = getByteArrayIsCopy(env, key_object, &keyIsCopy);
     keySz = getByteArrayLength(env, key_object);
 
     if (!gmac || !key) {
@@ -133,6 +134,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacSetKey(
 
     LogStr("wc_GmacSetKey(gmac=%p, key, %d) = %d\n", gmac, keySz, ret);
 
+    zeroizeByteArrayCopy(key, keySz, keyIsCopy);
     releaseByteArray(env, key_object, key, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
@@ -220,8 +222,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1Gmac(
     byte* authIn = NULL;
     byte* authTag = NULL;
     word32 keySz = 0, ivSz = 0, authInSz = 0, authTagSz = 0;
+    jboolean keyIsCopy = JNI_FALSE;
 
-    key = getByteArray(env, key_object);
+    key = getByteArrayIsCopy(env, key_object, &keyIsCopy);
+    keySz = getByteArrayLength(env, key_object);
     iv = getByteArray(env, iv_object);
     authIn = getByteArray(env, authIn_object);
     authTag = getByteArray(env, authTag_object);
@@ -234,7 +238,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1Gmac(
     }
 
     if (ret == 0) {
-        keySz = getByteArrayLength(env, key_object);
         ivSz = getByteArrayLength(env, iv_object);
         authInSz = getByteArrayLength(env, authIn_object);
         authTagSz = getByteArrayLength(env, authTag_object);
@@ -269,6 +272,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1Gmac(
            "authInSz=%d, authTag=%p, authTagSz=%d, ret=%d\n",
            key, keySz, iv, ivSz, authIn, authInSz, authTag, authTagSz, ret);
 
+    zeroizeByteArrayCopy(key, keySz, keyIsCopy);
     releaseByteArray(env, key_object, key, JNI_ABORT);
     releaseByteArray(env, iv_object, iv, JNI_ABORT);
     releaseByteArray(env, authIn_object, authIn, JNI_ABORT);
@@ -295,8 +299,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacVerify(
     byte* authIn = NULL;
     byte* authTag = NULL;
     word32 keySz = 0, ivSz = 0, authInSz = 0, authTagSz = 0;
+    jboolean keyIsCopy = JNI_FALSE;
 
-    key = getByteArray(env, key_object);
+    key = getByteArrayIsCopy(env, key_object, &keyIsCopy);
+    keySz = getByteArrayLength(env, key_object);
     iv = getByteArray(env, iv_object);
     authIn = getByteArray(env, authIn_object);
     authTag = getByteArray(env, authTag_object);
@@ -309,7 +315,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacVerify(
     }
 
     if (ret == 0) {
-        keySz = getByteArrayLength(env, key_object);
         ivSz = getByteArrayLength(env, iv_object);
         authInSz = getByteArrayLength(env, authIn_object);
         authTagSz = getByteArrayLength(env, authTag_object);
@@ -344,6 +349,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacVerify(
            "authInSz=%d, authTag=%p, authTagSz=%d, ret=%d\n",
            key, keySz, iv, ivSz, authIn, authInSz, authTag, authTagSz, ret);
 
+    zeroizeByteArrayCopy(key, keySz, keyIsCopy);
     releaseByteArray(env, key_object, key, JNI_ABORT);
     releaseByteArray(env, iv_object, iv, JNI_ABORT);
     releaseByteArray(env, authIn_object, authIn, JNI_ABORT);
