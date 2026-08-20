@@ -30,6 +30,7 @@
 #include <wolfssl/version.h>
 #include <wolfssl/wolfcrypt/ecc.h>
 #include <wolfssl/wolfcrypt/asn.h>
+#include <wolfssl/wolfcrypt/memory.h>
 
 #include <com_wolfssl_wolfcrypt_Ecc.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -304,6 +305,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
     byte* pub    = NULL;
     word32 privSz = 0, pubSz = 0;
     const char* name = NULL;
+    jboolean privIsCopy = JNI_FALSE;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -311,7 +313,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
         return;
     }
 
-    priv   = getByteArray(env, priv_object);
+    priv   = getByteArrayIsCopy(env, priv_object, &privIsCopy);
     privSz = getByteArrayLength(env, priv_object);
     pub    = getByteArray(env, pub_object);
     pubSz  = getByteArrayLength(env, pub_object);
@@ -360,6 +362,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
 
     LogStr("wc_ecc_import_private_key(ecc=%p) = %d\n", ecc, ret);
 
+    zeroizeByteArrayCopy(priv, privSz, privIsCopy);
     releaseByteArray(env, priv_object, priv, JNI_ABORT);
     releaseByteArray(env, pub_object, pub, JNI_ABORT);
 #else
@@ -569,6 +572,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPrivateKeyDecode(
     ecc_key* ecc = NULL;
     byte*  key   = NULL;
     word32 keySz = 0;
+    jboolean keyIsCopy = JNI_FALSE;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -576,7 +580,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPrivateKeyDecode(
         return;
     }
 
-    key   = getByteArray(env, key_object);
+    key   = getByteArrayIsCopy(env, key_object, &keyIsCopy);
     keySz = getByteArrayLength(env, key_object);
 
     if (ecc == NULL || key == NULL) {
@@ -593,6 +597,7 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccPrivateKeyDecode(
     LogStr("wc_EccPrivateKeyDecode(key=%p, keySz=%d, ecc=%p) = %d\n",
            key, (int)keySz, ecc, ret);
 
+    zeroizeByteArrayCopy(key, keySz, keyIsCopy);
     releaseByteArray(env, key_object, key, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
@@ -1442,6 +1447,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private_1
     word32 privKeySz = 0;
     const char* name = NULL;
     int curveId = 0;
+    jboolean privIsCopy = JNI_FALSE;
 
     ecc = (ecc_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1449,7 +1455,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private_1
         return;
     }
 
-    privKey = getByteArray(env, priv_object);
+    privKey = getByteArrayIsCopy(env, priv_object, &privIsCopy);
     privKeySz = getByteArrayLength(env, priv_object);
 
     if (ecc == NULL || privKey == NULL || curveName == NULL) {
@@ -1489,6 +1495,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private_1
     LogStr("wc_ecc_import_unsigned(ecc=%p, privKey=%p) = %d\n",
            ecc, privKey, ret);
 
+    zeroizeByteArrayCopy(privKey, privKeySz, privIsCopy);
     releaseByteArray(env, priv_object, privKey, JNI_ABORT);
 #else
     throwNotCompiledInException(env);

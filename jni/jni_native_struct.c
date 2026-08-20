@@ -25,7 +25,9 @@
 #elif !defined(__ANDROID__)
     #include <wolfssl/options.h>
 #endif
+#include <wolfssl/version.h>
 #include <wolfssl/wolfcrypt/types.h>
+#include <wolfssl/wolfcrypt/memory.h>
 
 #include <com_wolfssl_wolfcrypt_NativeStruct.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -205,6 +207,31 @@ void setDirectBufferLimit(JNIEnv* env, jobject buffer, jint limit)
 byte* getByteArray(JNIEnv* env, jbyteArray array)
 {
     return array ? (byte*)(*env)->GetByteArrayElements(env, array, NULL) : NULL;
+}
+
+/* Same as getByteArray() but also returns the JNI isCopy flag. Flag is
+ * set to JNI_FALSE first so it is defined even when array is NULL */
+byte* getByteArrayIsCopy(JNIEnv* env, jbyteArray array, jboolean* isCopy)
+{
+    if (isCopy != NULL) {
+        *isCopy = JNI_FALSE;
+    }
+    return array ?
+        (byte*)(*env)->GetByteArrayElements(env, array, isCopy) : NULL;
+}
+
+/* Zeroize native copy of a sensitive array before JNI_ABORT release.
+ * Skip pinned arrays, they alias the caller's live Java array */
+void zeroizeByteArrayCopy(byte* buf, word32 sz, jboolean isCopy)
+{
+    if (buf != NULL && isCopy == JNI_TRUE) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(buf, sz);
+    #else
+        XMEMSET(buf, 0, sz);
+    #endif
+    }
 }
 
 void releaseByteArray(JNIEnv* env, jbyteArray array, byte* elements, jint abort)
