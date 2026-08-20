@@ -760,6 +760,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecode(
     RsaKey* key = NULL;
     byte* k = NULL;
     word32 kSz = 0, index = 0;
+    jboolean kIsCopy = JNI_FALSE;
 
     key = (RsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -767,7 +768,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecode(
         return;
     }
 
-    k   = getByteArray(env, key_object);
+    k   = getByteArrayIsCopy(env, key_object, &kIsCopy);
     kSz = getByteArrayLength(env, key_object);
 
     if (key == NULL || k == NULL) {
@@ -785,6 +786,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecode(
     LogStr("key[%u]: [%p]\n", (word32)kSz, k);
     LogHex((byte*) k, 0, kSz);
 
+    zeroizeByteArrayCopy(k, kSz, kIsCopy);
     releaseByteArray(env, key_object, k, JNI_ABORT);
 
 #else
@@ -801,6 +803,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecodePKC
     RsaKey* key = NULL;
     byte* k = NULL;
     word32 kSz = 0, offset = 0;
+    jboolean kIsCopy = JNI_FALSE;
 
     key = (RsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -808,7 +811,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecodePKC
         return;
     }
 
-    k   = getByteArray(env, key_object);
+    k   = getByteArrayIsCopy(env, key_object, &kIsCopy);
     kSz = getByteArrayLength(env, key_object);
 
     if (key == NULL || k == NULL) {
@@ -834,6 +837,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecodePKC
     LogStr("key[%u]: [%p]\n", (word32)kSz, k);
     LogHex((byte*) k, 0, kSz);
 
+    zeroizeByteArrayCopy(k, kSz, kIsCopy);
     releaseByteArray(env, key_object, k, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
@@ -2160,6 +2164,12 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaImportCrtKey(
     byte* u = NULL;
     word32 nSz = 0, eSz = 0, dSz = 0, pSz = 0;
     word32 qSz = 0, dPSz = 0, dQSz = 0, uSz = 0;
+    jboolean dIsCopy = JNI_FALSE;
+    jboolean pIsCopy = JNI_FALSE;
+    jboolean qIsCopy = JNI_FALSE;
+    jboolean dPIsCopy = JNI_FALSE;
+    jboolean dQIsCopy = JNI_FALSE;
+    jboolean uIsCopy = JNI_FALSE;
 
 #ifndef WOLFSSL_PUBLIC_MP
     ret = NOT_COMPILED_IN;
@@ -2179,22 +2189,22 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaImportCrtKey(
         e = getByteArray(env, e_object);
         eSz = getByteArrayLength(env, e_object);
 
-        d = getByteArray(env, d_object);
+        d = getByteArrayIsCopy(env, d_object, &dIsCopy);
         dSz = getByteArrayLength(env, d_object);
 
-        p = getByteArray(env, p_object);
+        p = getByteArrayIsCopy(env, p_object, &pIsCopy);
         pSz = getByteArrayLength(env, p_object);
 
-        q = getByteArray(env, q_object);
+        q = getByteArrayIsCopy(env, q_object, &qIsCopy);
         qSz = getByteArrayLength(env, q_object);
 
-        dP = getByteArray(env, dP_object);
+        dP = getByteArrayIsCopy(env, dP_object, &dPIsCopy);
         dPSz = getByteArrayLength(env, dP_object);
 
-        dQ = getByteArray(env, dQ_object);
+        dQ = getByteArrayIsCopy(env, dQ_object, &dQIsCopy);
         dQSz = getByteArrayLength(env, dQ_object);
 
-        u = getByteArray(env, u_object);
+        u = getByteArrayIsCopy(env, u_object, &uIsCopy);
         uSz = getByteArrayLength(env, u_object);
 
         /* Validate inputs */
@@ -2252,15 +2262,21 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaImportCrtKey(
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    /* Release all byte arrays */
-    releaseByteArray(env, n_object, n, ret);
-    releaseByteArray(env, e_object, e, ret);
-    releaseByteArray(env, d_object, d, ret);
-    releaseByteArray(env, p_object, p, ret);
-    releaseByteArray(env, q_object, q, ret);
-    releaseByteArray(env, dP_object, dP, ret);
-    releaseByteArray(env, dQ_object, dQ, ret);
-    releaseByteArray(env, u_object, u, ret);
+    /* Release all byte arrays, zeroize private components */
+    releaseByteArray(env, n_object, n, JNI_ABORT);
+    releaseByteArray(env, e_object, e, JNI_ABORT);
+    zeroizeByteArrayCopy(d, dSz, dIsCopy);
+    releaseByteArray(env, d_object, d, JNI_ABORT);
+    zeroizeByteArrayCopy(p, pSz, pIsCopy);
+    releaseByteArray(env, p_object, p, JNI_ABORT);
+    zeroizeByteArrayCopy(q, qSz, qIsCopy);
+    releaseByteArray(env, q_object, q, JNI_ABORT);
+    zeroizeByteArrayCopy(dP, dPSz, dPIsCopy);
+    releaseByteArray(env, dP_object, dP, JNI_ABORT);
+    zeroizeByteArrayCopy(dQ, dQSz, dQIsCopy);
+    releaseByteArray(env, dQ_object, dQ, JNI_ABORT);
+    zeroizeByteArrayCopy(u, uSz, uIsCopy);
+    releaseByteArray(env, u_object, u, JNI_ABORT);
 #else
     (void)env;
     (void)this;

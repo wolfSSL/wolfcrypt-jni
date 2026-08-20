@@ -29,6 +29,7 @@
 #include <wolfssl/version.h>
 #include <wolfssl/wolfcrypt/dh.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
+#include <wolfssl/wolfcrypt/memory.h>
 
 #include <com_wolfssl_wolfcrypt_Dh.h>
 #include <wolfcrypt_jni_NativeStruct.h>
@@ -399,6 +400,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
     byte* pub  = NULL;
     byte* secret = NULL;
     word32 privSz = 0, pubSz = 0, secretSz = 0;
+    jboolean privIsCopy = JNI_FALSE;
 
     key = (DhKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -406,7 +408,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
         return NULL;
     }
 
-    priv   = getByteArray(env, priv_object);
+    priv   = getByteArrayIsCopy(env, priv_object, &privIsCopy);
     privSz = getByteArrayLength(env, priv_object);
     pub    = getByteArray(env, pub_object);
     pubSz  = getByteArrayLength(env, pub_object);
@@ -420,6 +422,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
         throwOutOfMemoryException(
             env, "Failed to allocate shared secret buffer");
 
+        zeroizeByteArrayCopy(priv, privSz, privIsCopy);
         releaseByteArray(env, priv_object, priv, JNI_ABORT);
         releaseByteArray(env, pub_object, pub, JNI_ABORT);
 
@@ -464,6 +467,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
         XFREE(secret, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
+    zeroizeByteArrayCopy(priv, privSz, privIsCopy);
     releaseByteArray(env, priv_object, priv, JNI_ABORT);
     releaseByteArray(env, pub_object, pub, JNI_ABORT);
 #else
@@ -783,6 +787,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhImportKeyPair(
     byte* p    = NULL;
     byte* g    = NULL;
     word32 privSz = 0, pubSz = 0, pSz = 0, gSz = 0;
+    jboolean privIsCopy = JNI_FALSE;
 
     key = (DhKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -814,7 +819,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhImportKeyPair(
     if (ret == 0) {
         /* Get private key if provided */
         if (priv_object != NULL) {
-            priv = getByteArray(env, priv_object);
+            priv = getByteArrayIsCopy(env, priv_object, &privIsCopy);
             privSz = getByteArrayLength(env, priv_object);
         }
 
@@ -835,6 +840,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhImportKeyPair(
     releaseByteArray(env, p_object, p, JNI_ABORT);
     releaseByteArray(env, g_object, g, JNI_ABORT);
     if (priv_object != NULL) {
+        zeroizeByteArrayCopy(priv, privSz, privIsCopy);
         releaseByteArray(env, priv_object, priv, JNI_ABORT);
     }
     if (pub_object != NULL) {
@@ -1126,6 +1132,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhPrivateKeyDecode(
     byte* pkcs8 = NULL;
     word32 pkcs8Sz = 0;
     word32 idx = 0;
+    jboolean pkcs8IsCopy = JNI_FALSE;
 
     key = (DhKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1138,7 +1145,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhPrivateKeyDecode(
         return NULL;
     }
 
-    pkcs8 = getByteArray(env, pkcs8_object);
+    pkcs8 = getByteArrayIsCopy(env, pkcs8_object, &pkcs8IsCopy);
     pkcs8Sz = getByteArrayLength(env, pkcs8_object);
 
     if (pkcs8 == NULL) {
@@ -1166,6 +1173,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhPrivateKeyDecode(
 
     LogStr("wc_DhKeyDecode(pkcs8=%p, key=%p) = %d\n", pkcs8, key, ret);
 
+    zeroizeByteArrayCopy(pkcs8, pkcs8Sz, pkcs8IsCopy);
     releaseByteArray(env, pkcs8_object, pkcs8, JNI_ABORT);
 
     if (ret != 0) {
