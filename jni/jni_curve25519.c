@@ -159,13 +159,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
     byte* priv   = NULL;
     byte* pub    = NULL;
     word32 privSz = 0, pubSz = 0;
+    jboolean privIsCopy = JNI_FALSE;
 
     curve25519 = (curve25519_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
         return;
     }
-    priv   = getByteArray(env, priv_object);
+    priv   = getByteArrayIsCopy(env, priv_object, &privIsCopy);
     privSz = getByteArrayLength(env, priv_object);
     pub    = getByteArray(env, pub_object);
     pubSz  = getByteArrayLength(env, pub_object);
@@ -184,6 +185,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
 
     LogStr("wc_curve25519_import_private_key(curve25519=%p) = %d\n", curve25519, ret);
 
+    zeroizeByteArrayCopy(priv, privSz, privIsCopy);
     releaseByteArray(env, priv_object, priv, JNI_ABORT);
     releaseByteArray(env, pub_object, pub, JNI_ABORT);
 #else
@@ -199,13 +201,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
     curve25519_key* curve25519 = NULL;
     byte* priv   = NULL;
     word32 privSz = 0;
+    jboolean privIsCopy = JNI_FALSE;
 
     curve25519 = (curve25519_key*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
         return;
     }
-    priv   = getByteArray(env, priv_object);
+    priv   = getByteArrayIsCopy(env, priv_object, &privIsCopy);
     privSz = getByteArrayLength(env, priv_object);
 
     /* pub may be null if only importing private key */
@@ -221,6 +224,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
 
     LogStr("wc_curve25519_import_private_key(curve25519=%p) = %d\n", curve25519, ret);
 
+    zeroizeByteArrayCopy(priv, privSz, privIsCopy);
     releaseByteArray(env, priv_object, priv, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
