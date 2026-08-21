@@ -135,6 +135,21 @@ public class AesOfbTest {
             /* test must throw */
         }
 
+        /* wc_AesSetKey reads AES block size iv bytes, reject a short iv */
+        try {
+            aesOfb.setKey(KEY_128, new byte[1]);
+            fail("undersized iv should be rejected.");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
+        try {
+            aesOfb.setKey(KEY_128, new byte[AesOfb.BLOCK_SIZE + 1]);
+            fail("oversized iv should be rejected.");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
         aesOfb.setKey(KEY_128, IV_128);
         aesOfb.releaseNativeStruct();
 

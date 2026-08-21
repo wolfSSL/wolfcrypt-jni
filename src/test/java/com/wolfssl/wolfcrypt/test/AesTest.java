@@ -98,6 +98,22 @@ public class AesTest {
             /* test must throw */
         }
 
+        /* iv is optional, but a non-null iv must be the block size,
+         * wc_AesSetKey reads AES_BLOCK_SIZE bytes */
+        try {
+            aes.setKey(KEY, new byte[1], Aes.ENCRYPT_MODE);
+            fail("undersized iv should be rejected.");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
+        try {
+            aes.setKey(KEY, new byte[Aes.BLOCK_SIZE + 1], Aes.ENCRYPT_MODE);
+            fail("oversized iv should be rejected.");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
         aes.setKey(KEY, IV, Aes.ENCRYPT_MODE);
         aes.releaseNativeStruct();
 
