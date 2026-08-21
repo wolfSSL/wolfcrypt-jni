@@ -112,6 +112,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1CmacSetKey(
     Cmac* cmac = NULL;
     byte* key  = NULL;
     word32 keySz = 0;
+    jboolean keyIsCopy = JNI_FALSE;
 
     cmac = (Cmac*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -119,7 +120,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1CmacSetKey(
         return;
     }
 
-    key   = getByteArray(env, key_object);
+    key   = getByteArrayIsCopy(env, key_object, &keyIsCopy);
     keySz = getByteArrayLength(env, key_object);
 
     if (!cmac || !key) {
@@ -134,6 +135,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1CmacSetKey(
 
     LogStr("wc_InitCmac(cmac=%p, key, %d) = %d\n", cmac, keySz, ret);
 
+    zeroizeByteArrayCopy(key, keySz, keyIsCopy);
     releaseByteArray(env, key_object, key, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
@@ -300,9 +302,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1AesCmacGenerate(
     byte* key = NULL;
     byte* mac = NULL;
     word32 actualDataSz, actualKeySz, actualMacArraySz;
+    jboolean keyIsCopy = JNI_FALSE;
 
     data = getByteArray(env, data_object);
-    key = getByteArray(env, key_object);
+    key = getByteArrayIsCopy(env, key_object, &keyIsCopy);
+    actualKeySz = getByteArrayLength(env, key_object);
     mac = getByteArray(env, mac_object);
 
     if (data == NULL || key == NULL || mac == NULL) {
@@ -312,7 +316,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1AesCmacGenerate(
     if (ret == 0) {
         /* Validate size parameters against actual array sizes */
         actualDataSz = getByteArrayLength(env, data_object);
-        actualKeySz = getByteArrayLength(env, key_object);
         actualMacArraySz = getByteArrayLength(env, mac_object);
 
         if (dataSz < 0 || keySz < 0 || macSz < 0 ||
@@ -352,6 +355,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1AesCmacGenerate(
            data, dataSz, key, keySz, ret);
 
     releaseByteArray(env, data_object, data, JNI_ABORT);
+    zeroizeByteArrayCopy(key, actualKeySz, keyIsCopy);
     releaseByteArray(env, key_object, key, JNI_ABORT);
     releaseByteArray(env, mac_object, mac, JNI_ABORT);
 
@@ -372,10 +376,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1AesCmacVerify(
     byte* data = NULL;
     byte* key = NULL;
     word32 actualMacSz, actualDataSz, actualKeySz;
+    jboolean keyIsCopy = JNI_FALSE;
 
     mac = getByteArray(env, mac_object);
     data = getByteArray(env, data_object);
-    key = getByteArray(env, key_object);
+    key = getByteArrayIsCopy(env, key_object, &keyIsCopy);
+    actualKeySz = getByteArrayLength(env, key_object);
 
     if (mac == NULL || data == NULL || key == NULL) {
         ret = BAD_FUNC_ARG;
@@ -385,7 +391,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1AesCmacVerify(
         /* Validate size parameters against actual array sizes */
         actualMacSz = getByteArrayLength(env, mac_object);
         actualDataSz = getByteArrayLength(env, data_object);
-        actualKeySz = getByteArrayLength(env, key_object);
 
         if (macSz < 0 || dataSz < 0 || keySz < 0 ||
             (word32)macSz > actualMacSz ||
@@ -405,6 +410,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCmac_wc_1AesCmacVerify(
 
     releaseByteArray(env, mac_object, mac, JNI_ABORT);
     releaseByteArray(env, data_object, data, JNI_ABORT);
+    zeroizeByteArrayCopy(key, actualKeySz, keyIsCopy);
     releaseByteArray(env, key_object, key, JNI_ABORT);
 
     return ret;

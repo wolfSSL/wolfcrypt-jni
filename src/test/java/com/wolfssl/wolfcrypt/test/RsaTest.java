@@ -735,6 +735,92 @@ public class RsaTest {
         key.releaseNativeStruct();
     }
 
+    /**
+     * Native wc_RsaImportCrtKey zeroizes its component copies and must
+     * release with JNI_ABORT.
+     */
+    @Test
+    public void importRawPrivateKeyShouldNotModifyCallerArrays() {
+
+        Rsa genKey = makeKeyWithRetry(2048, 65537, rng);
+
+        int bufSz = 512;
+        byte[] n = new byte[bufSz];
+        byte[] e = new byte[bufSz];
+        byte[] d = new byte[bufSz];
+        byte[] p = new byte[bufSz];
+        byte[] q = new byte[bufSz];
+        byte[] dP = new byte[bufSz];
+        byte[] dQ = new byte[bufSz];
+        byte[] u = new byte[bufSz];
+        long[] nSz = { bufSz };
+        long[] eSz = { bufSz };
+        long[] dSz = { bufSz };
+        long[] pSz = { bufSz };
+        long[] qSz = { bufSz };
+        long[] dPSz = { bufSz };
+        long[] dQSz = { bufSz };
+        long[] uSz = { bufSz };
+
+        try {
+            genKey.exportRawPrivateKey(n, nSz, e, eSz, d, dSz, p, pSz, q,
+                qSz, dP, dPSz, dQ, dQSz, u, uSz);
+        } catch (WolfCryptException ex) {
+            genKey.releaseNativeStruct();
+            Assume.assumeTrue("raw export not compiled in native wolfSSL",
+                ex.getError() != WolfCryptError.NOT_COMPILED_IN);
+            throw ex;
+        }
+        genKey.releaseNativeStruct();
+
+        /* importRawPrivateKey must not modify any caller component array */
+        byte[] nIn = Arrays.copyOf(n, (int)nSz[0]);
+        byte[] eIn = Arrays.copyOf(e, (int)eSz[0]);
+        byte[] dIn = Arrays.copyOf(d, (int)dSz[0]);
+        byte[] pIn = Arrays.copyOf(p, (int)pSz[0]);
+        byte[] qIn = Arrays.copyOf(q, (int)qSz[0]);
+        byte[] dPIn = Arrays.copyOf(dP, (int)dPSz[0]);
+        byte[] dQIn = Arrays.copyOf(dQ, (int)dQSz[0]);
+        byte[] uIn = Arrays.copyOf(u, (int)uSz[0]);
+        byte[] nCopy = nIn.clone();
+        byte[] eCopy = eIn.clone();
+        byte[] dCopy = dIn.clone();
+        byte[] pCopy = pIn.clone();
+        byte[] qCopy = qIn.clone();
+        byte[] dPCopy = dPIn.clone();
+        byte[] dQCopy = dQIn.clone();
+        byte[] uCopy = uIn.clone();
+
+        Rsa rawKey = new Rsa();
+        try {
+            rawKey.importRawPrivateKey(nIn, eIn, dIn, pIn, qIn, dPIn,
+                dQIn, uIn);
+
+            assertArrayEquals("importRawPrivateKey must not modify n",
+                nCopy, nIn);
+            assertArrayEquals("importRawPrivateKey must not modify e",
+                eCopy, eIn);
+            assertArrayEquals("importRawPrivateKey must not modify d",
+                dCopy, dIn);
+            assertArrayEquals("importRawPrivateKey must not modify p",
+                pCopy, pIn);
+            assertArrayEquals("importRawPrivateKey must not modify q",
+                qCopy, qIn);
+            assertArrayEquals("importRawPrivateKey must not modify dP",
+                dPCopy, dPIn);
+            assertArrayEquals("importRawPrivateKey must not modify dQ",
+                dQCopy, dQIn);
+            assertArrayEquals("importRawPrivateKey must not modify u",
+                uCopy, uIn);
+        } catch (WolfCryptException ex) {
+            Assume.assumeTrue("raw import not compiled in native wolfSSL",
+                ex.getError() != WolfCryptError.NOT_COMPILED_IN);
+            throw ex;
+        } finally {
+            rawKey.releaseNativeStruct();
+        }
+    }
+
     @Test
     public void rsaOperations() {
         Rsa priv = new Rsa();
