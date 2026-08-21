@@ -134,4 +134,52 @@ public class PwdbasedTest {
         assertArrayEquals("PKCS12_PBKDF modified caller password array",
             passCopy, pass);
     }
+
+    /**
+     * PBKDF2 must reject zero/negative key lengths with BAD_FUNC_ARG.
+     */
+    @Test
+    public void testPbkdf2RejectsNonPositiveKeyLength() {
+
+        Assume.assumeTrue("PBKDF2 not compiled in native wolfSSL",
+            FeatureDetect.Pbkdf2Enabled());
+
+        byte[] pass = makePassword();
+        byte[] salt = new byte[] {1, 2, 3, 4, 5, 6, 7, 8};
+
+        for (int kLen : new int[] {-1, 0}) {
+            try {
+                Pwdbased.PBKDF2(pass, salt, 100, kLen,
+                    WolfCrypt.WC_HASH_TYPE_SHA256);
+                fail("PBKDF2 should reject kLen: " + kLen);
+            } catch (WolfCryptException e) {
+                assertEquals("kLen " + kLen + " must map to BAD_FUNC_ARG",
+                    WolfCryptError.BAD_FUNC_ARG, e.getError());
+            }
+        }
+    }
+
+    /**
+     * PKCS12 PBKDF must reject zero/negative key lengths with BAD_FUNC_ARG.
+     */
+    @Test
+    public void testPkcs12PbkdfRejectsNonPositiveKeyLength() {
+
+        byte[] pass = makePassword();
+        byte[] salt = new byte[] {1, 2, 3, 4, 5, 6, 7, 8};
+
+        for (int kLen : new int[] {-1, 0}) {
+            try {
+                Pwdbased.PKCS12_PBKDF(pass, salt, 100, kLen,
+                    WolfCrypt.WC_HASH_TYPE_SHA256, 1);
+                fail("PKCS12_PBKDF should reject kLen: " + kLen);
+            } catch (WolfCryptException e) {
+                Assume.assumeTrue(
+                    "PKCS12 PBKDF not compiled in native wolfSSL",
+                    e.getError() != WolfCryptError.NOT_COMPILED_IN);
+                assertEquals("kLen " + kLen + " must map to BAD_FUNC_ARG",
+                    WolfCryptError.BAD_FUNC_ARG, e.getError());
+            }
+        }
+    }
 }

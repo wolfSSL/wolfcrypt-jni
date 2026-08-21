@@ -25,7 +25,9 @@
     #include <wolfssl/options.h>
 #endif
 
+#include <wolfssl/version.h>
 #include <wolfssl/ssl.h>
+#include <wolfssl/wolfcrypt/memory.h>
 #include <com_wolfssl_provider_jce_WolfSSLKeyStore.h>
 #include <wolfcrypt_jni_error.h>
 
@@ -40,6 +42,7 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_provider_jce_WolfSSLKeyStore_X509Che
     int ret = WOLFSSL_SUCCESS;
     int certDerSz = 0;
     int keyDerSz = 0;
+    jboolean keyDerIsCopy = JNI_FALSE;
     byte* certDer = NULL;
     byte* keyDer = NULL;
     byte* pkcs8KeyDer = NULL;
@@ -57,7 +60,8 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_provider_jce_WolfSSLKeyStore_X509Che
     certDer = (byte*)(*env)->GetByteArrayElements(env, certDerArr, NULL);
     certDerSz = (*env)->GetArrayLength(env, certDerArr);
 
-    keyDer = (byte*)(*env)->GetByteArrayElements(env, pkcs8KeyDerArr, NULL);
+    keyDer = (byte*)(*env)->GetByteArrayElements(env, pkcs8KeyDerArr,
+        &keyDerIsCopy);
     keyDerSz = (*env)->GetArrayLength(env, pkcs8KeyDerArr);
     /* Keep original keyDer pointer for free later, wolfSSL_d2i_PKCS8_PKEY
      * will change/advance the pointer. */
@@ -118,8 +122,16 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_provider_jce_WolfSSLKeyStore_X509Che
                                          (jbyte*)certDer, JNI_ABORT);
     }
     if (keyDer != NULL) {
+        if (keyDerIsCopy == JNI_TRUE) {
+        #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+            !defined(WOLFSSL_NO_FORCE_ZERO)
+            wc_ForceZero(keyDer, keyDerSz);
+        #else
+            XMEMSET(keyDer, 0, keyDerSz);
+        #endif
+        }
         (*env)->ReleaseByteArrayElements(env, pkcs8KeyDerArr,
-                                         (jbyte*)keyDer, JNI_ABORT);
+            (jbyte*)keyDer, JNI_ABORT);
     }
 
     if (ret == WOLFSSL_SUCCESS) {

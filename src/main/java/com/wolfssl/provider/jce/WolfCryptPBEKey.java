@@ -123,7 +123,7 @@ public class WolfCryptPBEKey implements PBEKey {
      *
      * @throws IllegalStateException if object has been destroyed
      */
-    public synchronized char[] getPassword() {
+    public final synchronized char[] getPassword() {
 
         checkDestroyed();
 
@@ -141,7 +141,7 @@ public class WolfCryptPBEKey implements PBEKey {
      *
      * @throws IllegalStateException if object has been destroyed
      */
-    public synchronized byte[] getSalt() {
+    public final synchronized byte[] getSalt() {
 
         checkDestroyed();
 
@@ -197,7 +197,7 @@ public class WolfCryptPBEKey implements PBEKey {
      *
      * @throws IllegalStateException if object has been destroyed
      */
-    public synchronized byte[] getEncoded() {
+    public final synchronized byte[] getEncoded() {
 
         checkDestroyed();
 
@@ -312,8 +312,6 @@ public class WolfCryptPBEKey implements PBEKey {
             return false;
 
         } finally {
-            /* Only our own copies, the other key's accessors may return
-             * internal references and zeroizing those would destroy it */
             if (thisEncoded != null) {
                 Arrays.fill(thisEncoded, (byte)0);
             }
@@ -322,6 +320,20 @@ public class WolfCryptPBEKey implements PBEKey {
             }
             if (thisPass != null) {
                 Arrays.fill(thisPass, (char)0);
+            }
+            /* WolfCryptPBEKey accessors are final and return copies which
+             * are safe to zero, other implementations may return internal
+             * references and zeroizing would destroy the key */
+            if (pKey instanceof WolfCryptPBEKey) {
+                if (pKeyEncoded != null) {
+                    Arrays.fill(pKeyEncoded, (byte)0);
+                }
+                if (pKeySalt != null) {
+                    Arrays.fill(pKeySalt, (byte)0);
+                }
+                if (pKeyPass != null) {
+                    Arrays.fill(pKeyPass, (char)0);
+                }
             }
         }
     }
