@@ -250,6 +250,12 @@ public class WolfCryptDHPublicKey implements DHPublicKey, Destroyable {
                     "must satisfy 1 < Y < p-1");
             }
 
+            /* Reject a prime below the minimum wolfCrypt will generate */
+            if (p.bitLength() < Dh.DH_MIN_SIZE) {
+                throw new IllegalArgumentException(
+                    "DH prime must be at least " + Dh.DH_MIN_SIZE + " bits");
+            }
+
             /* Store extracted values */
             this.publicValue = publicVal;
             this.paramSpec = new DHParameterSpec(p, g);

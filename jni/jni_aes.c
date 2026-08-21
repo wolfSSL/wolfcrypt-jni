@@ -71,6 +71,7 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key_1internal(
     byte* key = NULL;
     byte* iv  = NULL;
     word32 keySz = 0;
+    word32 ivSz = 0;
 
     aes = (Aes*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -81,10 +82,15 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key_1internal(
     key = getByteArray(env, key_object);
     iv  = getByteArray(env, iv_object);
     keySz = getByteArrayLength(env, key_object);
+    ivSz = getByteArrayLength(env, iv_object);
 
-    ret = (!aes || !key) /* iv is optional */
-        ? BAD_FUNC_ARG
-        : wc_AesSetKey(aes, key, keySz, iv, opmode);
+    /* IV optional. If provided, reject under/oversized array. */
+    if (!aes || !key || (iv != NULL && ivSz != AES_BLOCK_SIZE)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_AesSetKey(aes, key, keySz, iv, opmode);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);

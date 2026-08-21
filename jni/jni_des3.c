@@ -69,6 +69,8 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1set_1key_1internal(
     Des3* des = NULL;
     byte* key = NULL;
     byte* iv  = NULL;
+    word32 keySz = 0;
+    word32 ivSz = 0;
 
     des = (Des3*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -78,10 +80,16 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1set_1key_1internal(
 
     key = getByteArray(env, key_object);
     iv  = getByteArray(env, iv_object);
+    keySz = getByteArrayLength(env, key_object);
+    ivSz = getByteArrayLength(env, iv_object);
 
-    ret = (!des || !key) /* iv is optional */
-        ? BAD_FUNC_ARG
-        : wc_Des3_SetKey(des, key, iv, opmode);
+    if (!des || !key || keySz != DES3_KEY_SIZE ||
+        (iv != NULL && ivSz != DES_BLOCK_SIZE)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_Des3_SetKey(des, key, iv, opmode);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);

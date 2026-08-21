@@ -1012,7 +1012,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
     RsaKey* key = NULL;
     byte* ciphertext = NULL;
     byte* output = NULL;
-    word32 size = 0, outputSz = 0;
+    word32 size = 0, outputSz = 0, outputBufSz = 0;
     int encSz = 0;
 
     key = (RsaKey*) getNativeStruct(env, this);
@@ -1037,6 +1037,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
             ret = BAD_FUNC_ARG;
         } else {
             outputSz = (word32)encSz;
+            /* Keep full allocation size for zeroization, outputSz shrinks
+             * to plaintext len after decrypt */
+            outputBufSz = outputSz;
         }
     }
 
@@ -1077,9 +1080,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
     if (output != NULL) {
         #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
             !defined(WOLFSSL_NO_FORCE_ZERO)
-            wc_ForceZero(output, outputSz);
+            wc_ForceZero(output, outputBufSz);
         #else
-            XMEMSET(output, 0, outputSz);
+            XMEMSET(output, 0, outputBufSz);
         #endif
         XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
@@ -1203,7 +1206,7 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt_1ex(
     RsaKey* key = NULL;
     byte* ciphertext = NULL;
     byte* output = NULL;
-    word32 size = 0, outputSz = 0;
+    word32 size = 0, outputSz = 0, outputBufSz = 0;
     int encSz = 0;
 
     key = (RsaKey*) getNativeStruct(env, this);
@@ -1233,6 +1236,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt_1ex(
             ret = BAD_FUNC_ARG;
         } else {
             outputSz = (word32)encSz;
+            /* Keep full allocation size for zeroization, outputSz shrinks to
+             * the plaintext len after decrypt */
+            outputBufSz = outputSz;
         }
     }
 
@@ -1273,9 +1279,9 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt_1ex(
     if (output != NULL) {
         #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
             !defined(WOLFSSL_NO_FORCE_ZERO)
-            wc_ForceZero(output, outputSz);
+            wc_ForceZero(output, outputBufSz);
         #else
-            XMEMSET(output, 0, outputSz);
+            XMEMSET(output, 0, outputBufSz);
         #endif
         XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }

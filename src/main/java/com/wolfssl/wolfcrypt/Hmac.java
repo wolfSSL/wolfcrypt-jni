@@ -182,7 +182,10 @@ public class Hmac extends NativeStruct {
 
                 this.type = type;
 
-                /* Save copy of key[] into this.key */
+                /* Save copy of key[] into this.key, zero old one first */
+                if (this.key != null) {
+                    Arrays.fill(this.key, (byte)0);
+                }
                 this.key = new byte[key.length];
                 System.arraycopy(key, 0, this.key, 0, key.length);
             }

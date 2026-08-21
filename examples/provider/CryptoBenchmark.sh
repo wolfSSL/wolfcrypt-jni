@@ -20,8 +20,9 @@ verify_sha256() {
   elif command -v shasum >/dev/null; then
     actual=$(shasum -a 256 "$file" | awk '{print $1}')
   else
-    echo "Warning: no sha256sum or shasum available, skipping hash verification"
-    return 0
+    echo "Error: no sha256sum or shasum found, refusing unverified $file"
+    rm -f "$file"
+    return 1
   fi
 
   if [ "$actual" != "$expected" ]; then
@@ -39,6 +40,13 @@ download_bc_jars() {
   local bc_version="$BC_VERSION"
   local lib_dir="$LIB_DIR"
   local bc_url="https://repo1.maven.org/maven2/org/bouncycastle"
+
+  # Require a SHA-256 tool before any download, JARs are only added to the
+  # classpath after hash verification
+  if ! command -v sha256sum >/dev/null && ! command -v shasum >/dev/null; then
+    echo "failed (no sha256sum or shasum for hash verification)"
+    return 1
+  fi
 
   echo -n "Downloading Bouncy Castle JARs (version $bc_version)... "
   mkdir -p "$lib_dir" || {

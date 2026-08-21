@@ -767,13 +767,16 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1import_1p
     wc_MlDsaKey* key = NULL;
     byte* in = NULL;
     word32 inLen = 0;
+    jboolean inIsCopy = JNI_FALSE;
 
     key = (wc_MlDsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         return;
     }
 
-    in = getByteArray(env, in_object);
+    if (in_object != NULL) {
+        in = (byte*)(*env)->GetByteArrayElements(env, in_object, &inIsCopy);
+    }
     inLen = getByteArrayLength(env, in_object);
 
     if (key == NULL || in == NULL) {
@@ -789,6 +792,9 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1import_1p
 
     LogStr("wc_MlDsaKey_ImportPrivRaw(key=%p) = %d\n", key, ret);
 
+    if (in != NULL && inIsCopy == JNI_TRUE) {
+        MLDSA_FORCE_ZERO(in, inLen);
+    }
     releaseByteArray(env, in_object, in, JNI_ABORT);
 #else
     (void)env;
@@ -1132,13 +1138,17 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1make_1key
     wc_MlDsaKey* key = NULL;
     byte* seed = NULL;
     word32 seedLen = 0;
+    jboolean seedIsCopy = JNI_FALSE;
 
     key = (wc_MlDsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         return;
     }
 
-    seed = getByteArray(env, seed_object);
+    if (seed_object != NULL) {
+        seed = (byte*)(*env)->GetByteArrayElements(env, seed_object,
+            &seedIsCopy);
+    }
     seedLen = getByteArrayLength(env, seed_object);
 
     /* Native API takes no seed length, seed must be exactly 32 bytes */
@@ -1158,6 +1168,9 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1make_1key
 
     LogStr("wc_MlDsaKey_MakeKeyFromSeed(key=%p) = %d\n", key, ret);
 
+    if (seed != NULL && seedIsCopy == JNI_TRUE) {
+        MLDSA_FORCE_ZERO(seed, seedLen);
+    }
     releaseByteArray(env, seed_object, seed, JNI_ABORT);
 #else
     (void)env;
@@ -1305,6 +1318,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1sig
     word32 msgLen = 0;
     word32 seedLen = 0;
     word32 sigLen = 0;
+    jboolean seedIsCopy = JNI_FALSE;
 
     key = (wc_MlDsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1328,7 +1342,8 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1sig
     }
 
     if (seed_object != NULL) {
-        seed = getByteArray(env, seed_object);
+        seed = (byte*)(*env)->GetByteArrayElements(env, seed_object,
+            &seedIsCopy);
         seedLen = getByteArrayLength(env, seed_object);
     }
 
@@ -1345,6 +1360,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1sig
             releaseByteArray(env, msg_object, msg, JNI_ABORT);
         }
         if (seed != NULL) {
+            if (seedIsCopy == JNI_TRUE) {
+                MLDSA_FORCE_ZERO(seed, seedLen);
+            }
             releaseByteArray(env, seed_object, seed, JNI_ABORT);
         }
         return NULL;
@@ -1409,6 +1427,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1sig
         releaseByteArray(env, msg_object, msg, JNI_ABORT);
     }
     if (seed_object != NULL) {
+        if (seed != NULL && seedIsCopy == JNI_TRUE) {
+            MLDSA_FORCE_ZERO(seed, seedLen);
+        }
         releaseByteArray(env, seed_object, seed, JNI_ABORT);
     }
 #else
@@ -1439,6 +1460,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1sig
     word32 hashLen = 0;
     word32 seedLen = 0;
     word32 sigLen = 0;
+    jboolean seedIsCopy = JNI_FALSE;
 
     key = (wc_MlDsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1462,7 +1484,8 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1sig
     }
 
     if (seed_object != NULL) {
-        seed = getByteArray(env, seed_object);
+        seed = (byte*)(*env)->GetByteArrayElements(env, seed_object,
+            &seedIsCopy);
         seedLen = getByteArrayLength(env, seed_object);
     }
 
@@ -1479,6 +1502,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1sig
             releaseByteArray(env, hash_object, hash, JNI_ABORT);
         }
         if (seed != NULL) {
+            if (seedIsCopy == JNI_TRUE) {
+                MLDSA_FORCE_ZERO(seed, seedLen);
+            }
             releaseByteArray(env, seed_object, seed, JNI_ABORT);
         }
         return NULL;
@@ -1543,6 +1569,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1sig
         releaseByteArray(env, hash_object, hash, JNI_ABORT);
     }
     if (seed_object != NULL) {
+        if (seed != NULL && seedIsCopy == JNI_TRUE) {
+            MLDSA_FORCE_ZERO(seed, seedLen);
+        }
         releaseByteArray(env, seed_object, seed, JNI_ABORT);
     }
 #else
@@ -1673,6 +1702,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1MlDsaKey_1Sign
     word32 muLen = 0;
     word32 seedLen = 0;
     word32 sigLen = 0;
+    jboolean seedIsCopy = JNI_FALSE;
 
     key = (wc_MlDsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1690,7 +1720,8 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1MlDsaKey_1Sign
     }
 
     if (seed_object != NULL) {
-        seed = getByteArray(env, seed_object);
+        seed = (byte*)(*env)->GetByteArrayElements(env, seed_object,
+            &seedIsCopy);
         seedLen = getByteArrayLength(env, seed_object);
     }
 
@@ -1703,6 +1734,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1MlDsaKey_1Sign
             releaseByteArray(env, mu_object, mu, JNI_ABORT);
         }
         if (seed != NULL) {
+            if (seedIsCopy == JNI_TRUE) {
+                MLDSA_FORCE_ZERO(seed, seedLen);
+            }
             releaseByteArray(env, seed_object, seed, JNI_ABORT);
         }
         return NULL;
@@ -1758,6 +1792,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1MlDsaKey_1Sign
         releaseByteArray(env, mu_object, mu, JNI_ABORT);
     }
     if (seed_object != NULL) {
+        if (seed != NULL && seedIsCopy == JNI_TRUE) {
+            MLDSA_FORCE_ZERO(seed, seedLen);
+        }
         releaseByteArray(env, seed_object, seed, JNI_ABORT);
     }
 #else
@@ -1859,13 +1896,17 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1import_1k
     byte* pub = NULL;
     word32 privLen = 0;
     word32 pubLen = 0;
+    jboolean privIsCopy = JNI_FALSE;
 
     key = (wc_MlDsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         return;
     }
 
-    priv = getByteArray(env, priv_object);
+    if (priv_object != NULL) {
+        priv = (byte*)(*env)->GetByteArrayElements(env, priv_object,
+            &privIsCopy);
+    }
     privLen = getByteArrayLength(env, priv_object);
     pub = getByteArray(env, pub_object);
     pubLen = getByteArrayLength(env, pub_object);
@@ -1883,6 +1924,9 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_MlDsa_wc_1dilithium_1import_1k
 
     LogStr("wc_MlDsaKey_ImportKey(key=%p) = %d\n", key, ret);
 
+    if (priv != NULL && privIsCopy == JNI_TRUE) {
+        MLDSA_FORCE_ZERO(priv, privLen);
+    }
     releaseByteArray(env, priv_object, priv, JNI_ABORT);
     releaseByteArray(env, pub_object, pub, JNI_ABORT);
 #else

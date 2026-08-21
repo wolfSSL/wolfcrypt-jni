@@ -72,6 +72,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setIV
     int ret = 0;
     ChaCha* chacha = NULL;
     byte* iv   = NULL;
+    word32 ivSz = 0;
 
     chacha = (ChaCha*)(uintptr_t)getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -79,8 +80,9 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setIV
         return;
     }
     iv = getByteArray(env, iv_object);
+    ivSz = getByteArrayLength(env, iv_object);
 
-    if (chacha == NULL || iv == NULL) {
+    if (chacha == NULL || iv == NULL || ivSz != CHACHA_IV_BYTES) {
         ret = BAD_FUNC_ARG;
     }
 
@@ -107,13 +109,16 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setKey
     ChaCha* chacha = NULL;
     byte* key   = NULL;
     word32 keySz = 0;
+    jboolean keyIsCopy = JNI_FALSE;
 
     chacha = (ChaCha*)(uintptr_t)getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
         /* getNativeStruct may throw exception, prevent throwing another */
         return;
     }
-    key   = getByteArray(env, key_object);
+    if (key_object != NULL) {
+        key = (byte*)(*env)->GetByteArrayElements(env, key_object, &keyIsCopy);
+    }
     keySz = getByteArrayLength(env, key_object);
 
     if (chacha == NULL || key == NULL) {
@@ -129,6 +134,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setKey
 
     LogStr("wc_Chacha_SetKey(chacha=%p) = %d\n", chacha, ret);
 
+    if (key != NULL && keyIsCopy == JNI_TRUE) {
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(key, keySz);
+    #else
+        XMEMSET(key, 0, keySz);
+    #endif
+    }
     releaseByteArray(env, key_object, key, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
