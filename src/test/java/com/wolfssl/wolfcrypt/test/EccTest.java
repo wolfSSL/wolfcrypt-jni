@@ -32,6 +32,7 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
 import java.lang.ref.WeakReference;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.Executors;
@@ -227,6 +228,37 @@ public class EccTest {
     }
 
     @Test
+    public void signWithFreedRngShouldThrow() {
+        Ecc alice = new Ecc();
+        Rng callerRng = new Rng();
+        callerRng.init();
+
+        alice.makeKey(callerRng, 32);
+        byte[] hash =
+            "Everyone gets Friday off.".getBytes(StandardCharsets.UTF_8);
+
+        /* A freed Rng makes native signing fail after the native signature
+         * buffer is allocated, exercising error cleanup */
+        callerRng.free();
+
+        try {
+            alice.sign(hash, callerRng);
+            fail("Ecc.sign() should throw with a freed Rng");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
+        /* Object must still sign correctly after the failed attempt */
+        callerRng.init();
+        byte[] signature = alice.sign(hash, callerRng);
+        assertTrue(alice.verify(hash, signature));
+
+        callerRng.free();
+        callerRng.releaseNativeStruct();
+        alice.releaseNativeStruct();
+    }
+
+    @Test
     public void eccCurveSizeFromName() {
         int size = 0;
 
@@ -406,6 +438,57 @@ public class EccTest {
             }
         } finally {
             key.releaseNativeStruct();
+        }
+    }
+
+    @Test
+    public void eccImportPublicRawVerifiesSignature() {
+
+        /* secp256r1 key pair, x and y are the public point coordinates
+         * from the pubKey used in signatureShouldMatchDecodingKeys */
+        byte[] prvKey = Util.h2b("30770201010420F8CF92"
+                + "6BBD1E28F1A8ABA1234F3274188850AD7EC7EC92"
+                + "F88F974DAF568965C7A00A06082A8648CE3D0301"
+                + "07A1440342000455BFF40F44509A3DCE9BB7F0C5"
+                + "4DF5707BD4EC248E1980EC5A4CA22403622C9BDA"
+                + "EFA2351243847616C6569506CC01A9BDF6751A42"
+                + "F7BDA9B236225FC75D7FB4");
+
+        byte[] x = Util.h2b("55BFF40F44509A3DCE9BB7"
+                + "F0C54DF5707BD4EC248E1980EC5A4CA22403622C9B");
+        byte[] y = Util.h2b("DAEFA2351243847616C656"
+                + "9506CC01A9BDF6751A42F7BDA9B236225FC75D7FB4");
+
+        byte[] hash =
+            "Everyone gets Friday off. ecc p".getBytes(StandardCharsets.UTF_8);
+
+        Ecc alice = new Ecc();
+        Ecc bob = new Ecc();
+
+        try {
+            alice.privateKeyDecode(prvKey);
+
+            byte[] signature = null;
+            synchronized (rngLock) {
+                signature = alice.sign(hash, rng);
+            }
+
+            bob.importPublicRaw(x, y, "secp256r1");
+            assertTrue(bob.verify(hash, signature));
+
+            /* coordinate size not matching curve must be rejected */
+            Ecc shortX = new Ecc();
+            try {
+                shortX.importPublicRaw(Arrays.copyOf(x, 16), y, "secp256r1");
+                fail("importPublicRaw with short x coordinate should fail");
+            } catch (WolfCryptException e) {
+                /* expected */
+            } finally {
+                shortX.releaseNativeStruct();
+            }
+        } finally {
+            alice.releaseNativeStruct();
+            bob.releaseNativeStruct();
         }
     }
 

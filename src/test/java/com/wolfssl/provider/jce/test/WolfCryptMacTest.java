@@ -39,6 +39,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.crypto.Mac;
+import javax.crypto.ShortBufferException;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.GCMParameterSpec;
 
@@ -2090,6 +2091,63 @@ public class WolfCryptMacTest {
         byte[] computedTag = mac.doFinal();
 
         assertArrayEquals(expectedTag, computedTag);
+    }
+
+    @Test
+    public void testAesGmacShortTagLength()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException, InvalidAlgorithmParameterException,
+               ShortBufferException {
+
+        if (!enabledAlgos.contains("AESGMAC")) {
+            return;
+        }
+
+        byte[] key = new byte[] {
+            (byte)0x89, (byte)0xc9, (byte)0x49, (byte)0xe9,
+            (byte)0xc8, (byte)0x04, (byte)0xaf, (byte)0x01,
+            (byte)0x4d, (byte)0x56, (byte)0x04, (byte)0xb3,
+            (byte)0x94, (byte)0x59, (byte)0xf2, (byte)0xc8
+        };
+
+        byte[] iv = new byte[] {
+            (byte)0xd1, (byte)0xb1, (byte)0x04, (byte)0xc8,
+            (byte)0x15, (byte)0xbf, (byte)0x1e, (byte)0x94,
+            (byte)0xe2, (byte)0x8c, (byte)0x8f, (byte)0x16
+        };
+
+        byte[] authIn = new byte[] {
+            (byte)0x82, (byte)0xad, (byte)0xcd, (byte)0x63,
+            (byte)0x8d, (byte)0x3f, (byte)0xa9, (byte)0xd9,
+            (byte)0xf3, (byte)0xe8, (byte)0x41, (byte)0x00,
+            (byte)0xd6, (byte)0x1e, (byte)0x07, (byte)0x77
+        };
+
+        byte[] expectedTag = new byte[] {
+            (byte)0x88, (byte)0xdb, (byte)0x9d, (byte)0x62,
+            (byte)0x17, (byte)0x2e, (byte)0xd0, (byte)0x43,
+            (byte)0xaa, (byte)0x10, (byte)0xf1, (byte)0x6d,
+            (byte)0x22, (byte)0x7d, (byte)0xc4, (byte)0x1b
+        };
+
+        Mac mac = Mac.getInstance("AESGMAC", "wolfJCE");
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+
+        /* 96 bit tag, getMacLength() must match 12 byte doFinal() output */
+        mac.init(keyspec, new GCMParameterSpec(96, iv));
+        assertEquals(12, mac.getMacLength());
+
+        mac.update(authIn);
+        byte[] out = new byte[mac.getMacLength()];
+        mac.doFinal(out, 0);
+
+        /* GMAC truncates to the leftmost tag bytes */
+        assertArrayEquals(Arrays.copyOf(expectedTag, 12), out);
+
+        /* Full 128 bit tag must still report 16 */
+        mac.init(keyspec, new GCMParameterSpec(128, iv));
+        assertEquals(16, mac.getMacLength());
+        assertArrayEquals(expectedTag, mac.doFinal(authIn));
     }
 
     @Test

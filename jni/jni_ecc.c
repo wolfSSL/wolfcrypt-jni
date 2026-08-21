@@ -962,14 +962,11 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1sign_1hash(
             (*env)->SetByteArrayRegion(env, result, 0, signatureSz,
                                        (const jbyte*)signature);
         } else {
-            releaseByteArray(env, hash_object, hash, JNI_ABORT);
             throwWolfCryptException(env, "Failed to allocate signature");
-            return NULL;
         }
-    } else {
-        releaseByteArray(env, hash_object, hash, JNI_ABORT);
+    } else if (!(*env)->ExceptionOccurred(env)) {
+        /* BUFFER_E sanity check above already threw its own message */
         throwWolfCryptExceptionFromError(env, ret);
-        return NULL;
     }
 
     LogStr("wc_ecc_sign_hash(input, inSz, output, &outSz, rng, ecc) = %d\n",
@@ -1473,11 +1470,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private_1
     }
 
     if (ret == 0) {
-        /* Initialize ECC key structure */
-        ret = wc_ecc_init(ecc);
-    }
-
-    if (ret == 0) {
         ret = wc_ecc_import_private_key_ex(privKey, privKeySz, NULL, 0,
             ecc, curveId);
     }
@@ -1546,10 +1538,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1public_1r
     if (xSz != expectedSz || ySz != expectedSz) {
         LogStr("ECC x or y size does not match expected size for curve\n");
         ret = BAD_FUNC_ARG;
-    }
-
-    if (ret == 0) {
-        ret = wc_ecc_init(ecc);
     }
 
     if (ret == 0) {
@@ -1759,19 +1747,18 @@ JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1get_1all_
 #ifdef HAVE_ECC
     jstring* curveNames = NULL;
     int curveCount = 0;
-    int i;
-    int j;
-    int maxIdx = 0;
+    int i, j, maxIdx = 0, foundCurve = 0;
 
-    /* First pass: find maximum valid curve index by testing consecutive
-     * indices until we find an invalid one */
+    /* First pass: find maximum valid curve index, single curve builds hold
+     * their only curve at index 0 so track found separately */
     for (i = 0; i < ECC_CURVE_MAX; i++) {
         if (wc_ecc_is_valid_idx(i)) {
             maxIdx = i;
+            foundCurve = 1;
         }
     }
 
-    if (maxIdx == 0) {
+    if (foundCurve == 0) {
         throwWolfCryptExceptionFromError(env, ECC_CURVE_OID_E);
         return NULL;
     }

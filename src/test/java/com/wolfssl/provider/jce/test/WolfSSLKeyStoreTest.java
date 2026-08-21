@@ -75,6 +75,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import java.util.Base64;
 
@@ -413,6 +414,31 @@ public class WolfSSLKeyStoreTest {
                 new X509EncodedKeySpec(certPub.getEncoded()));
             assertEquals("XMSS", wolfPub.getAlgorithm());
         }
+    }
+
+    @Test
+    public void testAliasWithLineBreaksRoundTrips() throws Exception {
+
+        /* Line breaks in an alias are escaped in debug log output only,
+         * the alias itself must round trip through store/load unchanged */
+        String alias = "evil\nalias\rwith\r\nline breaks";
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        store.load(null, storePass.toCharArray());
+        store.setKeyEntry(alias, new SecretKeySpec(new byte[16], "AES"),
+            storePass.toCharArray(), null);
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        store.store(bos, storePass.toCharArray());
+
+        KeyStore reloaded = KeyStore.getInstance("WKS", "wolfJCE");
+        reloaded.load(new ByteArrayInputStream(bos.toByteArray()),
+            storePass.toCharArray());
+
+        assertTrue("alias with line breaks must round trip unchanged",
+            reloaded.containsAlias(alias));
+        assertNotNull("key must be retrievable at original alias",
+            reloaded.getKey(alias, storePass.toCharArray()));
     }
 
     /**

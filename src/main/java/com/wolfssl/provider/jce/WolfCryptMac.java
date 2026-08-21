@@ -211,6 +211,9 @@ public class WolfCryptMac extends MacSpi {
 
     @Override
     protected int engineGetMacLength() {
+        if (macType == MacType.WC_AES_GMAC) {
+            return this.gmacTagLen;
+        }
         return this.digestSize;
     }
 
