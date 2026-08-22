@@ -31,6 +31,14 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_AesOfb_mallocNativeStruct_1in
 
 /*
  * Class:     com_wolfssl_wolfcrypt_AesOfb
+ * Method:    wc_AesFree
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesOfb_wc_1AesFree
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_AesOfb
  * Method:    native_set_key_internal
  * Signature: ([B[BI)V
  */

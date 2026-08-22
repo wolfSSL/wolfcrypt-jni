@@ -395,6 +395,20 @@ public class LmsTest {
             byte[] tampered = sig.clone();
             tampered[tampered.length / 2] ^= (byte) 0xFF;
             assertFalse(name + " tampered signature", v.verify(tampered, msg));
+
+            /* Wrong length signature must report false, not throw */
+            byte[] truncated = new byte[sig.length - 1];
+            System.arraycopy(sig, 0, truncated, 0, truncated.length);
+            assertFalse(name + " truncated signature",
+                v.verify(truncated, msg));
+
+            /* Corrupted embedded OTS type field must report false, not throw.
+             * Type word sits after the 4 byte levels and 4 byte q fields for
+             * every parameter set. */
+            byte[] badType = sig.clone();
+            badType[8] ^= (byte)0x01;
+            assertFalse(name + " corrupted type signature",
+                v.verify(badType, msg));
         } finally {
             v.releaseNativeStruct();
         }

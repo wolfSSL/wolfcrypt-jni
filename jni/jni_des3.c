@@ -40,6 +40,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Des3_mallocNativeStruct(
 {
 #ifndef NO_DES3
     Des3* des = NULL;
+    int ret = 0;
 
     des = (Des3*) XMALLOC(sizeof(Des3), NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (des == NULL) {
@@ -47,6 +48,12 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Des3_mallocNativeStruct(
     }
     else {
         XMEMSET(des, 0, sizeof(Des3));
+        ret = wc_Des3Init(des, NULL, INVALID_DEVID);
+        if (ret != 0) {
+            XFREE(des, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+            des = NULL;
+            throwWolfCryptExceptionFromError(env, ret);
+        }
     }
 
     LogStr("new Des3() = %p\n", des);
@@ -56,6 +63,27 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Des3_mallocNativeStruct(
     throwNotCompiledInException(env);
 
     return (jlong)0;
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Des3_wc_1Des3Free
+  (JNIEnv* env, jobject this)
+{
+#ifndef NO_DES3
+    Des3* des3 = NULL;
+
+    des3 = (Des3*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, if so stop and return */
+        return;
+    }
+
+    wc_Des3Free(des3);
+
+    LogStr("wc_Des3Free(des3=%p)\n", des3);
+#else
+    (void)this;
+    throwNotCompiledInException(env);
 #endif
 }
 

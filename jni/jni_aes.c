@@ -40,6 +40,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct_1inter
 {
 #ifndef NO_AES
     Aes* aes = NULL;
+    int ret = 0;
 
     aes = (Aes*)XMALLOC(sizeof(Aes), NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (aes == NULL) {
@@ -47,6 +48,12 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct_1inter
     }
     else {
         XMEMSET(aes, 0, sizeof(Aes));
+        ret = wc_AesInit(aes, NULL, INVALID_DEVID);
+        if (ret != 0) {
+            XFREE(aes, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+            aes = NULL;
+            throwWolfCryptExceptionFromError(env, ret);
+        }
     }
 
     LogStr("new Aes() = %p\n", aes);
@@ -57,6 +64,27 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Aes_mallocNativeStruct_1inter
     throwNotCompiledInException(env);
 
     return (jlong)0;
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Aes_wc_1AesFree
+  (JNIEnv* env, jobject this)
+{
+#ifndef NO_AES
+    Aes* aes = NULL;
+
+    aes = (Aes*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, if so stop and return */
+        return;
+    }
+
+    wc_AesFree(aes);
+
+    LogStr("wc_AesFree(aes=%p)\n", aes);
+#else
+    (void)this;
+    throwNotCompiledInException(env);
 #endif
 }
 

@@ -262,12 +262,23 @@ public abstract class BlockCipher extends NativeStruct {
         return ret;
     }
 
+    /**
+     * Zeroize contents of the native structure. Called by releaseNativeStruct()
+     * before the native structure memory is freed, subclasses override to
+     * wipe key material.
+     */
+    protected void nativeFree() {
+    }
+
     @Override
     public synchronized void releaseNativeStruct() {
         synchronized (stateLock) {
             if ((state != WolfCryptState.UNINITIALIZED) &&
                 (state != WolfCryptState.RELEASED)) {
-                super.releaseNativeStruct();
+                synchronized (pointerLock) {
+                    nativeFree();
+                    super.releaseNativeStruct();
+                }
                 state = WolfCryptState.RELEASED;
             }
         }

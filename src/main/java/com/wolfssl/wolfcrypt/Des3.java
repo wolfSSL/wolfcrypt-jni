@@ -43,6 +43,7 @@ public class Des3 extends BlockCipher {
     /* native JNI methods, internally reach back and grab/use pointer from
      * NativeStruct.java. We wrap calls to these below in order to
      * synchronize access to native pointer between threads */
+    private native void wc_Des3Free();
     private native void native_set_key_internal(byte[] key, byte[] iv,
         int opmode);
     private native int native_update_internal(int opmode, byte[] input,
@@ -58,6 +59,11 @@ public class Des3 extends BlockCipher {
      * @throws OutOfMemoryError when malloc fails with memory error
      */
     protected native long mallocNativeStruct() throws OutOfMemoryError;
+
+    @Override
+    protected void nativeFree() {
+        wc_Des3Free();
+    }
 
     /**
      * Set native Des3 key
