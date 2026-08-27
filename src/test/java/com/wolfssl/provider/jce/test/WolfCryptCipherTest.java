@@ -83,11 +83,13 @@ import java.security.AlgorithmParameters;
 
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Aes;
+import com.wolfssl.wolfcrypt.AesXts;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import java.security.GeneralSecurityException;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
+import com.wolfssl.wolfcrypt.test.Util;
 
 public class WolfCryptCipherTest {
 
@@ -103,6 +105,7 @@ public class WolfCryptCipherTest {
         "AES/ECB/PKCS5Padding",
         "AES/GCM/NoPadding",
         "AES/OFB/NoPadding",
+        "AES/XTS/NoPadding",
         "DESede/CBC/NoPadding",
         "RSA",
         "RSA/ECB/PKCS1Padding"
@@ -344,6 +347,7 @@ public class WolfCryptCipherTest {
         expectedBlockSizes.put("AES/ECB/PKCS5Padding", 16);
         expectedBlockSizes.put("AES/GCM/NoPadding", 16);
         expectedBlockSizes.put("AES/OFB/NoPadding", 16);
+        expectedBlockSizes.put("AES/XTS/NoPadding", 16);
         expectedBlockSizes.put("DESede/CBC/NoPadding", 8);
         expectedBlockSizes.put("RSA", 0);
         expectedBlockSizes.put("RSA/ECB/PKCS1Padding", 0);
@@ -1314,6 +1318,79 @@ public class WolfCryptCipherTest {
         tmp = cipher.doFinal();
         assertEquals(tmp.length, 0);
         assertArrayEquals(input, finalOutput);
+    }
+
+    @Test
+    public void testAesCbcPKCS5PaddingDecryptUpdateOutputSize()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException, ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(
+            new byte[Aes.KEY_SIZE_128], "AES");
+        IvParameterSpec iv = new IvParameterSpec(new byte[Aes.BLOCK_SIZE]);
+        byte[] plaintext = new byte[2 * Aes.BLOCK_SIZE];
+        byte[] out = new byte[3 * Aes.BLOCK_SIZE];
+        int n;
+
+        secureRandom.nextBytes(plaintext);
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        byte[] ciphertext = cipher.doFinal(plaintext);
+
+        /* update() in decrypt mode holds back one block for the padding
+         * check, the output size check must not demand space for it */
+        cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        n = cipher.update(ciphertext, 0, 9, out, 0);
+        assertEquals(0, n);
+        n = cipher.update(ciphertext, 9, 8, new byte[0], 0);
+        assertEquals(0, n);
+        n = cipher.update(ciphertext, 17, 15, out, 0);
+        assertEquals(Aes.BLOCK_SIZE, n);
+        n += cipher.doFinal(ciphertext, 32, ciphertext.length - 32, out, n);
+        assertEquals(plaintext.length, n);
+        assertArrayEquals(plaintext, Arrays.copyOf(out, n));
+    }
+
+    @Test
+    public void testAesCbcPKCS5PaddingEncryptUpdateOutputSize()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException, ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(
+            new byte[Aes.KEY_SIZE_128], "AES");
+        IvParameterSpec iv = new IvParameterSpec(new byte[Aes.BLOCK_SIZE]);
+        byte[] plaintext = new byte[20];
+        byte[] out = new byte[Aes.BLOCK_SIZE];
+        int n;
+
+        secureRandom.nextBytes(plaintext);
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        byte[] expected = cipher.doFinal(plaintext);
+
+        /* update() never outputs the padding block, so a buffer holding the
+         * whole blocks available must be accepted */
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        n = cipher.update(plaintext, 0, 10, out, 0);
+        assertEquals(0, n);
+        n = cipher.update(plaintext, 10, 10, out, 0);
+        assertEquals(Aes.BLOCK_SIZE, n);
+        assertArrayEquals(Arrays.copyOf(expected, Aes.BLOCK_SIZE), out);
+        assertArrayEquals(Arrays.copyOfRange(expected, Aes.BLOCK_SIZE,
+            expected.length), cipher.doFinal());
     }
 
     @Test
@@ -4340,6 +4417,1080 @@ public class WolfCryptCipherTest {
         }
     }
 
+    /* AES-XTS vectors from wolfSSL wolfcrypt/test/test.c aes_xts_*_test().
+     * Key is two concatenated AES keys, IV is the 16 byte tweak. */
+
+    /* AES-128-XTS, 32 bytes */
+    private static final byte[] XTS_KEY_128 = Util.h2b(
+        "39257905dfcc77766c870a806a60e3c093d12acfcb5142fa096989625b60db16");
+    private static final byte[] XTS_IV_128 = Util.h2b(
+        "5cf79db6c5cd991a1c78814224951e84");
+    private static final byte[] XTS_PT_128 = Util.h2b(
+        "bdc5468fbc8d50a10d1c857f791c5cbab3810d0d73cf8f2046b1d19e7d5d8a56");
+    private static final byte[] XTS_CT_128 = Util.h2b(
+        "d6be046d41f23b5ed70b6b3d5c8e66232be6b807d4dcc60eff8dbc1d9f7fc822");
+
+    /* AES-128-XTS, 24 bytes */
+    private static final byte[] XTS_KEY_128_P = Util.h2b(
+        "a1b90cba3f06ac353b2c343876081762090923026e91771815f29dab01932f2f");
+    private static final byte[] XTS_IV_128_P = Util.h2b(
+        "4faef7117cda59c66e4b92013e768ad5");
+    private static final byte[] XTS_PT_128_P = Util.h2b(
+        "ebabce95b14d3c8d6fb350390790311c6e4b92013e768ad5");
+    private static final byte[] XTS_CT_128_P = Util.h2b(
+        "2bf72cf3eb85ef7b0b76a0aaf33f258b778ae8b43cb98d5a");
+
+    /* AES-128-XTS, 40 bytes */
+    private static final byte[] XTS_KEY_128_3 = Util.h2b(
+        "2020202020202020202020202020202020202020202020202020202020202021");
+    private static final byte[] XTS_IV_128_3 = Util.h2b(
+        "20202020202020202020202020202020");
+    private static final byte[] XTS_PT_128_3 = Util.h2b(
+        "20202020202020202020202020202020202020202020202020ff202020202020" +
+        "2020202020202020");
+    private static final byte[] XTS_CT_128_3 = Util.h2b(
+        "3906E7F3330B1B1D2B11B0B7AF43B18FE6BE7934BD31643DA116B5F09B1D41F2" +
+        "3FED1137CB4DADA4");
+
+    /* AES-192-XTS, 32 bytes, non-FIPS only */
+    private static final byte[] XTS_KEY_192 = Util.h2b(
+        "ad504b85d751bfba6913b4cc79b65a62f7f39d360f35b5ec4a7e95bd9ba5f2ec" +
+        "c1d77ea3c374bd4b131b078387dd555a");
+    private static final byte[] XTS_IV_192 = Util.h2b(
+        "5cf79db6c5cd991a1c78814224951e84");
+    private static final byte[] XTS_PT_192 = Util.h2b(
+        "bdc5468fbc8d50a10d1c857f791c5cbab3810d0d73cf8f2046b1d19e7d5d8a56");
+    private static final byte[] XTS_CT_192 = Util.h2b(
+        "6ca6b57348f189fadd80721fb8560ca235d408bf24cbecdb81e0e64f3d1c5c46");
+
+    /* IEEE 1619-2007 Annex B vectors 15 to 18, AES-128-XTS data units of
+     * 17 to 20 bytes (1 to 4 byte partial block) */
+    private static final byte[] XTS_KEY_1619 = Util.h2b(
+        "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0bfbebdbcbbbab9b8b7b6b5b4b3b2b1b0");
+    private static final byte[] XTS_IV_1619 = Util.h2b(
+        "9a785634120000000000000000000000");
+    private static final byte[][] XTS_PT_1619 = {
+        Util.h2b("000102030405060708090a0b0c0d0e0f10"),
+        Util.h2b("000102030405060708090a0b0c0d0e0f1011"),
+        Util.h2b("000102030405060708090a0b0c0d0e0f101112"),
+        Util.h2b("000102030405060708090a0b0c0d0e0f10111213")
+    };
+    private static final byte[][] XTS_CT_1619 = {
+        Util.h2b("6c1625db4671522d3d7599601de7ca09ed"),
+        Util.h2b("d069444b7a7e0cab09e24447d24deb1fedbf"),
+        Util.h2b("e5df1351c0544ba1350b3363cd8ef4beedbf9d"),
+        Util.h2b("9d84c813f719aa2c7be3f66171c7c5c2edbf9dac")
+    };
+
+    /* AES-256-XTS, 48 bytes */
+    private static final byte[] XTS_KEY_256 = Util.h2b(
+        "ad504b85d751bfba6913b4cc79b65a62f7f39d360f35b5ec4a7e95bd9ba5f2ec" +
+        "c1d77ea3c374bd4b131b078387dd555ab5b0c7e52db50612d2b53acb478a53b4");
+    private static final byte[] XTS_IV_256 = Util.h2b(
+        "e64219ede0e1c2a00ef5586ac49beb6f");
+    private static final byte[] XTS_PT_256 = Util.h2b(
+        "24cb762255b5a800f46e8060569e0553bcfe86553bcad589c7541a73acc39abd" +
+        "53c40776d8e822619ea9ad77a0134cfc");
+    private static final byte[] XTS_CT_256 = Util.h2b(
+        "a3c6f3f382795b1087d70250db2cd3b1a162a8b6dc126061c10a84a5853f3a89" +
+        "e66cdbb79ab4289bc3ead810e9c0af92");
+
+    /* Random AES-XTS key of size bytes, halves differ for even size >= 2 */
+    private static byte[] xtsRandomKey(int size) {
+        byte[] key = new byte[size];
+
+        secureRandom.nextBytes(key);
+        if (size >= 2 && (size % 2) == 0) {
+            key[0] = (byte)(key[size / 2] + 1);
+        }
+
+        return key;
+    }
+
+    /* Length of an update() result, null counts as 0 */
+    private static int xtsLen(byte[] part) {
+        if (part == null) {
+            return 0;
+        }
+        return part.length;
+    }
+
+    @Test
+    public void testAesXtsNoPadding()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+
+        /* AES-128-XTS */
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_128, "AES");
+        IvParameterSpec iv = new IvParameterSpec(XTS_IV_128);
+
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        assertArrayEquals("AES-128-XTS encrypt failed",
+            XTS_CT_128, cipher.doFinal(XTS_PT_128));
+        cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        assertArrayEquals("AES-128-XTS decrypt failed",
+            XTS_PT_128, cipher.doFinal(XTS_CT_128));
+
+        /* AES-256-XTS */
+        key = new SecretKeySpec(XTS_KEY_256, "AES");
+        iv = new IvParameterSpec(XTS_IV_256);
+
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        assertArrayEquals("AES-256-XTS encrypt failed",
+            XTS_CT_256, cipher.doFinal(XTS_PT_256));
+        cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        assertArrayEquals("AES-256-XTS decrypt failed",
+            XTS_PT_256, cipher.doFinal(XTS_CT_256));
+
+        /* AES-192-XTS, non-FIPS only */
+        if (FeatureDetect.Aes192Enabled() && !Fips.enabled) {
+            key = new SecretKeySpec(XTS_KEY_192, "AES");
+            iv = new IvParameterSpec(XTS_IV_192);
+
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+            assertArrayEquals("AES-192-XTS encrypt failed",
+                XTS_CT_192, cipher.doFinal(XTS_PT_192));
+            cipher.init(Cipher.DECRYPT_MODE, key, iv);
+            assertArrayEquals("AES-192-XTS decrypt failed",
+                XTS_PT_192, cipher.doFinal(XTS_CT_192));
+        }
+    }
+
+    @Test
+    public void testAesXtsPartialBlock()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+
+        /* 24 byte data unit */
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_128_P, "AES");
+        IvParameterSpec iv = new IvParameterSpec(XTS_IV_128_P);
+
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        byte[] ct = cipher.doFinal(XTS_PT_128_P);
+        assertEquals(XTS_PT_128_P.length, ct.length);
+        assertArrayEquals("AES-128-XTS partial block encrypt failed",
+            XTS_CT_128_P, ct);
+        cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        assertArrayEquals("AES-128-XTS partial block decrypt failed",
+            XTS_PT_128_P, cipher.doFinal(XTS_CT_128_P));
+
+        /* 40 byte data unit */
+        key = new SecretKeySpec(XTS_KEY_128_3, "AES");
+        iv = new IvParameterSpec(XTS_IV_128_3);
+
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        assertArrayEquals("AES-128-XTS 40 byte encrypt failed",
+            XTS_CT_128_3, cipher.doFinal(XTS_PT_128_3));
+        cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        assertArrayEquals("AES-128-XTS 40 byte decrypt failed",
+            XTS_PT_128_3, cipher.doFinal(XTS_CT_128_3));
+    }
+
+    @Test
+    public void testAesXtsIeee1619PartialBlocks()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException, IOException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_1619, "AES");
+        IvParameterSpec iv = new IvParameterSpec(XTS_IV_1619);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+
+        for (int i = 0; i < XTS_PT_1619.length; i++) {
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+            assertArrayEquals("IEEE 1619 vector " + (15 + i) + " encrypt",
+                XTS_CT_1619[i], cipher.doFinal(XTS_PT_1619[i]));
+
+            cipher.init(Cipher.DECRYPT_MODE, key, iv);
+            assertArrayEquals("IEEE 1619 vector " + (15 + i) + " decrypt",
+                XTS_PT_1619[i], cipher.doFinal(XTS_CT_1619[i]));
+
+            /* one byte at a time exercises the hold back before stealing */
+            bos.reset();
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+            for (int j = 0; j < XTS_PT_1619[i].length; j++) {
+                byte[] part = cipher.update(XTS_PT_1619[i], j, 1);
+                if (part != null) {
+                    bos.write(part);
+                }
+            }
+            bos.write(cipher.doFinal());
+            assertArrayEquals("IEEE 1619 vector " + (15 + i) + " chunked",
+                XTS_CT_1619[i], bos.toByteArray());
+        }
+    }
+
+    @Test
+    public void testAesXtsNoPaddingWithUpdate()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException, IOException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        /* streaming holds back >= one block in update(), otherwise all
+         * is buffered until doFinal() */
+        boolean stream = FeatureDetect.AesXtsStreamEnabled();
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_128_3, "AES");
+        IvParameterSpec iv = new IvParameterSpec(XTS_IV_128_3);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] part;
+        int twoBlocks = 2 * Aes.BLOCK_SIZE;
+        int tail = XTS_PT_128_3.length - Aes.BLOCK_SIZE;
+
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+
+        /* 7 buffered, nothing out */
+        part = cipher.update(XTS_PT_128_3, 0, 7);
+        assertEquals(0, xtsLen(part));
+
+        /* 32 buffered, one block out when streaming */
+        part = cipher.update(XTS_PT_128_3, 7, 25);
+        assertEquals(stream ? Aes.BLOCK_SIZE : 0, xtsLen(part));
+        if (part != null) {
+            bos.write(part);
+        }
+
+        /* 24 or 40 buffered, nothing out */
+        part = cipher.update(XTS_PT_128_3, twoBlocks,
+            XTS_PT_128_3.length - twoBlocks);
+        assertEquals(0, xtsLen(part));
+
+        part = cipher.doFinal();
+        assertEquals(stream ? tail : XTS_PT_128_3.length, part.length);
+        bos.write(part);
+        assertArrayEquals("chunked AES-XTS encrypt failed",
+            XTS_CT_128_3, bos.toByteArray());
+
+        /* same chunking for decrypt */
+        bos.reset();
+        cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        part = cipher.update(XTS_CT_128_3, 0, 7);
+        assertEquals(0, xtsLen(part));
+        part = cipher.update(XTS_CT_128_3, 7, 25);
+        assertEquals(stream ? Aes.BLOCK_SIZE : 0, xtsLen(part));
+        if (part != null) {
+            bos.write(part);
+        }
+        part = cipher.update(XTS_CT_128_3, twoBlocks,
+            XTS_CT_128_3.length - twoBlocks);
+        assertEquals(0, xtsLen(part));
+        bos.write(cipher.doFinal());
+        assertArrayEquals("chunked AES-XTS decrypt failed",
+            XTS_PT_128_3, bos.toByteArray());
+
+        /* one byte at a time */
+        bos.reset();
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        for (int i = 0; i < XTS_PT_128_3.length; i++) {
+            part = cipher.update(XTS_PT_128_3, i, 1);
+            if (part != null) {
+                bos.write(part);
+            }
+        }
+        bos.write(cipher.doFinal());
+        assertArrayEquals("byte-wise AES-XTS encrypt failed",
+            XTS_CT_128_3, bos.toByteArray());
+
+        /* block aligned chunks, then empty doFinal() */
+        bos.reset();
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        part = cipher.update(XTS_PT_128_3, 0, Aes.BLOCK_SIZE);
+        assertEquals(0, xtsLen(part));
+        part = cipher.update(XTS_PT_128_3, Aes.BLOCK_SIZE, tail);
+        assertEquals(stream ? Aes.BLOCK_SIZE : 0, xtsLen(part));
+        if (part != null) {
+            bos.write(part);
+        }
+        bos.write(cipher.doFinal());
+        assertArrayEquals("block-wise AES-XTS encrypt failed",
+            XTS_CT_128_3, bos.toByteArray());
+    }
+
+    @Test
+    public void testAesXtsVariousLengths()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException, IOException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        int[] keySizes = { AesXts.KEY_SIZE_128, AesXts.KEY_SIZE_256 };
+        int[] dataSizes = { 16, 17, 18, 31, 32, 33, 47, 48, 49, 63, 64, 65,
+                            255, 256, 257, 512, 4096, 4097 };
+        byte[] iv = new byte[AesXts.TWEAK_SIZE];
+        secureRandom.nextBytes(iv);
+
+        for (int keySize : keySizes) {
+            SecretKeySpec key = new SecretKeySpec(xtsRandomKey(keySize),
+                "AES");
+            IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+            for (int size : dataSizes) {
+                byte[] plaintext = new byte[size];
+                secureRandom.nextBytes(plaintext);
+
+                Cipher cipher =
+                    Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+
+                /* one-shot */
+                cipher.init(Cipher.ENCRYPT_MODE, key, ivSpec);
+                byte[] ciphertext = cipher.doFinal(plaintext);
+                assertEquals("XTS output length mismatch for size " + size,
+                    size, ciphertext.length);
+                assertFalse("ciphertext should differ from plaintext",
+                    Arrays.equals(plaintext, ciphertext));
+
+                /* chunked matches one-shot */
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                cipher.init(Cipher.ENCRYPT_MODE, key, ivSpec);
+                int off = 0;
+                while (off < size) {
+                    int len = Math.min(13, size - off);
+                    byte[] part = cipher.update(plaintext, off, len);
+                    if (part != null) {
+                        bos.write(part);
+                    }
+                    off += len;
+                }
+                bos.write(cipher.doFinal());
+                assertArrayEquals("chunked encrypt mismatch for size " +
+                    size, ciphertext, bos.toByteArray());
+
+                cipher.init(Cipher.DECRYPT_MODE, key, ivSpec);
+                assertArrayEquals("round trip failed for size " + size,
+                    plaintext, cipher.doFinal(ciphertext));
+
+                /* chunked decrypt */
+                bos.reset();
+                cipher.init(Cipher.DECRYPT_MODE, key, ivSpec);
+                off = 0;
+                while (off < size) {
+                    int len = Math.min(29, size - off);
+                    byte[] part = cipher.update(ciphertext, off, len);
+                    if (part != null) {
+                        bos.write(part);
+                    }
+                    off += len;
+                }
+                bos.write(cipher.doFinal());
+                assertArrayEquals("chunked decrypt mismatch for size " +
+                    size, plaintext, bos.toByteArray());
+            }
+        }
+    }
+
+    @Test
+    public void testAesXtsMinimumLength()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException, BadPaddingException,
+               IllegalBlockSizeException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_256, "AES");
+        IvParameterSpec iv = new IvParameterSpec(XTS_IV_256);
+
+        /* at least one block required */
+        int[] tooShort = { 0, 1, Aes.BLOCK_SIZE - 1 };
+        for (int size : tooShort) {
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+            try {
+                cipher.doFinal(new byte[size]);
+                fail("AES-XTS should reject " + size + " byte input");
+            } catch (IllegalBlockSizeException e) {
+                /* expected */
+            }
+
+            cipher.init(Cipher.DECRYPT_MODE, key, iv);
+            try {
+                cipher.doFinal(new byte[size]);
+                fail("AES-XTS should reject " + size + " byte input");
+            } catch (IllegalBlockSizeException e) {
+                /* expected */
+            }
+        }
+
+        /* short data unit buffered through update() */
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        cipher.update(new byte[10]);
+        try {
+            cipher.doFinal();
+            fail("AES-XTS should reject 10 byte data unit");
+        } catch (IllegalBlockSizeException e) {
+            /* expected */
+        }
+
+        /* rejected data is discarded, cipher is back in its init state */
+        byte[] ct = cipher.doFinal(new byte[Aes.BLOCK_SIZE]);
+        assertEquals(Aes.BLOCK_SIZE, ct.length);
+
+        /* one block works and matches a fresh init */
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        assertArrayEquals(ct, cipher.doFinal(new byte[Aes.BLOCK_SIZE]));
+        cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        assertArrayEquals(new byte[Aes.BLOCK_SIZE], cipher.doFinal(ct));
+    }
+
+    @Test
+    public void testAesXtsInvalidKeys()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidAlgorithmParameterException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        IvParameterSpec iv = new IvParameterSpec(XTS_IV_256);
+
+        /* plain AES key sizes rejected */
+        int[] badSizes = { 16, 24, 31, 33, 65, 128 };
+        for (int size : badSizes) {
+            try {
+                cipher.init(Cipher.ENCRYPT_MODE,
+                    new SecretKeySpec(xtsRandomKey(size), "AES"), iv);
+                fail("AES-XTS should reject " + size + " byte key");
+            } catch (InvalidKeyException e) {
+                assertTrue(e.getMessage().contains("AES-XTS key must be"));
+            }
+        }
+
+        /* identical halves, rejected when native enforces distinct keys
+         * (FIPS, and by default since wolfSSL 5.9.2), else usable */
+        byte[] same = new byte[AesXts.KEY_SIZE_128];
+        int half = AesXts.KEY_SIZE_128 / 2;
+        System.arraycopy(XTS_KEY_128, 0, same, 0, half);
+        System.arraycopy(XTS_KEY_128, 0, same, half, half);
+        try {
+            cipher.init(Cipher.ENCRYPT_MODE,
+                new SecretKeySpec(same, "AES"), iv);
+            byte[] dupCt = cipher.doFinal(XTS_PT_128);
+            assertEquals(XTS_PT_128.length, dupCt.length);
+            assertFalse("ciphertext should differ from plaintext",
+                Arrays.equals(XTS_PT_128, dupCt));
+        } catch (InvalidKeyException e) {
+            assertTrue("native rejection should be the cause",
+                e.getCause() instanceof WolfCryptException);
+        }
+
+        /* AES-192-XTS accepted only with native AES-192 and not FIPS */
+        boolean aes192 = FeatureDetect.Aes192Enabled() && !Fips.enabled;
+        try {
+            cipher.init(Cipher.ENCRYPT_MODE,
+                new SecretKeySpec(XTS_KEY_192, "AES"), iv);
+            if (!aes192) {
+                fail("AES-192-XTS key should be rejected");
+            }
+        } catch (InvalidKeyException e) {
+            if (aes192) {
+                fail("AES-192-XTS key should be accepted: " +
+                     e.getMessage());
+            }
+        }
+
+        /* wrong key type */
+        if (rsaPair != null) {
+            try {
+                cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic(), iv);
+                fail("AES-XTS should reject non-SecretKey");
+            } catch (InvalidKeyException e) {
+                /* expected */
+            }
+        }
+    }
+
+    @Test
+    public void testAesXtsInvalidParams()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_256, "AES");
+
+        /* tweak (IV) must be 16 bytes */
+        int[] badIvSizes = { 0, 8, 12, 15, 17, 32 };
+        for (int size : badIvSizes) {
+            try {
+                cipher.init(Cipher.ENCRYPT_MODE, key,
+                    new IvParameterSpec(new byte[size]));
+                fail("AES-XTS should reject " + size + " byte IV");
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+        }
+
+        /* only IvParameterSpec accepted */
+        try {
+            cipher.init(Cipher.ENCRYPT_MODE, key,
+                new GCMParameterSpec(128, new byte[AesXts.TWEAK_SIZE]));
+            fail("AES-XTS should reject GCMParameterSpec");
+        } catch (InvalidAlgorithmParameterException e) {
+            /* expected */
+        }
+
+        /* AlgorithmParameters that cannot yield an IvParameterSpec */
+        try {
+            AlgorithmParameters gcmParams =
+                AlgorithmParameters.getInstance("GCM");
+            gcmParams.init(new GCMParameterSpec(128, new byte[12]));
+            cipher.init(Cipher.ENCRYPT_MODE, key, gcmParams);
+            fail("AES-XTS should reject GCM AlgorithmParameters");
+        } catch (InvalidAlgorithmParameterException e) {
+            /* expected */
+        } catch (NoSuchAlgorithmException | InvalidParameterSpecException e) {
+            /* no GCM AlgorithmParameters available, nothing to test */
+        }
+    }
+
+    @Test
+    public void testAesXtsDecryptRequiresTweak()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_256, "AES");
+
+        for (int mode : new int[] {Cipher.DECRYPT_MODE, Cipher.UNWRAP_MODE}) {
+            try {
+                cipher.init(mode, key);
+                fail("AES-XTS init() without tweak should fail in mode " +
+                     mode);
+            } catch (InvalidKeyException e) {
+                /* expected */
+            }
+            try {
+                cipher.init(mode, key, (AlgorithmParameterSpec)null);
+                fail("AES-XTS init() with null spec should fail in mode " +
+                     mode);
+            } catch (InvalidKeyException |
+                     InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+            try {
+                cipher.init(mode, key, (AlgorithmParameters)null);
+                fail("AES-XTS init() with null params should fail in mode " +
+                     mode);
+            } catch (InvalidKeyException |
+                     InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+        }
+    }
+
+    @Test
+    public void testAesXtsGetIvAndParameters()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException, InvalidParameterSpecException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_256, "AES");
+        byte[] plaintext = new byte[100];
+        secureRandom.nextBytes(plaintext);
+
+        /* init without IV generates a random tweak */
+        cipher.init(Cipher.ENCRYPT_MODE, key);
+        byte[] iv = cipher.getIV();
+        assertNotNull("getIV() should not be null", iv);
+        assertEquals(AesXts.TWEAK_SIZE, iv.length);
+
+        AlgorithmParameters params = cipher.getParameters();
+        assertNotNull("getParameters() should not be null", params);
+        IvParameterSpec spec =
+            params.getParameterSpec(IvParameterSpec.class);
+        assertArrayEquals("getParameters() IV mismatch", iv, spec.getIV());
+
+        byte[] ciphertext = cipher.doFinal(plaintext);
+
+        /* IV unchanged by the reset after doFinal() */
+        assertArrayEquals(iv, cipher.getIV());
+
+        /* decrypt with AlgorithmParameters */
+        cipher.init(Cipher.DECRYPT_MODE, key, params);
+        assertArrayEquals(iv, cipher.getIV());
+        assertArrayEquals("decrypt with AlgorithmParameters failed",
+            plaintext, cipher.doFinal(ciphertext));
+
+        /* decrypt with IvParameterSpec */
+        cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(iv));
+        assertArrayEquals("decrypt with IvParameterSpec failed",
+            plaintext, cipher.doFinal(ciphertext));
+
+        /* explicit IV returned as given */
+        cipher.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(XTS_IV_256));
+        assertArrayEquals(XTS_IV_256, cipher.getIV());
+        assertArrayEquals(XTS_IV_256, cipher.getParameters().
+            getParameterSpec(IvParameterSpec.class).getIV());
+
+        /* new init without IV gives a different tweak */
+        cipher.init(Cipher.ENCRYPT_MODE, key);
+        assertFalse("random IV should change between inits",
+            Arrays.equals(iv, cipher.getIV()));
+    }
+
+    @Test
+    public void testAesXtsWrongKeyOrIvDecrypt()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        byte[] wrongIv = XTS_IV_256.clone();
+        wrongIv[0] ^= (byte)0x01;
+
+        /* XTS is unauthenticated, wrong key or IV decrypts to garbage
+         * without an exception */
+        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(XTS_KEY_256, "AES"),
+            new IvParameterSpec(wrongIv));
+        byte[] pt = cipher.doFinal(XTS_CT_256);
+        assertEquals(XTS_PT_256.length, pt.length);
+        assertFalse("wrong IV should not recover plaintext",
+            Arrays.equals(XTS_PT_256, pt));
+
+        cipher.init(Cipher.DECRYPT_MODE,
+            new SecretKeySpec(xtsRandomKey(AesXts.KEY_SIZE_256), "AES"),
+            new IvParameterSpec(XTS_IV_256));
+        pt = cipher.doFinal(XTS_CT_256);
+        assertFalse("wrong key should not recover plaintext",
+            Arrays.equals(XTS_PT_256, pt));
+    }
+
+    @Test
+    public void testAesXtsGetOutputSize()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_256, "AES");
+        IvParameterSpec iv = new IvParameterSpec(XTS_IV_256);
+
+        /* output size equals input size */
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        assertEquals(Aes.BLOCK_SIZE, cipher.getOutputSize(Aes.BLOCK_SIZE));
+        assertEquals(Aes.BLOCK_SIZE + 1,
+            cipher.getOutputSize(Aes.BLOCK_SIZE + 1));
+        assertEquals(100, cipher.getOutputSize(100));
+
+        /* buffered data counts toward final output */
+        byte[] part = cipher.update(new byte[40]);
+        int produced = xtsLen(part);
+        assertEquals("update() holds back one block when streaming",
+            FeatureDetect.AesXtsStreamEnabled() ? Aes.BLOCK_SIZE : 0,
+            produced);
+        assertEquals(40 - produced + 8, cipher.getOutputSize(8));
+        byte[] tail = cipher.doFinal(new byte[8]);
+        assertEquals(40 - produced + 8, tail.length);
+
+        cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        assertEquals(48, cipher.getOutputSize(48));
+    }
+
+    @Test
+    public void testAesXtsByteBuffer()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException, ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_128_3, "AES");
+        IvParameterSpec iv = new IvParameterSpec(XTS_IV_128_3);
+
+        ByteBuffer input = ByteBuffer.allocateDirect(XTS_PT_128_3.length);
+        ByteBuffer output = ByteBuffer.allocateDirect(XTS_PT_128_3.length);
+        ByteBuffer decrypted =
+            ByteBuffer.allocateDirect(XTS_PT_128_3.length);
+
+        input.put(XTS_PT_128_3);
+        input.flip();
+
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        assertEquals(XTS_PT_128_3.length, cipher.doFinal(input, output));
+        output.flip();
+        byte[] ct = new byte[output.remaining()];
+        output.get(ct);
+        assertArrayEquals("ByteBuffer AES-XTS encrypt failed",
+            XTS_CT_128_3, ct);
+
+        output.flip();
+        cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        assertEquals(XTS_CT_128_3.length, cipher.doFinal(output, decrypted));
+        decrypted.flip();
+        byte[] pt = new byte[decrypted.remaining()];
+        decrypted.get(pt);
+        assertArrayEquals("ByteBuffer AES-XTS decrypt failed",
+            XTS_PT_128_3, pt);
+
+        /* heap ByteBuffers via update() + doFinal() */
+        ByteBuffer hin = ByteBuffer.wrap(XTS_PT_128_3.clone());
+        ByteBuffer hout = ByteBuffer.allocate(XTS_PT_128_3.length);
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        int n = cipher.update(hin, hout);
+        n += cipher.doFinal(hin, hout);
+        assertEquals(XTS_PT_128_3.length, n);
+        assertArrayEquals("heap ByteBuffer AES-XTS encrypt failed",
+            XTS_CT_128_3, hout.array());
+
+        /* direct ByteBuffers via update() + doFinal() */
+        ByteBuffer din = ByteBuffer.allocateDirect(XTS_PT_128_3.length);
+        ByteBuffer dout = ByteBuffer.allocateDirect(XTS_PT_128_3.length);
+        din.put(XTS_PT_128_3);
+        din.flip();
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        n = cipher.update(din, dout);
+        n += cipher.doFinal(din, dout);
+        assertEquals(XTS_PT_128_3.length, n);
+        dout.flip();
+        byte[] dct = new byte[dout.remaining()];
+        dout.get(dct);
+        assertArrayEquals("direct ByteBuffer AES-XTS encrypt failed",
+            XTS_CT_128_3, dct);
+
+        /* output too small */
+        ByteBuffer in2 = ByteBuffer.allocateDirect(XTS_PT_128_3.length);
+        ByteBuffer small =
+            ByteBuffer.allocateDirect(XTS_PT_128_3.length - 1);
+        in2.put(XTS_PT_128_3);
+        in2.flip();
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        try {
+            cipher.doFinal(in2, small);
+            fail("doFinal() into short ByteBuffer should throw");
+        } catch (ShortBufferException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testAesXtsUpdateWithOutputBuffer()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException, ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        boolean stream = FeatureDetect.AesXtsStreamEnabled();
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_128_3, "AES");
+        IvParameterSpec iv = new IvParameterSpec(XTS_IV_128_3);
+        byte[] out = new byte[XTS_CT_128_3.length];
+        int twoBlocks = 2 * Aes.BLOCK_SIZE;
+
+        /* output sized exactly to what update() produces */
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        byte[] first = new byte[stream ? Aes.BLOCK_SIZE : 0];
+        int n = cipher.update(XTS_PT_128_3, 0, twoBlocks, first, 0);
+        assertEquals(stream ? Aes.BLOCK_SIZE : 0, n);
+        System.arraycopy(first, 0, out, 0, n);
+
+        int m = cipher.doFinal(XTS_PT_128_3, twoBlocks,
+            XTS_PT_128_3.length - twoBlocks, out, n);
+        assertEquals(XTS_CT_128_3.length - n, m);
+        assertArrayEquals("AES-XTS update/doFinal with output buffer failed",
+            XTS_CT_128_3, out);
+
+        /* too small output buffers */
+        if (stream) {
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+            try {
+                cipher.update(XTS_PT_128_3, 0, twoBlocks,
+                    new byte[Aes.BLOCK_SIZE - 1], 0);
+                fail("update() into short buffer should throw");
+            } catch (ShortBufferException e) {
+                /* expected */
+            }
+        }
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        try {
+            cipher.doFinal(XTS_PT_128_3, 0, XTS_PT_128_3.length,
+                new byte[XTS_PT_128_3.length - 1], 0);
+            fail("doFinal() into too small buffer should throw");
+        } catch (ShortBufferException e) {
+            /* expected */
+        }
+
+        /* blocks already buffered, a 1 byte update() then outputs a block
+         * and the output size check must account for the buffered data */
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        assertEquals(0, cipher.update(XTS_PT_128_3, 0, twoBlocks - 1,
+            first, 0));
+        n = cipher.update(XTS_PT_128_3, twoBlocks - 1, 1, first, 0);
+        assertEquals(stream ? Aes.BLOCK_SIZE : 0, n);
+        System.arraycopy(first, 0, out, 0, n);
+        m = cipher.doFinal(XTS_PT_128_3, twoBlocks,
+            XTS_PT_128_3.length - twoBlocks, out, n);
+        assertEquals(XTS_CT_128_3.length - n, m);
+        assertArrayEquals(XTS_CT_128_3, out);
+
+        if (stream) {
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+            cipher.update(XTS_PT_128_3, 0, twoBlocks - 1);
+            try {
+                cipher.update(XTS_PT_128_3, twoBlocks - 1, 1,
+                    new byte[Aes.BLOCK_SIZE - 1], 0);
+                fail("1 byte update() into short buffer should throw");
+            } catch (ShortBufferException e) {
+                /* expected */
+            }
+        }
+    }
+
+    @Test
+    public void testAesXtsDoFinalResetsState()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_256, "AES");
+        IvParameterSpec iv = new IvParameterSpec(XTS_IV_256);
+
+        /* doFinal() resets to init state, repeating gives same result */
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        assertArrayEquals(XTS_CT_256, cipher.doFinal(XTS_PT_256));
+        assertArrayEquals(XTS_CT_256, cipher.doFinal(XTS_PT_256));
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] head = cipher.update(XTS_PT_256, 0, 20);
+        if (head != null) {
+            bos.write(head, 0, head.length);
+        }
+        byte[] rest = cipher.doFinal(XTS_PT_256, 20, XTS_PT_256.length - 20);
+        bos.write(rest, 0, rest.length);
+        assertArrayEquals(XTS_CT_256, bos.toByteArray());
+        assertArrayEquals(XTS_IV_256, cipher.getIV());
+
+        cipher.init(Cipher.DECRYPT_MODE, key, iv);
+        assertArrayEquals(XTS_PT_256, cipher.doFinal(XTS_CT_256));
+        assertArrayEquals(XTS_PT_256, cipher.doFinal(XTS_CT_256));
+    }
+
+    @Test
+    public void testAesXtsWrapUnwrap()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_256, "AES");
+        IvParameterSpec iv = new IvParameterSpec(XTS_IV_256);
+        byte[] raw = new byte[Aes.KEY_SIZE_256];
+        secureRandom.nextBytes(raw);
+        SecretKeySpec toWrap = new SecretKeySpec(raw, "AES");
+
+        cipher.init(Cipher.WRAP_MODE, key, iv);
+        byte[] wrapped = cipher.wrap(toWrap);
+        assertEquals(raw.length, wrapped.length);
+        assertFalse(Arrays.equals(raw, wrapped));
+
+        cipher.init(Cipher.UNWRAP_MODE, key, iv);
+        Key unwrapped = cipher.unwrap(wrapped, "AES", Cipher.SECRET_KEY);
+        assertArrayEquals("AES-XTS wrap/unwrap round trip failed",
+            raw, unwrapped.getEncoded());
+    }
+
+    @Test
+    public void testAesXtsPaddingRejected()
+        throws NoSuchProviderException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        try {
+            Cipher.getInstance("AES/XTS/PKCS5Padding", jceProvider);
+            fail("AES/XTS/PKCS5Padding should not be available");
+        } catch (NoSuchAlgorithmException e) {
+            /* expected */
+        } catch (NoSuchPaddingException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testAesXtsAliases()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        Cipher cipher =
+            Cipher.getInstance("AES_128/XTS/NoPadding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE,
+            new SecretKeySpec(XTS_KEY_128, "AES"),
+            new IvParameterSpec(XTS_IV_128));
+        assertArrayEquals(XTS_CT_128, cipher.doFinal(XTS_PT_128));
+
+        cipher = Cipher.getInstance("AES_256/XTS/NoPadding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE,
+            new SecretKeySpec(XTS_KEY_256, "AES"),
+            new IvParameterSpec(XTS_IV_256));
+        assertArrayEquals(XTS_CT_256, cipher.doFinal(XTS_PT_256));
+    }
+
+    @Test
+    public void testAesXtsThreaded() throws InterruptedException {
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        int numThreads = 50;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<Integer> results =
+            new LinkedBlockingQueue<>();
+        final LinkedBlockingQueue<String> errors =
+            new LinkedBlockingQueue<>();
+
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override
+                public void run() {
+                    int ret = 0;
+
+                    try {
+                        Cipher cipher = Cipher.getInstance(
+                            "AES/XTS/NoPadding", jceProvider);
+                        SecretKeySpec keySpec =
+                            new SecretKeySpec(XTS_KEY_256, "AES");
+                        IvParameterSpec ivSpec =
+                            new IvParameterSpec(XTS_IV_256);
+
+                        for (int j = 0; j < 10; j++) {
+                            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+                            byte[] ciphertext = cipher.doFinal(XTS_PT_256);
+                            if (!Arrays.equals(XTS_CT_256, ciphertext)) {
+                                ret = 1;
+                            }
+
+                            cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+                            byte[] decrypted = cipher.doFinal(ciphertext);
+                            if (!Arrays.equals(XTS_PT_256, decrypted)) {
+                                ret = 1;
+                            }
+                        }
+
+                    } catch (Exception e) {
+                        errors.add(e.toString());
+                        ret = 1;
+                    }
+
+                    results.add(ret);
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+        service.shutdown();
+
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur == 1) {
+                fail("Threading error in AES-XTS Cipher thread test: " +
+                    (errors.isEmpty() ? "output mismatch" : errors.peek()));
+            }
+        }
+    }
+
     @Test
     public void testDESedeCbcNoPadding()
         throws NoSuchProviderException, NoSuchAlgorithmException,
@@ -6253,18 +7404,22 @@ public class WolfCryptCipherTest {
         SecretKeySpec keySpec;
         int[] testSizes = {16, 32, 100, 1601, 1602, 1603};
 
-        /* Generate test key */
-        if (algorithm.startsWith("AES")) {
+        /* fill key before SecretKeySpec copies it */
+        if (algorithm.contains("/XTS/")) {
+            /* AES-XTS needs 32 bytes with differing halves */
+            key = xtsRandomKey(AesXts.KEY_SIZE_128);
+            keySpec = new SecretKeySpec(key, "AES");
+        } else if (algorithm.startsWith("AES")) {
             key = new byte[16]; /* AES-128 */
+            secureRandom.nextBytes(key);
             keySpec = new SecretKeySpec(key, "AES");
         } else if (algorithm.startsWith("DESede")) {
             key = new byte[24]; /* 3DES */
+            secureRandom.nextBytes(key);
             keySpec = new SecretKeySpec(key, "DESede");
         } else {
             return; /* Unsupported algorithm */
         }
-
-        secureRandom.nextBytes(key);
 
         /* Generate test data of various sizes to ensure robustness */
         for (int dataSize : testSizes) {
@@ -9430,5 +10585,92 @@ public class WolfCryptCipherTest {
         assertTrue("Decrypted data should match original input",
             Arrays.equals(input, recoveredText));
     }
-}
 
+    @Test
+    public void testAesXtsDataUnitLimit()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("AES/XTS/NoPadding")) {
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("AES/XTS/NoPadding", jceProvider);
+        SecretKeySpec key = new SecretKeySpec(XTS_KEY_128, "AES");
+        IvParameterSpec iv = new IvParameterSpec(XTS_IV_128);
+        byte[] over = new byte[AesXts.MAX_DATA_UNIT_SIZE + Aes.BLOCK_SIZE];
+
+        /* one block over the limit is rejected before it is consumed */
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+        try {
+            cipher.update(over);
+            fail("update() over the data unit limit should throw");
+        } catch (IllegalArgumentException e) {
+            /* expected */
+        }
+        try {
+            cipher.doFinal(over);
+            fail("doFinal() over the data unit limit should throw");
+        } catch (IllegalBlockSizeException e) {
+            /* expected */
+        }
+        over = null;
+
+        /* the failed doFinal() reset the Cipher */
+        assertArrayEquals(XTS_CT_128, cipher.doFinal(XTS_PT_128));
+
+        /* exactly the limit streams through, one more block does not */
+        if (FeatureDetect.AesXtsStreamEnabled()) {
+            byte[] chunk = new byte[AesXts.MAX_DATA_UNIT_SIZE / 16];
+            long total = 0;
+
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+            for (int i = 0; i < 16; i++) {
+                total += xtsLen(cipher.update(chunk));
+            }
+            try {
+                cipher.update(new byte[Aes.BLOCK_SIZE]);
+                fail("update() past the data unit limit should throw");
+            } catch (IllegalArgumentException e) {
+                /* expected */
+            }
+            total += cipher.doFinal().length;
+            assertEquals(AesXts.MAX_DATA_UNIT_SIZE, total);
+        }
+    }
+
+    @Test
+    public void testAesInvalidKeyLengthThrowsInvalidKeyException()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidAlgorithmParameterException {
+
+        String[] transforms = {"AES/CBC/NoPadding", "AES/ECB/NoPadding",
+            "AES/CTR/NoPadding", "AES/GCM/NoPadding"};
+        SecretKeySpec badKey = new SecretKeySpec(new byte[20], "AES");
+
+        for (String transform : transforms) {
+            if (!enabledJCEAlgos.contains(transform)) {
+                continue;
+            }
+            Cipher cipher = Cipher.getInstance(transform, jceProvider);
+            try {
+                if (transform.contains("GCM")) {
+                    cipher.init(Cipher.ENCRYPT_MODE, badKey,
+                        new GCMParameterSpec(128, new byte[12]));
+                }
+                else if (transform.contains("ECB")) {
+                    cipher.init(Cipher.ENCRYPT_MODE, badKey);
+                }
+                else {
+                    cipher.init(Cipher.ENCRYPT_MODE, badKey,
+                        new IvParameterSpec(new byte[Aes.BLOCK_SIZE]));
+                }
+                fail(transform + " should reject a 20 byte AES key");
+            } catch (InvalidKeyException e) {
+                /* expected */
+            }
+        }
+    }
+}

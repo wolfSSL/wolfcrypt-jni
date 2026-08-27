@@ -171,6 +171,21 @@ public class FeatureDetect {
     public static native boolean AesCtsEnabled();
 
     /**
+     * Tests if AES-XTS is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesXtsEnabled();
+
+    /**
+     * Tests if the AES-XTS streaming API (WOLFSSL_AESXTS_STREAM) is
+     * compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesXtsStreamEnabled();
+
+    /**
      * Tests if AES-CMAC is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.

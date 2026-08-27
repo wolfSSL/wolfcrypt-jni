@@ -692,6 +692,17 @@ public final class WolfCryptProvider extends Provider {
             put("Cipher.AES/CTS/NoPadding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCTSNoPadding");
         }
+        if (FeatureDetect.AesXtsEnabled()) {
+            put("Cipher.AES/XTS/NoPadding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESXTSNoPadding");
+
+            /* AES-XTS aliases follow SunJCE names, the key size is not
+             * enforced per alias. No AES_192, XTS-192 not in SP 800-38E. */
+            put("Alg.Alias.Cipher.AES_128/XTS/NoPadding",
+                "AES/XTS/NoPadding");
+            put("Alg.Alias.Cipher.AES_256/XTS/NoPadding",
+                "AES/XTS/NoPadding");
+        }
 
         if (FeatureDetect.Des3Enabled()) {
             put("Cipher.DESede/CBC/NoPadding",

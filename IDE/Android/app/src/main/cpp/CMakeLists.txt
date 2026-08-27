@@ -67,6 +67,7 @@ if ("${WOLFSSL_PKG_TYPE}" MATCHES "normal")
                 -DECC_TIMING_RESISTANT -DTFM_TIMING_RESISTANT
                 -DWC_RSA_BLINDING -DWC_RSA_NO_PADDING -DWC_RSA_PSS -DWOLFSSL_PSS_LONG_SALT
                 -DHAVE_AESGCM -DGCM_TABLE_4BIT -DHAVE_CTS -DWOLFSSL_AES_DIRECT
+                -DWOLFSSL_AES_XTS -DWOLFSSL_AESXTS_STREAM
                 -DHAVE_CHACHA -DHAVE_POLY1305
                 -DHAVE_DH_DEFAULT_PARAMS -DHAVE_FFDHE_2048
                 -DHAVE_HASHDRBG -DHAVE_HKDF
@@ -362,6 +363,7 @@ add_library(wolfcryptjni SHARED
         ${wolfcryptjni_DIR}/jni/jni_aescmac.c
         ${wolfcryptjni_DIR}/jni/jni_aesctr.c
         ${wolfcryptjni_DIR}/jni/jni_aescts.c
+        ${wolfcryptjni_DIR}/jni/jni_aesxts.c
         ${wolfcryptjni_DIR}/jni/jni_aesecb.c
         ${wolfcryptjni_DIR}/jni/jni_aesgcm.c
         ${wolfcryptjni_DIR}/jni/jni_aesgmac.c
