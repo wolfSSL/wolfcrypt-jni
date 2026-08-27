@@ -270,6 +270,18 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCtsEnable
 #endif
 }
 
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesKeyWrapEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(HAVE_AES_KEYWRAP)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCmacEnabled
   (JNIEnv* env, jclass jcl)
 {

@@ -692,6 +692,55 @@ public final class WolfCryptProvider extends Provider {
             put("Cipher.AES/CTS/NoPadding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCTSNoPadding");
         }
+        if (FeatureDetect.AesKeyWrapEnabled()) {
+            /* AES Key Wrap (RFC 3394 / NIST SP 800-38F KW) */
+            put("Cipher.AESWrap",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESKWNoPadding");
+            put("Alg.Alias.Cipher.AES/KW/NoPadding", "AESWrap");
+            put("Alg.Alias.Cipher.AESKW", "AESWrap");
+
+            /* PKCS#5 padded input (JDK 17+ name) */
+            put("Cipher.AES/KW/PKCS5Padding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESKWPKCS5Padding");
+
+            /* Key-size locked variants, with NIST OID aliases */
+            if (FeatureDetect.Aes128Enabled()) {
+                put("Cipher.AESWrap_128",
+                    "com.wolfssl.provider.jce.WolfCryptCipher$wcAES128KWNoPadding");
+                put("Alg.Alias.Cipher.AES_128/KW/NoPadding",
+                    "AESWrap_128");
+                put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.5",
+                    "AESWrap_128");
+                put("Alg.Alias.Cipher.OID.2.16.840.1.101.3.4.1.5",
+                    "AESWrap_128");
+                put("Cipher.AES_128/KW/PKCS5Padding",
+                    "com.wolfssl.provider.jce.WolfCryptCipher$wcAES128KWPKCS5Padding");
+            }
+            if (FeatureDetect.Aes192Enabled()) {
+                put("Cipher.AESWrap_192",
+                    "com.wolfssl.provider.jce.WolfCryptCipher$wcAES192KWNoPadding");
+                put("Alg.Alias.Cipher.AES_192/KW/NoPadding",
+                    "AESWrap_192");
+                put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.25",
+                    "AESWrap_192");
+                put("Alg.Alias.Cipher.OID.2.16.840.1.101.3.4.1.25",
+                    "AESWrap_192");
+                put("Cipher.AES_192/KW/PKCS5Padding",
+                    "com.wolfssl.provider.jce.WolfCryptCipher$wcAES192KWPKCS5Padding");
+            }
+            if (FeatureDetect.Aes256Enabled()) {
+                put("Cipher.AESWrap_256",
+                    "com.wolfssl.provider.jce.WolfCryptCipher$wcAES256KWNoPadding");
+                put("Alg.Alias.Cipher.AES_256/KW/NoPadding",
+                    "AESWrap_256");
+                put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.45",
+                    "AESWrap_256");
+                put("Alg.Alias.Cipher.OID.2.16.840.1.101.3.4.1.45",
+                    "AESWrap_256");
+                put("Cipher.AES_256/KW/PKCS5Padding",
+                    "com.wolfssl.provider.jce.WolfCryptCipher$wcAES256KWPKCS5Padding");
+            }
+        }
 
         if (FeatureDetect.Des3Enabled()) {
             put("Cipher.DESede/CBC/NoPadding",
