@@ -42,6 +42,7 @@ import org.junit.runners.Suite.SuiteClasses;
     WolfCryptMacTest.class,
     WolfCryptCipherTest.class,
     WolfCryptCipherRSAOAEPTest.class,
+    WolfCryptCipherAesWrapTest.class,
     WolfCryptKeyAgreementTest.class,
     WolfCryptKeyGeneratorTest.class,
     WolfCryptKeyPairGeneratorTest.class,

@@ -68,6 +68,7 @@ if ("${WOLFSSL_PKG_TYPE}" MATCHES "normal")
                 -DWC_RSA_BLINDING -DWC_RSA_NO_PADDING -DWC_RSA_PSS -DWOLFSSL_PSS_LONG_SALT
                 -DHAVE_AESGCM -DGCM_TABLE_4BIT -DHAVE_CTS -DWOLFSSL_AES_DIRECT
                 -DWOLFSSL_AES_XTS -DWOLFSSL_AESXTS_STREAM
+                -DHAVE_AES_KEYWRAP
                 -DHAVE_CHACHA -DHAVE_POLY1305
                 -DHAVE_DH_DEFAULT_PARAMS -DHAVE_FFDHE_2048
                 -DHAVE_HASHDRBG -DHAVE_HKDF
@@ -183,7 +184,7 @@ elseif("${WOLFSSL_PKG_TYPE}" MATCHES "fipsready")
                 -DHAVE_AESGCM -DGCM_TABLE_4BIT -DWOLFSSL_AESGCM_STREAM -DHAVE_AESCCM
                 -DWOLFSSL_AES_COUNTER -DWOLFSSL_CMAC -DWOLFSSL_AES_OFB -DWOLFSSL_AES_CFB
                 -DWOLFSSL_AES_XTS -DWOLFSSL_AESXTS_STREAM -DWOLFSSL_AES_DIRECT
-                -DHAVE_AES_ECB -DHAVE_AES_KEYWRAP -DWOLFSSL_AES_XTS -DHAVE_AES_KEYWRAP
+                -DHAVE_AES_ECB -DHAVE_AES_KEYWRAP
 
                 -DHAVE_ED25519 -DHAVE_ED25519_KEY_IMPORT -DHAVE_ED448 -DHAVE_ED448_KEY_IMPORT
                 -DWOLFSSL_ED448_STREAMING_VERIFY
@@ -367,6 +368,7 @@ add_library(wolfcryptjni SHARED
         ${wolfcryptjni_DIR}/jni/jni_aesecb.c
         ${wolfcryptjni_DIR}/jni/jni_aesgcm.c
         ${wolfcryptjni_DIR}/jni/jni_aesgmac.c
+        ${wolfcryptjni_DIR}/jni/jni_aeskeywrap.c
         ${wolfcryptjni_DIR}/jni/jni_aesofb.c
         ${wolfcryptjni_DIR}/jni/jni_asn.c
         ${wolfcryptjni_DIR}/jni/jni_chacha.c

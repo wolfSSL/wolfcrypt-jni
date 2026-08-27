@@ -28,13 +28,34 @@ import java.security.spec.InvalidParameterSpecException;
 import javax.crypto.spec.IvParameterSpec;
 
 import com.wolfssl.wolfcrypt.Aes;
+import com.wolfssl.wolfcrypt.AesKeyWrap;
 
 /**
- * wolfCrypt JCE AlgorithmParametersSpi implementation for AES parameters
+ * wolfCrypt JCE AlgorithmParametersSpi implementation for AES parameters.
+ *
+ * Holds an AES IV encoded as an ASN.1 OCTET STRING. The IV is 16 bytes for
+ * block cipher modes (CBC, CTR, OFB) and 8 bytes for AES Key Wrap (RFC 3394).
  */
 public class WolfCryptAesParameters extends AlgorithmParametersSpi {
 
     private IvParameterSpec ivSpec;
+
+    /**
+     * Check if an IV length is valid for AES parameters.
+     *
+     * @param len IV length in bytes
+     *
+     * @return true if len is the AES block size (16) or the AES Key Wrap
+     *         IV size (8), otherwise false
+     */
+    private static boolean isValidIvLength(int len) {
+
+        if (len == Aes.BLOCK_SIZE || len == AesKeyWrap.IV_SIZE) {
+            return true;
+        }
+
+        return false;
+    }
 
     /**
      * Create new WolfCryptAesParameters object
@@ -67,10 +88,12 @@ public class WolfCryptAesParameters extends AlgorithmParametersSpi {
                 "AES IV cannot be null or empty");
         }
 
-        /* AES block size is 16 bytes, IV should match */
-        if (spec.getIV().length != Aes.BLOCK_SIZE) {
+        /* AES block size is 16 bytes, AES Key Wrap IV is 8 bytes */
+        if (!isValidIvLength(spec.getIV().length)) {
             throw new InvalidParameterSpecException(
-                "AES IV must be 16 bytes, got: " + spec.getIV().length);
+                "AES IV must be " + Aes.BLOCK_SIZE + " bytes (or " +
+                AesKeyWrap.IV_SIZE + " bytes for AES Key Wrap), got: " +
+                spec.getIV().length);
         }
 
         /* Clone the IV to prevent external modification */
@@ -96,9 +119,9 @@ public class WolfCryptAesParameters extends AlgorithmParametersSpi {
         }
 
         /* AES IV parameters are encoded as ASN.1 OCTET STRING:
-         * tag (0x04) + length + IV bytes
-         * Expected: 04 10 [16 IV bytes] = 18 bytes */
-        if (params.length != Aes.BLOCK_SIZE + 2) {
+         * tag (0x04) + length + IV bytes */
+        if (params.length != Aes.BLOCK_SIZE + 2 &&
+            params.length != AesKeyWrap.IV_SIZE + 2) {
             throw new IOException(
                 "Invalid AES parameter encoding length: " + params.length);
         }
@@ -109,15 +132,16 @@ public class WolfCryptAesParameters extends AlgorithmParametersSpi {
                 "DER input not an octet string");
         }
 
-        /* Verify length is 16 (0x10) */
-        if (params[1] != 0x10) {
+        /* Verify encoded length matches the buffer and is 16 or 8 */
+        int ivLen = params[1] & 0xFF;
+        if (ivLen != (params.length - 2) || !isValidIvLength(ivLen)) {
             throw new IOException(
-                "Invalid AES IV length in encoding: " + params[1]);
+                "Invalid AES IV length in encoding: " + ivLen);
         }
 
         /* Extract IV bytes (skip tag and length) */
-        byte[] iv = new byte[Aes.BLOCK_SIZE];
-        System.arraycopy(params, 2, iv, 0, Aes.BLOCK_SIZE);
+        byte[] iv = new byte[ivLen];
+        System.arraycopy(params, 2, iv, 0, ivLen);
 
         this.ivSpec = new IvParameterSpec(iv);
     }
@@ -171,15 +195,15 @@ public class WolfCryptAesParameters extends AlgorithmParametersSpi {
         }
 
         iv = this.ivSpec.getIV();
-        if (iv == null || iv.length != Aes.BLOCK_SIZE) {
+        if (iv == null || !isValidIvLength(iv.length)) {
             throw new IOException("Invalid AES IV for encoding");
         }
 
-        /* Encode as OCTET STRING: tag (0x04) + len (0x10) + IV */
-        encoded = new byte[18];
+        /* Encode as OCTET STRING: tag (0x04) + len (0x10 or 0x08) + IV */
+        encoded = new byte[iv.length + 2];
         encoded[0] = 0x04; /* OCTET STRING */
-        encoded[1] = 0x10; /* length = 16 */
-        System.arraycopy(iv, 0, encoded, 2, Aes.BLOCK_SIZE);
+        encoded[1] = (byte)iv.length; /* length = 16, or 8 for Key Wrap */
+        System.arraycopy(iv, 0, encoded, 2, iv.length);
 
         return encoded;
     }
