@@ -147,7 +147,14 @@ section titled `/* Configuration */`:
 #define HAVE_FFDHE_Q
 #define WOLFSSL_VALIDATE_FFC_IMPORT
 #define WOLFSSL_PUBLIC_MP
+#define WOLFSSL_AES_DIRECT
+#define HAVE_AES_KEYWRAP
 ```
+
+`WOLFSSL_AES_DIRECT` and `HAVE_AES_KEYWRAP` enable AES Key Wrap (RFC 3394),
+used by the wolfJCE `AESWrap` / `AES/KW/NoPadding` Cipher services. They can
+be left out if AES Key Wrap is not needed, in which case those services are
+not registered.
 
 If also building wolfSSL JNI/JSSE, additional defines may be needed. Please
 reference the Windows build documentation for wolfSSL JNI/JSSE if so.
