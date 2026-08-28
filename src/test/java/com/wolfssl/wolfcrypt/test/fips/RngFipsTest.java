@@ -24,6 +24,7 @@ package com.wolfssl.wolfcrypt.test.fips;
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -34,6 +35,7 @@ import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.Fips;
 
 import com.wolfssl.wolfcrypt.test.Util;
@@ -57,6 +59,65 @@ public class RngFipsTest extends FipsTest {
         Rng rng = new Rng();
 
         assertEquals(WolfCrypt.SUCCESS, Fips.InitRng_fips(rng));
+        assertEquals(WolfCrypt.SUCCESS, Fips.FreeRng_fips(rng));
+    }
+
+    @Test
+    public void GenerateBlockShouldRejectBadBufSzUsingByteBuffer() {
+        Rng rng = new Rng();
+        ByteBuffer buf = ByteBuffer.allocateDirect(32);
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRng_fips(rng));
+
+        /* valid request within capacity fills the buffer */
+        assertEquals(WolfCrypt.SUCCESS,
+            Fips.RNG_GenerateBlock_fips(rng, buf, 32));
+
+        byte[] filled = new byte[32];
+        buf.duplicate().get(filled);
+        assertFalse("buffer should not be all zeros after generate",
+            Arrays.equals(filled, new byte[32]));
+
+        /* zero length is admitted by the guard and handled by the RNG */
+        assertEquals(WolfCrypt.SUCCESS,
+            Fips.RNG_GenerateBlock_fips(rng, buf, 0));
+
+        /* negative bufSz is rejected before the RNG call */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.RNG_GenerateBlock_fips(rng, buf, -1));
+
+        /* bufSz larger than capacity is rejected before the RNG call */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.RNG_GenerateBlock_fips(rng, buf, 33));
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.FreeRng_fips(rng));
+    }
+
+    @Test
+    public void GenerateBlockShouldRejectBadBufSzUsingByteArray() {
+        Rng rng = new Rng();
+        byte[] buf = new byte[32];
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRng_fips(rng));
+
+        /* valid request within length fills the buffer */
+        assertEquals(WolfCrypt.SUCCESS,
+                Fips.RNG_GenerateBlock_fips(rng, buf, 32));
+        assertFalse("buffer should not be all zeros after generate",
+                Arrays.equals(buf, new byte[32]));
+
+        /* zero length is admitted by the guard and handled by the RNG */
+        assertEquals(WolfCrypt.SUCCESS,
+                Fips.RNG_GenerateBlock_fips(rng, buf, 0));
+
+        /* negative bufSz is rejected before the RNG call */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+                Fips.RNG_GenerateBlock_fips(rng, buf, -1));
+
+        /* bufSz larger than the array is rejected before the RNG call */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+                Fips.RNG_GenerateBlock_fips(rng, buf, 33));
+
         assertEquals(WolfCrypt.SUCCESS, Fips.FreeRng_fips(rng));
     }
 
