@@ -24,6 +24,7 @@ package com.wolfssl.wolfcrypt.test;
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
+import java.lang.reflect.Field;
 
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -593,6 +594,48 @@ public class AesCmacTest {
                 throw e;
             }
         }
+    }
+
+    @Test
+    public void aesCmacShouldZeroizePriorKeyOnReKey() throws Exception {
+
+        String key1 = "2b7e151628aed2a6abf7158809cf4f3c";
+        String key2 = "603deb1015ca71be2b73aef0857d7781" +
+                      "1f352c073b6108d72d9810a30914dff4";
+
+        byte[] key1Bytes = Util.h2b(key1);
+        byte[] key2Bytes = Util.h2b(key2);
+
+        AesCmac cmac;
+        try {
+            cmac = new AesCmac();
+            cmac.setKey(key1Bytes);
+        } catch (WolfCryptException e) {
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                System.out.println("AesCmac re-key zeroize test skipped: " +
+                    e.getError());
+                return;
+            }
+            throw e;
+        }
+
+        /* Capture reference to the internal key clone stored by setKey.
+         * Zeroization has no public observable, so this deliberately couples
+         * to the private AesCmac.key field name and must be updated if that
+         * field is renamed. */
+        Field keyField = AesCmac.class.getDeclaredField("key");
+        keyField.setAccessible(true);
+        byte[] priorClone = (byte[]) keyField.get(cmac);
+
+        assertNotNull("Internal key clone should be stored", priorClone);
+        assertFalse("Internal key clone should be non-zero before re-key",
+            Arrays.equals(priorClone, new byte[priorClone.length]));
+
+        /* Re-keying must zeroize the prior clone before replacing it */
+        cmac.setKey(key2Bytes);
+
+        assertArrayEquals("Prior key clone should be zeroized after re-key",
+            new byte[priorClone.length], priorClone);
     }
 
     @Test
