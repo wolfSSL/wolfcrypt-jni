@@ -655,9 +655,12 @@ public class WolfCryptSecretKeyFactory extends SecretKeyFactorySpi {
 
         if (key != null) {
 
-            if (!isAlgorithmSupported(key.getAlgorithm())) {
-                throw new InvalidKeyException(
-                    "SecretKey algorithm not supported: " + key.getAlgorithm());
+            /* Require the source key algorithm to match this factory. */
+            String keyAlgo = key.getAlgorithm();
+            if (keyAlgo == null || !keyAlgo.equalsIgnoreCase(this.typeString)) {
+                throw new InvalidKeyException("PBEKey algorithm " + keyAlgo +
+                    " does not match this SecretKeyFactory algorithm " +
+                    this.typeString);
             }
 
             try {
