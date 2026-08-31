@@ -674,6 +674,37 @@ public final class WolfCryptProvider extends Provider {
             put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.43",
                 "AES/OFB/NoPadding");
         }
+        if (FeatureDetect.AesCfbEnabled()) {
+            /* bare CFB is full block (128-bit) feedback */
+            put("Cipher.AES/CFB/NoPadding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCFBNoPadding");
+            put("Alg.Alias.Cipher.AES/CFB128/NoPadding",
+                "AES/CFB/NoPadding");
+
+            /* NIST AES-CFB algorithm aliases with key sizes */
+            put("Alg.Alias.Cipher.AES_128/CFB/NoPadding",
+                "AES/CFB/NoPadding");
+            put("Alg.Alias.Cipher.AES_192/CFB/NoPadding",
+                "AES/CFB/NoPadding");
+            put("Alg.Alias.Cipher.AES_256/CFB/NoPadding",
+                "AES/CFB/NoPadding");
+
+            /* NIST AES-CFB OID aliases */
+            put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.4",
+                "AES/CFB/NoPadding");
+            put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.24",
+                "AES/CFB/NoPadding");
+            put("Alg.Alias.Cipher.2.16.840.1.101.3.4.1.44",
+                "AES/CFB/NoPadding");
+        }
+        if (FeatureDetect.AesCfb8Enabled()) {
+            put("Cipher.AES/CFB8/NoPadding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCFB8NoPadding");
+        }
+        if (FeatureDetect.AesCfb1Enabled()) {
+            put("Cipher.AES/CFB1/NoPadding",
+                "com.wolfssl.provider.jce.WolfCryptCipher$wcAESCFB1NoPadding");
+        }
         if (FeatureDetect.AesGcmEnabled()) {
             put("Cipher.AES/GCM/NoPadding",
                 "com.wolfssl.provider.jce.WolfCryptCipher$wcAESGCMNoPadding");
