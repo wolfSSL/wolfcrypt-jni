@@ -134,6 +134,32 @@ public class FeatureDetect {
     public static native boolean AesOfbEnabled();
 
     /**
+     * Tests if AES-CFB is compiled into the native wolfSSL library for both
+     * directions (WOLFSSL_AES_CFB and HAVE_AES_DECRYPT).
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesCfbEnabled();
+
+    /**
+     * Tests if AES-CFB with 1-bit feedback (CFB1) is compiled into the
+     * native wolfSSL library for both directions (WOLFSSL_AES_CFB and
+     * HAVE_AES_DECRYPT, not WOLFSSL_NO_AES_CFB_1_8).
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesCfb1Enabled();
+
+    /**
+     * Tests if AES-CFB with 8-bit feedback (CFB8) is compiled into the
+     * native wolfSSL library for both directions (WOLFSSL_AES_CFB and
+     * HAVE_AES_DECRYPT, not WOLFSSL_NO_AES_CFB_1_8).
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesCfb8Enabled();
+
+    /**
      * Tests if AES decrypt functionality (HAVE_AES_DECRYPT) is compiled into
      * the native wolfSSL library.
      *

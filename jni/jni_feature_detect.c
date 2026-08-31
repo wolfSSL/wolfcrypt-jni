@@ -209,6 +209,45 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesOfbEnable
 #endif
 }
 
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCfbEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(WOLFSSL_AES_CFB) && \
+    defined(HAVE_AES_DECRYPT)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCfb1Enabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(WOLFSSL_AES_CFB) && \
+    defined(HAVE_AES_DECRYPT) && !defined(WOLFSSL_NO_AES_CFB_1_8)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCfb8Enabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_AES) && defined(WOLFSSL_AES_CFB) && \
+    defined(HAVE_AES_DECRYPT) && !defined(WOLFSSL_NO_AES_CFB_1_8)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesDecryptEnabled
   (JNIEnv* env, jclass jcl)
 {

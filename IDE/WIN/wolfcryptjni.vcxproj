@@ -78,6 +78,7 @@
     <ClCompile Include="..\..\jni\jni_aes.c" />
     <ClCompile Include="..\..\jni\jni_aesccm.c" />
     <ClCompile Include="..\..\jni\jni_aescmac.c" />
+    <ClCompile Include="..\..\jni\jni_aescfb.c" />
     <ClCompile Include="..\..\jni\jni_aesctr.c" />
     <ClCompile Include="..\..\jni\jni_aescts.c" />
     <ClCompile Include="..\..\jni\jni_aesecb.c" />
