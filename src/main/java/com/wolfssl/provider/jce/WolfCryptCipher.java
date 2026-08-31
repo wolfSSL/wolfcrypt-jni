@@ -745,8 +745,9 @@ public class WolfCryptCipher extends CipherSpi {
         switch (this.cipherType) {
             case WC_AES:
                 if (paddingType == PaddingType.WC_NONE) {
-                    if (cipherMode == CipherMode.WC_GCM) {
-                        /* In AES-GCM mode we append the authentication tag
+                    if (cipherMode == CipherMode.WC_GCM ||
+                        cipherMode == CipherMode.WC_CCM) {
+                        /* In AES-GCM or AES-CCM mode we append the auth tag
                          * to the end of ciphertext, When decrypting, output
                          * size will have it taken off. */
                         if (this.direction == OpMode.WC_ENCRYPT) {

@@ -3016,6 +3016,91 @@ public class WolfCryptCipherTest {
     }
 
     /**
+     * Test Cipher("AES/CCM/NoPadding") getOutputSize() method for various
+     * use cases. AES-CCM appends the auth tag on encryption and strips it on
+     * decryption (same as AES-GCM), so getOutputSize() must account for tag
+     * in both directions.
+     */
+    @Test
+    public void testAesCcmGetOutputSize() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            /* skip if AES-CCM is not enabled */
+            return;
+        }
+
+        final int TAG_LENGTH_BYTES = 16;  /* Default tag length */
+        final int KEY_LENGTH_BYTES = 16;  /* 128-bit AES key */
+        final int NONCE_LENGTH_BYTES = 12;
+
+        /* Fill key and nonce with non-zero values */
+        byte[] keyBytes = new byte[KEY_LENGTH_BYTES];
+        java.util.Arrays.fill(keyBytes, (byte) 0x01);
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+
+        byte[] nonce = new byte[NONCE_LENGTH_BYTES];
+        java.util.Arrays.fill(nonce, (byte) 0x02);
+        GCMParameterSpec spec = new GCMParameterSpec(TAG_LENGTH_BYTES * 8,
+            nonce);
+
+        Cipher cipher = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+
+        /* Test ENCRYPT with zero-length input */
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        assertEquals("Output size for zero-length input should be tag length",
+            TAG_LENGTH_BYTES, cipher.getOutputSize(0));
+
+        /* Test ENCRYPT with small input */
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        assertEquals("Output size should be input length plus tag length",
+            10 + TAG_LENGTH_BYTES, cipher.getOutputSize(10));
+
+        /* Test ENCRYPT with block boundary input */
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        assertEquals("Output size should be input length plus tag length " +
+            "at block boundary", 16 + TAG_LENGTH_BYTES,
+            cipher.getOutputSize(16));
+
+        /* Test DECRYPT with tag included */
+        cipher.init(Cipher.DECRYPT_MODE, key, spec);
+        assertEquals("Output size for decryption should be input length " +
+            "minus tag length", 10,
+            cipher.getOutputSize(10 + TAG_LENGTH_BYTES));
+
+        /* Test ENCRYPT after partial update */
+        byte[] partialInput = new byte[5];
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        cipher.update(partialInput); /* Process some data */
+        assertEquals("Output size after update should account for remaining " +
+            "input plus tag", 16 + TAG_LENGTH_BYTES, cipher.getOutputSize(11));
+
+        /* Test with a non-default (64-bit) tag length to confirm the tag
+         * accounting uses the requested tag size in both directions */
+        final int SHORT_TAG_BYTES = 8;
+        GCMParameterSpec shortTagSpec =
+            new GCMParameterSpec(SHORT_TAG_BYTES * 8, nonce);
+
+        cipher.init(Cipher.ENCRYPT_MODE, key, shortTagSpec);
+        assertEquals("Output size should be input length plus 8-byte tag",
+            10 + SHORT_TAG_BYTES, cipher.getOutputSize(10));
+
+        cipher.init(Cipher.DECRYPT_MODE, key, shortTagSpec);
+        assertEquals("Output size for decryption should be input length " +
+            "minus 8-byte tag", 10,
+            cipher.getOutputSize(10 + SHORT_TAG_BYTES));
+
+        /* Test getOutputSize() before initialization, expect exception */
+        Cipher uninitializedCipher =
+            Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+        try {
+            uninitializedCipher.getOutputSize(10);
+            fail("Expected IllegalStateException for uninitialized cipher");
+        } catch (IllegalStateException e) {
+            /* Expected exception */
+        }
+    }
+
+    /**
      * Verify that getOutputSize() in DECRYPT mode does not add pad bytes.
      */
     @Test
