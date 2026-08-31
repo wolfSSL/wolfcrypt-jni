@@ -69,8 +69,8 @@ public class WolfSSLX509StoreCtx implements AutoCloseable {
     /**
      * Check if CertPathBuilder functionality is supported.
      *
-     * CertPathBuilder requires wolfSSL version 5.8.0 or later for proper
-     * X509_STORE chain building support.
+     * CertPathBuilder requires wolfSSL version 5.9.2 or later. Earlier
+     * versions have X509_STORE chain building issues.
      *
      * @return true if CertPathBuilder is supported, false otherwise
      */
@@ -119,11 +119,11 @@ public class WolfSSLX509StoreCtx implements AutoCloseable {
     /**
      * Create new WolfSSLX509StoreCtx object.
      *
-     * Requires wolfSSL version 5.8.0 or later for proper X509_STORE
+     * Requires wolfSSL version 5.9.2 or later for proper X509_STORE
      * chain building support.
      *
      * @throws WolfCryptException if unable to create native X509_STORE,
-     *         or if wolfSSL version is too old (requires 5.8.0+)
+     *         or if wolfSSL version is too old (requires 5.9.2+)
      */
     public WolfSSLX509StoreCtx() throws WolfCryptException {
 
@@ -131,7 +131,7 @@ public class WolfSSLX509StoreCtx implements AutoCloseable {
         if (storePtr == 0) {
             throw new WolfCryptException(
                 "Failed to create native WOLFSSL_X509_STORE. " +
-                "CertPathBuilder requires wolfSSL 5.8.0 or later.");
+                "CertPathBuilder requires wolfSSL 5.9.2 or later.");
         }
         this.active = true;
     }
