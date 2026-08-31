@@ -112,6 +112,9 @@ public class WolfCryptCipherTest {
         "AESWrap",
         "AES/KW/NoPadding",
         "AES/KW/PKCS5Padding",
+        "AES/CFB/NoPadding",
+        "AES/CFB8/NoPadding",
+        "AES/CFB1/NoPadding",
         "DESede/CBC/NoPadding",
         "RSA",
         "RSA/ECB/PKCS1Padding",
@@ -364,6 +367,9 @@ public class WolfCryptCipherTest {
         expectedBlockSizes.put("AESWrap", 8);
         expectedBlockSizes.put("AES/KW/NoPadding", 8);
         expectedBlockSizes.put("AES/KW/PKCS5Padding", 8);
+        expectedBlockSizes.put("AES/CFB/NoPadding", 16);
+        expectedBlockSizes.put("AES/CFB8/NoPadding", 16);
+        expectedBlockSizes.put("AES/CFB1/NoPadding", 16);
         expectedBlockSizes.put("DESede/CBC/NoPadding", 8);
         expectedBlockSizes.put("RSA", 0);
         expectedBlockSizes.put("RSA/ECB/PKCS1Padding", 0);
@@ -4099,6 +4105,583 @@ public class WolfCryptCipherTest {
             Integer cur = listIterator.next();
             if (cur == 1) {
                 fail("Threading error in AES-OFB Cipher thread test");
+            }
+        }
+    }
+
+    /* NIST SP 800-38A Appendix F.3 AES-CFB test vectors */
+    private static final byte[] CFB_KEY_128 = {
+        (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16, (byte)0x28, (byte)0xae,
+        (byte)0xd2, (byte)0xa6, (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+        (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+    };
+    private static final byte[] CFB_KEY_192 = {
+        (byte)0x8e, (byte)0x73, (byte)0xb0, (byte)0xf7, (byte)0xda, (byte)0x0e,
+        (byte)0x64, (byte)0x52, (byte)0xc8, (byte)0x10, (byte)0xf3, (byte)0x2b,
+        (byte)0x80, (byte)0x90, (byte)0x79, (byte)0xe5, (byte)0x62, (byte)0xf8,
+        (byte)0xea, (byte)0xd2, (byte)0x52, (byte)0x2c, (byte)0x6b, (byte)0x7b
+    };
+    private static final byte[] CFB_KEY_256 = {
+        (byte)0x60, (byte)0x3d, (byte)0xeb, (byte)0x10, (byte)0x15, (byte)0xca,
+        (byte)0x71, (byte)0xbe, (byte)0x2b, (byte)0x73, (byte)0xae, (byte)0xf0,
+        (byte)0x85, (byte)0x7d, (byte)0x77, (byte)0x81, (byte)0x1f, (byte)0x35,
+        (byte)0x2c, (byte)0x07, (byte)0x3b, (byte)0x61, (byte)0x08, (byte)0xd7,
+        (byte)0x2d, (byte)0x98, (byte)0x10, (byte)0xa3, (byte)0x09, (byte)0x14,
+        (byte)0xdf, (byte)0xf4
+    };
+    private static final byte[] CFB_IV = {
+        (byte)0x00, (byte)0x01, (byte)0x02, (byte)0x03, (byte)0x04, (byte)0x05,
+        (byte)0x06, (byte)0x07, (byte)0x08, (byte)0x09, (byte)0x0a, (byte)0x0b,
+        (byte)0x0c, (byte)0x0d, (byte)0x0e, (byte)0x0f
+    };
+    private static final byte[] CFB128_PT = {
+        (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2, (byte)0x2e, (byte)0x40,
+        (byte)0x9f, (byte)0x96, (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+        (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a, (byte)0xae, (byte)0x2d,
+        (byte)0x8a, (byte)0x57, (byte)0x1e, (byte)0x03, (byte)0xac, (byte)0x9c,
+        (byte)0x9e, (byte)0xb7, (byte)0x6f, (byte)0xac, (byte)0x45, (byte)0xaf,
+        (byte)0x8e, (byte)0x51, (byte)0x30, (byte)0xc8, (byte)0x1c, (byte)0x46,
+        (byte)0xa3, (byte)0x5c, (byte)0xe4, (byte)0x11, (byte)0xe5, (byte)0xfb,
+        (byte)0xc1, (byte)0x19, (byte)0x1a, (byte)0x0a, (byte)0x52, (byte)0xef,
+        (byte)0xf6, (byte)0x9f, (byte)0x24, (byte)0x45, (byte)0xdf, (byte)0x4f,
+        (byte)0x9b, (byte)0x17, (byte)0xad, (byte)0x2b, (byte)0x41, (byte)0x7b,
+        (byte)0xe6, (byte)0x6c, (byte)0x37, (byte)0x10
+    };
+    private static final byte[] CFB128_CT_128 = {
+        (byte)0x3b, (byte)0x3f, (byte)0xd9, (byte)0x2e, (byte)0xb7, (byte)0x2d,
+        (byte)0xad, (byte)0x20, (byte)0x33, (byte)0x34, (byte)0x49, (byte)0xf8,
+        (byte)0xe8, (byte)0x3c, (byte)0xfb, (byte)0x4a, (byte)0xc8, (byte)0xa6,
+        (byte)0x45, (byte)0x37, (byte)0xa0, (byte)0xb3, (byte)0xa9, (byte)0x3f,
+        (byte)0xcd, (byte)0xe3, (byte)0xcd, (byte)0xad, (byte)0x9f, (byte)0x1c,
+        (byte)0xe5, (byte)0x8b, (byte)0x26, (byte)0x75, (byte)0x1f, (byte)0x67,
+        (byte)0xa3, (byte)0xcb, (byte)0xb1, (byte)0x40, (byte)0xb1, (byte)0x80,
+        (byte)0x8c, (byte)0xf1, (byte)0x87, (byte)0xa4, (byte)0xf4, (byte)0xdf,
+        (byte)0xc0, (byte)0x4b, (byte)0x05, (byte)0x35, (byte)0x7c, (byte)0x5d,
+        (byte)0x1c, (byte)0x0e, (byte)0xea, (byte)0xc4, (byte)0xc6, (byte)0x6f,
+        (byte)0x9f, (byte)0xf7, (byte)0xf2, (byte)0xe6
+    };
+    private static final byte[] CFB128_CT_192 = {
+        (byte)0xcd, (byte)0xc8, (byte)0x0d, (byte)0x6f, (byte)0xdd, (byte)0xf1,
+        (byte)0x8c, (byte)0xab, (byte)0x34, (byte)0xc2, (byte)0x59, (byte)0x09,
+        (byte)0xc9, (byte)0x9a, (byte)0x41, (byte)0x74, (byte)0x67, (byte)0xce,
+        (byte)0x7f, (byte)0x7f, (byte)0x81, (byte)0x17, (byte)0x36, (byte)0x21,
+        (byte)0x96, (byte)0x1a, (byte)0x2b, (byte)0x70, (byte)0x17, (byte)0x1d,
+        (byte)0x3d, (byte)0x7a, (byte)0x2e, (byte)0x1e, (byte)0x8a, (byte)0x1d,
+        (byte)0xd5, (byte)0x9b, (byte)0x88, (byte)0xb1, (byte)0xc8, (byte)0xe6,
+        (byte)0x0f, (byte)0xed, (byte)0x1e, (byte)0xfa, (byte)0xc4, (byte)0xc9,
+        (byte)0xc0, (byte)0x5f, (byte)0x9f, (byte)0x9c, (byte)0xa9, (byte)0x83,
+        (byte)0x4f, (byte)0xa0, (byte)0x42, (byte)0xae, (byte)0x8f, (byte)0xba,
+        (byte)0x58, (byte)0x4b, (byte)0x09, (byte)0xff
+    };
+    private static final byte[] CFB128_CT_256 = {
+        (byte)0xdc, (byte)0x7e, (byte)0x84, (byte)0xbf, (byte)0xda, (byte)0x79,
+        (byte)0x16, (byte)0x4b, (byte)0x7e, (byte)0xcd, (byte)0x84, (byte)0x86,
+        (byte)0x98, (byte)0x5d, (byte)0x38, (byte)0x60, (byte)0x39, (byte)0xff,
+        (byte)0xed, (byte)0x14, (byte)0x3b, (byte)0x28, (byte)0xb1, (byte)0xc8,
+        (byte)0x32, (byte)0x11, (byte)0x3c, (byte)0x63, (byte)0x31, (byte)0xe5,
+        (byte)0x40, (byte)0x7b, (byte)0xdf, (byte)0x10, (byte)0x13, (byte)0x24,
+        (byte)0x15, (byte)0xe5, (byte)0x4b, (byte)0x92, (byte)0xa1, (byte)0x3e,
+        (byte)0xd0, (byte)0xa8, (byte)0x26, (byte)0x7a, (byte)0xe2, (byte)0xf9,
+        (byte)0x75, (byte)0xa3, (byte)0x85, (byte)0x74, (byte)0x1a, (byte)0xb9,
+        (byte)0xce, (byte)0xf8, (byte)0x20, (byte)0x31, (byte)0x62, (byte)0x3d,
+        (byte)0x55, (byte)0xb1, (byte)0xe4, (byte)0x71
+    };
+    private static final byte[] CFB8_PT = {
+        (byte)0x6b, (byte)0xc1, (byte)0xbe, (byte)0xe2, (byte)0x2e, (byte)0x40,
+        (byte)0x9f, (byte)0x96, (byte)0xe9, (byte)0x3d, (byte)0x7e, (byte)0x11,
+        (byte)0x73, (byte)0x93, (byte)0x17, (byte)0x2a, (byte)0xae, (byte)0x2d
+    };
+    private static final byte[] CFB8_CT_128 = {
+        (byte)0x3b, (byte)0x79, (byte)0x42, (byte)0x4c, (byte)0x9c, (byte)0x0d,
+        (byte)0xd4, (byte)0x36, (byte)0xba, (byte)0xce, (byte)0x9e, (byte)0x0e,
+        (byte)0xd4, (byte)0x58, (byte)0x6a, (byte)0x4f, (byte)0x32, (byte)0xb9
+    };
+    private static final byte[] CFB8_CT_192 = {
+        (byte)0xcd, (byte)0xa2, (byte)0x52, (byte)0x1e, (byte)0xf0, (byte)0xa9,
+        (byte)0x05, (byte)0xca, (byte)0x44, (byte)0xcd, (byte)0x05, (byte)0x7c,
+        (byte)0xbf, (byte)0x0d, (byte)0x47, (byte)0xa0, (byte)0x67, (byte)0x8a
+    };
+    private static final byte[] CFB8_CT_256 = {
+        (byte)0xdc, (byte)0x1f, (byte)0x1a, (byte)0x85, (byte)0x20, (byte)0xa6,
+        (byte)0x4d, (byte)0xb5, (byte)0x5f, (byte)0xcc, (byte)0x8a, (byte)0xc5,
+        (byte)0x54, (byte)0x84, (byte)0x4e, (byte)0x88, (byte)0x97, (byte)0x00
+    };
+    /* CFB1 vectors are 16 bits, processed as 2 bytes MSB first */
+    private static final byte[] CFB1_PT = {
+        (byte)0x6b, (byte)0xc1
+    };
+    private static final byte[] CFB1_CT_128 = {
+        (byte)0x68, (byte)0xb3
+    };
+    private static final byte[] CFB1_CT_192 = {
+        (byte)0x93, (byte)0x59
+    };
+    private static final byte[] CFB1_CT_256 = {
+        (byte)0x90, (byte)0x29
+    };
+
+    /* Run one KAT encrypt/decrypt through the given transform */
+    private void runCfbKat(String transform, byte[] key, byte[] pt,
+        byte[] expectedCt) throws Exception {
+
+        SecretKeySpec keySpec = new SecretKeySpec(key, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(CFB_IV);
+
+        Cipher cipher = Cipher.getInstance(transform, jceProvider);
+
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        byte[] ciphertext = cipher.doFinal(pt);
+        assertArrayEquals(transform + " encrypt KAT failed, key size " +
+            key.length, expectedCt, ciphertext);
+
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+        byte[] decrypted = cipher.doFinal(ciphertext);
+        assertArrayEquals(transform + " decrypt KAT failed, key size " +
+            key.length, pt, decrypted);
+    }
+
+    @Test
+    public void testAesCfbNoPadding() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/CFB/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        runCfbKat("AES/CFB/NoPadding", CFB_KEY_128, CFB128_PT,
+            CFB128_CT_128);
+        runCfbKat("AES/CFB/NoPadding", CFB_KEY_192, CFB128_PT,
+            CFB128_CT_192);
+        runCfbKat("AES/CFB/NoPadding", CFB_KEY_256, CFB128_PT,
+            CFB128_CT_256);
+
+        /* AES/CFB128 is an alias for AES/CFB */
+        runCfbKat("AES/CFB128/NoPadding", CFB_KEY_128, CFB128_PT,
+            CFB128_CT_128);
+    }
+
+    @Test
+    public void testAesCfb8NoPadding() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/CFB8/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        runCfbKat("AES/CFB8/NoPadding", CFB_KEY_128, CFB8_PT,
+            CFB8_CT_128);
+        runCfbKat("AES/CFB8/NoPadding", CFB_KEY_192, CFB8_PT,
+            CFB8_CT_192);
+        runCfbKat("AES/CFB8/NoPadding", CFB_KEY_256, CFB8_PT,
+            CFB8_CT_256);
+    }
+
+    @Test
+    public void testAesCfb1NoPadding() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/CFB1/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        runCfbKat("AES/CFB1/NoPadding", CFB_KEY_128, CFB1_PT,
+            CFB1_CT_128);
+        runCfbKat("AES/CFB1/NoPadding", CFB_KEY_192, CFB1_PT,
+            CFB1_CT_192);
+        runCfbKat("AES/CFB1/NoPadding", CFB_KEY_256, CFB1_PT,
+            CFB1_CT_256);
+    }
+
+    @Test
+    public void testAesCfbNoPaddingWithUpdate() throws Exception {
+
+        String[] transforms = {"AES/CFB/NoPadding", "AES/CFB8/NoPadding",
+            "AES/CFB1/NoPadding"};
+        byte[][] plaintexts = {CFB128_PT, CFB8_PT, CFB1_PT};
+        byte[][] ciphertexts = {CFB128_CT_128, CFB8_CT_128, CFB1_CT_128};
+        SecretKeySpec keySpec = new SecretKeySpec(CFB_KEY_128, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(CFB_IV);
+        int[] chunkSizes = {1, 3, 7, 16, 21};
+
+        for (int t = 0; t < transforms.length; t++) {
+            if (!enabledJCEAlgos.contains(transforms[t])) {
+                continue;
+            }
+            byte[] pt = plaintexts[t];
+            byte[] ct = ciphertexts[t];
+
+            for (int chunkSize : chunkSizes) {
+                Cipher cipher = Cipher.getInstance(transforms[t], jceProvider);
+
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+                assertArrayEquals(transforms[t] + " chunked encrypt, chunk " +
+                    "size " + chunkSize, ct,
+                    updateInChunks(cipher, pt, chunkSize));
+
+                cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+                assertArrayEquals(transforms[t] + " chunked decrypt, chunk " +
+                    "size " + chunkSize, pt,
+                    updateInChunks(cipher, ct, chunkSize));
+            }
+        }
+    }
+
+    /* Pass input through update() in chunkSize pieces, then doFinal() */
+    private static byte[] updateInChunks(Cipher cipher, byte[] in,
+        int chunkSize) throws Exception {
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        for (int i = 0; i < in.length; i += chunkSize) {
+            byte[] part = cipher.update(in, i,
+                Math.min(chunkSize, in.length - i));
+            if (part != null) {
+                out.write(part);
+            }
+        }
+        byte[] fin = cipher.doFinal();
+        if (fin != null) {
+            out.write(fin);
+        }
+
+        return out.toByteArray();
+    }
+
+    @Test
+    public void testAesCfbStreaming() throws Exception {
+
+        String[] transforms = {"AES/CFB/NoPadding", "AES/CFB8/NoPadding",
+            "AES/CFB1/NoPadding"};
+
+        /* Test with various data sizes (not block aligned) */
+        int[] dataSizes = {1, 7, 15, 17, 31, 33, 63, 65};
+
+        for (String transform : transforms) {
+            if (!enabledJCEAlgos.contains(transform)) {
+                /* algorithm not enabled */
+                continue;
+            }
+
+            for (int size : dataSizes) {
+                byte[] plaintext = new byte[size];
+                secureRandom.nextBytes(plaintext);
+
+                Cipher cipher = Cipher.getInstance(transform, jceProvider);
+                SecretKeySpec keySpec = new SecretKeySpec(CFB_KEY_128, "AES");
+                IvParameterSpec ivSpec = new IvParameterSpec(CFB_IV);
+
+                /* Encrypt */
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+                byte[] ciphertext = cipher.doFinal(plaintext);
+                assertEquals("Ciphertext length mismatch", size,
+                    ciphertext.length);
+
+                /* Decrypt */
+                cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+                byte[] decrypted = cipher.doFinal(ciphertext);
+
+                assertArrayEquals(transform + " failed for size " + size,
+                    plaintext, decrypted);
+            }
+        }
+    }
+
+    @Test
+    public void testAesCfbUpdateShortBufferKeepsState() throws Exception {
+
+        String[] transforms = {"AES/CFB/NoPadding", "AES/CFB8/NoPadding",
+            "AES/CFB1/NoPadding"};
+        byte[] plaintext = new byte[20];
+        secureRandom.nextBytes(plaintext);
+        SecretKeySpec keySpec = new SecretKeySpec(CFB_KEY_128, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(CFB_IV);
+
+        for (String transform : transforms) {
+            if (!enabledJCEAlgos.contains(transform)) {
+                /* algorithm not enabled */
+                continue;
+            }
+
+            Cipher cipher = Cipher.getInstance(transform, jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+            byte[] expected = cipher.doFinal(plaintext);
+
+            /* CFB outputs all 20 bytes, so a one block buffer is too short */
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+            try {
+                cipher.update(plaintext, 0, plaintext.length,
+                    new byte[Aes.BLOCK_SIZE], 0);
+                fail(transform + " update() into short buffer should throw");
+            } catch (ShortBufferException e) {
+                /* expected */
+            }
+
+            byte[] out = new byte[plaintext.length];
+            assertEquals(plaintext.length,
+                cipher.update(plaintext, 0, plaintext.length, out, 0));
+            assertArrayEquals(transform + " retry after short buffer",
+                expected, out);
+        }
+    }
+
+    @Test
+    public void testAesCfbGetIVAndParameters() throws Exception {
+
+        String[] transforms = {
+            "AES/CFB/NoPadding", "AES/CFB8/NoPadding", "AES/CFB1/NoPadding"};
+        SecretKeySpec keySpec = new SecretKeySpec(CFB_KEY_128, "AES");
+
+        for (String transform : transforms) {
+            if (!enabledJCEAlgos.contains(transform)) {
+                /* algorithm not enabled */
+                continue;
+            }
+
+            /* null params should generate a random 16 byte IV */
+            Cipher enc = Cipher.getInstance(transform, jceProvider);
+            enc.init(Cipher.ENCRYPT_MODE, keySpec);
+
+            byte[] iv = enc.getIV();
+            assertNotNull(transform + " getIV() should not be null after init",
+                iv);
+            assertEquals(transform + " generated IV should be 16 bytes", 16,
+                iv.length);
+
+            byte[] ciphertext = enc.doFinal(CFB128_PT);
+
+            /* getParameters() should round trip into a decrypt init */
+            AlgorithmParameters params = enc.getParameters();
+            assertNotNull(transform + " getParameters() should not be null",
+                params);
+
+            Cipher dec = Cipher.getInstance(transform, jceProvider);
+            dec.init(Cipher.DECRYPT_MODE, keySpec, params);
+            byte[] decrypted = dec.doFinal(ciphertext);
+            assertArrayEquals(transform + " getParameters() round trip failed",
+                CFB128_PT, decrypted);
+
+            /* Wrong IV length or parameter type should throw */
+            AlgorithmParameterSpec[] badSpecs = {
+                new IvParameterSpec(new byte[8]),
+                new GCMParameterSpec(128, new byte[12])};
+            for (AlgorithmParameterSpec spec : badSpecs) {
+                Cipher bad = Cipher.getInstance(transform, jceProvider);
+                try {
+                    bad.init(Cipher.ENCRYPT_MODE, keySpec, spec);
+                    fail(transform + " init accepted " +
+                        spec.getClass().getSimpleName());
+                } catch (InvalidAlgorithmParameterException e) {
+                    /* expected */
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testAesCfbOutputBuffers() throws Exception {
+
+        String[] transforms = {"AES/CFB/NoPadding", "AES/CFB8/NoPadding",
+            "AES/CFB1/NoPadding"};
+        SecretKeySpec keySpec = new SecretKeySpec(CFB_KEY_128, "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(CFB_IV);
+        byte[] pt = new byte[53];
+        secureRandom.nextBytes(pt);
+
+        for (String transform : transforms) {
+            if (!enabledJCEAlgos.contains(transform)) {
+                /* algorithm not enabled */
+                continue;
+            }
+
+            Cipher cipher = Cipher.getInstance(transform, jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+            byte[] ct = cipher.doFinal(pt);
+
+            /* doFinal() resets to the init IV */
+            assertArrayEquals(transform + " second doFinal()", ct,
+                cipher.doFinal(pt));
+
+            /* output written at an offset */
+            byte[] out = new byte[pt.length + 7];
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+            int n = cipher.update(pt, 0, 20, out, 7);
+            n += cipher.doFinal(pt, 20, pt.length - 20, out, 7 + n);
+            assertEquals(transform + " output length", pt.length, n);
+            assertArrayEquals(transform + " output offset", ct,
+                Arrays.copyOfRange(out, 7, out.length));
+
+            /* nothing is buffered, output size tracks the next input */
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+            cipher.update(pt, 0, 5);
+            assertEquals(transform + " getOutputSize()", 3,
+                cipher.getOutputSize(3));
+
+            /* a short doFinal() buffer leaves the cipher able to retry */
+            try {
+                cipher.doFinal(pt, 5, pt.length - 5, new byte[10], 0);
+                fail(transform + " doFinal() into short buffer should throw");
+            } catch (ShortBufferException e) {
+                /* expected */
+            }
+            out = new byte[pt.length - 5];
+            cipher.doFinal(pt, 5, pt.length - 5, out, 0);
+            assertArrayEquals(transform + " doFinal() retry",
+                Arrays.copyOfRange(ct, 5, ct.length), out);
+
+            for (boolean direct : new boolean[] {false, true}) {
+                String kind = transform + (direct ? " direct" : " heap");
+                ByteBuffer outBuf = direct ?
+                    ByteBuffer.allocateDirect(pt.length) :
+                    ByteBuffer.allocate(pt.length);
+
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+                try {
+                    cipher.update(ByteBuffer.wrap(pt, 0, 20),
+                        ByteBuffer.allocate(16));
+                    fail(kind + " update() into short buffer should throw");
+                } catch (ShortBufferException e) {
+                    /* expected */
+                }
+                cipher.update(ByteBuffer.wrap(pt, 0, 20), outBuf);
+                cipher.doFinal(ByteBuffer.wrap(pt, 20, pt.length - 20),
+                    outBuf);
+                outBuf.flip();
+                byte[] got = new byte[outBuf.remaining()];
+                outBuf.get(got);
+                assertArrayEquals(kind + " ByteBuffer encrypt", ct, got);
+
+                outBuf.clear();
+                cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+                cipher.doFinal(ByteBuffer.wrap(ct), outBuf);
+                outBuf.flip();
+                got = new byte[outBuf.remaining()];
+                outBuf.get(got);
+                assertArrayEquals(kind + " ByteBuffer decrypt", pt, got);
+            }
+        }
+    }
+
+    @Test
+    public void testAesCfbNoPaddingInterop() throws Exception {
+
+        String[] transforms = {"AES/CFB/NoPadding", "AES/CFB8/NoPadding",
+            "AES/CFB128/NoPadding"};
+        int[] dataSizes = {1, 15, 16, 17, 64, 255};
+
+        if (interopProvider == null) {
+            /* no interop provider available, skip */
+            return;
+        }
+
+        for (String transform : transforms) {
+
+            Cipher ciphA = null;
+            Cipher ciphB = null;
+
+            try {
+                ciphA = Cipher.getInstance(transform, jceProvider);
+                ciphB = Cipher.getInstance(transform, interopProvider);
+            } catch (NoSuchAlgorithmException e) {
+                /* transform not supported by one provider, skip */
+                continue;
+            }
+
+            SecretKeySpec keySpec = new SecretKeySpec(CFB_KEY_256, "AES");
+
+            for (int size : dataSizes) {
+                byte[] plaintext = new byte[size];
+                byte[] iv = new byte[16];
+                secureRandom.nextBytes(plaintext);
+                secureRandom.nextBytes(iv);
+                IvParameterSpec ivSpec = new IvParameterSpec(iv);
+
+                /* wolfJCE encrypt, interop provider decrypt */
+                ciphA.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+                byte[] cipherText = ciphA.doFinal(plaintext);
+
+                ciphB.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+                byte[] recovered = ciphB.doFinal(cipherText);
+                assertArrayEquals(transform + " wolfJCE->" + interopProvider +
+                    " failed, size " + size, plaintext, recovered);
+
+                /* interop provider encrypt, wolfJCE decrypt */
+                ciphB.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+                byte[] interopCt = ciphB.doFinal(plaintext);
+                assertArrayEquals(transform + " ciphertext mismatch between " +
+                    "providers, size " + size, cipherText, interopCt);
+
+                ciphA.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+                recovered = ciphA.doFinal(interopCt);
+                assertArrayEquals(transform + " " + interopProvider +
+                    "->wolfJCE failed, size " + size, plaintext, recovered);
+            }
+        }
+    }
+
+    @Test
+    public void testAesCfbThreaded() throws InterruptedException {
+        if (!enabledJCEAlgos.contains("AES/CFB/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        int numThreads = 50;
+        ExecutorService service = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+        final LinkedBlockingQueue<Integer> results =
+            new LinkedBlockingQueue<>();
+
+        for (int i = 0; i < numThreads; i++) {
+            service.submit(new Runnable() {
+                @Override
+                public void run() {
+                    int ret = 0;
+
+                    try {
+                        Cipher cipher = Cipher.getInstance(
+                            "AES/CFB/NoPadding", jceProvider);
+                        SecretKeySpec keySpec =
+                            new SecretKeySpec(CFB_KEY_128, "AES");
+                        IvParameterSpec ivSpec = new IvParameterSpec(CFB_IV);
+
+                        /* Test encrypt */
+                        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+                        byte[] ciphertext = cipher.doFinal(CFB128_PT);
+
+                        if (!Arrays.equals(CFB128_CT_128, ciphertext)) {
+                            ret = 1;
+                        }
+
+                        /* Test decrypt */
+                        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+                        byte[] decrypted = cipher.doFinal(ciphertext);
+
+                        if (!Arrays.equals(CFB128_PT, decrypted)) {
+                            ret = 1;
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        ret = 1;
+                    }
+
+                    results.add(ret);
+                    latch.countDown();
+                }
+            });
+        }
+
+        try {
+            latch.await();
+        } finally {
+            service.shutdown();
+        }
+
+        Iterator<Integer> listIterator = results.iterator();
+        while (listIterator.hasNext()) {
+            Integer cur = listIterator.next();
+            if (cur == 1) {
+                fail("Threading error in AES-CFB Cipher thread test");
             }
         }
     }
@@ -10670,6 +11253,27 @@ public class WolfCryptCipherTest {
             assertEquals("OFB should process small input immediately",
                 smallInput.length, updateResult.length);
         }
+
+        /* AES-CFB modes also process small amounts immediately */
+        for (String transform : new String[] {
+            "AES/CFB/NoPadding", "AES/CFB8/NoPadding", "AES/CFB1/NoPadding"}) {
+            if (!enabledJCEAlgos.contains(transform)) {
+                continue;
+            }
+
+            Cipher cipher = Cipher.getInstance(transform, jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE,
+                new SecretKeySpec("1234567890123456".getBytes(), "AES"),
+                new IvParameterSpec("1234567890123456".getBytes()));
+
+            byte[] smallInput = "Hi".getBytes();
+            byte[] updateResult = cipher.update(smallInput);
+
+            assertNotNull(transform + " update should return non-null array",
+                updateResult);
+            assertEquals(transform + " should process small input immediately",
+                smallInput.length, updateResult.length);
+        }
     }
 
     @Test
@@ -11126,6 +11730,42 @@ public class WolfCryptCipherTest {
     }
 
     /**
+     * Test NIST AES-128 CFB OID (2.16.840.1.101.3.4.1.4)
+     */
+    @Test
+    public void testAes128CfbOid() throws Exception {
+        if (!FeatureDetect.AesCfbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.4",
+            "AES_128/CFB/NoPadding", 128, "CFB");
+    }
+
+    /**
+     * Test NIST AES-192 CFB OID (2.16.840.1.101.3.4.1.24)
+     */
+    @Test
+    public void testAes192CfbOid() throws Exception {
+        if (!FeatureDetect.AesCfbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.24",
+            "AES_192/CFB/NoPadding", 192, "CFB");
+    }
+
+    /**
+     * Test NIST AES-256 CFB OID (2.16.840.1.101.3.4.1.44)
+     */
+    @Test
+    public void testAes256CfbOid() throws Exception {
+        if (!FeatureDetect.AesCfbEnabled()) {
+            return;
+        }
+        testAesOidAndAlias("2.16.840.1.101.3.4.1.44",
+            "AES_256/CFB/NoPadding", 256, "CFB");
+    }
+
+    /**
      * Helper method to test AES OID and algorithm string aliases.
      * Tests that both the OID and algorithm string can be used to
      * create Cipher instances, and that they work correctly for
@@ -11284,7 +11924,8 @@ public class WolfCryptCipherTest {
                NoSuchPaddingException, InvalidAlgorithmParameterException {
 
         String[] transforms = {"AES/CBC/NoPadding", "AES/ECB/NoPadding",
-            "AES/CTR/NoPadding", "AES/GCM/NoPadding"};
+            "AES/CTR/NoPadding", "AES/GCM/NoPadding", "AES/CFB/NoPadding",
+            "AES/CFB8/NoPadding", "AES/CFB1/NoPadding"};
         SecretKeySpec badKey = new SecretKeySpec(new byte[20], "AES");
 
         for (String transform : transforms) {
