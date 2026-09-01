@@ -221,6 +221,7 @@ public class WolfCryptMac extends MacSpi {
     protected void engineInit(Key key, AlgorithmParameterSpec params)
         throws InvalidKeyException, InvalidAlgorithmParameterException {
 
+        int gmacTagBits;
         byte[] encodedKey;
 
         /* key must be of type SecretKey */
@@ -242,10 +243,23 @@ public class WolfCryptMac extends MacSpi {
                         "AES-GMAC requires GCMParameterSpec with IV");
                 }
                 GCMParameterSpec gcmSpec = (GCMParameterSpec) params;
+
+                /* Validate all parameters before mutating any instance field,
+                 * so a rejected init() cannot leave the object partially
+                 * reconfigured (ex: a new IV paired with the old tag len). */
+                gmacTagBits = gcmSpec.getTLen();
+                if (gmacTagBits <= 0 || (gmacTagBits % 8) != 0 ||
+                    (gmacTagBits / 8) > Aes.BLOCK_SIZE) {
+                    throw new InvalidAlgorithmParameterException(
+                        "AES-GMAC tag length must be a positive multiple of " +
+                        "8 bits, up to " + (Aes.BLOCK_SIZE * 8) +
+                        " bits, got " + gmacTagBits);
+                }
+
+                this.aesGmac.setKey(encodedKey);
                 this.gmacIv = gcmSpec.getIV();
                 /* Convert bits to bytes */
-                this.gmacTagLen = gcmSpec.getTLen() / 8;
-                this.aesGmac.setKey(encodedKey);
+                this.gmacTagLen = gmacTagBits / 8;
                 /* Reset auth data accumulator */
                 gmacAuthData.reset();
             } else {
