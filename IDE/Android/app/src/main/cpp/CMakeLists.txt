@@ -71,7 +71,7 @@ if ("${WOLFSSL_PKG_TYPE}" MATCHES "normal")
                 -DHAVE_DH_DEFAULT_PARAMS -DHAVE_FFDHE_2048
                 -DHAVE_HASHDRBG -DHAVE_HKDF
                 -DNO_DES3 -DNO_DES3_TLS_SUITES -DNO_DO178 -DNO_DSA -DNO_ERROR_QUEUE -DNO_MD4
-                -DNO_OLD_TLS -DNO_RC4 -DWOLFSSL_NO_SHAKE128 -DWOLFSSL_NO_SHAKE256
+                -DNO_OLD_TLS -DNO_RC4 -DWOLFSSL_SHAKE128 -DWOLFSSL_SHAKE256
 
                 -DSIZEOF_LONG=4 -DSIZEOF_LONG_LONG=8 -DWOLFSSL_CUSTOM_CONFIG
 
@@ -389,6 +389,7 @@ add_library(wolfcryptjni SHARED
         ${wolfcryptjni_DIR}/jni/jni_rng.c
         ${wolfcryptjni_DIR}/jni/jni_rsa.c
         ${wolfcryptjni_DIR}/jni/jni_sha.c
+        ${wolfcryptjni_DIR}/jni/jni_shake.c
         ${wolfcryptjni_DIR}/jni/jni_wolfcrypt.c
         ${wolfcryptjni_DIR}/jni/jni_wolfobject.c
         ${wolfcryptjni_DIR}/jni/jni_wolfssl_cert_manager.c

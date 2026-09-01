@@ -46,6 +46,7 @@ import org.junit.runners.Suite.SuiteClasses;
     Sha384Test.class,
     Sha512Test.class,
     Sha3Test.class,
+    ShakeTest.class,
     HmacTest.class,
     PwdbasedTest.class,
     RngTest.class,

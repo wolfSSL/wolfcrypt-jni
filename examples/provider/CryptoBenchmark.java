@@ -1548,6 +1548,10 @@ public class CryptoBenchmark {
                   !FeatureDetect.Sha512Enabled()) isEnabled = false;
                 else if (algorithm.startsWith("SHA3-") &&
                   !FeatureDetect.Sha3Enabled()) isEnabled = false;
+                else if (algorithm.startsWith("SHAKE128") &&
+                  !FeatureDetect.Shake128Enabled()) isEnabled = false;
+                else if (algorithm.startsWith("SHAKE256") &&
+                  !FeatureDetect.Shake256Enabled()) isEnabled = false;
 
                 if (!isEnabled) {
                     System.out.printf(" %-40s  Not enabled in wolfCrypt%n",
