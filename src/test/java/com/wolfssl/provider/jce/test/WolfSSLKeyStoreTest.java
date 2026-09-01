@@ -675,6 +675,50 @@ public class WolfSSLKeyStoreTest {
     }
 
     /**
+     * WKS private key entry with a negative cert chain count should be
+     * rejected with IOException. Uses null password so HMAC integrity
+     * check is skipped.
+     */
+    @Test
+    public void testEngineLoadRejectsNegativeChainCount()
+        throws Exception {
+
+        /* Build a WKSPrivateKey entry valid up to chain count, with count
+         * set to negative */
+        ByteArrayOutputStream entryBos = new ByteArrayOutputStream();
+        DataOutputStream e = new DataOutputStream(entryBos);
+        e.writeLong(0L);                 /* creationDate */
+        e.writeInt(16);                  /* kdfSalt length */
+        e.write(new byte[16]);           /* kdfSalt */
+        e.writeInt(10000);               /* kdfIterations */
+        e.writeInt(16);                  /* iv length */
+        e.write(new byte[16]);           /* iv */
+        e.writeInt(0);                   /* encrypted key length (empty) */
+        e.writeInt(-1);                  /* chain count (negative) */
+        e.flush();
+        byte[] entry = entryBos.toByteArray();
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeInt(7);                 /* WKS magic number */
+        dos.writeInt(1);                 /* WKS store version */
+        dos.writeInt(1);                 /* entry count */
+        dos.writeInt(1);                 /* entry type: private key */
+        dos.writeUTF("evil");            /* alias */
+        dos.writeInt(entry.length);      /* encoded entry length */
+        dos.write(entry);                /* encoded entry */
+        dos.flush();
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        try {
+            store.load(new ByteArrayInputStream(bos.toByteArray()), null);
+            fail("negative chain count should throw IOException");
+        } catch (IOException ex) {
+            /* expected, negative count rejected before allocation */
+        }
+    }
+
+    /**
      * A crafted WKS certificate entry whose DER encoding length is oversized
      * must be rejected with an IOException. Uses a null password so the
      * HMAC integrity check is skipped.

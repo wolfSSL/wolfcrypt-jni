@@ -3063,6 +3063,9 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
                 /* chain */
                 tmp = dis.readInt();
+                if (tmp < 0) {
+                    throw new IOException("Bad cert chain count (negative)");
+                }
                 if (tmp > WKS_MAX_CHAIN_COUNT) {
                     throw new IOException(
                         "Cert chain count (" + tmp + ") is larger than max " +
