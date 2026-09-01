@@ -94,7 +94,9 @@ public class Rng extends NativeStruct {
     /**
      * Generate random block of data
      *
-     * Data size will be buffer.remaining() - buffer.position()
+     * Generates buffer.remaining() bytes of random data, written starting
+     * at buffer.position(). On return buffer.position() is advanced to
+     * buffer.limit().
      *
      * @param buffer output buffer to place random data, should be direct
      *               ByteBuffer (ie: ByteBuffer.allocateDirect())
