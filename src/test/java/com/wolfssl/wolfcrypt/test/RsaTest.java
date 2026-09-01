@@ -1156,6 +1156,28 @@ public class RsaTest {
                 WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32);
             assertTrue("RSA-PSS signature verification failed", verified);
 
+            /* Corrupted signature must report false, not throw. PSS decode of
+             * garbage fails with position dependent error codes, exercise
+             * first, middle and last bytes */
+            int[] flipPos = new int[] { 0, signature.length / 2,
+                signature.length - 1 };
+            for (int pos : flipPos) {
+                byte[] badSig = signature.clone();
+                badSig[pos] ^= (byte)0x80;
+                boolean badVerified = key.rsaPssVerify(badSig, digest,
+                    WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32);
+                assertFalse("corrupted RSA-PSS signature verified, " +
+                    "flipped byte " + pos, badVerified);
+            }
+
+            /* A mismatched digest must report false, not throw */
+            byte[] wrongDigest = digest.clone();
+            wrongDigest[0] ^= 1;
+            boolean wrongVerified = key.rsaPssVerify(signature, wrongDigest,
+                WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32);
+            assertFalse("RSA-PSS signature verified with wrong digest",
+                wrongVerified);
+
         } catch (Exception e) {
             fail("RSA-PSS sign/verify test failed: " + e.getMessage());
         }
@@ -1223,37 +1245,6 @@ public class RsaTest {
             fail("RSA-PSS default salt length test failed: " + e.getMessage());
         }
 
-        /* Test RSA-PSS with salt length discovery (-2) */
-        try {
-            byte[] signature = key.rsaPssSign(digest,
-                WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32, rng);
-            assertNotNull(signature);
-            assertTrue(signature.length > 0);
-
-            /* Verify with salt length discovery */
-            boolean verified = key.rsaPssVerify(signature, digest,
-                WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256,
-                Rsa.RSA_PSS_SALT_LEN_DISCOVER);
-            assertTrue("RSA-PSS salt length discovery verification failed",
-                verified);
-
-        } catch (WolfCryptException e) {
-            /* Salt length discovery may not be compiled in wolfSSL */
-            if (e.getMessage().contains("Bad function argument") ||
-                e.getMessage().contains("Not compiled in") ||
-                e.getMessage().contains("Length of salt is too big")) {
-                System.out.println(
-                    "Salt length discovery not supported, skipping test");
-            } else {
-                fail("RSA-PSS salt length discovery test failed: " +
-                    e.getMessage());
-            }
-
-        } catch (Exception e) {
-            fail("RSA-PSS salt length discovery test failed: " +
-                e.getMessage());
-        }
-
         /* Test cross-verification should fail */
         try {
             byte[] signature = key.rsaPssSign(digest,
@@ -1287,6 +1278,100 @@ public class RsaTest {
             fail("RSA-PSS zero salt length test failed: " + e.getMessage());
         }
 
+        rng.free();
+        key.releaseNativeStruct();
+    }
+
+    @Test
+    public void testRsaPssSaltLengthDiscovery() throws WolfCryptException {
+
+        if (!FeatureDetect.RsaPssEnabled()) {
+            /* Skip RSA-PSS tests if not supported */
+            return;
+        }
+
+        Rsa key = new Rsa();
+        Rng rng = new Rng();
+        rng.init();
+
+        /* Use the same test key as in other tests */
+        key.decodePrivateKey(Util
+            .h2b("308204a40201000282010100c303d12bfe39a432453b53c8842b2a7c"
+                + "749abdaa2a520747d6a636b207328ed0ba697bc6c3449ed48148"
+                + "fd2d68a28b67bba175c8362c4ad21bf78bbacf0df9efecf1811e"
+                + "7b9b03479abf65cc7f652469a6e814895be434f7c5b01493f567"
+                + "7b3a7a78e101565691a613428dd23c409c4cefd186df37511b0c"
+                + "a13bf5f1a34a35e4e1ce96df1b7ebf4e97d010e8a8083081af20"
+                + "0b4314c57467b432826f8d86c28840993683ba1e40722217d752"
+                + "652473b0ceef19cdaeff786c7bc01203d44e720d506d3ba33ba3"
+                + "995e9dc8d90c85b3d98ad95426db6dfaacbbff254cc4d179f471"
+                + "d386401813b063b5724e30c49784862d562fd715f77fc0aef5fc"
+                + "5be5fba1bad302030100010282010100a2e6d85f107164089e2e"
+                + "6dd16d1e85d20ab18c47ce2c516aa0129e53de914c1d6dea597b"
+                + "f277aad9c6d98aabd8e116e46326ffb56c1359b8e3a5c872172e"
+                + "0c9f6fe5593f766f49b111c25a2e16290ddeb78edc40d5a2eee0"
+                + "1ea1f4be97db86639614cd9809602d30769c3ccde688ee479279"
+                + "0b5a00e25e5f117c7df908b72006892a5dfd00ab22e1f0b3bc24"
+                + "a95e260e1f002dfe219a535b6dd32bab9482684336d8f62fc622"
+                + "fcb5415d0d3360eaa47d7ee84b559156d35c578f1f94172faade"
+                + "e99ea8f4cf8a4c8ea0e45673b2cf4f86c5693cf324208b5c960c"
+                + "fa6b123b9a67c1dfc696b2a5d5920d9b094268241045d450e417"
+                + "3948d0358b946d11de8fca5902818100ea24a7f96933e971dc52"
+                + "7d8821282f49deba7216e9cc477a880d94578458163a81b03fa2"
+                + "cfa66c1eb00629008fe77776acdbcac7d95e9b3f269052aefc38"
+                + "900014bbb40f5894e72f6a7e1c4f4121d431591f4e8a1a8da757"
+                + "6c22d8e5f47e32a610cb64a5550387a627058cc3d7b627b24dba"
+                + "30da478f54d33d8b848d949858a502818100d5381bc38fc5930c"
+                + "470b6f3592c5b08d46c892188ff5800af7efa1fe80b9b52abaca"
+                + "18b05da507d0938dd89c041cd4628ea6268101ffce8a2a633435"
+                + "40aa6d80de89236a574d9e6ead934e56900b6d9d738b0cae273d"
+                + "de4ef0aac56c78676c94529c37676c2defbbafdfa6903cc447cf"
+                + "8d969e98a9b49fc5a650dcb3f0fb74170281805e830962bdba7c"
+                + "a2bf4274f57c1cd269c9040d857e3e3d2412c3187bf329f35f0e"
+                + "766c5975e44184699d32f3cd22abb035ba4ab23ce5d958b6624f"
+                + "5ddee59e0aca53b22cf79eb36b0a5b7965ec6e914e9220f6fcfc"
+                + "16edd3760ce2ec7fb269136b780e5a4664b45eb725a05a753a4b"
+                + "efc73c3ef7fd26b820c4990a9a73bec31902818100ba449314ac"
+                + "34193b5f9160acf7b4d681053651533de865dcaf2edc613ec97d"
+                + "b87f87f03b9b03822937ce724e11d5b1c10c07a099914a8d7fec"
+                + "79cff139b5e985ec62f7da7dbc644d223c0ef2d651f587d899c0"
+                + "11205d0f29fd5be2aed91cd921566dfc84d05fed10151c1821e7"
+                + "c43d4bd7d09e6a95cf22c9037b9ee36001fc2f02818011d04bcf"
+                + "1b67b99f1075478665ae31c2c630ac590650d90fb57006f7f0d3"
+                + "c8627ca8da6ef6213fd37f5fea8aab3fd92a5ef351d2c23037e3"
+                + "2da3750d1e4d2134d557705c89bf72ec4a6e68d5cd1874334e8c"
+                + "3a458fe69640eb63f919863a51dd894bb0f3f99f5d289538be35"
+                + "abca5ce7935334a1455d1339654246a19fcdf5bf"));
+
+        key.setRng(rng);
+
+        byte[] message = "Everyone gets Friday off.".getBytes();
+        Sha256 sha256 = new Sha256();
+        sha256.update(message, 0, message.length);
+        byte[] digest = sha256.digest();
+
+        byte[] signature = key.rsaPssSign(digest,
+            WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256, 32, rng);
+        assertNotNull(signature);
+
+        /* Salt length discovery (-2) is optional in native wolfSSL. When not
+         * compiled in, verification reports false rather than throwing,
+         * so mark test skipped. */
+        boolean verified = key.rsaPssVerify(signature, digest,
+            WolfCrypt.WC_HASH_TYPE_SHA256, Rsa.WC_MGF1SHA256,
+            Rsa.RSA_PSS_SALT_LEN_DISCOVER);
+        Assume.assumeTrue(
+            "RSA-PSS salt length discovery not supported by native wolfSSL",
+            verified);
+
+        /* Discovery is supported, a corrupted signature must fail */
+        byte[] badSig = signature.clone();
+        badSig[signature.length / 2] ^= (byte)0x80;
+        assertFalse("corrupted RSA-PSS signature verified in discovery mode",
+            key.rsaPssVerify(badSig, digest, WolfCrypt.WC_HASH_TYPE_SHA256,
+                Rsa.WC_MGF1SHA256, Rsa.RSA_PSS_SALT_LEN_DISCOVER));
+
+        sha256.releaseNativeStruct();
         rng.free();
         key.releaseNativeStruct();
     }
