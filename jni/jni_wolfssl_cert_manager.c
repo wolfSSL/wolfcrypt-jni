@@ -804,7 +804,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLCertManager_CertManager
 
 /* Verify OCSP response for a certificate.
  *
- * Returns 0 (WOLFSSL_SUCCESS) on valid OCSP response, negative on error:
+ * Returns WOLFSSL_SUCCESS (1) on valid OCSP response, negative on error:
  *   BAD_FUNC_ARG (-173)  - Invalid arguments (NULL pointers, negative sizes)
  *   MEMORY_E (-125)      - Memory allocation failure
  *   ASN_PARSE_E (-140)   - Failed to parse OCSP response or certificate
