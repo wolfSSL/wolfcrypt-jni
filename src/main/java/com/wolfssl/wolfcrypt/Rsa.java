@@ -893,9 +893,12 @@ public class Rsa extends NativeStruct {
      *            with SHA-256)
      * @param saltLen salt length in bytes, or special value
      *
-     * @return true if signature is valid, false otherwise
+     * @return true if the signature is valid, false if it does not verify,
+     *         including when the configured hash, MGF, or salt length is not
+     *         supported by the linked native wolfSSL
      *
-     * @throws WolfCryptException if native operation fails
+     * @throws WolfCryptException on invalid arguments or memory allocation
+     *         failure
      * @throws IllegalStateException if public key has not been set, if object
      *         fails to initialize, or if releaseNativeStruct() has been
      *         called and object has been released.
