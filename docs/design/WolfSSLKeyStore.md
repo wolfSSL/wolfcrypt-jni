@@ -12,10 +12,19 @@ please reference the appropriate Security Policy or contact fips@wolfssl.com.
 | Security Property | Default | Min | Description |
 | --- | --- | --- | --- |
 | `wolfjce.wks.iterationCount` | 210,000 | 10,000 | PBKDF2 iteration count |
+| `wolfjce.wks.maxIterations` | 10,000,000 | 10,000 | Max PBKDF2 iteration count accepted when loading |
 | `wolfjce.wks.maxCertChainLength` | 100 | N/A | Max cert chain length |
 | `wolfjce.wks.maxEntrySize` | 10485760 | N/A | Max encoded entry size in bytes |
 | `wolfjce.keystore.kekCacheEnabled` | false | N/A | Enable KEK caching |
 | `wolfjce.keystore.kekCacheTtlSec` | 300 | 1 | Cache TTL in seconds |
+
+Values below the minimum fall back to the default. `wolfjce.wks.iterationCount`
+is capped at 10,000,000 so any KeyStore written by wolfJCE loads under the
+default `wolfjce.wks.maxIterations`, and raising `wolfjce.wks.maxIterations`
+does not lift that cap. The effective maximum accepted when loading is never
+lower than the configured iteration count. A KeyStore written by an earlier
+release with more than 10,000,000 iterations needs `wolfjce.wks.maxIterations`
+raised on the reader before it will load.
 
 ## Notes on Algorithm and Security Properties
 
