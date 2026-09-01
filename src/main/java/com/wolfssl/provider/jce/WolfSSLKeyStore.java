@@ -93,6 +93,8 @@ import com.wolfssl.wolfcrypt.WolfCryptException;
  *        + Salt size = 16 bytes, Iteration count = 210,000
  *        + Iterations can be customized using wolfjce.wks.iterationCount
  *          Security property in a java.security file
+ *        + Max iterations accepted when loading can be customized using
+ *          wolfjce.wks.maxIterations (default 10,000,000)
  *
  *   2. AES-CBC encrypts the private key using derived password
  *        + IV length = 16 bytes
@@ -204,12 +206,17 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
      *     600,000 iterations to match OWASP recommendations). Iterations
      *     can be customized using Java Security property
      *     'wolfjce.wks.iterationCount' in java.security. Minimum iterations
-     *     allowed is 10,000.
+     *     allowed is 10,000, maximum is 10,000,000.
+     *   [max iterations]: iterations accepted when loading a KeyStore are
+     *     capped at 10,000,000, override using Java Security property
+     *     'wolfjce.wks.maxIterations'.
      *   [type]: SHA-512 (WolfCrypt.WC_HASH_TYPE_SHA512) */
     private static final int WKS_PBKDF2_SALT_SIZE = 16;
     private static final int WKS_PBKDF2_MIN_ITERATIONS = 10000;
     private static final int WKS_PBKDF2_DEFAULT_ITERATIONS = 210000;
     private static final int WKS_PBKDF2_ITERATION_COUNT;
+    private static final int WKS_PBKDF2_DEFAULT_MAX_ITERATIONS = 10000000;
+    private static final int WKS_PBKDF2_MAX_ITERATIONS;
     private static final int WKS_PBKDF2_TYPE = WolfCrypt.WC_HASH_TYPE_SHA512;
 
     /* AES-CBC parameters (bytes) */
@@ -347,9 +354,11 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
     static {
         int iCount = WKS_PBKDF2_DEFAULT_ITERATIONS;
+        int mIter = WKS_PBKDF2_DEFAULT_MAX_ITERATIONS;
         int cLength = WKS_DEFAULT_MAX_CHAIN_COUNT;
         int eLength = WKS_DEFAULT_MAX_ENTRY_SIZE;
         String iterations = null;
+        String maxIterations = null;
         String chainCount = null;
         String entrySize = null;
 
@@ -366,6 +375,13 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                         ")");
                     iCount = WKS_PBKDF2_DEFAULT_ITERATIONS;
                 }
+                else if (iCount > WKS_PBKDF2_DEFAULT_MAX_ITERATIONS) {
+                    /* keep stores loadable by readers using the default max */
+                    log("wolfjce.wks.iterationCount (" + iCount + ") higher " +
+                        "than max allowed (" +
+                        WKS_PBKDF2_DEFAULT_MAX_ITERATIONS + "), using max");
+                    iCount = WKS_PBKDF2_DEFAULT_MAX_ITERATIONS;
+                }
 
             } catch (NumberFormatException e) {
                 /* Error parsing property, fall back to default */
@@ -376,6 +392,35 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
         log("setting PBKDF2 iterations: " + iCount);
         WKS_PBKDF2_ITERATION_COUNT = iCount;
+
+        /* Set max PBKDF2 iteration count accepted when loading a WKS.
+         * Override with 'wolfjce.wks.maxIterations' Security property. */
+        maxIterations = Security.getProperty("wolfjce.wks.maxIterations");
+        if (maxIterations != null && !maxIterations.isEmpty()) {
+            try {
+                mIter = Integer.parseInt(maxIterations);
+                if (mIter < WKS_PBKDF2_MIN_ITERATIONS) {
+                    log("wolfjce.wks.maxIterations (" + mIter + ") lower " +
+                        "than min allowed (" + WKS_PBKDF2_MIN_ITERATIONS +
+                        "), using default");
+                    mIter = WKS_PBKDF2_DEFAULT_MAX_ITERATIONS;
+                }
+            } catch (NumberFormatException e) {
+                /* Error parsing property, fall back to default */
+                log("error parsing wolfjce.wks.maxIterations property, " +
+                    "using default instead");
+            }
+        }
+
+        /* Don't accept a smaller iteration count than we can write */
+        if (mIter < iCount) {
+            log("wolfjce.wks.maxIterations (" + mIter + ") lower than " +
+                "iteration count (" + iCount + "), raising to match");
+            mIter = iCount;
+        }
+
+        log("setting max PBKDF2 iterations: " + mIter);
+        WKS_PBKDF2_MAX_ITERATIONS = mIter;
 
         /* Set max certificate chain length limitation, using default or one
          * set with `wolfjce.wks.maxCertChainLength` Security property in
@@ -2706,10 +2751,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
             /* PBKDF2 iterations */
             iterations = dis.readInt();
-            if (iterations < WKS_PBKDF2_MIN_ITERATIONS) {
-                throw new IOException(
-                    "PBKDF2 iterations too small: " + iterations);
-            }
+            checkPbkdf2Iterations(iterations);
 
             /* Pause caching of input data, HMAC itself not included in HMAC */
             if (havePass) {
@@ -2820,6 +2862,28 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         }
 
         return false;
+    }
+
+    /**
+     * Sanity check a PBKDF2 iteration count read from a WKS stream.
+     *
+     * @param iterations iteration count read from the stream
+     *
+     * @throws IOException if the count is outside the allowed range
+     */
+    private static void checkPbkdf2Iterations(int iterations)
+        throws IOException {
+
+        if (iterations < WKS_PBKDF2_MIN_ITERATIONS) {
+            throw new IOException(
+                "PBKDF2 iterations too small: " + iterations);
+        }
+        if (iterations > WKS_PBKDF2_MAX_ITERATIONS) {
+            throw new IOException("PBKDF2 iterations (" + iterations +
+                ") larger than max allowed (" +
+                WKS_PBKDF2_MAX_ITERATIONS + "), raise " +
+                "wolfjce.wks.maxIterations to load this KeyStore");
+        }
     }
 
     /**
@@ -3033,10 +3097,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
                 /* kdfIterations */
                 tmp = dis.readInt();
-                if (tmp < WKS_PBKDF2_MIN_ITERATIONS) {
-                    throw new IOException(
-                        "PBKDF2 iterations too small: " + tmp);
-                }
+                checkPbkdf2Iterations(tmp);
                 this.kdfIterations = tmp;
 
                 /* iv */
@@ -3666,11 +3727,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
                 /* kdfIterations */
                 tmp = dis.readInt();
-                if (tmp < WKS_PBKDF2_MIN_ITERATIONS) {
-                    throw new IOException(
-                        "PBKDF2 iterations too small ( " + tmp +
-                        "), min size: " + WKS_PBKDF2_MIN_ITERATIONS);
-                }
+                checkPbkdf2Iterations(tmp);
                 this.kdfIterations = tmp;
 
                 /* iv */

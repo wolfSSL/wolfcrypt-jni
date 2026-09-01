@@ -715,6 +715,126 @@ public class WolfSSLKeyStoreTest {
             fail("negative chain count should throw IOException");
         } catch (IOException ex) {
             /* expected, negative count rejected before allocation */
+            assertTrue("unexpected IOException: " + ex.getMessage(),
+                ex.getMessage() != null &&
+                ex.getMessage().contains("Bad cert chain count"));
+        }
+    }
+
+    /**
+     * A crafted WKS private key entry declaring an oversized PBKDF2 iteration
+     * count must be rejected with an IOException. Uses a null password so the
+     * HMAC integrity check is skipped.
+     */
+    @Test
+    public void testEngineLoadRejectsOversizedIterations()
+        throws Exception {
+
+        /* Build a WKSPrivateKey entry valid up to the kdfIterations field */
+        ByteArrayOutputStream entryBos = new ByteArrayOutputStream();
+        DataOutputStream e = new DataOutputStream(entryBos);
+        e.writeLong(0L);                 /* creationDate */
+        e.writeInt(16);                  /* kdfSalt length */
+        e.write(new byte[16]);           /* kdfSalt */
+        e.writeInt(Integer.MAX_VALUE);   /* kdfIterations (oversized) */
+        e.flush();
+        byte[] entry = entryBos.toByteArray();
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeInt(7);                 /* WKS magic number */
+        dos.writeInt(1);                 /* WKS store version */
+        dos.writeInt(1);                 /* entry count */
+        dos.writeInt(1);                 /* entry type: private key */
+        dos.writeUTF("evil");            /* alias */
+        dos.writeInt(entry.length);      /* encoded entry length */
+        dos.write(entry);                /* encoded entry */
+        dos.flush();
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        try {
+            store.load(new ByteArrayInputStream(bos.toByteArray()), null);
+            fail("oversized PBKDF2 iterations should throw IOException");
+        } catch (IOException ex) {
+            /* expected, rejected before key derivation, a truncated stream
+             * would throw EOFException with no message */
+            assertTrue("expected wolfjce.wks.maxIterations rejection, got: " +
+                ex.getMessage(), ex.getMessage() != null &&
+                ex.getMessage().contains("larger than max allowed"));
+        }
+    }
+
+    /**
+     * A crafted WKS secret key entry declaring an oversized PBKDF2 iteration
+     * count must be rejected with an IOException, covering the SecretKey
+     * decode path. Uses a null password so the HMAC integrity check is
+     * skipped.
+     */
+    @Test
+    public void testEngineLoadRejectsOversizedSecretKeyIterations()
+        throws Exception {
+
+        /* Build a WKSSecretKey entry valid up to the kdfIterations field */
+        ByteArrayOutputStream entryBos = new ByteArrayOutputStream();
+        DataOutputStream e = new DataOutputStream(entryBos);
+        e.writeLong(0L);                 /* creationDate */
+        e.writeUTF("AES");               /* key algorithm */
+        e.writeInt(16);                  /* kdfSalt length */
+        e.write(new byte[16]);           /* kdfSalt */
+        e.writeInt(Integer.MAX_VALUE);   /* kdfIterations (oversized) */
+        e.flush();
+        byte[] entry = entryBos.toByteArray();
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeInt(7);                 /* WKS magic number */
+        dos.writeInt(1);                 /* WKS store version */
+        dos.writeInt(1);                 /* entry count */
+        dos.writeInt(3);                 /* entry type: secret key */
+        dos.writeUTF("evil");            /* alias */
+        dos.writeInt(entry.length);      /* encoded entry length */
+        dos.write(entry);                /* encoded entry */
+        dos.flush();
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        try {
+            store.load(new ByteArrayInputStream(bos.toByteArray()), null);
+            fail("oversized PBKDF2 iterations should throw IOException");
+        } catch (IOException ex) {
+            assertTrue("expected wolfjce.wks.maxIterations rejection, got: " +
+                ex.getMessage(), ex.getMessage() != null &&
+                ex.getMessage().contains("larger than max allowed"));
+        }
+    }
+
+    /**
+     * A WKS store trailer declaring an oversized PBKDF2 iteration count for
+     * the store HMAC must be rejected with an IOException, covering the
+     * engineLoad check. The store holds no entries so the trailer is reached
+     * directly.
+     */
+    @Test
+    public void testEngineLoadRejectsOversizedStoreIterations()
+        throws Exception {
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeInt(7);                 /* WKS magic number */
+        dos.writeInt(1);                 /* WKS store version */
+        dos.writeInt(0);                 /* entry count */
+        dos.writeInt(16);                /* PBKDF2 salt length */
+        dos.write(new byte[16]);         /* PBKDF2 salt */
+        dos.writeInt(Integer.MAX_VALUE); /* PBKDF2 iterations (oversized) */
+        dos.flush();
+
+        KeyStore store = KeyStore.getInstance("WKS", "wolfJCE");
+        try {
+            store.load(new ByteArrayInputStream(bos.toByteArray()), null);
+            fail("oversized PBKDF2 iterations should throw IOException");
+        } catch (IOException ex) {
+            assertTrue("expected wolfjce.wks.maxIterations rejection, got: " +
+                ex.getMessage(), ex.getMessage() != null &&
+                ex.getMessage().contains("larger than max allowed"));
         }
     }
 
