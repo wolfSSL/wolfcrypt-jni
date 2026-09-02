@@ -34,6 +34,7 @@ import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Sha256;
 import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.Fips;
 
 import com.wolfssl.wolfcrypt.test.Util;
@@ -116,5 +117,12 @@ public class Sha256FipsTest extends FipsTest {
 
             assertArrayEquals(expected, result);
         }
+    }
+
+    @Test
+    public void finalShouldRejectUndersizedHashUsingByteArray() {
+        /* hash must hold the digest but the array is only 1 byte */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.Sha256Final_fips(new Sha256(), new byte[1]));
     }
 }

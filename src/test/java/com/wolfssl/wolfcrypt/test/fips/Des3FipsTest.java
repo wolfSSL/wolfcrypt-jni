@@ -192,4 +192,29 @@ public class Des3FipsTest extends FipsTest {
             assertArrayEquals(plain, vector);
         }
     }
+
+    @Test
+    public void setKeyShouldRejectUndersizedKeyUsingByteArray() {
+        /* key must be Des3.KEY_SIZE bytes but the array is only 1 byte */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.Des3_SetKey_fips(new Des3(), new byte[1], null,
+                Des3.ENCRYPT_MODE));
+    }
+
+    @Test
+    public void cbcDecryptShouldRejectUndersizedBuffersUsingByteArray() {
+        /* size claims a full block but out/in are only 1 byte each */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.Des3_CbcDecrypt_fips(new Des3(), new byte[1], new byte[1],
+                Des3.BLOCK_SIZE));
+    }
+
+    @Test
+    public void setKeyShouldRejectUndersizedKeyUsingByteBuffer() {
+        ByteBuffer smallKey = ByteBuffer.allocateDirect(1);
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.Des3_SetKey_fips(new Des3(), smallKey, null,
+                Des3.ENCRYPT_MODE));
+    }
 }

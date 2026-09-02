@@ -263,4 +263,81 @@ public class EccFipsTest extends FipsTest {
         Fips.ecc_free(alice);
         Fips.FreeRng_fips(rng);
     }
+
+    @Test
+    public void importX963ShouldRejectUndersizedInputUsingByteArray() {
+        Ecc key = new Ecc();
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.ecc_init(key));
+
+        /* inLen claims 65 bytes but the array is only 1 byte */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.ecc_import_x963(new byte[1], 65, key));
+
+        Fips.ecc_free(key);
+    }
+
+    @Test
+    public void sharedSecretShouldRejectOversizedOutLenUsingByteArray() {
+        Ecc alice = new Ecc();
+        Ecc bob = new Ecc();
+        /* outLen claims 65 bytes but out is only 64 bytes */
+        long[] outLen = { 65 };
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.ecc_init(alice));
+        assertEquals(WolfCrypt.SUCCESS, Fips.ecc_init(bob));
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.ecc_shared_secret(alice, bob, new byte[64], outLen));
+
+        Fips.ecc_free(alice);
+        Fips.ecc_free(bob);
+    }
+
+    @Test
+    public void exportX963ShouldRejectOversizedOutLenUsingByteArray() {
+        Ecc key = new Ecc();
+        /* outLen claims 65 bytes but out is only 64 bytes */
+        long[] outLen = { 65 };
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.ecc_init(key));
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.ecc_export_x963(key, new byte[64], outLen));
+
+        Fips.ecc_free(key);
+    }
+
+    @Test
+    public void sharedSecretShouldRejectOversizedOutLenUsingByteBuffer() {
+        Ecc alice = new Ecc();
+        Ecc bob = new Ecc();
+        ByteBuffer out = ByteBuffer.allocateDirect(64);
+        /* outLen claims 65 bytes but out is only 64 bytes */
+        long[] outLen = { 65 };
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.ecc_init(alice));
+        assertEquals(WolfCrypt.SUCCESS, Fips.ecc_init(bob));
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.ecc_shared_secret(alice, bob, out, outLen));
+
+        Fips.ecc_free(alice);
+        Fips.ecc_free(bob);
+    }
+
+    @Test
+    public void exportX963ShouldRejectOversizedOutLenUsingByteBuffer() {
+        Ecc key = new Ecc();
+        ByteBuffer out = ByteBuffer.allocateDirect(64);
+        /* outLen claims 65 bytes but out is only 64 bytes */
+        long[] outLen = { 65 };
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.ecc_init(key));
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.ecc_export_x963(key, out, outLen));
+
+        Fips.ecc_free(key);
+    }
 }
