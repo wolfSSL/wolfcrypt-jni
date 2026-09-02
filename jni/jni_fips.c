@@ -36,13 +36,33 @@
     #include <wolfssl/wolfcrypt/sha.h>
     #include <wolfssl/wolfcrypt/sha256.h>
     #include <wolfssl/wolfcrypt/sha512.h>
+    #include <wolfssl/wolfcrypt/md5.h>
     #include <wolfssl/wolfcrypt/hmac.h>
     #include <wolfssl/wolfcrypt/rsa.h>
     #include <wolfssl/wolfcrypt/dh.h>
     #include <wolfssl/wolfcrypt/ecc.h>
+
+    #ifdef NO_OLD_WC_NAMES
+        #ifndef NO_MD5
+            #define MD5_DIGEST_SIZE WC_MD5_DIGEST_SIZE
+        #endif
+        #ifndef NO_SHA
+            #define SHA_DIGEST_SIZE WC_SHA_DIGEST_SIZE
+        #endif
+        #ifndef NO_SHA256
+            #define SHA256_DIGEST_SIZE WC_SHA256_DIGEST_SIZE
+        #endif
+        #ifdef WOLFSSL_SHA384
+            #define SHA384_DIGEST_SIZE WC_SHA384_DIGEST_SIZE
+        #endif
+        #ifdef WOLFSSL_SHA512
+            #define SHA512_DIGEST_SIZE WC_SHA512_DIGEST_SIZE
+        #endif
+    #endif
 #endif
 
 #include <stdio.h>
+#include <stdint.h>
 
 #include <com_wolfssl_wolfcrypt_WolfCrypt.h>
 #include <com_wolfssl_wolfcrypt_Fips.h>
@@ -484,6 +504,82 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_getFipsVersion
  * ### FIPS Approved Security Methods ##########################################
  */
 
+#if defined(HAVE_FIPS)
+/* Return 1 if the buffer backs at least need bytes, need must be nonnegative
+ * and fit in a word32 */
+static int fipsCheckDirectSz(JNIEnv* env, jobject buf, jlong need)
+{
+    if (need < 0 || need > (jlong)UINT32_MAX || buf == NULL ||
+        (*env)->GetDirectBufferAddress(env, buf) == NULL) {
+        return 0;
+    }
+    return ((*env)->GetDirectBufferCapacity(env, buf) >= need);
+}
+
+static int fipsCheckArraySz(JNIEnv* env, jbyteArray arr, jlong need)
+{
+    if (need < 0 || need > (jlong)UINT32_MAX || arr == NULL) {
+        return 0;
+    }
+    return ((jlong)getByteArrayLength(env, arr) >= need);
+}
+#endif /* HAVE_FIPS */
+
+#if defined(HAVE_FIPS) && defined(HAVE_AESGCM)
+/* Optional buffer variants, a need of 0 accepts any buffer including NULL */
+static int fipsCheckDirectSzOpt(JNIEnv* env, jobject buf, jlong need)
+{
+    if (need == 0) {
+        return 1;
+    }
+    return fipsCheckDirectSz(env, buf, need);
+}
+
+static int fipsCheckArraySzOpt(JNIEnv* env, jbyteArray arr, jlong need)
+{
+    if (need == 0) {
+        return 1;
+    }
+    return fipsCheckArraySz(env, arr, need);
+}
+#endif /* HAVE_FIPS && HAVE_AESGCM */
+
+#if defined(HAVE_FIPS) && !defined(NO_HMAC)
+/* Digest size of the keyed MAC type, FIPS v1 headers have no
+ * wc_HmacSizeByType so the type is mapped locally there */
+static int fipsHmacDigestSz(Hmac* hmac)
+{
+#if defined(HAVE_FIPS_VERSION) && (HAVE_FIPS_VERSION >= 2)
+    return wc_HmacSizeByType(hmac->macType);
+#else
+    switch (hmac->macType) {
+    #ifndef NO_MD5
+        case WC_MD5:
+            return MD5_DIGEST_SIZE;
+    #endif
+    #ifndef NO_SHA
+        case WC_SHA:
+            return SHA_DIGEST_SIZE;
+    #endif
+    #ifndef NO_SHA256
+        case WC_SHA256:
+            return SHA256_DIGEST_SIZE;
+    #endif
+    #ifdef WOLFSSL_SHA384
+        case WC_SHA384:
+            return SHA384_DIGEST_SIZE;
+    #endif
+    #ifdef WOLFSSL_SHA512
+        case WC_SHA512:
+            return SHA512_DIGEST_SIZE;
+    #endif
+        default:
+            return BAD_FUNC_ARG;
+    }
+#endif
+}
+#endif /* HAVE_FIPS && !NO_HMAC */
+
 /*
  * wolfCrypt FIPS API - Symmetric encrypt/decrypt Service
  */
@@ -511,8 +607,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesSetKey_1fips__Lcom
     key = getDirectBufferAddress(env, key_buffer);
     iv  = getDirectBufferAddress(env, iv_buffer);
 
-    if (!aes || !key)
+    if (!aes || !fipsCheckDirectSz(env, key_buffer, size) ||
+        (iv_buffer && !fipsCheckDirectSz(env, iv_buffer, AES_IV_SIZE))) {
         return BAD_FUNC_ARG;
+    }
 
 #if FIPS_VERSION_GT(5,0)
     ret = wc_AesSetKey_fips(aes, key, (word32)size, iv, dir);
@@ -522,10 +620,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesSetKey_1fips__Lcom
 
     LogStr("AesSetKey_fips(aes=%p, key, iv, %s) = %d\n", aes,
         dir ? "dec" : "enc", ret);
-    LogStr("key[%u]: [%p]\n", (word32)size, key);
-    LogHex(key, 0, size);
-    LogStr("iv[%u]: [%p]\n", (word32)AES_BLOCK_SIZE, iv);
-    LogHex(iv, 0, AES_BLOCK_SIZE);
+    if (ret >= 0) {
+        LogStr("key[%u]: [%p]\n", (word32)size, key);
+        LogHex(key, 0, size);
+        LogStr("iv[%u]: [%p]\n", (word32)AES_IV_SIZE, iv);
+        LogHex(iv, 0, AES_IV_SIZE);
+    }
 
 #endif
 
@@ -553,7 +653,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesSetKey_1fips__Lcom
     key = getByteArray(env, key_buffer);
     iv  = getByteArray(env, iv_buffer);
 
-    if (aes == NULL || key == NULL) {
+    if (aes == NULL || key == NULL ||
+        !fipsCheckArraySz(env, key_buffer, size) ||
+        (iv_buffer != NULL && (iv == NULL ||
+            !fipsCheckArraySz(env, iv_buffer, AES_IV_SIZE)))) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -566,10 +669,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesSetKey_1fips__Lcom
 
     LogStr("AesSetKey_fips(aes=%p, key, iv, %s) = %d\n", aes,
         dir ? "dec" : "enc", ret);
-    LogStr("key[%u]: [%p]\n", (word32)size, key);
-    LogHex(key, 0, size);
-    LogStr("iv[%u]: [%p]\n", (word32)AES_BLOCK_SIZE, iv);
-    LogHex(iv, 0, AES_BLOCK_SIZE);
+    if (ret >= 0) {
+        LogStr("key[%u]: [%p]\n", (word32)size, key);
+        LogHex(key, 0, size);
+        LogStr("iv[%u]: [%p]\n", (word32)AES_IV_SIZE, iv);
+        LogHex(iv, 0, AES_IV_SIZE);
+    }
 
     releaseByteArray(env, key_buffer, key, 1);
     releaseByteArray(env,  iv_buffer,  iv, 1);
@@ -598,7 +703,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmSetExtIV_1fips_
 
     iv = getDirectBufferAddress(env, iv_buffer);
 
-    if (aes == NULL || iv == NULL || size < 0) {
+    if (aes == NULL || !fipsCheckDirectSz(env, iv_buffer, size)) {
         return BAD_FUNC_ARG;
     }
 
@@ -609,8 +714,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmSetExtIV_1fips_
     #endif
 
     LogStr("AesGcmSetExtIV_fips(aes=%p, iv) = %d\n", aes, ret);
-    LogStr("iv[%u]: [%p]\n", (word32)size, iv);
-    LogHex(iv, 0, size);
+    if (ret >= 0) {
+        LogStr("iv[%u]: [%p]\n", (word32)size, iv);
+        LogHex(iv, 0, size);
+    }
 
 #endif
 
@@ -636,7 +743,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmSetExtIV_1fips_
 
     iv = getByteArray(env, iv_buffer);
 
-    if (aes == NULL || iv == NULL || size < 0) {
+    if (aes == NULL || iv == NULL || !fipsCheckArraySz(env, iv_buffer, size)) {
         releaseByteArray(env, iv_buffer, iv, JNI_ABORT);
         return BAD_FUNC_ARG;
     }
@@ -648,8 +755,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmSetExtIV_1fips_
     #endif
 
     LogStr("AesGcmSetExtIV_fips(aes=%p, iv) = %d\n", aes, ret);
-    LogStr("iv[%u]: [%p]\n", (word32)size, iv);
-    LogHex(iv, 0, size);
+    if (ret >= 0) {
+        LogStr("iv[%u]: [%p]\n", (word32)size, iv);
+        LogHex(iv, 0, size);
+    }
 
     releaseByteArray(env, iv_buffer, iv, 1);
 
@@ -676,8 +785,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesSetIV_1fips__Lcom_
 
     iv = getDirectBufferAddress(env, iv_buffer);
 
-    if (!aes || !iv)
+    if (!aes || !fipsCheckDirectSz(env, iv_buffer, AES_IV_SIZE)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_AesSetIV_fips(aes, iv);
@@ -686,8 +796,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesSetIV_1fips__Lcom_
     #endif
 
     LogStr("AesSetIV_fips(aes=%p, iv) = %d\n", aes, ret);
-    LogStr("iv[%u]: [%p]\n", (word32)AES_BLOCK_SIZE, iv);
-    LogHex(iv, 0, AES_BLOCK_SIZE);
+    if (ret >= 0) {
+        LogStr("iv[%u]: [%p]\n", (word32)AES_IV_SIZE, iv);
+        LogHex(iv, 0, AES_IV_SIZE);
+    }
 
 #endif
 
@@ -712,7 +824,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesSetIV_1fips__Lcom_
 
     iv = getByteArray(env, iv_buffer);
 
-    if (aes == NULL || iv == NULL) {
+    if (aes == NULL || iv == NULL ||
+        !fipsCheckArraySz(env, iv_buffer, AES_IV_SIZE)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -724,8 +837,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesSetIV_1fips__Lcom_
     }
 
     LogStr("AesSetIV_fips(aes=%p, iv) = %d\n", aes, ret);
-    LogStr("iv[%u]: [%p]\n", (word32)AES_BLOCK_SIZE, iv);
-    LogHex(iv, 0, AES_BLOCK_SIZE);
+    if (ret >= 0) {
+        LogStr("iv[%u]: [%p]\n", (word32)AES_IV_SIZE, iv);
+        LogHex(iv, 0, AES_IV_SIZE);
+    }
 
     releaseByteArray(env, iv_buffer, iv, 1);
 
@@ -755,8 +870,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesCbcEncrypt_1fips__
     out = getDirectBufferAddress(env, out_buffer);
     in  = getDirectBufferAddress(env, in_buffer);
 
-    if (!aes || !out || !in)
+    if (!aes || !fipsCheckDirectSz(env, out_buffer, size) ||
+        !fipsCheckDirectSz(env, in_buffer, size)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_AesCbcEncrypt_fips(aes, out, in, (word32) size);
@@ -765,10 +882,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesCbcEncrypt_1fips__
     #endif
 
     LogStr("AesCbcEncrypt_fips(aes=%p, out, in) = %d\n", aes, ret);
-    LogStr("in[%u]: [%p]\n", (word32)size, in);
-    LogHex(in, 0, size);
-    LogStr("out[%u]: [%p]\n", (word32)size, out);
-    LogHex(out, 0, size);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)size, in);
+        LogHex(in, 0, size);
+        LogStr("out[%u]: [%p]\n", (word32)size, out);
+        LogHex(out, 0, size);
+    }
 
 #endif
 
@@ -796,7 +915,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesCbcEncrypt_1fips__
     out = getByteArray(env, out_buffer);
     in  = getByteArray(env, in_buffer);
 
-    if (aes == NULL || out == NULL || in == NULL) {
+    if (aes == NULL || out == NULL || in == NULL ||
+        !fipsCheckArraySz(env, out_buffer, size) ||
+        !fipsCheckArraySz(env, in_buffer, size)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -808,10 +929,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesCbcEncrypt_1fips__
     }
 
     LogStr("AesCbcEncrypt_fips(aes=%p, out, in) = %d\n", aes, ret);
-    LogStr("in[%u]: [%p]\n", (word32)size, in);
-    LogHex(in, 0, size);
-    LogStr("out[%u]: [%p]\n", (word32)size, out);
-    LogHex(out, 0, size);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)size, in);
+        LogHex(in, 0, size);
+        LogStr("out[%u]: [%p]\n", (word32)size, out);
+        LogHex(out, 0, size);
+    }
 
     releaseByteArray(env, out_buffer, out, ret);
     releaseByteArray(env,  in_buffer,  in, 1);
@@ -842,8 +965,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesCbcDecrypt_1fips__
     out = getDirectBufferAddress(env, out_buffer);
     in  = getDirectBufferAddress(env, in_buffer);
 
-    if (!aes || !out || !in)
+    if (!aes || !fipsCheckDirectSz(env, out_buffer, size) ||
+        !fipsCheckDirectSz(env, in_buffer, size)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_AesCbcDecrypt_fips(aes, out, in, (word32) size);
@@ -852,10 +977,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesCbcDecrypt_1fips__
     #endif
 
     LogStr("AesCbcDecrypt_fips(aes=%p, out, in) = %d\n", aes, ret);
-    LogStr("in[%u]: [%p]\n", (word32)size, in);
-    LogHex(in, 0, size);
-    LogStr("out[%u]: [%p]\n", (word32)size, out);
-    LogHex(out, 0, size);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)size, in);
+        LogHex(in, 0, size);
+        LogStr("out[%u]: [%p]\n", (word32)size, out);
+        LogHex(out, 0, size);
+    }
 
 #endif
 
@@ -883,7 +1010,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesCbcDecrypt_1fips__
     out = getByteArray(env, out_buffer);
     in  = getByteArray(env, in_buffer);
 
-    if (aes == NULL || out == NULL || in == NULL) {
+    if (aes == NULL || out == NULL || in == NULL ||
+        !fipsCheckArraySz(env, out_buffer, size) ||
+        !fipsCheckArraySz(env, in_buffer, size)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -895,10 +1024,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesCbcDecrypt_1fips__
     }
 
     LogStr("AesCbcDecrypt_fips(aes=%p, out, in) = %d\n", aes, ret);
-    LogStr("in[%u]: [%p]\n", (word32)size, in);
-    LogHex(in, 0, size);
-    LogStr("out[%u]: [%p]\n", (word32)size, out);
-    LogHex(out, 0, size);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)size, in);
+        LogHex(in, 0, size);
+        LogStr("out[%u]: [%p]\n", (word32)size, out);
+        LogHex(out, 0, size);
+    }
 
     releaseByteArray(env, out_buffer, out, ret);
     releaseByteArray(env,  in_buffer,  in, 1);
@@ -927,8 +1058,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmSetKey_1fips__L
 
     key = getDirectBufferAddress(env, key_buffer);
 
-    if (!aes || !key)
+    if (!aes || !fipsCheckDirectSz(env, key_buffer, size)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_AesGcmSetKey_fips(aes, key, (word32)size);
@@ -937,8 +1069,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmSetKey_1fips__L
     #endif
 
     LogStr("AesGcmSetKey_fips(aes=%p, key) = %d\n", aes, ret);
-    LogStr("key[%u]: [%p]\n", (word32)size, key);
-    LogHex(key, 0, size);
+    if (ret >= 0) {
+        LogStr("key[%u]: [%p]\n", (word32)size, key);
+        LogHex(key, 0, size);
+    }
 
 #endif
 
@@ -964,7 +1098,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmSetKey_1fips__L
 
     key = getByteArray(env, key_buffer);
 
-    if (aes == NULL || key == NULL) {
+    if (aes == NULL || key == NULL ||
+        !fipsCheckArraySz(env, key_buffer, size)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -976,8 +1111,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmSetKey_1fips__L
     }
 
     LogStr("AesGcmSetKey_fips(aes=%p, key) = %d\n", aes, ret);
-    LogStr("key[%u]: [%p]\n", (word32)size, key);
-    LogHex(key, 0, size);
+    if (ret >= 0) {
+        LogStr("key[%u]: [%p]\n", (word32)size, key);
+        LogHex(key, 0, size);
+    }
 
     releaseByteArray(env, key_buffer, key, 1);
 
@@ -1020,8 +1157,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmEncrypt_1fips__
     authTag = getDirectBufferAddress(env, authTag_buffer);
     authIn  = getDirectBufferAddress(env, authIn_buffer);
 
-    if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz)
-        || (!authIn && authInSz)) {
+    if (!aes || !fipsCheckDirectSz(env, out_buffer, size) ||
+        !fipsCheckDirectSz(env, in_buffer, size) ||
+        !fipsCheckDirectSzOpt(env, iv_buffer, ivSz) ||
+        !fipsCheckDirectSzOpt(env, authTag_buffer, authTagSz) ||
+        !fipsCheckDirectSzOpt(env, authIn_buffer, authInSz)) {
         return BAD_FUNC_ARG;
     }
 
@@ -1058,16 +1198,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmEncrypt_1fips__
     LogStr(
         "AesGcmEncrypt_fips(aes=%p, out, in, iv, authTag, authIn) = %d\n",
         aes, ret);
-    LogStr("in[%u]: [%p]\n", (word32)size, in);
-    LogHex(in, 0, size);
-    LogStr("out[%u]: [%p]\n", (word32)size, out);
-    LogHex(out, 0, size);
-    LogStr("iv[%u]: [%p]\n", (word32)ivSz, iv);
-    LogHex(iv, 0, ivSz);
-    LogStr("authTag[%u]: [%p]\n", (word32)authTagSz, authTag);
-    LogHex(authTag, 0, authTagSz);
-    LogStr("authIn[%u]: [%p]\n", (word32)authInSz, authIn);
-    LogHex(authIn, 0, authInSz);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)size, in);
+        LogHex(in, 0, size);
+        LogStr("out[%u]: [%p]\n", (word32)size, out);
+        LogHex(out, 0, size);
+        LogStr("iv[%u]: [%p]\n", (word32)ivSz, iv);
+        LogHex(iv, 0, ivSz);
+        LogStr("authTag[%u]: [%p]\n", (word32)authTagSz, authTag);
+        LogHex(authTag, 0, authTagSz);
+        LogStr("authIn[%u]: [%p]\n", (word32)authInSz, authIn);
+        LogHex(authIn, 0, authInSz);
+    }
 
 #endif
 
@@ -1108,10 +1250,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmEncrypt_1fips__
     authTag = getByteArray(env, authTag_buffer);
     authIn  = getByteArray(env, authIn_buffer);
 
-    if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz)
-        || (!authIn && authInSz)) {
+    if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz) ||
+        (!authIn && authInSz) || !fipsCheckArraySz(env, out_buffer, size) ||
+        !fipsCheckArraySz(env, in_buffer, size) ||
+        !fipsCheckArraySzOpt(env, iv_buffer, ivSz) ||
+        !fipsCheckArraySzOpt(env, authTag_buffer, authTagSz) ||
+        !fipsCheckArraySzOpt(env, authIn_buffer, authInSz)) {
         ret = BAD_FUNC_ARG;
-
     }
     else {
     #if FIPS_VERSION_GT(5,0)
@@ -1147,16 +1292,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmEncrypt_1fips__
     LogStr(
         "AesGcmEncrypt_fips(aes=%p, out, in, iv, authTag, authIn) = %d\n",
         aes, ret);
-    LogStr("in[%u]: [%p]\n", (word32)size, in);
-    LogHex(in, 0, size);
-    LogStr("out[%u]: [%p]\n", (word32)size, out);
-    LogHex(out, 0, size);
-    LogStr("iv[%u]: [%p]\n", (word32)ivSz, iv);
-    LogHex(iv, 0, ivSz);
-    LogStr("authTag[%u]: [%p]\n", (word32)authTagSz, authTag);
-    LogHex(authTag, 0, authTagSz);
-    LogStr("authIn[%u]: [%p]\n", (word32)authInSz, authIn);
-    LogHex(authIn, 0, authInSz);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)size, in);
+        LogHex(in, 0, size);
+        LogStr("out[%u]: [%p]\n", (word32)size, out);
+        LogHex(out, 0, size);
+        LogStr("iv[%u]: [%p]\n", (word32)ivSz, iv);
+        LogHex(iv, 0, ivSz);
+        LogStr("authTag[%u]: [%p]\n", (word32)authTagSz, authTag);
+        LogHex(authTag, 0, authTagSz);
+        LogStr("authIn[%u]: [%p]\n", (word32)authInSz, authIn);
+        LogHex(authIn, 0, authInSz);
+    }
 
     releaseByteArray(env, out_buffer, out, ret);
     releaseByteArray(env, in_buffer, in, 1);
@@ -1198,9 +1345,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmDecrypt_1fips__
     authTag = getDirectBufferAddress(env, authTag_buffer);
     authIn  = getDirectBufferAddress(env, authIn_buffer);
 
-    if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz)
-        || (!authIn && authInSz))
+    if (!aes || !fipsCheckDirectSz(env, out_buffer, size) ||
+        !fipsCheckDirectSz(env, in_buffer, size) ||
+        !fipsCheckDirectSzOpt(env, iv_buffer, ivSz) ||
+        !fipsCheckDirectSzOpt(env, authTag_buffer, authTagSz) ||
+        !fipsCheckDirectSzOpt(env, authIn_buffer, authInSz)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_AesGcmDecrypt_fips(aes, out, in, (word32)size, iv,
@@ -1213,16 +1364,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmDecrypt_1fips__
     LogStr(
         "AesGcmDecrypt_fips(aes=%p, out, in, iv, authTag, authIn) = %d\n",
         aes, ret);
-    LogStr("in[%u]: [%p]\n", (word32)size, in);
-    LogHex(in, 0, size);
-    LogStr("out[%u]: [%p]\n", (word32)size, out);
-    LogHex(out, 0, size);
-    LogStr("iv[%u]: [%p]\n", (word32)ivSz, iv);
-    LogHex(iv, 0, ivSz);
-    LogStr("authTag[%u]: [%p]\n", (word32)authTagSz, authTag);
-    LogHex(authTag, 0, authTagSz);
-    LogStr("authIn[%u]: [%p]\n", (word32)authInSz, authIn);
-    LogHex(authIn, 0, authInSz);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)size, in);
+        LogHex(in, 0, size);
+        LogStr("out[%u]: [%p]\n", (word32)size, out);
+        LogHex(out, 0, size);
+        LogStr("iv[%u]: [%p]\n", (word32)ivSz, iv);
+        LogHex(iv, 0, ivSz);
+        LogStr("authTag[%u]: [%p]\n", (word32)authTagSz, authTag);
+        LogHex(authTag, 0, authTagSz);
+        LogStr("authIn[%u]: [%p]\n", (word32)authInSz, authIn);
+        LogHex(authIn, 0, authInSz);
+    }
 
 #endif
 
@@ -1258,8 +1411,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmDecrypt_1fips__
     authTag = getByteArray(env, authTag_buffer);
     authIn  = getByteArray(env, authIn_buffer);
 
-    if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz)
-        || (!authIn && authInSz)) {
+    if (!aes || !out || !in || (!iv && ivSz) || (!authTag && authTagSz) ||
+        (!authIn && authInSz) || !fipsCheckArraySz(env, out_buffer, size) ||
+        !fipsCheckArraySz(env, in_buffer, size) ||
+        !fipsCheckArraySzOpt(env, iv_buffer, ivSz) ||
+        !fipsCheckArraySzOpt(env, authTag_buffer, authTagSz) ||
+        !fipsCheckArraySzOpt(env, authIn_buffer, authInSz)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -1275,16 +1432,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1AesGcmDecrypt_1fips__
     LogStr(
         "AesGcmDecrypt_fips(aes=%p, out, in, iv, authTag, authIn) = %d\n",
         aes, ret);
-    LogStr("in[%u]: [%p]\n", (word32)size, in);
-    LogHex(in, 0, size);
-    LogStr("out[%u]: [%p]\n", (word32)size, out);
-    LogHex(out, 0, size);
-    LogStr("iv[%u]: [%p]\n", (word32)ivSz, iv);
-    LogHex(iv, 0, ivSz);
-    LogStr("authTag[%u]: [%p]\n", (word32)authTagSz, authTag);
-    LogHex(authTag, 0, authTagSz);
-    LogStr("authIn[%u]: [%p]\n", (word32)authInSz, authIn);
-    LogHex(authIn, 0, authInSz);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)size, in);
+        LogHex(in, 0, size);
+        LogStr("out[%u]: [%p]\n", (word32)size, out);
+        LogHex(out, 0, size);
+        LogStr("iv[%u]: [%p]\n", (word32)ivSz, iv);
+        LogHex(iv, 0, ivSz);
+        LogStr("authTag[%u]: [%p]\n", (word32)authTagSz, authTag);
+        LogHex(authTag, 0, authTagSz);
+        LogStr("authIn[%u]: [%p]\n", (word32)authInSz, authIn);
+        LogHex(authIn, 0, authInSz);
+    }
 
     releaseByteArray(env, out_buffer, out, ret);
     releaseByteArray(env, in_buffer, in, 1);
@@ -1322,17 +1481,21 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Des3_1SetKey_1fips__L
     key = getDirectBufferAddress(env, key_buffer);
     iv  = getDirectBufferAddress(env, iv_buffer);
 
-    if (!des || !key)
+    if (!des || !fipsCheckDirectSz(env, key_buffer, DES3_KEY_SIZE) ||
+        (iv_buffer && !fipsCheckDirectSz(env, iv_buffer, DES_BLOCK_SIZE))) {
         return BAD_FUNC_ARG;
+    }
 
     ret = Des3_SetKey_fips(des, key, iv, dir);
 
     LogStr("Des3_SetKey_fips(des=%p, key, iv, %s) = %d\n", des,
         dir ? "dec" : "enc", ret);
-    LogStr("key[%u]: [%p]\n", (word32)DES3_KEYLEN, key);
-    LogHex(key, 0, DES3_KEYLEN);
-    LogStr("iv[%u]: [%p]\n", (word32)DES3_IVLEN, iv);
-    LogHex(iv, 0, DES3_IVLEN);
+    if (ret >= 0) {
+        LogStr("key[%u]: [%p]\n", (word32)DES3_KEY_SIZE, key);
+        LogHex(key, 0, DES3_KEY_SIZE);
+        LogStr("iv[%u]: [%p]\n", (word32)DES_BLOCK_SIZE, iv);
+        LogHex(iv, 0, DES_BLOCK_SIZE);
+    }
 
 #endif
 
@@ -1362,15 +1525,23 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Des3_1SetKey_1fips__L
     key = getByteArray(env, key_buffer);
     iv  = getByteArray(env, iv_buffer);
 
-    ret = (!des || !key) ? BAD_FUNC_ARG
-                         : Des3_SetKey_fips(des, key, iv, dir);
+    if (!des || !key || !fipsCheckArraySz(env, key_buffer, DES3_KEY_SIZE) ||
+        (iv_buffer && (!iv ||
+            !fipsCheckArraySz(env, iv_buffer, DES_BLOCK_SIZE)))) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = Des3_SetKey_fips(des, key, iv, dir);
+    }
 
     LogStr("Des3_SetKey_fips(des=%p, key, iv, %s) = %d\n", des,
         dir ? "dec" : "enc", ret);
-    LogStr("key[%u]: [%p]\n", (word32)DES3_KEYLEN, key);
-    LogHex(key, 0, DES3_KEYLEN);
-    LogStr("iv[%u]: [%p]\n", (word32)DES3_IVLEN, iv);
-    LogHex(iv, 0, DES3_IVLEN);
+    if (ret >= 0) {
+        LogStr("key[%u]: [%p]\n", (word32)DES3_KEY_SIZE, key);
+        LogHex(key, 0, DES3_KEY_SIZE);
+        LogStr("iv[%u]: [%p]\n", (word32)DES_BLOCK_SIZE, iv);
+        LogHex(iv, 0, DES_BLOCK_SIZE);
+    }
 
     releaseByteArray(env, key_buffer, key, 1);
     releaseByteArray(env, iv_buffer, iv, 1);
@@ -1400,13 +1571,17 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Des3_1SetIV_1fips__Lc
 
     iv = getDirectBufferAddress(env, iv_buffer);
 
-    if (!des || !iv)
+    if (!des || !fipsCheckDirectSz(env, iv_buffer, DES_BLOCK_SIZE)) {
         return BAD_FUNC_ARG;
+    }
+
     ret = Des3_SetIV_fips(des, iv);
 
     LogStr("Des3_SetIV_fips(des=%p, iv) = %d\n", des, ret);
-    LogStr("iv[%u]: [%p]\n", (word32)DES_BLOCK_SIZE, iv);
-    LogHex(iv, 0, DES_BLOCK_SIZE);
+    if (ret >= 0) {
+        LogStr("iv[%u]: [%p]\n", (word32)DES_BLOCK_SIZE, iv);
+        LogHex(iv, 0, DES_BLOCK_SIZE);
+    }
 
 #endif
 
@@ -1433,12 +1608,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Des3_1SetIV_1fips__Lc
 
     iv = getByteArray(env, iv_buffer);
 
-    ret = (!des || !iv) ? BAD_FUNC_ARG
-                        : Des3_SetIV_fips(des, iv);
+    if (!des || !iv || !fipsCheckArraySz(env, iv_buffer, DES_BLOCK_SIZE)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = Des3_SetIV_fips(des, iv);
+    }
 
     LogStr("Des3_SetIV_fips(des=%p, iv) = %d\n", des, ret);
-    LogStr("iv[%u]: [%p]\n", (word32)DES_BLOCK_SIZE, iv);
-    LogHex(iv, 0, DES_BLOCK_SIZE);
+    if (ret >= 0) {
+        LogStr("iv[%u]: [%p]\n", (word32)DES_BLOCK_SIZE, iv);
+        LogHex(iv, 0, DES_BLOCK_SIZE);
+    }
 
     releaseByteArray(env, iv_buffer, iv, 1);
 
@@ -1470,16 +1651,20 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Des3_1CbcEncrypt_1fip
     out = getDirectBufferAddress(env, out_buffer);
     in  = getDirectBufferAddress(env, in_buffer);
 
-    if (!des || !out || !in)
+    if (!des || !fipsCheckDirectSz(env, out_buffer, size) ||
+        !fipsCheckDirectSz(env, in_buffer, size)) {
         return BAD_FUNC_ARG;
+    }
 
     ret = Des3_CbcEncrypt_fips(des, out, in, (word32) size);
 
     LogStr("Des3_CbcEncrypt_fips(des=%p, out, in) = %d\n", des, ret);
-    LogStr("in[%u]: [%p]\n", (word32)size, in);
-    LogHex(in, 0, size);
-    LogStr("out[%u]: [%p]\n", (word32)size, out);
-    LogHex(out, 0, size);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)size, in);
+        LogHex(in, 0, size);
+        LogStr("out[%u]: [%p]\n", (word32)size, out);
+        LogHex(out, 0, size);
+    }
 
 #endif
 
@@ -1509,15 +1694,21 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Des3_1CbcEncrypt_1fip
     out = getByteArray(env, out_buffer);
     in  = getByteArray(env, in_buffer);
 
-    ret = (!des || !out || !in) ? BAD_FUNC_ARG
-                                : Des3_CbcEncrypt_fips(des, out, in,
-                                                       (word32) size);
+    if (!des || !out || !in || !fipsCheckArraySz(env, out_buffer, size) ||
+        !fipsCheckArraySz(env, in_buffer, size)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = Des3_CbcEncrypt_fips(des, out, in, (word32) size);
+    }
 
     LogStr("Des3_CbcEncrypt_fips(des=%p, out, in) = %d\n", des, ret);
-    LogStr("in[%u]: [%p]\n", (word32)size, in);
-    LogHex(in, 0, size);
-    LogStr("out[%u]: [%p]\n", (word32)size, out);
-    LogHex(out, 0, size);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)size, in);
+        LogHex(in, 0, size);
+        LogStr("out[%u]: [%p]\n", (word32)size, out);
+        LogHex(out, 0, size);
+    }
 
     releaseByteArray(env, out_buffer, out, ret);
     releaseByteArray(env, in_buffer, in, 1);
@@ -1550,16 +1741,20 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Des3_1CbcDecrypt_1fip
     out = getDirectBufferAddress(env, out_buffer);
     in  = getDirectBufferAddress(env, in_buffer);
 
-    if (!des || !out || !in)
+    if (!des || !fipsCheckDirectSz(env, out_buffer, size) ||
+        !fipsCheckDirectSz(env, in_buffer, size)) {
         return BAD_FUNC_ARG;
+    }
 
     ret = Des3_CbcDecrypt_fips(des, out, in, (word32) size);
 
     LogStr("Des3_CbcDecrypt_fips(des=%p, out, in) = %d\n", des, ret);
-    LogStr("in[%u]: [%p]\n", (word32)size, in);
-    LogHex(in, 0, size);
-    LogStr("out[%u]: [%p]\n", (word32)size, out);
-    LogHex(out, 0, size);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)size, in);
+        LogHex(in, 0, size);
+        LogStr("out[%u]: [%p]\n", (word32)size, out);
+        LogHex(out, 0, size);
+    }
 
 #endif
 
@@ -1589,14 +1784,21 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Des3_1CbcDecrypt_1fip
     out = getByteArray(env, out_buffer);
     in  = getByteArray(env, in_buffer);
 
-    ret = (!des || !out || !in) ? BAD_FUNC_ARG
-                                : Des3_CbcDecrypt_fips(des, out, in, (word32) size);
+    if (!des || !out || !in || !fipsCheckArraySz(env, out_buffer, size) ||
+        !fipsCheckArraySz(env, in_buffer, size)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = Des3_CbcDecrypt_fips(des, out, in, (word32) size);
+    }
 
     LogStr("Des3_CbcDecrypt_fips(des=%p, out, in) = %d\n", des, ret);
-    LogStr("in[%u]: [%p]\n", (word32)size, in);
-    LogHex(in, 0, size);
-    LogStr("out[%u]: [%p]\n", (word32)size, out);
-    LogHex(out, 0, size);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)size, in);
+        LogHex(in, 0, size);
+        LogStr("out[%u]: [%p]\n", (word32)size, out);
+        LogHex(out, 0, size);
+    }
 
     releaseByteArray(env, out_buffer, out, ret);
     releaseByteArray(env, in_buffer, in, 1);
@@ -1631,8 +1833,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1HmacSetKey_1fips__Lco
 
     key = getDirectBufferAddress(env, key_buffer);
 
-    if (!hmac || !key)
+    if (!hmac || !fipsCheckDirectSz(env, key_buffer, keySz)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_HmacSetKey_fips(hmac, type, key, (word32)keySz);
@@ -1642,8 +1845,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1HmacSetKey_1fips__Lco
 
     LogStr("HmacSetKey_fips(hmac=%p, type=%d, key, keySz) = %d\n", hmac, type,
         ret);
-    LogStr("key[%u]: [%p]\n", (word32)keySz, key);
-    LogHex(key, 0, keySz);
+    if (ret >= 0) {
+        LogStr("key[%u]: [%p]\n", (word32)keySz, key);
+        LogHex(key, 0, keySz);
+    }
 
 #endif
 
@@ -1669,7 +1874,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1HmacSetKey_1fips__Lco
 
     key = getByteArray(env, key_buffer);
 
-    if (hmac == NULL || key == NULL) {
+    if (hmac == NULL || key == NULL ||
+        !fipsCheckArraySz(env, key_buffer, keySz)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -1682,8 +1888,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1HmacSetKey_1fips__Lco
 
     LogStr("HmacSetKey_fips(hmac=%p, type=%d, key, keySz) = %d\n", hmac, type,
         ret);
-    LogStr("key[%u]: [%p]\n", (word32)keySz, key);
-    LogHex(key, 0, keySz);
+    if (ret >= 0) {
+        LogStr("key[%u]: [%p]\n", (word32)keySz, key);
+        LogHex(key, 0, keySz);
+    }
 
     releaseByteArray(env, key_buffer, key, 1);
 
@@ -1711,8 +1919,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1HmacUpdate_1fips__Lco
 
     data = getDirectBufferAddress(env, data_buffer);
 
-    if (!hmac || !data)
+    if (!hmac || !fipsCheckDirectSz(env, data_buffer, len)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_HmacUpdate_fips(hmac, data, (word32)len);
@@ -1721,8 +1930,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1HmacUpdate_1fips__Lco
     #endif
 
     LogStr("HmacUpdate_fips(hmac=%p, data, len) = %d\n", hmac, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret >= 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 
 #endif
 
@@ -1748,7 +1959,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1HmacUpdate_1fips__Lco
 
     data = getByteArray(env, data_buffer);
 
-    if (hmac == NULL || data == NULL) {
+    if (hmac == NULL || data == NULL ||
+        !fipsCheckArraySz(env, data_buffer, len)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -1760,8 +1972,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1HmacUpdate_1fips__Lco
     }
 
     LogStr("HmacUpdate_fips(hmac=%p, data, len) = %d\n", hmac, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret >= 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 
     releaseByteArray(env, data_buffer, data, 1);
 
@@ -1788,8 +2002,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1HmacFinal_1fips__Lcom
 
     hash = getDirectBufferAddress(env, hash_buffer);
 
-    if (!hmac || !hash)
+    if (!hmac || !hash) {
         return BAD_FUNC_ARG;
+    }
+
+    /* hash must hold the digest of the keyed MAC type */
+    if (!fipsCheckDirectSz(env, hash_buffer, fipsHmacDigestSz(hmac))) {
+        return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_HmacFinal_fips(hmac, hash);
@@ -1822,7 +2042,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1HmacFinal_1fips__Lcom
 
     hash = getByteArray(env, hash_buffer);
 
-    if (hmac == NULL || hash == NULL) {
+    /* hash must hold the digest of the keyed MAC type */
+    if (hmac == NULL || hash == NULL ||
+        !fipsCheckArraySz(env, hash_buffer, fipsHmacDigestSz(hmac))) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -1919,8 +2141,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1GenerateBlock_1f
 
     buf = getDirectBufferAddress(env, buf_buffer);
 
-    if (!rng || !buf)
+    if (!rng || !fipsCheckDirectSz(env, buf_buffer, bufSz)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_RNG_GenerateBlock_fips(rng, buf, (word32)bufSz);
@@ -1929,8 +2152,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1GenerateBlock_1f
     #endif
 
     LogStr("RNG_GenerateBlock_fips(rng=%p, buf, bufSz) = %d\n", rng, ret);
-    LogStr("output[%u]: [%p]\n", (word32)bufSz, buf);
-    LogHex(buf, 0, bufSz);
+    if (ret >= 0) {
+        LogStr("output[%u]: [%p]\n", (word32)bufSz, buf);
+        LogHex(buf, 0, bufSz);
+    }
 
 #endif
 
@@ -1956,7 +2181,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1GenerateBlock_1f
 
     buf = getByteArray(env, buf_buffer);
 
-    if (rng == NULL || buf == NULL) {
+    if (rng == NULL || buf == NULL ||
+        !fipsCheckArraySz(env, buf_buffer, bufSz)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -1968,8 +2194,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1GenerateBlock_1f
     }
 
     LogStr("RNG_GenerateBlock_fips(rng=%p, buf, bufSz) = %d\n", rng, ret);
-    LogStr("output[%u]: [%p]\n", (word32)bufSz, buf);
-    LogHex(buf, 0, bufSz);
+    if (ret >= 0) {
+        LogStr("output[%u]: [%p]\n", (word32)bufSz, buf);
+        LogHex(buf, 0, bufSz);
+    }
 
     releaseByteArray(env, buf_buffer, buf, ret);
 
@@ -1991,8 +2219,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1HealthTest_1fips
     const byte* entropyB = getDirectBufferAddress(env, entropyB_object);
     byte* output = getDirectBufferAddress(env, output_object);
 
-    if (!entropyA || (reseed && !entropyB) || !output)
+    if (!fipsCheckDirectSz(env, entropyA_object, entropyASz) ||
+        (reseed && !fipsCheckDirectSz(env, entropyB_object, entropyBSz)) ||
+        !fipsCheckDirectSz(env, output_object, outputSz)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_RNG_HealthTest_fips(reseed, entropyA, (word32)entropyASz,
@@ -2004,12 +2235,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1HealthTest_1fips
 
     LogStr("RNG_HealthTest_fips(reseed=%d, entropyA, entropyASz, "
         "entropyB, entropyBSz, output, outputSz) = %d\n", reseed, ret);
-    LogStr("entropyA[%u]: [%p]\n", (word32)entropyASz, entropyA);
-    LogHex((byte*) entropyA, 0, entropyASz);
-    LogStr("entropyB[%u]: [%p]\n", (word32)entropyBSz, entropyB);
-    LogHex((byte*) entropyB, 0, entropyBSz);
-    LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
-    LogHex(output, 0, outputSz);
+    if (ret >= 0) {
+        LogStr("entropyA[%u]: [%p]\n", (word32)entropyASz, entropyA);
+        LogHex((byte*) entropyA, 0, entropyASz);
+        LogStr("entropyB[%u]: [%p]\n", (word32)entropyBSz, entropyB);
+        LogHex((byte*) entropyB, 0, entropyBSz);
+        LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
+        LogHex(output, 0, outputSz);
+    }
 
 #endif
 
@@ -2029,7 +2262,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1HealthTest_1fips
     const byte* entropyB = getByteArray(env, entropyB_object);
     byte* output = getByteArray(env, output_object);
 
-    if (!entropyA || (reseed && !entropyB) || !output) {
+    if (!entropyA || (reseed && !entropyB) || !output ||
+        !fipsCheckArraySz(env, entropyA_object, entropyASz) ||
+        (reseed && !fipsCheckArraySz(env, entropyB_object, entropyBSz)) ||
+        !fipsCheckArraySz(env, output_object, outputSz)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -2044,12 +2280,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1HealthTest_1fips
 
     LogStr("RNG_HealthTest_fips(reseed=%d, entropyA, entropyASz, "
         "entropyB, entropyBSz, output, outputSz) = %d\n", reseed, ret);
-    LogStr("entropyA[%u]: [%p]\n", (word32)entropyASz, entropyA);
-    LogHex((byte*) entropyA, 0, entropyASz);
-    LogStr("entropyB[%u]: [%p]\n", (word32)entropyBSz, entropyB);
-    LogHex((byte*) entropyB, 0, entropyBSz);
-    LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
-    LogHex(output, 0, outputSz);
+    if (ret >= 0) {
+        LogStr("entropyA[%u]: [%p]\n", (word32)entropyASz, entropyA);
+        LogHex((byte*) entropyA, 0, entropyASz);
+        LogStr("entropyB[%u]: [%p]\n", (word32)entropyBSz, entropyB);
+        LogHex((byte*) entropyB, 0, entropyBSz);
+        LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
+        LogHex(output, 0, outputSz);
+    }
 
     releaseByteArray(env, entropyA_object, (byte*)entropyA, 1);
     releaseByteArray(env, entropyB_object, (byte*)entropyB, 1);
@@ -2155,8 +2393,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaSSL_1Sign_1fips__L
      * Providing an rng is optional. RNG_GenerateBlock will return BAD_FUNC_ARG
      * on a NULL rng if an RNG is needed by RsaPad.
      */
-    if (!in || !out)
+    if (!fipsCheckDirectSz(env, in_object, inLen) ||
+        !fipsCheckDirectSz(env, out_object, outLen)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_RsaSSL_Sign_fips(in, (word32)inLen, out, (word32)outLen,
@@ -2168,10 +2408,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaSSL_1Sign_1fips__L
 
     LogStr("RsaSSL_Sign_fips(in, inLen, out, outLen, key=%p, rng=%p) = %d\n",
         key, rng, ret);
-    LogStr("in[%u]: [%p]\n", (word32)inLen, in);
-    LogHex((byte*) in, 0, inLen);
-    LogStr("out[%u]: [%p]\n", (word32)outLen, out);
-    LogHex((byte*) out, 0, outLen);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)inLen, in);
+        LogHex((byte*) in, 0, inLen);
+        LogStr("out[%u]: [%p]\n", (word32)outLen, out);
+        LogHex((byte*) out, 0, outLen);
+    }
 
 #endif
 
@@ -2190,8 +2432,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaSSL_1Sign_1fips___
     byte* out   = NULL;
     RsaKey* key = NULL;
     RNG* rng    = NULL;
-    word32 inSz = 0;
-    word32 outSz = 0;
 
     key = (RsaKey*) getNativeStruct(env, rsa_object);
     if (key == NULL || (*env)->ExceptionOccurred(env)) {
@@ -2205,14 +2445,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaSSL_1Sign_1fips___
         return BAD_FUNC_ARG;
     }
 
-    in    = getByteArray(env, in_object);
-    inSz  = getByteArrayLength(env, in_object);
-    out   = getByteArray(env, out_object);
-    outSz = getByteArrayLength(env, out_object);
+    in  = getByteArray(env, in_object);
+    out = getByteArray(env, out_object);
 
     /* sanity check on array pointers and sizes */
     if (in == NULL || out == NULL ||
-        (inSz < (word32)inLen) || (outSz < outLen)) {
+        !fipsCheckArraySz(env, in_object, inLen) ||
+        !fipsCheckArraySz(env, out_object, outLen)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -2231,10 +2470,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaSSL_1Sign_1fips___
 
     LogStr("RsaSSL_Sign_fips(in, inLen, out, outLen, key=%p, rng=%p) = %d\n",
         key, rng, ret);
-    LogStr("in[%u]: [%p]\n", (word32)inLen, in);
-    LogHex((byte*) in, 0, inLen);
-    LogStr("out[%u]: [%p]\n", (word32)outLen, out);
-    LogHex((byte*) out, 0, outLen);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)inLen, in);
+        LogHex((byte*) in, 0, inLen);
+        LogStr("out[%u]: [%p]\n", (word32)outLen, out);
+        LogHex((byte*) out, 0, outLen);
+    }
 
     releaseByteArray(env, in_object, in, 1);
     if (ret < 0) {
@@ -2271,8 +2512,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaSSL_1Verify_1fips_
     in  = getDirectBufferAddress(env, in_object);
     out = getDirectBufferAddress(env, out_object);
 
-    if (!in || !out)
+    if (!fipsCheckDirectSz(env, in_object, inLen) ||
+        !fipsCheckDirectSz(env, out_object, outLen)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_RsaSSL_Verify_fips(in, (word32)inLen, out,
@@ -2284,10 +2527,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaSSL_1Verify_1fips_
 
     LogStr("RsaSSL_Verify_fips(in, inLen, out, outLen, key=%p) = %d\n", key,
         ret);
-    LogStr("in[%u]: [%p]\n", (word32)inLen, in);
-    LogHex((byte*) in, 0, inLen);
-    LogStr("out[%u]: [%p]\n", (word32)outLen, out);
-    LogHex((byte*) out, 0, outLen);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)inLen, in);
+        LogHex((byte*) in, 0, inLen);
+        LogStr("out[%u]: [%p]\n", (word32)outLen, out);
+        LogHex((byte*) out, 0, outLen);
+    }
 
 #endif
 
@@ -2305,8 +2550,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaSSL_1Verify_1fips_
     byte* in    = NULL;
     byte* out   = NULL;
     RsaKey* key = NULL;
-    word32 inSz = 0;
-    word32 outSz = 0;
 
     key = (RsaKey*) getNativeStruct(env, rsa_object);
     if (key == NULL || (*env)->ExceptionOccurred(env)) {
@@ -2314,14 +2557,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaSSL_1Verify_1fips_
         return BAD_FUNC_ARG;
     }
 
-    in    = getByteArray(env, in_object);
-    inSz  = getByteArrayLength(env, in_object);
-    out   = getByteArray(env, out_object);
-    outSz = getByteArrayLength(env, out_object);
+    in  = getByteArray(env, in_object);
+    out = getByteArray(env, out_object);
 
     /* sanity check on array pointers and sizes */
     if (in == NULL || out == NULL ||
-        (inSz < (word32)inLen) || (outSz < outLen)) {
+        !fipsCheckArraySz(env, in_object, inLen) ||
+        !fipsCheckArraySz(env, out_object, outLen)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -2335,10 +2577,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaSSL_1Verify_1fips_
 
         LogStr("RsaSSL_Verify_fips(in, inLen, out, outLen, key=%p) = %d\n",
                key, ret);
-        LogStr("in[%u]: [%p]\n", (word32)inLen, in);
-        LogHex((byte*) in, 0, inLen);
-        LogStr("out[%u]: [%p]\n", (word32)outLen, out);
-        LogHex((byte*) out, 0, outLen);
+        if (ret >= 0) {
+            LogStr("in[%u]: [%p]\n", (word32)inLen, in);
+            LogHex((byte*) in, 0, inLen);
+            LogStr("out[%u]: [%p]\n", (word32)outLen, out);
+            LogHex((byte*) out, 0, outLen);
+        }
     }
 
     releaseByteArray(env, in_object, in, 1);
@@ -2395,8 +2639,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPrivateKeyDecode_1
     }
 
     input = getDirectBufferAddress(env, input_object);
-    if (!input)
+    if (!fipsCheckDirectSz(env, input_object, inSz)) {
         return BAD_FUNC_ARG;
+    }
 
     (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
     if ((*env)->ExceptionOccurred(env)) {
@@ -2415,8 +2660,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPrivateKeyDecode_1
 
     LogStr("RsaPrivateKeyDecode_fips(input, inOutIdx, key=%p, inSz) = %d\n",
         key, ret);
-    LogStr("input[%u]: [%p]\n", (word32)inSz, input);
-    LogHex((byte*) input, 0, inSz);
+    if (ret >= 0) {
+        LogStr("input[%u]: [%p]\n", (word32)inSz, input);
+        LogHex((byte*) input, 0, inSz);
+    }
 
 #endif
 
@@ -2451,23 +2698,26 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPrivateKeyDecode_1
     }
     tmpIdx32 = (word32)tmpIdx;
 
+    if (!input || !fipsCheckArraySz(env, input_object, inSz)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
     #if (HAVE_FIPS_VERSION >= 2)
-        ret = (!input || !key)
-            ? BAD_FUNC_ARG
-            : wc_RsaPrivateKeyDecode(input, &tmpIdx32, key, (word32)inSz);
+        ret = wc_RsaPrivateKeyDecode(input, &tmpIdx32, key, (word32)inSz);
     #else
-        ret = (!input || !key)
-            ? BAD_FUNC_ARG
-            : RsaPrivateKeyDecode_fips(input, &tmpIdx32, key, (word32)inSz);
+        ret = RsaPrivateKeyDecode_fips(input, &tmpIdx32, key, (word32)inSz);
     #endif
+    }
 
     tmpIdx = (jlong)tmpIdx32;
     (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
     LogStr("RsaPrivateKeyDecode_fips(input, inOutIdx, key=%p, inSz) = %d\n",
         key, ret);
-    LogStr("input[%u]: [%p]\n", (word32)inSz, input);
-    LogHex((byte*) input, 0, inSz);
+    if (ret >= 0) {
+        LogStr("input[%u]: [%p]\n", (word32)inSz, input);
+        LogHex((byte*) input, 0, inSz);
+    }
 
     releaseByteArray(env, input_object, input, 1);
 
@@ -2495,8 +2745,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPublicKeyDecode_1f
     }
 
     input = getDirectBufferAddress(env, input_object);
-    if (!input)
+    if (!fipsCheckDirectSz(env, input_object, inSz)) {
         return BAD_FUNC_ARG;
+    }
 
     (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
     if ((*env)->ExceptionOccurred(env)) {
@@ -2515,8 +2766,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPublicKeyDecode_1f
 
     LogStr("RsaPublicKeyDecode_fips(input, inOutIdx, key=%p, inSz) = %d\n", key,
         ret);
-    LogStr("input[%u]: [%p]\n", (word32)inSz, input);
-    LogHex((byte*) input, 0, inSz);
+    if (ret >= 0) {
+        LogStr("input[%u]: [%p]\n", (word32)inSz, input);
+        LogHex((byte*) input, 0, inSz);
+    }
 
 #endif
 
@@ -2550,23 +2803,26 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPublicKeyDecode_1f
     }
     tmpIdx32 = (word32)tmpIdx;
 
+    if (!input || !fipsCheckArraySz(env, input_object, inSz)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
     #if (HAVE_FIPS_VERSION >= 2)
-        ret = (!input)
-            ? BAD_FUNC_ARG
-            : wc_RsaPublicKeyDecode(input, &tmpIdx32, key, (word32)inSz);
+        ret = wc_RsaPublicKeyDecode(input, &tmpIdx32, key, (word32)inSz);
     #else
-        ret = (!input)
-            ? BAD_FUNC_ARG
-            : RsaPublicKeyDecode_fips(input, &tmpIdx32, key, (word32)inSz);
+        ret = RsaPublicKeyDecode_fips(input, &tmpIdx32, key, (word32)inSz);
     #endif
+    }
 
     tmpIdx = (jlong)tmpIdx32;
     (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpIdx);
 
     LogStr("RsaPublicKeyDecode_fips(input, inOutIdx, key=%p, inSz) = %d\n", key,
         ret);
-    LogStr("input[%u]: [%p]\n", (word32)inSz, input);
-    LogHex((byte*) input, 0, inSz);
+    if (ret >= 0) {
+        LogStr("input[%u]: [%p]\n", (word32)inSz, input);
+        LogHex((byte*) input, 0, inSz);
+    }
 
     releaseByteArray(env, input_object, input, 1);
 
@@ -2621,8 +2877,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ShaUpdate_1fips__Lcom
     }
 
     data = getDirectBufferAddress(env, data_buffer);
-    if (!data)
+    if (!fipsCheckDirectSz(env, data_buffer, len)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_ShaUpdate_fips(sha, data, (word32)len);
@@ -2631,8 +2888,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ShaUpdate_1fips__Lcom
     #endif
 
     LogStr("ShaUpdate_fips(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret >= 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 
 #endif
 
@@ -2657,7 +2916,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ShaUpdate_1fips__Lcom
 
     data = getByteArray(env, data_buffer);
 
-    if (data == NULL) {
+    if (data == NULL || !fipsCheckArraySz(env, data_buffer, len)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -2669,8 +2928,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ShaUpdate_1fips__Lcom
     }
 
     LogStr("ShaUpdate_fips(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret >= 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 
     releaseByteArray(env, data_buffer, data, 1);
 
@@ -2695,8 +2956,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ShaFinal_1fips__Lcom_
     }
 
     hash = getDirectBufferAddress(env, hash_buffer);
-    if (!hash)
+    if (!fipsCheckDirectSz(env, hash_buffer, SHA_DIGEST_SIZE)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_ShaFinal_fips(sha, hash);
@@ -2705,8 +2967,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ShaFinal_1fips__Lcom_
     #endif
 
     LogStr("ShaFinal_fips(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA_DIGEST_SIZE);
+    if (ret >= 0) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA_DIGEST_SIZE);
+    }
 
 #endif
 
@@ -2730,7 +2994,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ShaFinal_1fips__Lcom_
 
     hash = getByteArray(env, hash_buffer);
 
-    if (hash == NULL) {
+    if (hash == NULL || !fipsCheckArraySz(env, hash_buffer, SHA_DIGEST_SIZE)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -2742,8 +3006,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ShaFinal_1fips__Lcom_
     }
 
     LogStr("ShaFinal_fips(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA_DIGEST_SIZE);
+    if (ret >= 0) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA_DIGEST_SIZE);
+    }
 
     releaseByteArray(env, hash_buffer, hash, ret);
 
@@ -2794,8 +3060,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha256Update_1fips__L
     }
 
     data = getDirectBufferAddress(env, data_buffer);
-    if (!data)
+    if (!fipsCheckDirectSz(env, data_buffer, len)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_Sha256Update_fips(sha, data, (word32)len);
@@ -2804,8 +3071,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha256Update_1fips__L
     #endif
 
     LogStr("Sha256Update_fips(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret >= 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 
 #endif
 
@@ -2830,7 +3099,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha256Update_1fips__L
 
     data = getByteArray(env, data_buffer);
 
-    if (data == NULL) {
+    if (data == NULL || !fipsCheckArraySz(env, data_buffer, len)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -2842,8 +3111,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha256Update_1fips__L
     }
 
     LogStr("Sha256Update_fips(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret >= 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 
     releaseByteArray(env, data_buffer, data, 1);
 
@@ -2868,8 +3139,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha256Final_1fips__Lc
     }
 
     hash = getDirectBufferAddress(env, hash_buffer);
-    if (!hash)
+    if (!fipsCheckDirectSz(env, hash_buffer, SHA256_DIGEST_SIZE)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_Sha256Final_fips(sha, hash);
@@ -2878,8 +3150,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha256Final_1fips__Lc
     #endif
 
     LogStr("Sha256Final_fips(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA256_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA256_DIGEST_SIZE);
+    if (ret >= 0) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA256_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA256_DIGEST_SIZE);
+    }
 
 #endif
 
@@ -2903,7 +3177,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha256Final_1fips__Lc
 
     hash = getByteArray(env, hash_buffer);
 
-    if (hash == NULL) {
+    if (hash == NULL ||
+        !fipsCheckArraySz(env, hash_buffer, SHA256_DIGEST_SIZE)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -2915,8 +3190,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha256Final_1fips__Lc
     }
 
     LogStr("Sha256Final_fips(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA256_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA256_DIGEST_SIZE);
+    if (ret >= 0) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA256_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA256_DIGEST_SIZE);
+    }
 
     releaseByteArray(env, hash_buffer, hash, ret);
 
@@ -2932,7 +3209,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1InitSha384_1fips(
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
+#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA384)
 
     wc_Sha384* sha = (wc_Sha384*) getNativeStruct(env, sha_object);
     if ((!sha) || ((*env)->ExceptionOccurred(env))) {
@@ -2956,7 +3233,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha384Update_1fips__L
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
+#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA384)
 
     wc_Sha384* sha = NULL;
     byte* data = NULL;
@@ -2967,8 +3244,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha384Update_1fips__L
     }
 
     data = getDirectBufferAddress(env, data_buffer);
-    if (!data)
+    if (!fipsCheckDirectSz(env, data_buffer, len)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_Sha384Update_fips(sha, data, (word32)len);
@@ -2977,8 +3255,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha384Update_1fips__L
     #endif
 
     LogStr("Sha384Update_fips(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret >= 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 
 #endif
 
@@ -2991,7 +3271,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha384Update_1fips__L
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
+#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA384)
 
     wc_Sha384* sha = NULL;
     byte* data = NULL;
@@ -3003,7 +3283,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha384Update_1fips__L
 
     data = getByteArray(env, data_buffer);
 
-    if (data == NULL) {
+    if (data == NULL || !fipsCheckArraySz(env, data_buffer, len)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -3015,8 +3295,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha384Update_1fips__L
     }
 
     LogStr("Sha384Update_fips(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret >= 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 
     releaseByteArray(env, data_buffer, data, 1);
 
@@ -3030,7 +3312,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha384Final_1fips__Lc
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
+#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA384)
 
     wc_Sha384* sha = NULL;
     byte* hash = NULL;
@@ -3041,8 +3323,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha384Final_1fips__Lc
     }
 
     hash = getDirectBufferAddress(env, hash_buffer);
-    if (!hash)
+    if (!fipsCheckDirectSz(env, hash_buffer, SHA384_DIGEST_SIZE)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_Sha384Final_fips(sha, hash);
@@ -3051,8 +3334,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha384Final_1fips__Lc
     #endif
 
     LogStr("Sha384Final_fips(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA384_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA384_DIGEST_SIZE);
+    if (ret >= 0) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA384_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA384_DIGEST_SIZE);
+    }
 
 #endif
 
@@ -3064,7 +3349,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha384Final_1fips__Lc
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA512)
+#if defined(HAVE_FIPS) && defined(WOLFSSL_SHA384)
 
     wc_Sha384* sha = NULL;
     byte* hash = NULL;
@@ -3076,7 +3361,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha384Final_1fips__Lc
 
     hash = getByteArray(env, hash_buffer);
 
-    if (hash == NULL) {
+    if (hash == NULL ||
+        !fipsCheckArraySz(env, hash_buffer, SHA384_DIGEST_SIZE)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -3088,8 +3374,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha384Final_1fips__Lc
     }
 
     LogStr("Sha384Final_fips(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA384_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA384_DIGEST_SIZE);
+    if (ret >= 0) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA384_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA384_DIGEST_SIZE);
+    }
 
     releaseByteArray(env, hash_buffer, hash, ret);
 
@@ -3140,8 +3428,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha512Update_1fips__L
     }
 
     data = getDirectBufferAddress(env, data_buffer);
-    if (!data)
+    if (!fipsCheckDirectSz(env, data_buffer, len)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_Sha512Update_fips(sha, data, (word32)len);
@@ -3150,8 +3439,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha512Update_1fips__L
     #endif
 
     LogStr("Sha512Update_fips(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret >= 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 
 #endif
 
@@ -3176,7 +3467,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha512Update_1fips__L
 
     data = getByteArray(env, data_buffer);
 
-    if (data == NULL) {
+    if (data == NULL || !fipsCheckArraySz(env, data_buffer, len)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -3188,8 +3479,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha512Update_1fips__L
     }
 
     LogStr("Sha512Update_fips(sha=%p, data, len) = %d\n", sha, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret >= 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 
     releaseByteArray(env, data_buffer, data, 1);
 
@@ -3214,8 +3507,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha512Final_1fips__Lc
     }
 
     hash = getDirectBufferAddress(env, hash_buffer);
-    if (!hash)
+    if (!fipsCheckDirectSz(env, hash_buffer, SHA512_DIGEST_SIZE)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_Sha512Final_fips(sha, hash);
@@ -3224,8 +3518,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha512Final_1fips__Lc
     #endif
 
     LogStr("Sha512Final_fips(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA512_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA512_DIGEST_SIZE);
+    if (ret >= 0) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA512_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA512_DIGEST_SIZE);
+    }
 
 #endif
 
@@ -3249,7 +3545,8 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha512Final_1fips__Lc
 
     hash = getByteArray(env, hash_buffer);
 
-    if (hash == NULL) {
+    if (hash == NULL ||
+        !fipsCheckArraySz(env, hash_buffer, SHA512_DIGEST_SIZE)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -3261,8 +3558,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Sha512Final_1fips__Lc
     }
 
     LogStr("Sha512Final_fips(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA512_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA512_DIGEST_SIZE);
+    if (ret >= 0) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA512_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA512_DIGEST_SIZE);
+    }
 
     releaseByteArray(env, hash_buffer, hash, ret);
 
@@ -3333,24 +3632,28 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPublicEncrypt_1fip
      * Providing an rng is optional. RNG_GenerateBlock will return BAD_FUNC_ARG
      * on a NULL rng if an RNG is needed by RsaPad.
      */
-    if (!in || !out)
+    if (!fipsCheckDirectSz(env, in_object, inLen) ||
+        !fipsCheckDirectSz(env, out_object, outLen)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_RsaPublicEncrypt_fips(in, (word32)inLen, out, (word32)outLen,
-                                    key, rng);
+            key, rng);
     #else
         ret = RsaPublicEncrypt_fips(in, (word32)inLen, out, (word32)outLen,
-                                    key, rng);
+            key, rng);
     #endif
 
     LogStr(
         "RsaPublicEncrypt_fips(in, inLen, out, outLen, key=%p, rng=%p) = %d\n",
         key, rng, ret);
-    LogStr("in[%u]: [%p]\n", (word32)inLen, in);
-    LogHex((byte*) in, 0, inLen);
-    LogStr("out[%u]: [%p]\n", (word32)outLen, out);
-    LogHex((byte*) out, 0, outLen);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)inLen, in);
+        LogHex((byte*) in, 0, inLen);
+        LogStr("out[%u]: [%p]\n", (word32)outLen, out);
+        LogHex((byte*) out, 0, outLen);
+    }
 
 #endif
 
@@ -3387,7 +3690,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPublicEncrypt_1fip
      * Providing an rng is optional. RNG_GenerateBlock will return BAD_FUNC_ARG
      * on a NULL rng if an RNG is needed by RsaPad.
      */
-    if (in == NULL || out == NULL) {
+    if (in == NULL || out == NULL ||
+        !fipsCheckArraySz(env, in_object, inLen) ||
+        !fipsCheckArraySz(env, out_object, outLen)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -3403,10 +3708,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPublicEncrypt_1fip
     LogStr(
         "RsaPublicEncrypt_fips(in, inLen, out, outLen, key=%p, rng=%p) = %d\n",
         key, rng, ret);
-    LogStr("in[%u]: [%p]\n", (word32)inLen, in);
-    LogHex((byte*) in, 0, inLen);
-    LogStr("out[%u]: [%p]\n", (word32)outLen, out);
-    LogHex((byte*) out, 0, outLen);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)inLen, in);
+        LogHex((byte*) in, 0, inLen);
+        LogStr("out[%u]: [%p]\n", (word32)outLen, out);
+        LogHex((byte*) out, 0, outLen);
+    }
 
     releaseByteArray(env, in_object, in, 1);
     releaseByteArray(env, out_object, out, ret < 0);
@@ -3436,8 +3743,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPrivateDecrypt_1fi
     in  = getDirectBufferAddress(env, in_object);
     out = getDirectBufferAddress(env, out_object);
 
-    if (!in || !out)
+    if (!fipsCheckDirectSz(env, in_object, inLen) ||
+        !fipsCheckDirectSz(env, out_object, outLen)) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_RsaPrivateDecrypt_fips(in, (word32)inLen, out,
@@ -3449,10 +3758,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPrivateDecrypt_1fi
 
     LogStr("RsaPrivateDecrypt_fips(in, inLen, out, outLen, key=%p) = %d\n", key,
         ret);
-    LogStr("in[%u]: [%p]\n", (word32)inLen, in);
-    LogHex((byte*) in, 0, inLen);
-    LogStr("out[%u]: [%p]\n", (word32)outLen, out);
-    LogHex((byte*) out, 0, outLen);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)inLen, in);
+        LogHex((byte*) in, 0, inLen);
+        LogStr("out[%u]: [%p]\n", (word32)outLen, out);
+        LogHex((byte*) out, 0, outLen);
+    }
 
 #endif
 
@@ -3479,7 +3790,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPrivateDecrypt_1fi
     in  = getByteArray(env, in_object);
     out = getByteArray(env, out_object);
 
-    if (in == NULL || out == NULL) {
+    if (in == NULL || out == NULL ||
+        !fipsCheckArraySz(env, in_object, inLen) ||
+        !fipsCheckArraySz(env, out_object, outLen)) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -3494,10 +3807,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RsaPrivateDecrypt_1fi
 
     LogStr("RsaPrivateDecrypt_fips(in, inLen, out, outLen, key=%p) = %d\n", key,
         ret);
-    LogStr("in[%u]: [%p]\n", (word32)inLen, in);
-    LogHex((byte*) in, 0, inLen);
-    LogStr("out[%u]: [%p]\n", (word32)outLen, out);
-    LogHex((byte*) out, 0, outLen);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)inLen, in);
+        LogHex((byte*) in, 0, inLen);
+        LogStr("out[%u]: [%p]\n", (word32)outLen, out);
+        LogHex((byte*) out, 0, outLen);
+    }
 
     releaseByteArray(env, in_object, in, 1);
     releaseByteArray(env, out_object, out, ret < 0);
@@ -3548,8 +3863,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Md5Update__Lcom_wolfs
     }
 
     data = getDirectBufferAddress(env, data_buffer);
-    if (!data)
+    if (!fipsCheckDirectSz(env, data_buffer, len)) {
         return BAD_FUNC_ARG;
+    }
 
     Md5Update(md5, data, (word32)len);
     ret = com_wolfssl_wolfcrypt_WolfCrypt_SUCCESS;
@@ -3580,16 +3896,19 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Md5Update__Lcom_wolfs
     }
 
     data = getByteArray(env, data_buffer);
-    if (!data)
+    if (!data || !fipsCheckArraySz(env, data_buffer, len)) {
         ret = BAD_FUNC_ARG;
+    }
     else {
         Md5Update(md5, data, (word32)len);
         ret = com_wolfssl_wolfcrypt_WolfCrypt_SUCCESS;
     }
 
     LogStr("Md5Update_fips(md5=%p, data, len) = %d\n", md5, ret);
-    LogStr("data[%u]: [%p]\n", (word32)len, data);
-    LogHex(data, 0, len);
+    if (ret >= 0) {
+        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogHex(data, 0, len);
+    }
 
     releaseByteArray(env, data_buffer, data, 1);
 
@@ -3614,8 +3933,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Md5Final__Lcom_wolfss
     }
 
     hash = getDirectBufferAddress(env, hash_buffer);
-    if (!hash)
+    if (!fipsCheckDirectSz(env, hash_buffer, MD5_DIGEST_SIZE)) {
         return BAD_FUNC_ARG;
+    }
 
     Md5Final(md5, hash);
     ret = com_wolfssl_wolfcrypt_WolfCrypt_SUCCESS;
@@ -3645,16 +3965,19 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1Md5Final__Lcom_wolfss
     }
 
     hash = getByteArray(env, hash_buffer);
-    if (!hash)
+    if (!hash || !fipsCheckArraySz(env, hash_buffer, MD5_DIGEST_SIZE)) {
         ret = BAD_FUNC_ARG;
+    }
     else {
         Md5Final(md5, hash);
         ret = com_wolfssl_wolfcrypt_WolfCrypt_SUCCESS;
     }
 
     LogStr("Md5Final_fips(md5=%p, hash) = %d\n", md5, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)MD5_DIGEST_SIZE, hash);
-    LogHex(hash, 0, MD5_DIGEST_SIZE);
+    if (ret >= 0) {
+        LogStr("hash[%u]: [%p]\n", (word32)MD5_DIGEST_SIZE, hash);
+        LogHex(hash, 0, MD5_DIGEST_SIZE);
+    }
 
     releaseByteArray(env, hash_buffer, hash, ret);
 
@@ -3739,6 +4062,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhGenerateKeyPair__Lc
         return BAD_FUNC_ARG;
     }
 
+    if (!fipsCheckDirectSz(env, priv_buffer, tmpPrivSz) ||
+        !fipsCheckDirectSz(env, pub_buffer, tmpPubSz)) {
+        return BAD_FUNC_ARG;
+    }
+
     tmpPrivSz32 = (word32)tmpPrivSz;
     tmpPubSz32  = (word32)tmpPubSz;
 
@@ -3757,10 +4085,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhGenerateKeyPair__Lc
 
     LogStr("DhGenerateKeyPair(key=%p, rng=%p, priv, privSz, pub, pubSz) = %d\n",
         key, rng, ret);
-    LogStr("priv[%u]: [%p]\n", (word32)tmpPrivSz, priv);
-    LogHex(priv, 0, tmpPrivSz);
-    LogStr("pub[%u]: [%p]\n", (word32)tmpPubSz, pub);
-    LogHex(pub, 0, tmpPubSz);
+    if (ret >= 0) {
+        LogStr("priv[%u]: [%p]\n", (word32)tmpPrivSz, priv);
+        LogHex(priv, 0, tmpPrivSz);
+        LogStr("pub[%u]: [%p]\n", (word32)tmpPubSz, pub);
+        LogHex(pub, 0, tmpPubSz);
+    }
 
 #endif
 
@@ -3809,9 +4139,15 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhGenerateKeyPair__Lc
     priv = getByteArray(env, priv_buffer);
     pub  = getByteArray(env, pub_buffer);
 
-    ret = (!priv || !pub)
-        ? BAD_FUNC_ARG
-        : wc_DhGenerateKeyPair(key, rng, priv, &tmpPrivSz32, pub, &tmpPubSz32);
+    if (!priv || !pub ||
+        !fipsCheckArraySz(env, priv_buffer, tmpPrivSz) ||
+        !fipsCheckArraySz(env, pub_buffer, tmpPubSz)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_DhGenerateKeyPair(key, rng, priv, &tmpPrivSz32, pub,
+            &tmpPubSz32);
+    }
 
     tmpPrivSz = (jlong)tmpPrivSz32;
     tmpPubSz  = (jlong)tmpPubSz32;
@@ -3827,10 +4163,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhGenerateKeyPair__Lc
 
     LogStr("DhGenerateKeyPair(key=%p, rng=%p, priv, privSz, pub, pubSz) = %d\n",
         key, rng, ret);
-    LogStr("priv[%u]: [%p]\n", (word32)tmpPrivSz, priv);
-    LogHex(priv, 0, tmpPrivSz);
-    LogStr("pub[%u]: [%p]\n", (word32)tmpPubSz, pub);
-    LogHex(pub, 0, tmpPubSz);
+    if (ret >= 0) {
+        LogStr("priv[%u]: [%p]\n", (word32)tmpPrivSz, priv);
+        LogHex(priv, 0, tmpPrivSz);
+        LogStr("pub[%u]: [%p]\n", (word32)tmpPubSz, pub);
+        LogHex(pub, 0, tmpPubSz);
+    }
 
     releaseByteArray(env, priv_buffer, priv, ret < 0);
     releaseByteArray(env, pub_buffer, pub, ret < 0);
@@ -3865,11 +4203,16 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhAgree__Lcom_wolfssl
     priv  = getDirectBufferAddress(env, priv_buffer);
     pub   = getDirectBufferAddress(env, pub_buffer);
 
-    if (!agree || !priv || !pub)
+    if (!agree || !fipsCheckDirectSz(env, priv_buffer, privSz) ||
+        !fipsCheckDirectSz(env, pub_buffer, pubSz)) {
         return BAD_FUNC_ARG;
+    }
 
     (*env)->GetLongArrayRegion(env, agreeSz, 0, 1, &tmpAgreeSz);
     if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+    if (!fipsCheckDirectSz(env, agree_buffer, tmpAgreeSz)) {
         return BAD_FUNC_ARG;
     }
     tmpAgreeSz32 = (word32)tmpAgreeSz;
@@ -3882,12 +4225,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhAgree__Lcom_wolfssl
 
     LogStr("DhAgree(key=%p, agree, agreeSz, priv, privSz, pub, pubSz) = %d\n",
         key, ret);
-    LogStr("agree[%u]: [%p]\n", (word32)tmpAgreeSz, agree);
-    LogHex(agree, 0, tmpAgreeSz);
-    LogStr("priv[%u]: [%p]\n", (word32)privSz, priv);
-    LogHex(priv, 0, privSz);
-    LogStr("pub[%u]: [%p]\n", (word32)pubSz, pub);
-    LogHex(pub, 0, pubSz);
+    if (ret >= 0) {
+        LogStr("agree[%u]: [%p]\n", (word32)tmpAgreeSz, agree);
+        LogHex(agree, 0, tmpAgreeSz);
+        LogStr("priv[%u]: [%p]\n", (word32)privSz, priv);
+        LogHex(priv, 0, privSz);
+        LogStr("pub[%u]: [%p]\n", (word32)pubSz, pub);
+        LogHex(pub, 0, pubSz);
+    }
 
 #endif
 
@@ -3925,22 +4270,30 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhAgree__Lcom_wolfssl
     priv  = getByteArray(env, priv_buffer);
     pub   = getByteArray(env, pub_buffer);
 
-    ret = (!key || !agree || !priv || !pub)
-        ? BAD_FUNC_ARG
-        : wc_DhAgree(key, agree, &tmpAgreeSz32, priv, (word32)privSz,
-                     pub, (word32)pubSz);
+    if (!key || !agree || !priv || !pub ||
+        !fipsCheckArraySz(env, agree_buffer, tmpAgreeSz) ||
+        !fipsCheckArraySz(env, priv_buffer, privSz) ||
+        !fipsCheckArraySz(env, pub_buffer, pubSz)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_DhAgree(key, agree, &tmpAgreeSz32, priv, (word32)privSz,
+            pub, (word32)pubSz);
+    }
 
     tmpAgreeSz = (jlong)tmpAgreeSz32;
     (*env)->SetLongArrayRegion(env, agreeSz, 0, 1, &tmpAgreeSz);
 
     LogStr("DhAgree(key=%p, agree, agreeSz, priv, privSz, pub, pubSz) = %d\n",
         key, ret);
-    LogStr("agree[%u]: [%p]\n", (word32)tmpAgreeSz, agree);
-    LogHex(agree, 0, tmpAgreeSz);
-    LogStr("priv[%u]: [%p]\n", (word32)privSz, priv);
-    LogHex(priv, 0, privSz);
-    LogStr("pub[%u]: [%p]\n", (word32)pubSz, pub);
-    LogHex(pub, 0, pubSz);
+    if (ret >= 0) {
+        LogStr("agree[%u]: [%p]\n", (word32)tmpAgreeSz, agree);
+        LogHex(agree, 0, tmpAgreeSz);
+        LogStr("priv[%u]: [%p]\n", (word32)privSz, priv);
+        LogHex(priv, 0, privSz);
+        LogStr("pub[%u]: [%p]\n", (word32)pubSz, pub);
+        LogHex(pub, 0, pubSz);
+    }
 
     releaseByteArray(env, agree_buffer, agree, ret < 0);
     releaseByteArray(env, priv_buffer, priv, 1);
@@ -3970,8 +4323,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhKeyDecode__Ljava_ni
     }
 
     input = getDirectBufferAddress(env, input_buffer);
-    if (!input)
+    if (!fipsCheckDirectSz(env, input_buffer, inSz)) {
         return BAD_FUNC_ARG;
+    }
 
     (*env)->GetLongArrayRegion(env, inOutIdx, 0, 1, &tmpInOutIdx);
     if ((*env)->ExceptionOccurred(env)) {
@@ -3985,8 +4339,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhKeyDecode__Ljava_ni
     (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpInOutIdx);
 
     LogStr("DhKeyDecode(input, &inOutIdx, key=%p, inSz) = %d\n", key, ret);
-    LogStr("input[%u]: [%p]\n", (word32)inSz, input);
-    LogHex(input, 0, inSz);
+    if (ret >= 0) {
+        LogStr("input[%u]: [%p]\n", (word32)inSz, input);
+        LogHex(input, 0, inSz);
+    }
 
 #endif
 
@@ -4018,16 +4374,21 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhKeyDecode___3B_3JLc
     tmpInOutIdx32 = (word32)tmpInOutIdx;
 
     input = getByteArray(env, input_buffer);
-    ret = (!input)
-        ? BAD_FUNC_ARG
-        : wc_DhKeyDecode(input, &tmpInOutIdx32, key, (word32)inSz);
+    if (!input || !fipsCheckArraySz(env, input_buffer, inSz)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_DhKeyDecode(input, &tmpInOutIdx32, key, (word32)inSz);
+    }
 
     tmpInOutIdx = (jlong)tmpInOutIdx32;
     (*env)->SetLongArrayRegion(env, inOutIdx, 0, 1, &tmpInOutIdx);
 
     LogStr("DhKeyDecode(input, &inOutIdx, key=%p, inSz) = %d\n", key, ret);
-    LogStr("input[%u]: [%p]\n", (word32)inSz, input);
-    LogHex(input, 0, inSz);
+    if (ret >= 0) {
+        LogStr("input[%u]: [%p]\n", (word32)inSz, input);
+        LogHex(input, 0, inSz);
+    }
 
     releaseByteArray(env, input_buffer, input, 1);
 
@@ -4056,16 +4417,20 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhSetKey__Lcom_wolfss
     p = getDirectBufferAddress(env, p_buffer);
     g = getDirectBufferAddress(env, g_buffer);
 
-    if (!p || !g)
+    if (!fipsCheckDirectSz(env, p_buffer, pSz) ||
+        !fipsCheckDirectSz(env, g_buffer, gSz)) {
         return BAD_FUNC_ARG;
+    }
 
     ret = wc_DhSetKey(key, p, (word32)pSz, g, (word32)gSz);
 
     LogStr("DhSetKey(key=%p, p, pSz, g, gSz) = %d\n", key, ret);
-    LogStr("p[%u]: [%p]\n", (word32)pSz, p);
-    LogHex(p, 0, pSz);
-    LogStr("g[%u]: [%p]\n", (word32)gSz, g);
-    LogHex(g, 0, gSz);
+    if (ret >= 0) {
+        LogStr("p[%u]: [%p]\n", (word32)pSz, p);
+        LogHex(p, 0, pSz);
+        LogStr("g[%u]: [%p]\n", (word32)gSz, g);
+        LogHex(g, 0, gSz);
+    }
 
 #endif
 
@@ -4092,15 +4457,21 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhSetKey__Lcom_wolfss
     p = getByteArray(env, p_buffer);
     g = getByteArray(env, g_buffer);
 
-    ret = (!p || !g)
-        ? BAD_FUNC_ARG
-        : wc_DhSetKey(key, p, (word32)pSz, g, (word32)gSz);
+    if (!p || !g || !fipsCheckArraySz(env, p_buffer, pSz) ||
+        !fipsCheckArraySz(env, g_buffer, gSz)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_DhSetKey(key, p, (word32)pSz, g, (word32)gSz);
+    }
 
     LogStr("DhSetKey(key=%p, p, pSz, g, gSz) = %d\n", key, ret);
-    LogStr("p[%u]: [%p]\n", (word32)pSz, p);
-    LogHex(p, 0, pSz);
-    LogStr("g[%u]: [%p]\n", (word32)gSz, g);
-    LogHex(g, 0, gSz);
+    if (ret >= 0) {
+        LogStr("p[%u]: [%p]\n", (word32)pSz, p);
+        LogHex(p, 0, pSz);
+        LogStr("g[%u]: [%p]\n", (word32)gSz, g);
+        LogHex(g, 0, gSz);
+    }
 
     releaseByteArray(env, p_buffer, p, 1);
     releaseByteArray(env, g_buffer, g, 1);
@@ -4125,8 +4496,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhParamsLoad__Ljava_n
     jlong tmpPInOutSz, tmpGInOutSz;
     word32 tmpPInOutSz32, tmpGInOutSz32;
 
-    if (!input || !p || !g)
+    if (!fipsCheckDirectSz(env, input_buffer, inSz) || !p || !g) {
         return BAD_FUNC_ARG;
+    }
 
     (*env)->GetLongArrayRegion(env, pInOutSz, 0, 1, &tmpPInOutSz);
     if ((*env)->ExceptionOccurred(env)) {
@@ -4135,6 +4507,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhParamsLoad__Ljava_n
 
     (*env)->GetLongArrayRegion(env, gInOutSz, 0, 1, &tmpGInOutSz);
     if ((*env)->ExceptionOccurred(env)) {
+        return BAD_FUNC_ARG;
+    }
+
+    if (!fipsCheckDirectSz(env, p_buffer, tmpPInOutSz) ||
+        !fipsCheckDirectSz(env, g_buffer, tmpGInOutSz)) {
         return BAD_FUNC_ARG;
     }
 
@@ -4155,12 +4532,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhParamsLoad__Ljava_n
     (*env)->SetLongArrayRegion(env, gInOutSz, 0, 1, &tmpGInOutSz);
 
     LogStr("DhParamsLoad(input, inSz, p, &pInOutSz, g, &gInOutSz) = %d\n", ret);
-    LogStr("input[%u]: [%p]\n", (word32)inSz, input);
-    LogHex(input, 0, inSz);
-    LogStr("p[%u]: [%p]\n", (word32)tmpPInOutSz, p);
-    LogHex(p, 0, tmpPInOutSz);
-    LogStr("g[%u]: [%p]\n", (word32)tmpGInOutSz, g);
-    LogHex(g, 0, tmpGInOutSz);
+    if (ret >= 0) {
+        LogStr("input[%u]: [%p]\n", (word32)inSz, input);
+        LogHex(input, 0, inSz);
+        LogStr("p[%u]: [%p]\n", (word32)tmpPInOutSz, p);
+        LogHex(p, 0, tmpPInOutSz);
+        LogStr("g[%u]: [%p]\n", (word32)tmpGInOutSz, g);
+        LogHex(g, 0, tmpGInOutSz);
+    }
 
 #endif
 
@@ -4199,10 +4578,15 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhParamsLoad___3BJ_3B
     p = getByteArray(env, p_buffer);
     g = getByteArray(env, g_buffer);
 
-    ret = (!input || !p || !g)
-        ? BAD_FUNC_ARG
-        : wc_DhParamsLoad(input, (word32)inSz, p, &tmpPInOutSz32,
+    if (!input || !p || !g || !fipsCheckArraySz(env, input_buffer, inSz) ||
+        !fipsCheckArraySz(env, p_buffer, tmpPInOutSz) ||
+        !fipsCheckArraySz(env, g_buffer, tmpGInOutSz)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_DhParamsLoad(input, (word32)inSz, p, &tmpPInOutSz32,
             g, &tmpGInOutSz32);
+    }
 
     tmpPInOutSz = (jlong)tmpPInOutSz32;
     tmpGInOutSz = (jlong)tmpGInOutSz32;
@@ -4218,12 +4602,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1DhParamsLoad___3BJ_3B
     (*env)->SetLongArrayRegion(env, gInOutSz, 0, 1, &tmpGInOutSz);
 
     LogStr("DhParamsLoad(input, inSz, p, &pInOutSz, g, &gInOutSz) = %d\n", ret);
-    LogStr("input[%u]: [%p]\n", (word32)inSz, input);
-    LogHex(input, 0, inSz);
-    LogStr("p[%u]: [%p]\n", (word32)tmpPInOutSz, p);
-    LogHex(p, 0, tmpPInOutSz);
-    LogStr("g[%u]: [%p]\n", (word32)tmpGInOutSz, g);
-    LogHex(g, 0, tmpGInOutSz);
+    if (ret >= 0) {
+        LogStr("input[%u]: [%p]\n", (word32)inSz, input);
+        LogHex(input, 0, inSz);
+        LogStr("p[%u]: [%p]\n", (word32)tmpPInOutSz, p);
+        LogHex(p, 0, tmpPInOutSz);
+        LogStr("g[%u]: [%p]\n", (word32)tmpGInOutSz, g);
+        LogHex(g, 0, tmpGInOutSz);
+    }
 
     releaseByteArray(env, input_buffer, input, 1);
     releaseByteArray(env, p_buffer, p, ret < 0);
@@ -4336,6 +4722,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ecc_1shared_1secret__
     if ((*env)->ExceptionOccurred(env)) {
         return BAD_FUNC_ARG;
     }
+    if (!fipsCheckDirectSz(env, out_buffer, tmpOutLen)) {
+        return BAD_FUNC_ARG;
+    }
+
     tmpOutLen32 = (word32)tmpOutLen;
 
     ret = wc_ecc_shared_secret(priv, pub, out, &tmpOutLen32);
@@ -4345,8 +4735,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ecc_1shared_1secret__
 
     LogStr("ecc_shared_secret(priv=%p, pub=%p, out, outLen) = %d\n", priv, pub,
         ret);
-    LogStr("out[%u]: [%p]\n", (word32)tmpOutLen, out);
-    LogHex(out, 0, tmpOutLen);
+    if (ret >= 0) {
+        LogStr("out[%u]: [%p]\n", (word32)tmpOutLen, out);
+        LogHex(out, 0, tmpOutLen);
+    }
 
 #endif
 
@@ -4389,6 +4781,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ecc_1shared_1secret__
             releaseByteArray(env, out_buffer, out, 1);
             return BAD_FUNC_ARG;
         }
+        if (!fipsCheckArraySz(env, out_buffer, tmpOutLen)) {
+            releaseByteArray(env, out_buffer, out, 1);
+            return BAD_FUNC_ARG;
+        }
         tmpOutLen32 = (word32)tmpOutLen;
 
         ret = wc_ecc_shared_secret(priv, pub, out, &tmpOutLen32);
@@ -4396,8 +4792,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ecc_1shared_1secret__
         tmpOutLen = (jlong)tmpOutLen32;
         (*env)->SetLongArrayRegion(env, outlen, 0, 1, &tmpOutLen);
 
-        LogStr("out[%u]: [%p]\n", (word32)tmpOutLen, out);
-        LogHex(out, 0, tmpOutLen);
+        if (ret >= 0) {
+            LogStr("out[%u]: [%p]\n", (word32)tmpOutLen, out);
+            LogHex(out, 0, tmpOutLen);
+        }
     }
 
     releaseByteArray(env, out_buffer, out, ret);
@@ -4424,14 +4822,17 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ecc_1import_1x963__Lj
     }
 
     in = getDirectBufferAddress(env, in_buffer);
-    if (!in)
+    if (!fipsCheckDirectSz(env, in_buffer, inLen)) {
         return BAD_FUNC_ARG;
+    }
 
     ret = wc_ecc_import_x963(in, (word32)inLen, key);
 
     LogStr("wc_ecc_import_x963(in, inLen, key=%p) = %d\n", key, ret);
-    LogStr("in[%u]: [%p]\n", (word32)inLen, in);
-    LogHex(in, 0, inLen);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)inLen, in);
+        LogHex(in, 0, inLen);
+    }
 
 #endif
 
@@ -4456,12 +4857,18 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ecc_1import_1x963___3
 
     in = getByteArray(env, in_buffer);
 
-    ret = (!in) ? BAD_FUNC_ARG
-                : wc_ecc_import_x963(in, (word32)inLen, key);
+    if (!in || !fipsCheckArraySz(env, in_buffer, inLen)) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_ecc_import_x963(in, (word32)inLen, key);
+    }
 
     LogStr("wc_ecc_import_x963(in, inLen, key=%p) = %d\n", key, ret);
-    LogStr("in[%u]: [%p]\n", (word32)inLen, in);
-    LogHex(in, 0, inLen);
+    if (ret >= 0) {
+        LogStr("in[%u]: [%p]\n", (word32)inLen, in);
+        LogHex(in, 0, inLen);
+    }
 
     releaseByteArray(env, in_buffer, in, 1);
 
@@ -4496,6 +4903,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ecc_1export_1x963__Lc
     if ((*env)->ExceptionOccurred(env)) {
         return BAD_FUNC_ARG;
     }
+    if (!fipsCheckDirectSz(env, out_buffer, tmpOutLen)) {
+        return BAD_FUNC_ARG;
+    }
+
     tmpOutLen32 = (word32)tmpOutLen;
 
     ret = wc_ecc_export_x963(key, out, &tmpOutLen32);
@@ -4504,8 +4915,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ecc_1export_1x963__Lc
     (*env)->SetLongArrayRegion(env, outLen, 0, 1, &tmpOutLen);
 
     LogStr("wc_ecc_export_x963(key=%p, out, outLen) = %d\n", key, ret);
-    LogStr("out[%u]: [%p]\n", (word32)tmpOutLen, out);
-    LogHex(out, 0, tmpOutLen);
+    if (ret >= 0) {
+        LogStr("out[%u]: [%p]\n", (word32)tmpOutLen, out);
+        LogHex(out, 0, tmpOutLen);
+    }
 
 #endif
 
@@ -4542,6 +4955,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ecc_1export_1x963__Lc
             releaseByteArray(env, out_buffer, out, 1);
             return BAD_FUNC_ARG;
         }
+        if (!fipsCheckArraySz(env, out_buffer, tmpOutLen)) {
+            releaseByteArray(env, out_buffer, out, 1);
+            return BAD_FUNC_ARG;
+        }
         tmpOutLen32 = (word32)tmpOutLen;
 
         ret = wc_ecc_export_x963(key, out, &tmpOutLen32);
@@ -4549,8 +4966,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1ecc_1export_1x963__Lc
         tmpOutLen = (jlong)tmpOutLen32;
         (*env)->SetLongArrayRegion(env, outLen, 0, 1, &tmpOutLen);
 
-        LogStr("out[%u]: [%p]\n", (word32)tmpOutLen, out);
-        LogHex(out, 0, tmpOutLen);
+        if (ret >= 0) {
+            LogStr("out[%u]: [%p]\n", (word32)tmpOutLen, out);
+            LogHex(out, 0, tmpOutLen);
+        }
     }
 
 

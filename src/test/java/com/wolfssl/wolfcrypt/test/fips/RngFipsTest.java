@@ -34,6 +34,7 @@ import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.Fips;
 
 import com.wolfssl.wolfcrypt.test.Util;
@@ -122,5 +123,56 @@ public class RngFipsTest extends FipsTest {
                     entropyA, inputA[i].length() / 2, entropyB,
                     inputB[i].length() / 2, expected, result[i].length() / 2));
         }
+    }
+
+    @Test
+    public void healthTestShouldRejectUndersizedOutputUsingByteArray() {
+        /* outputSz claims 256 bytes but the array is only 1 byte */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.RNG_HealthTest_fips(0, new byte[48], 48, null, 0,
+                new byte[1], 256));
+    }
+
+    @Test
+    public void healthTestShouldRejectUndersizedEntropyBUsingByteArray() {
+        /* with reseed set, entropyB must hold entropyBSz bytes */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.RNG_HealthTest_fips(1, new byte[48], 48, new byte[1], 32,
+                new byte[256], 256));
+    }
+
+    @Test
+    public void healthTestShouldRejectUndersizedOutputUsingByteBuffer() {
+        ByteBuffer entropyA = ByteBuffer.allocateDirect(48);
+        ByteBuffer output = ByteBuffer.allocateDirect(1);
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.RNG_HealthTest_fips(0, entropyA, 48, null, 0, output, 256));
+    }
+
+    @Test
+    public void generateBlockShouldRejectUndersizedBufferUsingByteArray() {
+        Rng rng = new Rng();
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRng_fips(rng));
+
+        /* bufSz claims 256 bytes but the array is only 1 byte */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.RNG_GenerateBlock_fips(rng, new byte[1], 256));
+
+        Fips.FreeRng_fips(rng);
+    }
+
+    @Test
+    public void generateBlockShouldRejectNegativeSizeUsingByteBuffer() {
+        Rng rng = new Rng();
+        ByteBuffer buf = ByteBuffer.allocateDirect(32);
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRng_fips(rng));
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.RNG_GenerateBlock_fips(rng, buf, -1));
+
+        Fips.FreeRng_fips(rng);
     }
 }

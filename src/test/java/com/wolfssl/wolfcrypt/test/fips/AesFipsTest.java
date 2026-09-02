@@ -25,6 +25,7 @@ import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.Rule;
@@ -33,7 +34,9 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
 import com.wolfssl.wolfcrypt.Aes;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.Fips;
 
 import com.wolfssl.wolfcrypt.test.Util;
@@ -49,6 +52,8 @@ public class AesFipsTest extends FipsTest {
     private ByteBuffer aad = ByteBuffer.allocateDirect(Aes.BLOCK_SIZE);
     private ByteBuffer tag = ByteBuffer.allocateDirect(Aes.BLOCK_SIZE);
     private ByteBuffer expected = ByteBuffer.allocateDirect(Aes.BLOCK_SIZE);
+    private static final int BAD_FUNC_ARG =
+        WolfCryptError.BAD_FUNC_ARG.getCode();
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
@@ -56,6 +61,11 @@ public class AesFipsTest extends FipsTest {
     @BeforeClass
     public static void setupClass() {
         System.out.println("JNI FIPS AES Tests");
+    }
+
+    private static void assumeAesGcm() {
+        Assume.assumeTrue("AES-GCM not compiled in",
+            FeatureDetect.AesGcmEnabled());
     }
 
     @Test
@@ -102,6 +112,69 @@ public class AesFipsTest extends FipsTest {
                 WolfCrypt.SUCCESS,
                 Fips.AesSetIV_fips(new Aes(),
                         Util.h2b("00112233445566778899aabbccddeeff")));
+    }
+
+    @Test
+    public void setKeyShouldRejectUndersizedKeyUsingByteArray() {
+        /* keylen claims 16 bytes but the array is only 1 byte */
+        assertEquals(BAD_FUNC_ARG, Fips.AesSetKey_fips(new Aes(),
+            new byte[1], Aes.KEY_SIZE_128, new byte[Aes.BLOCK_SIZE],
+            Aes.ENCRYPT_MODE));
+    }
+
+    @Test
+    public void setKeyShouldRejectUndersizedKeyUsingByteBuffer() {
+        ByteBuffer smallKey = ByteBuffer.allocateDirect(1);
+        assertEquals(BAD_FUNC_ARG, Fips.AesSetKey_fips(new Aes(), smallKey,
+            Aes.KEY_SIZE_128, iv, Aes.ENCRYPT_MODE));
+    }
+
+    @Test
+    public void cbcEncryptShouldRejectUndersizedBuffersUsingByteArray() {
+        /* size claims a full block but out/in are only 1 byte each */
+        assertEquals(BAD_FUNC_ARG, Fips.AesCbcEncrypt_fips(new Aes(),
+            new byte[1], new byte[1], Aes.BLOCK_SIZE));
+    }
+
+    @Test
+    public void cbcEncryptShouldRejectNegativeSizeUsingByteArray() {
+        assertEquals(BAD_FUNC_ARG, Fips.AesCbcEncrypt_fips(new Aes(),
+            new byte[Aes.BLOCK_SIZE], new byte[Aes.BLOCK_SIZE], -1));
+    }
+
+    @Test
+    public void cbcEncryptShouldRejectUndersizedBuffersUsingByteBuffer() {
+        ByteBuffer smallOut = ByteBuffer.allocateDirect(1);
+        ByteBuffer smallIn = ByteBuffer.allocateDirect(1);
+        assertEquals(BAD_FUNC_ARG, Fips.AesCbcEncrypt_fips(new Aes(),
+            smallOut, smallIn, Aes.BLOCK_SIZE));
+    }
+
+    @Test
+    public void gcmEncryptShouldRejectUndersizedAuthInUsingByteArray() {
+        assumeAesGcm();
+        /* authInSz claims a full block but authIn is only 1 byte */
+        assertEquals(BAD_FUNC_ARG, Fips.AesGcmEncrypt_fips(new Aes(),
+            new byte[Aes.BLOCK_SIZE], new byte[Aes.BLOCK_SIZE],
+            Aes.BLOCK_SIZE, new byte[12], 12, new byte[Aes.BLOCK_SIZE],
+            Aes.BLOCK_SIZE, new byte[1], Aes.BLOCK_SIZE));
+    }
+
+    @Test
+    public void gcmEncryptShouldRejectNullAuthTagWithSizeUsingByteBuffer() {
+        assumeAesGcm();
+        assertEquals(BAD_FUNC_ARG, Fips.AesGcmEncrypt_fips(new Aes(),
+            output, input, Aes.BLOCK_SIZE, iv, 12, null, Aes.BLOCK_SIZE,
+            aad, Aes.BLOCK_SIZE));
+    }
+
+    @Test
+    public void gcmDecryptShouldRejectUndersizedBuffersUsingByteArray() {
+        assumeAesGcm();
+        /* size claims a full block but out/in are only 1 byte each */
+        assertEquals(BAD_FUNC_ARG, Fips.AesGcmDecrypt_fips(new Aes(),
+            new byte[1], new byte[1], Aes.BLOCK_SIZE, new byte[12], 12,
+            new byte[Aes.BLOCK_SIZE], Aes.BLOCK_SIZE, null, 0));
     }
 
     @Test
@@ -368,6 +441,7 @@ public class AesFipsTest extends FipsTest {
 
     @Test
     public void gcmEncrypShouldMatchUsingByteByffer() {
+        assumeAesGcm();
         String[] keys = new String[] {
                 "96f309d0f15ba970e114a9216e75a14f89e28948ce7d98bd37f0beefe36803b0",
                 "3872431f89eba694cbc9b12d10d11b707a4248e7ff90a4bbcd271df7ff33c3a8",
@@ -506,6 +580,7 @@ public class AesFipsTest extends FipsTest {
 
     @Test
     public void gcmEncrypShouldMatchUsingByteArray() {
+        assumeAesGcm();
         String[] keys = new String[] {
                 "96f309d0f15ba970e114a9216e75a14f89e28948ce7d98bd37f0beefe36803b0",
                 "3872431f89eba694cbc9b12d10d11b707a4248e7ff90a4bbcd271df7ff33c3a8",

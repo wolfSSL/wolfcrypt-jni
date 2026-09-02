@@ -26,6 +26,11 @@ import java.nio.ByteBuffer;
 /**
  * Thin JNI wrapper for the native WolfCrypt FIPS 140-2/3 specific APIs.
  *
+ * Every buffer argument must be backed by at least the number of bytes given
+ * by its size argument, or by the fixed size the operation requires (block
+ * size, digest size). Undersized buffers and negative sizes are rejected with
+ * BAD_FUNC_ARG before the native call.
+ *
  * -----------------------------------------------------------------------------
  * THREADING / SYNCHRONIZATION NOTE:
  * -----------------------------------------------------------------------------
