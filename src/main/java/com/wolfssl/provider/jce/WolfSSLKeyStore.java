@@ -31,6 +31,7 @@ import java.io.OutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.security.Key;
@@ -2544,6 +2545,26 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
     }
 
     /**
+     * Fill buf from the stream, naming the region if the stream ends first.
+     *
+     * @param dis stream to read from
+     * @param buf buffer to fill completely
+     * @param what region name for the error message
+     *
+     * @throws IOException if the stream ends before buf is full
+     */
+    private static void readFully(DataInputStream dis, byte[] buf, String what)
+        throws IOException {
+
+        try {
+            dis.readFully(buf);
+        }
+        catch (EOFException e) {
+            throw new IOException(what + " truncated in WKS stream", e);
+        }
+    }
+
+    /**
      * Load the KeyStore from the provided InputStream.
      *
      * @param stream InputStream from which to load KeyStore
@@ -2566,7 +2587,6 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         int entryCount = 0;
         int entryType = 0;
         int encodedLen = 0;
-        int bytesRead = 0;
         int saltLen = 0;
         int hmacLen = 0;
         int iterations = 0;
@@ -2664,11 +2684,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
 
                 /* encoded entry */
                 encodedEntry = new byte[encodedLen];
-                bytesRead = dis.read(encodedEntry);
-                if (bytesRead != encodedLen) {
-                    throw new IOException(
-                        "Unable to read total encoded entry byte array");
-                }
+                readFully(dis, encodedEntry, "Encoded entry");
 
                 switch (entryType) {
                     case WKS_ENTRY_ID_PRIVATE_KEY:
@@ -2702,10 +2718,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             }
 
             salt = new byte[saltLen];
-            saltLen = dis.read(salt);
-            if (saltLen != WKS_PBKDF2_SALT_SIZE) {
-                throw new IOException("Failed to read entire salt from WKS");
-            }
+            readFully(dis, salt, "PBKDF2 salt");
 
             /* PBKDF2 iterations */
             iterations = dis.readInt();
@@ -2727,11 +2740,7 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     "expected (" + WKS_HMAC_KEY_LENGTH + ")");
             }
             hmac = new byte[hmacLen];
-            hmacLen = dis.read(hmac);
-            if (hmacLen != hmac.length) {
-                throw new IOException(
-                    "Failed to read entire HMAC from WKS stream");
-            }
+            readFully(dis, hmac, "HMAC");
 
             /* Regenerate HMAC-SHA512 over bytes read so far */
             if (havePass) {
