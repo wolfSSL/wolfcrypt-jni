@@ -126,7 +126,7 @@ void wolfCrypt_JNI_FipsCb_cleanup(JNIEnv* env)
 void NativeErrorCallback(const int ok, const int err, const char * const hash)
 {
 #ifdef HAVE_FIPS
-    JNIEnv* env;
+    JNIEnv* env = NULL;
     jobject localCb = NULL;
     jclass class = NULL;
     jmethodID method = NULL;
@@ -160,14 +160,21 @@ void NativeErrorCallback(const int ok, const int err, const char * const hash)
      * so a concurrent wolfCrypt_1SetCb_1fips() cannot free the global
      * reference while we use it. The rest of this function uses only the
      * local reference and never touches g_errCb again. */
-    if (g_fipsCbMutexInit && wc_LockMutex(&g_fipsCbMutex) == 0) {
+    if (!g_fipsCbMutexInit) {
+        printf("FIPS callback mutex not initialized, error callback skipped\n");
+    }
+    else if (wc_LockMutex(&g_fipsCbMutex) == 0) {
         if (g_errCb != NULL &&
             (*env)->GetObjectRefType(env, g_errCb) == JNIGlobalRefType) {
             localCb = (*env)->NewLocalRef(env, g_errCb);
         }
         wc_UnLockMutex(&g_fipsCbMutex);
     }
+    else {
+        printf("Unable to lock FIPS callback mutex, error callback skipped\n");
+    }
 
+    /* Each step needs the previous one, all paths reach the cleanup below */
     if (localCb != NULL) {
         class = (*env)->GetObjectClass(env, localCb);
     }
