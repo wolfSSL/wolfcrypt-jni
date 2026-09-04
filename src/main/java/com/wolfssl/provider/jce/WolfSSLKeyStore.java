@@ -1604,6 +1604,9 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             return false;
         }
 
+        /* Remove NULL AlgorithmIdentifier (JDK re-encoding) if present */
+        certSpki = WolfCryptSpkiUtil.stripNullAlgIdParams(certSpki);
+
         try {
             try {
                 /* Level auto-detected from PKCS#8 DER. */
