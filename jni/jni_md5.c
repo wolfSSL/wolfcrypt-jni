@@ -269,7 +269,8 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final_1internal___3B(
 
     hash = getByteArray(env, hash_buffer);
 
-    if (!md5 || !hash) {
+    if (md5 == NULL || hash == NULL ||
+        getByteArrayLength(env, hash_buffer) < MD5_DIGEST_SIZE) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -281,7 +282,7 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final_1internal___3B(
     }
 
     LogStr("wc_Md5Final(md5=%p, hash) = %d\n", md5, ret);
-    if (hash != NULL) {
+    if (ret == 0) {
         LogStr("hash[%u]: [%p]\n", (word32)MD5_DIGEST_SIZE, hash);
         LogHex(hash, 0, MD5_DIGEST_SIZE);
     }
