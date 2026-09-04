@@ -29,6 +29,8 @@ extern "C" {
 #define com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_1024_BITS 128L
 #undef com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_2048_BITS
 #define com_wolfssl_wolfcrypt_WolfCrypt_SIZE_OF_2048_BITS 256L
+#undef com_wolfssl_wolfcrypt_WolfCrypt_MAX_PEM_PASSWORD_SIZE
+#define com_wolfssl_wolfcrypt_WolfCrypt_MAX_PEM_PASSWORD_SIZE 65536L
 #undef com_wolfssl_wolfcrypt_WolfCrypt_SSL_FILETYPE_PEM
 #define com_wolfssl_wolfcrypt_WolfCrypt_SSL_FILETYPE_PEM 1L
 #undef com_wolfssl_wolfcrypt_WolfCrypt_SSL_FILETYPE_ASN1
@@ -176,10 +178,10 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcBase16Decode
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfCrypt
  * Method:    wcKeyPemToDer
- * Signature: ([BLjava/lang/String;)[B
+ * Signature: ([B[B)[B
  */
 JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
-  (JNIEnv *, jclass, jbyteArray, jstring);
+  (JNIEnv *, jclass, jbyteArray, jbyteArray);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfCrypt
