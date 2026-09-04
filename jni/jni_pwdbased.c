@@ -49,10 +49,20 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
     byte* salt = NULL;
     byte* outKey = NULL;
     jboolean passIsCopy = JNI_FALSE;
+    jint passLen = 0;
+    jint saltLen = 0;
     jbyteArray result = NULL;
     (void)jcl;
 
     if (env == NULL || kLen <= 0) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return NULL;
+    }
+
+    passLen = (passBuf != NULL) ? (*env)->GetArrayLength(env, passBuf) : 0;
+    saltLen = (saltBuf != NULL) ? (*env)->GetArrayLength(env, saltBuf) : 0;
+    if (passBufLen < 0 || passBufLen > passLen ||
+        sBufLen < 0 || sBufLen > saltLen) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
         return NULL;
     }
@@ -98,12 +108,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
 
     if (pass != NULL) {
         /* Zero native copy of password, JNI_ABORT does not copy back */
-        if (passIsCopy == JNI_TRUE && passBufLen > 0) {
+        if ((passIsCopy == JNI_TRUE) && (passLen > 0)) {
         #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
             !defined(WOLFSSL_NO_FORCE_ZERO)
-            wc_ForceZero(pass, passBufLen);
+            wc_ForceZero(pass, passLen);
         #else
-            XMEMSET(pass, 0, passBufLen);
+            XMEMSET(pass, 0, passLen);
         #endif
         }
         (*env)->ReleaseByteArrayElements(env, passBuf, (jbyte*)pass, JNI_ABORT);
@@ -144,10 +154,20 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
     byte* salt = NULL;
     byte* outKey = NULL;
     jboolean passIsCopy = JNI_FALSE;
+    jint passLen = 0;
+    jint saltLen = 0;
     jbyteArray result = NULL;
     (void)jcl;
 
     if (env == NULL || kLen <= 0) {
+        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
+        return NULL;
+    }
+
+    passLen = (passBuf != NULL) ? (*env)->GetArrayLength(env, passBuf) : 0;
+    saltLen = (saltBuf != NULL) ? (*env)->GetArrayLength(env, saltBuf) : 0;
+    if (passBufLen < 0 || passBufLen > passLen ||
+        sBufLen < 0 || sBufLen > saltLen) {
         throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
         return NULL;
     }
@@ -194,12 +214,12 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
 
     if (pass != NULL) {
         /* Zero native copy of password, JNI_ABORT does not copy back */
-        if (passIsCopy == JNI_TRUE && passBufLen > 0) {
+        if ((passIsCopy == JNI_TRUE) && (passLen > 0)) {
         #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
             !defined(WOLFSSL_NO_FORCE_ZERO)
-            wc_ForceZero(pass, passBufLen);
+            wc_ForceZero(pass, passLen);
         #else
-            XMEMSET(pass, 0, passBufLen);
+            XMEMSET(pass, 0, passLen);
         #endif
         }
         (*env)->ReleaseByteArrayElements(env, passBuf, (jbyte*)pass, JNI_ABORT);
