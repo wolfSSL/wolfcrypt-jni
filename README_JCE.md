@@ -229,6 +229,11 @@ The JCE provider currently supports the following algorithms:
         SHA3-256withECDSAinP1363Format
         SHA3-384withECDSAinP1363Format
         SHA3-512withECDSAinP1363Format
+        EdDSA (any Ed25519/Ed448 key, curve taken from the key)
+        Ed25519
+            OID: 1.3.101.112
+        Ed448
+            OID: 1.3.101.113
         ML-DSA (any ML-DSA-44/65/87 key)
         ML-DSA-44
             OID: 2.16.840.1.101.3.4.3.17
@@ -315,6 +320,9 @@ The JCE provider currently supports the following algorithms:
         RSASSA-PSS
         EC
         DH
+        EdDSA (defaults to Ed25519, curve overridable via init())
+        Ed25519 (alias OID: 1.3.101.112)
+        Ed448 (alias OID: 1.3.101.113)
         ML-DSA (defaults to ML-DSA-65, level overridable via init())
         ML-DSA-44 (alias OID: 2.16.840.1.101.3.4.3.17)
         ML-DSA-65 (alias OID: 2.16.840.1.101.3.4.3.18)
@@ -341,6 +349,9 @@ The JCE provider currently supports the following algorithms:
         RSA
         EC (alias: 1.2.840.10045.2.1)
         DH (aliases: DiffieHellman, 1.2.840.113549.1.3.1)
+        EdDSA (any Ed25519/Ed448 key)
+        Ed25519 (alias OID: 1.3.101.112)
+        Ed448 (alias OID: 1.3.101.113)
         ML-DSA
         ML-DSA-44 (alias OID: 2.16.840.1.101.3.4.3.17)
         ML-DSA-65 (alias OID: 2.16.840.1.101.3.4.3.18)
@@ -477,6 +488,98 @@ modes in a few ways:
   `AesXts.updateSector()` takes the sector number directly.
 
 See `examples/provider/AesXtsExample.java` for a sector style example.
+
+### EdDSA (Ed25519 / Ed448, RFC 8032) Notes
+
+wolfJCE supports Ed25519 and Ed448 signatures. Native wolfSSL must be built
+with `--enable-ed25519` and/or `--enable-ed448` (both are included in
+`--enable-all`). `--enable-ed448` pulls in SHAKE256 (SHA-3) automatically.
+Curves not compiled in are not registered in wolfJCE. The Android example
+project default configuration (`WOLFSSL_PKG_TYPE` "normal") enables neither
+curve. To use EdDSA there, add `HAVE_ED25519` and `HAVE_ED448` to its CMake
+defines and remove the `WOLFSSL_NO_SHAKE256` define, since Ed448 needs
+SHAKE256 (`WOLFSSL_SHA3` is already on).
+
+Service names `Ed25519` and `Ed448` are curve specific, `EdDSA` accepts a key
+of either curve (the `EdDSA` `KeyPairGenerator` defaults to Ed25519, or to
+Ed448 when Ed25519 is not compiled in). The OIDs `1.3.101.112` (Ed25519)
+and `1.3.101.113` (Ed448) are registered as aliases in both bare and `OID.`
+prefixed forms. `EDDSA` and `ED25519` also resolve since JCA lookups are case
+insensitive.
+
+Keys:
+
+- `getAlgorithm()` returns `"EdDSA"`. The curve is available from `getParams()`
+  as a `java.security.spec.NamedParameterSpec` on JDK 11+ (`null` on JDK 8-10)
+  and from `getCurveName()` on every JDK.
+- Public keys use X.509 SubjectPublicKeyInfo (`getFormat()` of `"X.509"`),
+  RFC 8410 with algorithm parameters absent and the raw RFC 8032 key in the
+  BIT STRING.
+- Private keys use PKCS#8 (`getFormat()` of `"PKCS#8"`). wolfJCE outputs the
+  v1 form (private key only, `OCTET STRING { OCTET STRING }`). For input,
+  wolfJCE supports both the v1 form and the RFC 5958 v2 form with an embedded
+  public key.
+- `KeyFactory` accepts `X509EncodedKeySpec` / `PKCS8EncodedKeySpec` on every
+  JDK and the JDK 15 `EdECPublicKeySpec` / `EdECPrivateKeySpec` on JDK 15+.
+  `translateKey()` re-creates keys from other providers from their encoding.
+- `KeyPairGenerator.initialize(int)` accepts 255 (Ed25519, as SunEC), 256
+  (Ed25519, as Bouncy Castle) and 448 (Ed448). `initialize(spec)` accepts a
+  `NamedParameterSpec` (JDK 11+) or an `ECGenParameterSpec` naming
+  `"Ed25519"` / `"Ed448"` (Java 8).
+- `KeyPairGenerator` services are registered only when native key generation
+  is compiled in. `NO_ED25519_MAKE_KEY` also removes Ed25519 signing and
+  private key import (both derive the public key natively), leaving public
+  key import and verify.
+- Public keys are validated on import by native wolfSSL. wolfSSL 5.9.2 and
+  later reject off-curve and small-order points.
+
+Signature variants (pure, context, pre-hash) follow the semantics of the JDK
+`java.security.spec.EdDSAParameterSpec` and are selected with
+`Signature.setParameter()`:
+
+- No parameters: pure Ed25519 / Ed448 (empty context).
+- `com.wolfssl.provider.jce.WolfCryptEdDSAParameterSpec(prehash, context)`
+  works on every JDK. A present context (even an empty one) selects Ed25519ctx
+  for Ed25519 and is passed to Ed448, `prehash = true` selects Ed25519ph /
+  Ed448ph. `WolfCryptContextParameterSpec` sets a context only and always
+  supplies one (empty when built with null), leaving `prehash` as previously
+  set, so with `prehash` off it selects Ed25519ctx rather than pure Ed25519.
+- On JDK 15+ the JDK `EdDSAParameterSpec` is accepted as well, and for every
+  combination the signatures are byte-identical to SunEC's (EdDSA signing is
+  deterministic).
+- `Signature.getParameters()` returns `null`.
+
+JDK 15+ multi-release overlay: SunEC (and Bouncy Castle on JDK 15+) only accept
+key objects that implement `java.security.interfaces.EdECPublicKey` /
+`EdECPrivateKey`. wolfJCE compiles for Java 8, so those interfaces are
+provided by an overlay in the `META-INF/versions/15` layer of the JAR (the JAR
+is marked `Multi-Release: true`). On JDK 15 and later every EdDSA key produced
+by the wolfJCE `KeyPairGenerator` and `KeyFactory` implements them and can be
+handed directly to `Signature.getInstance("Ed25519", "SunEC")`, while JDK 8-14
+and Android use the plain base classes. The overlay is built automatically by
+`ant` and `mvn` when the build JDK is 15 or later. On JDK 8-14, or for a key
+created through the public `WolfCryptEdDSAPublicKey` /
+`WolfCryptEdDSAPrivateKey` constructors, convert with
+`KeyFactory.getInstance("Ed25519", "SunEC").translateKey(key)` before handing
+it to a pinned SunEC signature. An unpinned `Signature.getInstance("Ed25519")`
+needs no conversion because the JCA skips a provider that rejects the key.
+Multi-release resolution is a feature of the JAR loader, so the overlay is
+applied only when wolfJCE is loaded from `wolfcrypt-jni.jar`. A class
+directory such as Maven's `target/classes` (used by `mvn test`) yields the
+base classes. Maven does not remove an overlay built earlier under
+`target/classes` once its profile is inactive, so run `mvn clean` when
+switching between JDK majors below and above 15. Java serialization always
+writes the base classes (`writeReplace`), so a stream produced on JDK 15+ reads
+back on JDK 8-14 and Android, and `readResolve` restores the overlay class on
+JDK 15+. Java serialization writes the raw private key unprotected, so prefer
+`getEncoded()` inside an encrypted container for key exchange. Code that
+reaches the `EdEC` methods by reflection must resolve them on the
+`java.security.interfaces` types, since the concrete overlay classes are not
+public.
+
+The WKS KeyStore stores Ed25519 and Ed448 private keys and certificates.
+See `examples/provider/EdDSAExample.java` for a complete example and
+`examples/provider/CryptoBenchmark.java` (`eddsa`) for benchmarks.
 
 ### SecureRandom.getInstanceStrong()
 

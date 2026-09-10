@@ -32,12 +32,14 @@ import org.junit.BeforeClass;
 import org.junit.AfterClass;
 
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.Map;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
@@ -68,6 +70,7 @@ import java.security.UnrecoverableKeyException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateException;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -217,6 +220,22 @@ public class WolfSSLKeyStoreTest {
     private static String caMlDsa44WKS     = null;   /* ca-mldsa44.wks */
     private static String caMlDsa65WKS     = null;   /* ca-mldsa65.wks */
     private static String caMlDsa87WKS     = null;   /* ca-mldsa87.wks */
+
+    /* EdDSA (Ed25519 / Ed448) test certs + keys */
+    private static String ed25519CertDer = null;  /* server-ed25519.der */
+    private static String ed25519KeyDer  = null;  /* server-ed25519-priv.der */
+    private static String ed448CertDer   = null;  /* server-ed448.der */
+    private static String ed448KeyDer    = null;  /* server-ed448-priv.der */
+    private static String serverEd25519WKS = null;  /* server-ed25519.wks */
+    private static String serverEd448WKS   = null;   /* server-ed448.wks */
+    private static String caEd25519WKS     = null;   /* ca-ed25519.wks */
+    private static String caEd448WKS       = null;   /* ca-ed448.wks */
+
+    /* Objects loaded from the four files above */
+    private static PrivateKey  serverKeyEd25519  = null; /* ed25519KeyDer */
+    private static Certificate serverCertEd25519 = null; /* ed25519CertDer */
+    private static PrivateKey  serverKeyEd448    = null; /* ed448KeyDer */
+    private static Certificate serverCertEd448   = null; /* ed448CertDer */
 
     /* Class wide SecureRandom for use, only initialize once */
     private SecureRandom rand = new SecureRandom();
@@ -853,6 +872,24 @@ public class WolfSSLKeyStoreTest {
             }
         }
 
+        /* Load EdDSA test certs/keys for curves whose key gen is compiled in */
+        if (FeatureDetect.Ed25519KeyGenEnabled() &&
+            new File(ed25519KeyDer).exists() &&
+            new File(ed25519CertDer).exists()) {
+            serverKeyEd25519 = derFileToPrivateKey(ed25519KeyDer, "Ed25519");
+            serverCertEd25519 = certFileToCertificate(ed25519CertDer);
+            assertNotNull(serverKeyEd25519);
+            assertNotNull(serverCertEd25519);
+        }
+        if (FeatureDetect.Ed448KeyGenEnabled() &&
+            new File(ed448KeyDer).exists() &&
+            new File(ed448CertDer).exists()) {
+            serverKeyEd448 = derFileToPrivateKey(ed448KeyDer, "Ed448");
+            serverCertEd448 = certFileToCertificate(ed448CertDer);
+            assertNotNull(serverKeyEd448);
+            assertNotNull(serverCertEd448);
+        }
+
         /* Load SLH-DSA self-signed test certs/keys if SLH-DSA compiled in. */
         if (FeatureDetect.SlhDsaEnabled()) {
             if (new File(slhDsaSha2KeyPem).exists()) {
@@ -948,6 +985,24 @@ public class WolfSSLKeyStoreTest {
         /* Set paths to example PKCS12 KeyStore files */
         clientP12 =
             certPre.concat("examples/certs/client.p12");
+
+        /* EdDSA test cert/key file paths */
+        ed25519CertDer =
+            certPre.concat("examples/certs/ed25519/server-ed25519.der");
+        ed25519KeyDer =
+            certPre.concat("examples/certs/ed25519/server-ed25519-priv.der");
+        ed448CertDer =
+            certPre.concat("examples/certs/ed448/server-ed448.der");
+        ed448KeyDer =
+            certPre.concat("examples/certs/ed448/server-ed448-priv.der");
+        serverEd25519WKS =
+            certPre.concat("examples/certs/server-ed25519.wks");
+        serverEd448WKS =
+            certPre.concat("examples/certs/server-ed448.wks");
+        caEd25519WKS =
+            certPre.concat("examples/certs/ca-ed25519.wks");
+        caEd448WKS =
+            certPre.concat("examples/certs/ca-ed448.wks");
 
         /* Set paths to example WKS KeyStore files */
         clientWKS =
@@ -3971,5 +4026,309 @@ public class WolfSSLKeyStoreTest {
 
         return false;
     }
-}
 
+    /** EdDSA curves with test details loaded: name, key, cert, WKS path,
+     * CA WKS path. */
+    private static List<Object[]> edDsaCurves() {
+        List<Object[]> l = new ArrayList<Object[]>();
+        if (serverKeyEd25519 != null && serverCertEd25519 != null) {
+            l.add(new Object[] { "Ed25519", serverKeyEd25519,
+                serverCertEd25519, serverEd25519WKS, caEd25519WKS });
+        }
+        if (serverKeyEd448 != null && serverCertEd448 != null) {
+            l.add(new Object[] { "Ed448", serverKeyEd448, serverCertEd448,
+                serverEd448WKS, caEd448WKS });
+        }
+        return l;
+    }
+
+    /* client-<curve>.der, a different key on the same curve */
+    private static Certificate edDsaClientCert(String name) throws Exception {
+        String path = (name.equals("Ed25519") ? ed25519CertDer : ed448CertDer)
+            .replace("server-", "client-");
+        assertTrue(path + " missing", new File(path).exists());
+        return certFileToCertificate(path);
+    }
+
+    private void assumeEdDsaAvailable() {
+        Assume.assumeTrue("No EdDSA curve compiled in native wolfSSL",
+            FeatureDetect.Ed25519KeyGenEnabled() ||
+            FeatureDetect.Ed448KeyGenEnabled());
+        Assume.assumeTrue("EdDSA test keys not loadable " +
+            "(see examples/certs/ed25519, ed448)", !edDsaCurves().isEmpty());
+    }
+
+    /**
+     * Store an Ed25519 / Ed448 private key with its cert, retrieve, verify
+     * the objects match and the key still signs.
+     */
+    @Test
+    public void testStoreSingleKeyAndCertEdDSA() throws Exception {
+
+        assumeEdDsaAvailable();
+
+        for (Object[] c : edDsaCurves()) {
+            String name = (String) c[0];
+            PrivateKey key = (PrivateKey) c[1];
+            Certificate cert = (Certificate) c[2];
+
+            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+            store.setKeyEntry("edCert", key, storePass.toCharArray(),
+                new Certificate[]{ cert });
+            assertEquals(name, 1, store.size());
+            assertTrue(store.isKeyEntry("edCert"));
+
+            PrivateKey keyOut = (PrivateKey) store.getKey("edCert",
+                storePass.toCharArray());
+            assertNotNull(name + " key", keyOut);
+            assertEquals("EdDSA", keyOut.getAlgorithm());
+            assertEquals(name + " key roundtrip", key, keyOut);
+            Certificate certOut = store.getCertificate("edCert");
+            assertNotNull(name + " cert", certOut);
+            assertEquals(name + " cert roundtrip", cert, certOut);
+
+            /* the retrieved key signs, the cert public key verifies */
+            byte[] msg = ("wks " + name).getBytes();
+            Signature s = Signature.getInstance(name, "wolfJCE");
+            s.initSign(keyOut);
+            s.update(msg);
+            byte[] sig = s.sign();
+            s.initVerify(certOut.getPublicKey());
+            s.update(msg);
+            assertTrue(name + " sign/verify", s.verify(sig));
+        }
+    }
+
+    /**
+     * setKeyEntry must reject an EdDSA private key with a certificate for a
+     * different key (other curve, other algorithm).
+     */
+    @Test
+    public void testEdDSACertMatchesPrivateKeyFallback() throws Exception {
+
+        assumeEdDsaAvailable();
+
+        /* Java fallback only runs when native X509CheckPrivateKey cannot
+         * handle EdDSA, need to drive it directly */
+        Method m = WolfSSLKeyStore.class.getDeclaredMethod(
+            "edDsaCertMatchesPrivateKey", X509Certificate.class, byte[].class);
+        m.setAccessible(true);
+        WolfSSLKeyStore ks = new WolfSSLKeyStore();
+
+        for (Object[] c : edDsaCurves()) {
+            byte[] pkcs8 = ((PrivateKey) c[1]).getEncoded();
+            assertTrue((Boolean) m.invoke(ks, (X509Certificate) c[2], pkcs8));
+            assertFalse((Boolean) m.invoke(ks,
+                (X509Certificate) serverCertRsa, pkcs8));
+            /* same curve, different key: reaches the raw key comparison
+             * even when only one curve is compiled in */
+            Certificate client = edDsaClientCert((String) c[0]);
+            assertFalse((Boolean) m.invoke(ks,
+                (X509Certificate) client, pkcs8));
+            for (Object[] other : edDsaCurves()) {
+                if (!other[0].equals(c[0])) {
+                    assertFalse((Boolean) m.invoke(ks,
+                        (X509Certificate) other[2], pkcs8));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testEdDSAKeyCertMismatchRejected() throws Exception {
+
+        assumeEdDsaAvailable();
+
+        for (Object[] c : edDsaCurves()) {
+            String name = (String) c[0];
+            PrivateKey key = (PrivateKey) c[1];
+
+            /* EdDSA private + RSA cert */
+            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+            try {
+                store.setKeyEntry("bad", key, storePass.toCharArray(),
+                    new Certificate[]{ serverCertRsa });
+                fail("setKeyEntry should reject " + name + " key + RSA cert");
+            }
+            catch (KeyStoreException e) {
+                /* expected */
+            }
+            assertEquals(0, store.size());
+
+            /* EdDSA private + same curve cert of another key */
+            Certificate client = edDsaClientCert(name);
+            store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+            try {
+                store.setKeyEntry("bad", key, storePass.toCharArray(),
+                    new Certificate[]{ client });
+                fail("setKeyEntry should reject " + name +
+                    " key + client cert");
+            }
+            catch (KeyStoreException e) {
+                /* expected */
+            }
+            assertEquals(0, store.size());
+
+            /* EdDSA private + the other curve's cert when both are available */
+            for (Object[] other : edDsaCurves()) {
+                if (other[0].equals(name)) {
+                    continue;
+                }
+                store = KeyStore.getInstance(storeType, storeProvider);
+                store.load(null, storePass.toCharArray());
+                try {
+                    store.setKeyEntry("bad", key, storePass.toCharArray(),
+                        new Certificate[]{ (Certificate) other[2] });
+                    fail("setKeyEntry should reject " + name + " key + " +
+                        other[0] + " cert");
+                }
+                catch (KeyStoreException e) {
+                    /* expected */
+                }
+                assertEquals(0, store.size());
+            }
+        }
+    }
+
+    /**
+     * Store an EdDSA cert as a trust anchor (no private key).
+     */
+    @Test
+    public void testStoreSingleCertOnlyEdDSA() throws Exception {
+
+        assumeEdDsaAvailable();
+
+        for (Object[] c : edDsaCurves()) {
+            Certificate cert = (Certificate) c[2];
+            KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+            store.load(null, storePass.toCharArray());
+            store.setCertificateEntry("trustEd", cert);
+            assertEquals(1, store.size());
+            assertTrue(store.isCertificateEntry("trustEd"));
+            assertFalse(store.isKeyEntry("trustEd"));
+            assertEquals(cert, store.getCertificate("trustEd"));
+            assertEquals("trustEd", store.getCertificateAlias(cert));
+        }
+    }
+
+    /**
+     * Store EdDSA entries, engineStore to a byte buffer, load back, and
+     * verify keys and certs round-trip through the WKS on-disk format.
+     */
+    @Test
+    public void testStoreLoadByteBufferEdDSA() throws Exception {
+
+        assumeEdDsaAvailable();
+
+        KeyStore store = KeyStore.getInstance(storeType, storeProvider);
+        store.load(null, storePass.toCharArray());
+        for (Object[] c : edDsaCurves()) {
+            store.setKeyEntry("key-" + c[0], (PrivateKey) c[1],
+                storePass.toCharArray(),
+                new Certificate[]{ (Certificate) c[2] });
+            store.setCertificateEntry("cert-" + c[0], (Certificate) c[2]);
+        }
+
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        store.store(bos, storePass.toCharArray());
+
+        KeyStore loaded = KeyStore.getInstance(storeType, storeProvider);
+        loaded.load(new ByteArrayInputStream(bos.toByteArray()),
+            storePass.toCharArray());
+        assertEquals(store.size(), loaded.size());
+
+        for (Object[] c : edDsaCurves()) {
+            PrivateKey keyOut = (PrivateKey) loaded.getKey("key-" + c[0],
+                storePass.toCharArray());
+            assertEquals(c[0] + " key", c[1], keyOut);
+            assertEquals(c[0] + " chain cert", c[2],
+                loaded.getCertificate("key-" + c[0]));
+            assertEquals(c[0] + " trust cert", c[2],
+                loaded.getCertificate("cert-" + c[0]));
+        }
+    }
+
+    /**
+     * Load the prebuilt EdDSA WKS keystores from disk (built by
+     * examples/certs/BuildEdDSAKeystores.java), retrieve key and cert,
+     * verify they do a Signature round-trip, and load the CA truststores.
+     */
+    @Test
+    public void testLoadEdDSAWKSFromFile() throws Exception {
+
+        assumeEdDsaAvailable();
+        char[] wksPassword = "wolfsslpassword".toCharArray();
+
+        boolean anyWks = false;
+        for (Object[] c : edDsaCurves()) {
+            anyWks |= new File((String) c[3]).exists();
+        }
+        Assume.assumeTrue("EdDSA WKS files not available " +
+            "(run update-jks-wks.sh)", anyWks);
+
+        for (Object[] c : edDsaCurves()) {
+            String name = (String) c[0];
+            String lower = name.toLowerCase();
+            File f = new File((String) c[3]);
+            if (!f.exists()) {
+                /* a curve whose keystore was not rebuilt, see
+                 * update-jks-wks.sh */
+                continue;
+            }
+
+            KeyStore ks = KeyStore.getInstance(storeType, storeProvider);
+            FileInputStream fis = new FileInputStream(f);
+            try {
+                ks.load(fis, wksPassword);
+            }
+            finally {
+                fis.close();
+            }
+            PrivateKey priv = (PrivateKey) ks.getKey("server-" + lower,
+                wksPassword);
+            assertNotNull(name + ": getKey", priv);
+            assertEquals("EdDSA", priv.getAlgorithm());
+            Certificate cert = ks.getCertificate("server-" + lower);
+            assertNotNull(name + ": getCertificate", cert);
+            assertEquals(c[1], priv);
+            assertEquals(c[2], cert);
+
+            byte[] msg = ("file-load " + name).getBytes();
+            Signature s = Signature.getInstance(name, "wolfJCE");
+            s.initSign(priv);
+            s.update(msg);
+            byte[] sig = s.sign();
+            Signature v = Signature.getInstance(name, "wolfJCE");
+            v.initVerify(cert.getPublicKey());
+            v.update(msg);
+            assertTrue(name + ": sign/verify with loaded key", v.verify(sig));
+
+            /* CA truststore */
+            File ca = new File((String) c[4]);
+            if (ca.exists()) {
+                KeyStore caKs = KeyStore.getInstance(storeType,
+                    storeProvider);
+                fis = new FileInputStream(ca);
+                try {
+                    caKs.load(fis, wksPassword);
+                }
+                finally {
+                    fis.close();
+                }
+                assertTrue(caKs.isCertificateEntry("ca-" + lower));
+                Certificate caCert = caKs.getCertificate("ca-" + lower);
+                assertNotNull(caCert);
+                /* the JDK parser may report the OID or curve name, the same
+                 * set WolfSSLKeyStore.isEdDSAAlgorithmName() accepts */
+                String caAlg = caCert.getPublicKey().getAlgorithm();
+                assertTrue(name + ": cert key algorithm " + caAlg,
+                    caAlg.equalsIgnoreCase("EdDSA") ||
+                    caAlg.equalsIgnoreCase(name) ||
+                    caAlg.equals("1.3.101.112") || caAlg.equals("1.3.101.113"));
+            }
+        }
+    }
+}

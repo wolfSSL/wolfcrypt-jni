@@ -134,6 +134,50 @@ jobs:
       jdk_version: ${{ matrix.jdk_version }}
       wolfssl_configure: ${{ matrix.wolfssl_configure }}
 
+  # -------------------- Ed25519 / Ed448 (RFC 8032) ---------------------
+  # Neither is enabled by --enable-jni. --enable-ed448 pulls in SHAKE256.
+  #   JDK 8:  no NamedParameterSpec, no JDK 15 overlay in the JAR
+  #   JDK 11: NamedParameterSpec without EdDSA constants. Ed448 is absent,
+  #           "EdDSA" must still work with services unregistered
+  #   JDK 11 (opt-outs): NO_ED25519_MAKE_KEY removes key generation and
+  #           private key import, NO_ED25519_SIGN (required with it) removes
+  #           signing. Ed25519 is verify only and the generic KeyPairGenerator
+  #           falls back to Ed448
+  #   JDK 17: Ed448 only, the umbrella services fall back to Ed448
+  #   JDK 21: streaming verify JNI, multi-release overlay, SunEC interop
+  # The --enable-all sanity job builds both curves on Linux and macOS but at
+  # JDK 11 and without streaming verify, which --enable-all does not turn on.
+  # One macOS row covers the JDK 15+ overlay and streaming verify there.
+  linux-zulu-eddsa:
+    strategy:
+      matrix:
+        include:
+          - os: 'ubuntu-latest'
+            jdk_version: '8'
+            wolfssl_configure: '--enable-jni --enable-ed25519 --enable-ed448'
+          - os: 'ubuntu-latest'
+            jdk_version: '11'
+            wolfssl_configure: '--enable-jni --enable-ed25519'
+          - os: 'ubuntu-latest'
+            jdk_version: '11'
+            wolfssl_configure: '--enable-jni --enable-ed25519 --enable-ed448 CFLAGS="-DNO_ED25519_MAKE_KEY -DNO_ED25519_SIGN"'
+          - os: 'ubuntu-latest'
+            jdk_version: '17'
+            wolfssl_configure: '--enable-jni --enable-ed448'
+          - os: 'ubuntu-latest'
+            jdk_version: '21'
+            wolfssl_configure: '--enable-jni --enable-ed25519 --enable-ed25519-stream --enable-ed448 --enable-ed448-stream'
+          - os: 'macos-latest'
+            jdk_version: '21'
+            wolfssl_configure: '--enable-jni --enable-ed25519 --enable-ed25519-stream --enable-ed448 --enable-ed448-stream'
+    name: ${{ matrix.os }} (Zulu JDK ${{ matrix.jdk_version }}, ${{ matrix.wolfssl_configure }})
+    uses: ./.github/workflows/linux-common.yml
+    with:
+      os: ${{ matrix.os }}
+      jdk_distro: "zulu"
+      jdk_version: ${{ matrix.jdk_version }}
+      wolfssl_configure: ${{ matrix.wolfssl_configure }}
+
   # -------------------- XMSS / XMSS^MT (RFC 8391) ----------------------
   # XMSS is verify-only and requires wolfSSL 5.9.2 or later. XMSS is not pulled
   # in by --enable-all, so it must be enabled explicitly with --enable-xmss.

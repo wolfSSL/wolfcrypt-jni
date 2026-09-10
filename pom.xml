@@ -155,6 +155,62 @@
             </build>
         </profile>
 
+        <!-- JDK 15+ EdDSA multi-release overlay: compile src/java15 (key
+             classes implementing java.security.interfaces.EdECPublicKey /
+             EdECPrivateKey) into META-INF/versions/15 and mark the JAR as
+             multi-release. JDK 8-14 keep the Java 8 base classes. -->
+        <profile>
+            <!-- The overlay takes effect only when loaded from the JAR, so
+                 mvn test (target/classes) skips the overlay tests, see the
+                 EdDSA section of README_JCE.md -->
+            <id>java15-eddsa-overlay</id>
+            <activation>
+                <jdk>[15,)</jdk>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>3.11.0</version>
+                        <executions>
+                            <execution>
+                                <id>compile-java15-eddsa-overlay</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <release>15</release>
+                                    <compileSourceRoots>
+                                        <compileSourceRoot>${project.basedir}/src/java15</compileSourceRoot>
+                                    </compileSourceRoots>
+                                    <multiReleaseOutput>true</multiReleaseOutput>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jar-plugin</artifactId>
+                        <version>3.4.1</version>
+                        <executions>
+                            <execution>
+                                <id>default-jar</id>
+                                <configuration>
+                                    <archive>
+                                        <manifestEntries>
+                                            <Multi-Release>true</Multi-Release>
+                                        </manifestEntries>
+                                    </archive>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <!-- Select SunEC module-access flags by JDK. SunEC moved from the
              jdk.crypto.ec module into java.base in JDK 22 (JDK-8308398;
              jdk.crypto.ec remains as an empty, deprecated module). These

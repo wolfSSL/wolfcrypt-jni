@@ -420,6 +420,45 @@ public class FeatureDetect {
     public static native boolean Ed25519Enabled();
 
     /**
+     * Tests if the Ed25519 streaming verify API is compiled into the native
+     * wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Ed25519StreamingVerifyEnabled();
+
+    /**
+     * Tests if Ed448 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Ed448Enabled();
+
+    /**
+     * Tests if the Ed448 streaming verify API is compiled into the native
+     * wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Ed448StreamingVerifyEnabled();
+
+    /**
+     * Tests if Ed25519 key generation is compiled into the native wolfSSL
+     * library (HAVE_ED25519 without NO_ED25519_MAKE_KEY).
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Ed25519KeyGenEnabled();
+
+    /**
+     * Tests if Ed448 key generation is compiled into the native wolfSSL
+     * library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Ed448KeyGenEnabled();
+
+    /**
      * Tests if WOLFSSL_PUBLIC_MP is defined in the native wolfSSL library.
      *
      * @return true if WOLFSSL_PUBLIC_MP is defined, otherwise false.
