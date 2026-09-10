@@ -634,6 +634,68 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Ed25519Enabl
 #endif
 }
 
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Ed25519StreamingVerifyEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if defined(HAVE_ED25519) && defined(HAVE_ED25519_VERIFY) && \
+    !defined(WOLFSSL_SE050) && defined(WOLFSSL_ED25519_STREAMING_VERIFY)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Ed448Enabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#ifdef HAVE_ED448
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Ed448StreamingVerifyEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if defined(HAVE_ED448) && defined(HAVE_ED448_VERIFY) && \
+    defined(WOLFSSL_ED448_STREAMING_VERIFY)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Ed25519KeyGenEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if defined(HAVE_ED25519) && !defined(NO_ED25519_MAKE_KEY)
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Ed448KeyGenEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#ifdef HAVE_ED448
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
 JNIEXPORT jboolean JNICALL
 Java_com_wolfssl_wolfcrypt_FeatureDetect_WolfSSLPublicMpEnabled
   (JNIEnv* env, jclass jcl)
@@ -724,4 +786,3 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_XmssEnabled
     return JNI_FALSE;
 #endif
 }
-

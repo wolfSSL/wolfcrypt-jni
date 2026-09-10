@@ -53,6 +53,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DhTest.class,
     EccTest.class,
     Ed25519Test.class,
+    Ed448Test.class,
     Curve25519Test.class,
     MlDsaTest.class,
     MlKemTest.class,

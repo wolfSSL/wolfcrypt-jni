@@ -173,6 +173,9 @@
     <ClCompile Include="..\..\jni\jni_ed25519.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\jni\jni_ed448.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\jni\jni_error.c">
       <Filter>Source Files</Filter>
     </ClCompile>

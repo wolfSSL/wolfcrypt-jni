@@ -1207,6 +1207,12 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     keyFact = KeyFactory.getInstance("RSASSA-PSS");
                 } else if (algoId == Asn.ECDSAk) {
                     keyFact = WolfCryptUtil.getKeyFactoryPreferWolfJCE("EC");
+                } else if (algoId == Asn.ED25519k) {
+                    keyFact =
+                        WolfCryptUtil.getKeyFactoryPreferWolfJCE("Ed25519");
+                } else if (algoId == Asn.ED448k) {
+                    keyFact =
+                        WolfCryptUtil.getKeyFactoryPreferWolfJCE("Ed448");
                 } else if (isMlDsaAlgoId(algoId)) {
                     keyFact = getMlDsaKeyFactory();
                 } else if (isSlhDsaAlgoId(algoId)) {
@@ -1232,8 +1238,9 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     }
                 } else {
                     throw new NoSuchAlgorithmException(
-                        "Only RSA, RSASSA-PSS, EC, ML-DSA, and SLH-DSA " +
-                        "private key encoding supported: " + algoId);
+                        "Only RSA, RSASSA-PSS, EC, Ed25519, Ed448, ML-DSA, " +
+                        "and SLH-DSA private key encoding supported: " +
+                        algoId);
                 }
 
                 try {
@@ -1562,6 +1569,14 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
                     "trying Java-side match");
                 match = slhDsaCertMatchesPrivateKey(cert, pkcs8Key);
             }
+            if (!match && isEdDSAAlgorithmName(key.getAlgorithm())) {
+                /* Native OpenSSL-compat builds without Ed25519/Ed448 in
+                 * EVP_PKCS82PKEY() return false, fall back to a Java-side
+                 * match through the wolfJCE EdDSA key classes. */
+                log("X509CheckPrivateKey returned false for EdDSA key, " +
+                    "trying Java-side match");
+                match = edDsaCertMatchesPrivateKey(cert, pkcs8Key);
+            }
             if (!match) {
                 throw new KeyStoreException("X509Certificate does not match " +
                     "provided private key");
@@ -1631,6 +1646,80 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
         finally {
             if (key != null) {
                 key.releaseNativeStruct();
+            }
+        }
+    }
+
+    /**
+     * Check if algorithm name identifies EdDSA (Ed25519 / Ed448).
+     *
+     * @param algo algorithm name from Key.getAlgorithm(), may be null
+     *
+     * @return true if the name identifies an EdDSA key, otherwise false
+     */
+    private static boolean isEdDSAAlgorithmName(String algo) {
+
+        if (algo == null) {
+            return false;
+        }
+
+        return algo.equalsIgnoreCase("EdDSA") ||
+               algo.equalsIgnoreCase("Ed25519") ||
+               algo.equalsIgnoreCase("Ed448") ||
+               algo.equals("1.3.101.112") ||
+               algo.equals("1.3.101.113");
+    }
+
+    /**
+     * Java fallback for cert/private key match for Ed25519 / Ed448 keys.
+     *
+     * <p>Decodes the PKCS#8 through the wolfJCE EdDSA private key (which
+     * derives the public key natively) and the certificate's
+     * SubjectPublicKeyInfo down to the raw RFC 8032 public key, then compares
+     * the two raw keys. That is immune to AlgorithmIdentifier encoding
+     * differences in the certificate.</p>
+     *
+     * @param cert the X.509 certificate to match
+     * @param pkcs8Key PKCS#8 DER of the private key
+     *
+     * @return true if the certificate public key matches the private key
+     */
+    private boolean edDsaCertMatchesPrivateKey(X509Certificate cert,
+        byte[] pkcs8Key) {
+
+        PublicKey certPub = null;
+        byte[] certSpki = null;
+        WolfCryptEdDSAPrivateKey priv = null;
+
+        if (!FeatureDetect.Ed25519Enabled() && !FeatureDetect.Ed448Enabled()) {
+            return false;
+        }
+
+        certPub = cert.getPublicKey();
+        if (certPub == null || !isEdDSAAlgorithmName(certPub.getAlgorithm())) {
+            return false;
+        }
+
+        certSpki = certPub.getEncoded();
+        if (certSpki == null) {
+            return false;
+        }
+        /* Remove NULL AlgorithmIdentifier (JDK re-encoding) if present */
+        certSpki = WolfCryptSpkiUtil.stripNullAlgIdParams(certSpki);
+
+        try {
+            priv = new WolfCryptEdDSAPrivateKey(pkcs8Key);
+            /* compare the raw public keys, immune to AlgorithmIdentifier
+             * encoding differences in the certificate */
+            return MessageDigest.isEqual(
+                priv.curve().decodeSpki(certSpki)[0], priv.getRawPublicKey());
+        }
+        catch (IllegalArgumentException e) {
+            return false;
+        }
+        finally {
+            if (priv != null) {
+                priv.destroy();
             }
         }
     }

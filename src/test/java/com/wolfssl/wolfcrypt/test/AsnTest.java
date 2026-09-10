@@ -25,10 +25,12 @@ import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
 import com.wolfssl.wolfcrypt.Asn;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 
 /**
@@ -45,7 +47,7 @@ public class AsnTest {
             /* wolfCrypt JNI library not found, skip tests */
             System.out.println("wolfCrypt JNI library not found, " +
                                "skipping tests");
-            org.junit.Assume.assumeTrue(false);
+            Assume.assumeTrue(false);
         }
     }
 
@@ -66,6 +68,29 @@ public class AsnTest {
         assertNotEquals("SHA3_256h should not be zero", 0, Asn.SHA3_256h);
         assertNotEquals("SHA3_384h should not be zero", 0, Asn.SHA3_384h);
         assertNotEquals("SHA3_512h should not be zero", 0, Asn.SHA3_512h);
+        assertNotEquals("ED25519k should not be zero", 0, Asn.ED25519k);
+        assertNotEquals("ED448k should not be zero", 0, Asn.ED448k);
+        assertNotEquals("ED25519k and ED448k must differ", Asn.ED25519k,
+            Asn.ED448k);
+    }
+
+    @Test
+    public void testEdDsaKeySumsMatchPkcs8() {
+
+        /* PKCS#8 v1 envelopes around the RFC 8032 test keys */
+        byte[] ed25519 = Util.h2b("302e020100300506032b657004220420" +
+            Util.b2h(Ed25519TestVectors.SKEY1));
+        byte[] ed448 = Util.h2b("3047020100300506032b6571043b0439" +
+            Util.b2h(Ed448TestVectors.SKEY1));
+
+        try {
+            assertEquals(Asn.ED25519k, Asn.getPkcs8AlgoID(ed25519));
+            assertEquals(Asn.ED448k, Asn.getPkcs8AlgoID(ed448));
+        } catch (WolfCryptException e) {
+            Assume.assumeTrue("PKCS#8 not compiled in",
+                e.getError() != WolfCryptError.NOT_COMPILED_IN);
+            throw e;
+        }
     }
 
     @Test

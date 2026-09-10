@@ -373,6 +373,7 @@ add_library(wolfcryptjni SHARED
         ${wolfcryptjni_DIR}/jni/jni_dh.c
         ${wolfcryptjni_DIR}/jni/jni_ecc.c
         ${wolfcryptjni_DIR}/jni/jni_ed25519.c
+        ${wolfcryptjni_DIR}/jni/jni_ed448.c
         ${wolfcryptjni_DIR}/jni/jni_error.c
         ${wolfcryptjni_DIR}/jni/jni_feature_detect.c
         ${wolfcryptjni_DIR}/jni/jni_fips.c
