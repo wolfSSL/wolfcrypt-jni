@@ -54,6 +54,9 @@ import javax.crypto.spec.DHPublicKeySpec;
 
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Ecc;
+import com.wolfssl.wolfcrypt.Ed25519;
+import com.wolfssl.wolfcrypt.Ed448;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.MlDsa;
 import com.wolfssl.wolfcrypt.MlKem;
@@ -74,7 +77,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         WC_DH,
         WC_ML_DSA,
         WC_ML_KEM,
-        WC_SLH_DSA
+        WC_SLH_DSA,
+        WC_EDDSA
     }
 
     private KeyType type = null;
@@ -113,6 +117,12 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
      */
     private boolean pqcParamExplicit = false;
 
+    /* EdDSA curve to generate, and the curve a per-curve subclass is
+     * locked to (null for the generic "EdDSA" generator). Default is
+     * Ed25519. */
+    private WolfCryptEdDSACurve edCurve = null;
+    private WolfCryptEdDSACurve edLockedCurve = null;
+
     private Rng rng = null;
 
     /* Lock around Rng access */
@@ -123,6 +133,29 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
     private WolfCryptKeyPairGenerator(KeyType type) {
         this(type, PQC_PARAM_UNSET);
+    }
+
+    /**
+     * Create a new EdDSA key pair generator.
+     *
+     * @param type KeyType.WC_EDDSA
+     * @param lockedCurve curve this generator is locked to, or null for
+     *        the generic generator (defaults to Ed25519, or to Ed448 when
+     *        Ed25519 is not compiled in)
+     */
+    private WolfCryptKeyPairGenerator(KeyType type,
+        WolfCryptEdDSACurve lockedCurve) {
+
+        this(type, PQC_PARAM_UNSET);
+        this.edLockedCurve = lockedCurve;
+        if (lockedCurve != null) {
+            this.edCurve = lockedCurve;
+        } else if (!FeatureDetect.Ed25519KeyGenEnabled() &&
+                   FeatureDetect.Ed448KeyGenEnabled()) {
+            this.edCurve = WolfCryptEdDSACurve.ED448;
+        } else {
+            this.edCurve = WolfCryptEdDSACurve.ED25519;
+        }
     }
 
     /**
@@ -210,7 +243,7 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
         if (type == KeyType.WC_RSA || type == KeyType.WC_RSA_PSS ||
             type == KeyType.WC_ECC || type == KeyType.WC_DH ||
             type == KeyType.WC_ML_DSA || type == KeyType.WC_ML_KEM ||
-            type == KeyType.WC_SLH_DSA) {
+            type == KeyType.WC_SLH_DSA || type == KeyType.WC_EDDSA) {
 
             synchronized (rngLock) {
                 if (this.rng == null) {
@@ -227,6 +260,28 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
     @Override
     public synchronized void initialize(int keysize, SecureRandom random) {
+
+        if (type == KeyType.WC_EDDSA) {
+            WolfCryptEdDSACurve c = WolfCryptEdDSACurve.fromKeySize(keysize);
+            if (c == null) {
+                throw new InvalidParameterException(
+                    "EdDSA key size must be 255 or 256 (Ed25519) or 448 " +
+                    "(Ed448), got: " + keysize);
+            }
+            if (this.edLockedCurve != null && c != this.edLockedCurve) {
+                throw new InvalidParameterException("Key size " + keysize +
+                    " does not match " + this.edLockedCurve.getJcaName() +
+                    " KeyPairGenerator");
+            }
+            if (!c.isKeyGenEnabled()) {
+                throw new InvalidParameterException(c.getJcaName() +
+                    " key generation not compiled into native wolfSSL");
+            }
+            this.edCurve = c;
+            log("init with keysize " + keysize + ", using curve: " +
+                c.getJcaName());
+            return;
+        }
 
         if (type == KeyType.WC_ML_DSA || type == KeyType.WC_ML_KEM ||
             type == KeyType.WC_SLH_DSA) {
@@ -502,6 +557,55 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 this.dhG = dhSpecG.toByteArray();
 
                 log("init with spec, prime len: " + this.dhP.length);
+
+                break;
+
+            case WC_EDDSA:
+
+                String edName;
+                try {
+                    edName =
+                        WolfEdECJdkCompat.namedParameterSpecGetName(params);
+                }
+                catch (IllegalArgumentException e) {
+                    throw new InvalidAlgorithmParameterException(
+                        e.getMessage(), e);
+                }
+
+                if (edName == null && params instanceof ECGenParameterSpec) {
+                    edName = ((ECGenParameterSpec) params).getName();
+                }
+
+                if (edName == null) {
+                    throw new InvalidAlgorithmParameterException(
+                        "EdDSA params must be a NamedParameterSpec or " +
+                        "ECGenParameterSpec naming Ed25519 or Ed448, got: " +
+                        params.getClass().getName());
+                }
+
+                WolfCryptEdDSACurve edSpecCurve =
+                    WolfCryptEdDSACurve.fromName(edName);
+
+                if (edSpecCurve == null) {
+                    throw new InvalidAlgorithmParameterException(
+                        "Unrecognized EdDSA curve: " + edName);
+                }
+
+                if (this.edLockedCurve != null &&
+                    edSpecCurve != this.edLockedCurve) {
+                    throw new InvalidAlgorithmParameterException(
+                        "Spec '" + edName + "' does not match " +
+                        this.edLockedCurve.getJcaName() +
+                        " KeyPairGenerator");
+                }
+
+                if (!edSpecCurve.isKeyGenEnabled()) {
+                    throw new InvalidAlgorithmParameterException(
+                        edSpecCurve.getJcaName() +
+                        " key generation not compiled into native wolfSSL");
+                }
+                this.edCurve = edSpecCurve;
+                log("init with EdDSA spec: " + edSpecCurve.getJcaName());
 
                 break;
 
@@ -823,6 +927,67 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
                 break;
 
+            case WC_EDDSA:
+
+                if (this.edCurve == null || !this.edCurve.isKeyGenEnabled()) {
+                    throw new RuntimeException("EdDSA curve not set or its " +
+                        "key generation not compiled into native wolfSSL");
+                }
+
+                byte[] edPriv = null;
+                byte[] edPub = null;
+                byte[] edPrivDer = null;
+                byte[] edPubDer = null;
+                Ed25519 ed25519 = null;
+                Ed448 ed448 = null;
+
+                try {
+                    synchronized (rngLock) {
+                        if (this.edCurve == WolfCryptEdDSACurve.ED25519) {
+                            ed25519 = new Ed25519();
+                            ed25519.makeKey(this.rng);
+                            edPriv = ed25519.exportPrivateOnly();
+                            edPub = ed25519.exportPublic();
+                            edPrivDer = ed25519.exportPrivateKeyDer();
+                            edPubDer = ed25519.exportPublicKeyDer(true);
+                        }
+                        else {
+                            ed448 = new Ed448();
+                            ed448.makeKey(this.rng);
+                            edPriv = ed448.exportPrivateOnly();
+                            edPub = ed448.exportPublic();
+                            edPrivDer = ed448.exportPrivateKeyDer();
+                            edPubDer = ed448.exportPublicKeyDer(true);
+                        }
+                    }
+
+                    pair = new KeyPair(
+                        WolfCryptEdDSAKeys.trustedPublicKey(this.edCurve,
+                            edPub, edPubDer),
+                        WolfCryptEdDSAKeys.trustedPrivateKey(this.edCurve,
+                            edPriv, edPub, edPrivDer));
+                }
+                catch (WolfCryptException | IllegalStateException |
+                       IllegalArgumentException e) {
+                    throw new RuntimeException(e);
+                }
+                finally {
+                    zeroArray(edPriv);
+                    zeroArray(edPub);
+                    zeroArray(edPrivDer);
+                    zeroArray(edPubDer);
+                    if (ed25519 != null) {
+                        ed25519.releaseNativeStruct();
+                    }
+                    if (ed448 != null) {
+                        ed448.releaseNativeStruct();
+                    }
+                }
+
+                log("generated " + this.edCurve.getJcaName() + " KeyPair");
+
+                break;
+
             case WC_ML_DSA:
 
                 if (this.pqcParam == PQC_PARAM_UNSET) {
@@ -1007,6 +1172,8 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 return "ECC";
             case WC_DH:
                 return "DH";
+            case WC_EDDSA:
+                return "EdDSA";
             case WC_ML_DSA:
                 return "ML-DSA";
             case WC_ML_KEM:
@@ -1400,5 +1567,45 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
             super(KeyType.WC_ML_KEM, MlKem.ML_KEM_1024);
         }
     }
-}
 
+    /**
+     * wolfCrypt EdDSA key pair generator class. Defaults to Ed25519 (or Ed448
+     * when Ed25519 key gen is not compiled in). Curve is selectable via
+     * initialize().
+     */
+    public static final class wcKeyPairGenEdDSA
+        extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenEdDSA object
+         */
+        public wcKeyPairGenEdDSA() {
+            super(KeyType.WC_EDDSA, (WolfCryptEdDSACurve) null);
+        }
+    }
+
+    /**
+     * wolfCrypt Ed25519 key pair generator class
+     */
+    public static final class wcKeyPairGenEd25519
+        extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenEd25519 object
+         */
+        public wcKeyPairGenEd25519() {
+            super(KeyType.WC_EDDSA, WolfCryptEdDSACurve.ED25519);
+        }
+    }
+
+    /**
+     * wolfCrypt Ed448 key pair generator class
+     */
+    public static final class wcKeyPairGenEd448
+        extends WolfCryptKeyPairGenerator {
+        /**
+         * Create new wcKeyPairGenEd448 object
+         */
+        public wcKeyPairGenEd448() {
+            super(KeyType.WC_EDDSA, WolfCryptEdDSACurve.ED448);
+        }
+    }
+}
