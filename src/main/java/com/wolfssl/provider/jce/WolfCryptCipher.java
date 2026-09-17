@@ -54,6 +54,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidParameterException;
 import java.security.InvalidKeyException;
+import java.security.interfaces.RSAKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
@@ -119,6 +120,8 @@ public class WolfCryptCipher extends CipherSpi {
     private PaddingType paddingType = null;
     private OpMode direction        = null;
     private RsaKeyType rsaKeyType   = null;
+    /* RSA modulus as exactly the key size bytes, for range checks */
+    private byte[] rsaModulus = null;
 
     /* Store original opmode (ENCRYPT, DECRYPT, WRAP, UNWRAP), used by
      * post-doFinal reset to restore correct mode */
@@ -616,7 +619,9 @@ public class WolfCryptCipher extends CipherSpi {
         if (padding.equals("NoPadding")) {
 
             if (cipherType == CipherType.WC_AES ||
-                cipherType == CipherType.WC_DES3) {
+                cipherType == CipherType.WC_DES3 ||
+                (cipherType == CipherType.WC_RSA &&
+                 FeatureDetect.RsaNoPaddingEnabled())) {
                 paddingType = PaddingType.WC_NONE;
                 supported = 1;
 
@@ -1150,6 +1155,7 @@ public class WolfCryptCipher extends CipherSpi {
                     } else {
                         this.rsa.decodePublicKey(encodedKey);
                     }
+                    this.rsaModulus = rsaModulusBytes();
                     break;
             }
         } finally {
@@ -1545,15 +1551,183 @@ public class WolfCryptCipher extends CipherSpi {
     }
 
     /**
-     * Normalize an RSA ciphertext byte array to the modulus byte length
-     * before passing it to native wc_RsaPrivateDecrypt / wc_RsaSSL_Verify.
+     * Raw RSA for RSA/ECB/NoPadding. Input is zero padded on the left to the
+     * key size, output is always the key size.
+     *
+     * @param input buffered input, at most the key size
+     *
+     * @return key size bytes of output
+     *
+     * @throws IllegalBlockSizeException if input is longer than the key size
+     * @throws BadPaddingException if input is out of range
+     * @throws WolfCryptException if the native operation fails
+     */
+    private byte[] rsaNoPaddingFinal(byte[] input)
+        throws IllegalBlockSizeException, BadPaddingException {
+
+        int opType;
+        byte[] padded;
+
+        if (this.rsaKeyType == RsaKeyType.WC_RSA_PRIVATE) {
+            if (this.direction == OpMode.WC_ENCRYPT) {
+                opType = Rsa.RSA_PRIVATE_ENCRYPT;
+            }
+            else {
+                opType = Rsa.RSA_PRIVATE_DECRYPT;
+            }
+        }
+        else {
+            if (this.direction == OpMode.WC_ENCRYPT) {
+                opType = Rsa.RSA_PUBLIC_ENCRYPT;
+            }
+            else {
+                opType = Rsa.RSA_PUBLIC_DECRYPT;
+            }
+        }
+
+        padded = leftPadRSACiphertext(input, this.rsa.getEncryptSize());
+        try {
+            checkRsaRange(padded);
+            return this.rsa.direct(padded, opType, this.rng);
+
+        } catch (WolfCryptException e) {
+            /* Only the native range check is an input error */
+            if (e.getCode() == WolfCryptError.RSA_OUT_OF_RANGE_E.getCode()) {
+                BadPaddingException bpe =
+                    new BadPaddingException("Message is out of range");
+                bpe.initCause(e);
+                throw bpe;
+            }
+            throw e;
+
+        } finally {
+            if (padded != input) {
+                zeroArray(padded);
+            }
+        }
+    }
+
+    /**
+     * Reject raw RSA input outside 2 to n - 2. The values 0, 1 and n - 1 map
+     * to themselves, and native bounds checks only the decrypt directions,
+     * so an out of range message would be reduced mod n on encrypt. Checking
+     * here makes every direction and build behave the same.
+     *
+     * @param in key size input block
+     *
+     * @throws BadPaddingException if in is not in 2 to n - 2
+     */
+    private void checkRsaRange(byte[] in) throws BadPaddingException {
+
+        byte[] mod = this.rsaModulus;
+        int last = in.length - 1;
+        int cmp = 0;
+        int decided = 0;
+        int nonZero = 0;
+        int diff = 0;
+
+        for (int i = 0; i < in.length; i++) {
+            int d = (in[i] & 0xFF) - (mod[i] & 0xFF);
+            int nz = (d | -d) >>> 31;
+            /* keep the first non zero difference only */
+            cmp |= d & -(nz & ~decided);
+            decided |= nz;
+            if (i < last) {
+                nonZero |= in[i];
+                diff |= in[i] ^ mod[i];
+            }
+        }
+        if (cmp >= 0) {
+            throw new BadPaddingException("Message is larger than modulus");
+        }
+
+        /* 0 and 1 have no other bytes set, n - 1 is n with the low bit
+         * cleared since n is odd */
+        if ((nonZero == 0 && (in[last] & 0xFF) <= 1) ||
+            (diff == 0 && (in[last] & 0xFF) == ((mod[last] & 0xFF) - 1))) {
+            throw new BadPaddingException("Message is out of range");
+        }
+    }
+
+    /**
+     * The RSA modulus of the loaded key as exactly the key size bytes.
+     *
+     * @return modulus bytes, big-endian without a sign byte
+     *
+     * @throws InvalidKeyException if the modulus is longer than the key size
+     */
+    private byte[] rsaModulusBytes() throws InvalidKeyException {
+
+        byte[] raw = ((RSAKey)this.storedKey).getModulus().toByteArray();
+
+        if (raw.length > 1 && raw[0] == 0) {
+            raw = Arrays.copyOfRange(raw, 1, raw.length);
+        }
+        try {
+            return leftPadRSACiphertext(raw, this.rsa.getEncryptSize());
+        } catch (IllegalBlockSizeException e) {
+            throw new InvalidKeyException("RSA modulus exceeds key size");
+        }
+    }
+
+    /**
+     * Return to post init() state, run after every final() so the next
+     * operation starts clean whether or not this one succeeded.
+     */
+    private void resetAfterFinal() {
+
+        try {
+            bufferedReset();
+            wolfCryptSetDirection(this.storedOpMode);
+
+            InitializeNativeStructs();
+
+            /* Preserve the existing IV during cipher reset to maintain
+             * consistency with JCE getIV() behavior. If storedSpec is null
+             * (no IV was provided initially), wolfCryptSetIV would generate
+             * a new random IV, overwriting the original one. */
+            if (storedSpec == null && this.iv != null) {
+                /* Create appropriate ParameterSpec with the current IV to
+                 * avoid generating a new random IV during reset */
+                AlgorithmParameterSpec currentIvSpec;
+                if (cipherMode == CipherMode.WC_GCM) {
+                    /* For GCM mode, create GCMParameterSpec with current
+                     * IV and tag length */
+                    currentIvSpec = new GCMParameterSpec(
+                        this.gcmTagLen * 8, this.iv.clone());
+                } else {
+                    /* For other modes, use IvParameterSpec */
+                    currentIvSpec = new IvParameterSpec(this.iv.clone());
+                }
+                wolfCryptSetIV(currentIvSpec, null);
+            } else {
+                wolfCryptSetIV(storedSpec, null);
+            }
+
+            wolfCryptSetKey(storedKey);
+
+            this.aadStream = null;
+            this.operationStarted = false;
+            this.cipherInitialized = true;
+
+        } catch (InvalidKeyException e) {
+            throw new RuntimeException(e.getMessage());
+        } catch (InvalidAlgorithmParameterException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    /**
+     * Normalize an RSA input block to the modulus byte length before passing
+     * it to native. Used for PKCS#1 v1.5 and OAEP ciphertext on decrypt,
+     * and for both directions of the raw RSA/ECB/NoPadding path.
      *
      * Proper PKCS#1 v1.5 and OAEP ciphertexts are exactly k bytes long
      * (modulus length). In practice, zero bytes could be stripped. This
      * left-pads input with zeros, leaving inputs longer than the modulus
      * as error cases.
      *
-     * @param  in        ciphertext bytes
+     * @param  in        RSA input block bytes
      * @param  modSize   RSA modulus length in bytes
      * @return a byte[] of length exactly modSize (the same array if already
      *         the right size, otherwise a new zero-padded copy)
@@ -1587,46 +1761,47 @@ public class WolfCryptCipher extends CipherSpi {
         this.operationStarted = true;
         totalSz = bufferedLen + len;
 
-        /* AES-CTS requires input length >= 16 bytes (RFC 3962/8009).
-         * For exactly 16 bytes, CTS reduces to plain CBC, handled in JNI. */
-        if (cipherMode == CipherMode.WC_CTS && totalSz < blockSize) {
-            throw new IllegalBlockSizeException(
-                "AES-CTS requires input length >= " + blockSize +
-                " bytes, got " + totalSz + " bytes");
-        }
-
-        /* AES-GCM, AES-CCM, AES-CTR, AES-CTS, and AES-OFB do not require
-         * block size inputs */
-        if (isBlockCipher() &&
-            (cipherMode != CipherMode.WC_GCM) &&
-            (cipherMode != CipherMode.WC_CCM) &&
-            (cipherMode != CipherMode.WC_CTR) &&
-            (cipherMode != CipherMode.WC_CTS) &&
-            (cipherMode != CipherMode.WC_OFB) &&
-            (this.direction == OpMode.WC_DECRYPT ||
-            (this.direction == OpMode.WC_ENCRYPT &&
-             this.paddingType != PaddingType.WC_PKCS5)) &&
-            (totalSz % blockSize != 0)) {
-            throw new IllegalBlockSizeException(
-                "Input length (" + totalSz + ") not multiple of " +
-                blockSize + " bytes. (" + bufferedLen +" buffered)");
-        }
-
-        /* do final encrypt over totalSz */
-        tmpIn = new byte[totalSz];
-        if (totalSz > 0) {
-            System.arraycopy(buffered, 0, tmpIn, 0, bufferedLen);
-            if (input != null && len > 0) {
-                System.arraycopy(input, inputOffset, tmpIn,
-                    bufferedLen, len);
-            }
-        }
-
-        /* Flatten accumulated AAD to a single array for GCM/CCM calls below */
-        byte[] aad = (this.aadStream != null) ?
-            this.aadStream.toByteArray() : null;
-
         try {
+            /* AES-CTS requires input length >= 16 bytes (RFC 3962/8009).
+             * For exactly 16 bytes, CTS reduces to plain CBC, handled in
+             * JNI. */
+            if (cipherMode == CipherMode.WC_CTS && totalSz < blockSize) {
+                throw new IllegalBlockSizeException(
+                    "AES-CTS requires input length >= " + blockSize +
+                    " bytes, got " + totalSz + " bytes");
+            }
+
+            /* AES-GCM, AES-CCM, AES-CTR, AES-CTS, and AES-OFB do not require
+             * block size inputs */
+            if (isBlockCipher() &&
+                (cipherMode != CipherMode.WC_GCM) &&
+                (cipherMode != CipherMode.WC_CCM) &&
+                (cipherMode != CipherMode.WC_CTR) &&
+                (cipherMode != CipherMode.WC_CTS) &&
+                (cipherMode != CipherMode.WC_OFB) &&
+                (this.direction == OpMode.WC_DECRYPT ||
+                (this.direction == OpMode.WC_ENCRYPT &&
+                 this.paddingType != PaddingType.WC_PKCS5)) &&
+                (totalSz % blockSize != 0)) {
+                throw new IllegalBlockSizeException(
+                    "Input length (" + totalSz + ") not multiple of " +
+                    blockSize + " bytes. (" + bufferedLen +" buffered)");
+            }
+
+            /* do final encrypt over totalSz */
+            tmpIn = new byte[totalSz];
+            if (totalSz > 0) {
+                System.arraycopy(buffered, 0, tmpIn, 0, bufferedLen);
+                if (input != null && len > 0) {
+                    System.arraycopy(input, inputOffset, tmpIn,
+                        bufferedLen, len);
+                }
+            }
+
+            /* Flatten accumulated AAD to a single array for GCM/CCM calls */
+            byte[] aad = (this.aadStream != null) ?
+                this.aadStream.toByteArray() : null;
+
             /* Add padding if encrypting and PKCS5 padding is used, PKCS#5
              * padding is treated the same as PKCS#7 padding here, using
              * each algorithm's specific block size. CCM, CTR, CTS, and OFB
@@ -1820,7 +1995,10 @@ public class WolfCryptCipher extends CipherSpi {
 
                 case WC_RSA:
 
-                    if (this.paddingType == PaddingType.WC_OAEP_SHA256 ||
+                    if (this.paddingType == PaddingType.WC_NONE) {
+                        tmpOut = rsaNoPaddingFinal(tmpIn);
+                    }
+                    else if (this.paddingType == PaddingType.WC_OAEP_SHA256 ||
                         this.paddingType == PaddingType.WC_OAEP_SHA1) {
                         /* OAEP only supports public key encrypt and
                          * private key decrypt */
@@ -1887,52 +2065,22 @@ public class WolfCryptCipher extends CipherSpi {
                     throw new RuntimeException("Unsupported algorithm type");
             };
 
+        } catch (IllegalBlockSizeException | BadPaddingException |
+                 RuntimeException t) {
+            /* Reset, a reset failure must not hide the cause */
+            try {
+                resetAfterFinal();
+            } catch (Throwable e) {
+                t.addSuppressed(e);
+            }
+            throw t;
+
         } finally {
             /* Zeroize the internal input copy for both directions */
             zeroArray(tmpIn);
         }
 
-        /* reset state, user doesn't need to call init again before use */
-        try {
-            bufferedReset();
-
-            wolfCryptSetDirection(this.storedOpMode);
-
-            InitializeNativeStructs();
-
-            /* Preserve the existing IV during cipher reset to maintain
-             * consistency with JCE getIV() behavior. If storedSpec is null
-             * (no IV was provided initially), wolfCryptSetIV would generate
-             * a new random IV, overwriting the original one. */
-            if (storedSpec == null && this.iv != null) {
-                /* Create appropriate ParameterSpec with the current IV to avoid
-                 * generating a new random IV during reset */
-                AlgorithmParameterSpec currentIvSpec;
-                if (cipherMode == CipherMode.WC_GCM) {
-                    /* For GCM mode, create GCMParameterSpec with current
-                     * IV and tag length */
-                    currentIvSpec = new GCMParameterSpec(
-                        this.gcmTagLen * 8, this.iv.clone());
-                } else {
-                    /* For other modes, use IvParameterSpec */
-                    currentIvSpec = new IvParameterSpec(this.iv.clone());
-                }
-                wolfCryptSetIV(currentIvSpec, null);
-            } else {
-                wolfCryptSetIV(storedSpec, null);
-            }
-
-            wolfCryptSetKey(storedKey);
-
-            this.aadStream = null;
-            this.operationStarted = false;
-            this.cipherInitialized = true;
-
-        } catch (InvalidKeyException e) {
-            throw new RuntimeException(e.getMessage());
-        } catch (InvalidAlgorithmParameterException e) {
-            throw new RuntimeException(e.getMessage());
-        }
+        resetAfterFinal();
 
         return tmpOut;
     }
@@ -2561,5 +2709,16 @@ public class WolfCryptCipher extends CipherSpi {
                   PaddingType.WC_OAEP_SHA1);
         }
     }
-}
 
+    /**
+     * Class for RSA-ECB with no padding, the raw RSA primitive
+     */
+    public static final class wcRSAECBNoPadding extends WolfCryptCipher {
+        /**
+         * Create new wcRSAECBNoPadding object
+         */
+        public wcRSAECBNoPadding() {
+            super(CipherType.WC_RSA, CipherMode.WC_ECB, PaddingType.WC_NONE);
+        }
+    }
+}

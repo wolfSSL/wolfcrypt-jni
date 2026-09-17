@@ -37,6 +37,15 @@ public class Rsa extends NativeStruct {
      */
     public static final int RSA_MIN_SIZE = Rsa.rsaMinSize();
 
+    /** direct() operation, encrypt with public key */
+    public static final int RSA_PUBLIC_ENCRYPT = 0;
+    /** direct() operation, decrypt with public key */
+    public static final int RSA_PUBLIC_DECRYPT = 1;
+    /** direct() operation, encrypt with private key */
+    public static final int RSA_PRIVATE_ENCRYPT = 2;
+    /** direct() operation, decrypt with private key */
+    public static final int RSA_PRIVATE_DECRYPT = 3;
+
     /**
      * Used to indicate that salt length is the same as hash length
      */
@@ -172,6 +181,10 @@ public class Rsa extends NativeStruct {
             int hashType, int mgf) throws WolfCryptException;
     private native byte[] wc_RsaPrivateDecrypt_ex(byte[] data,
             int hashType, int mgf) throws WolfCryptException;
+
+    /* Raw RSA primitive */
+    private native byte[] wc_RsaDirect(byte[] data, int opType, Rng rng)
+            throws WolfCryptException;
 
     /**
      * Create new Rsa object.
@@ -1060,5 +1073,48 @@ public class Rsa extends NativeStruct {
             return wc_RsaPrivateDecrypt_ex(ciphertext, hashType, mgf);
         }
     }
-}
 
+    /**
+     * Raw RSA primitive with no padding. Input must be exactly the key size
+     * and below the modulus. Output is the key size.
+     *
+     * @param input data to process, key size bytes
+     * @param opType RSA_PUBLIC_ENCRYPT, RSA_PUBLIC_DECRYPT,
+     *        RSA_PRIVATE_ENCRYPT, or RSA_PRIVATE_DECRYPT
+     * @param rng initialized Rng object, used for blinding
+     *
+     * @return output data as byte array, key size bytes
+     *
+     * @throws WolfCryptException if the input length or value is invalid,
+     *         the primitive is not compiled in, or native operation fails
+     * @throws IllegalStateException if the needed key has not been set, if
+     *         object fails to initialize, or if releaseNativeStruct() has
+     *         been called and object has been released.
+     * @throws IllegalArgumentException if input or rng is null, or opType
+     *         is invalid
+     */
+    public synchronized byte[] direct(byte[] input, int opType, Rng rng)
+        throws WolfCryptException {
+
+        if (input == null) {
+            throw new IllegalArgumentException("Input data cannot be null");
+        }
+
+        if (rng == null) {
+            throw new IllegalArgumentException("Rng object cannot be null");
+        }
+
+        if (opType < RSA_PUBLIC_ENCRYPT || opType > RSA_PRIVATE_DECRYPT) {
+            throw new IllegalArgumentException("Invalid opType value: " +
+                opType);
+        }
+
+        checkStateAndInitialize();
+        throwIfKeyNotLoaded(opType == RSA_PRIVATE_ENCRYPT ||
+            opType == RSA_PRIVATE_DECRYPT);
+
+        synchronized (pointerLock) {
+            return wc_RsaDirect(input, opType, rng);
+        }
+    }
+}

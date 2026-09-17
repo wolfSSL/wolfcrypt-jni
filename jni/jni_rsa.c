@@ -1291,6 +1291,131 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt_1ex(
     return result;
 }
 
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaDirect(
+    JNIEnv* env, jobject this, jbyteArray input_object, jint opType,
+    jobject rng_object)
+{
+    jbyteArray result = NULL;
+#if !defined(NO_RSA) && (defined(WC_RSA_DIRECT) || defined(WC_RSA_NO_PADDING))
+    int ret = 0;
+    int type = 0;
+    RsaKey* key = NULL;
+    RNG*    rng = NULL;
+    byte* input = NULL;
+    byte* output = NULL;
+    word32 inputSz = 0, outputSz = 0;
+    int encSz = 0;
+    jboolean inputIsCopy = JNI_FALSE;
+
+    key = (RsaKey*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return NULL;
+    }
+
+    rng = (RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        return NULL;
+    }
+
+    switch (opType) {
+        case com_wolfssl_wolfcrypt_Rsa_RSA_PUBLIC_ENCRYPT:
+            type = RSA_PUBLIC_ENCRYPT;
+            break;
+        case com_wolfssl_wolfcrypt_Rsa_RSA_PUBLIC_DECRYPT:
+            type = RSA_PUBLIC_DECRYPT;
+            break;
+        case com_wolfssl_wolfcrypt_Rsa_RSA_PRIVATE_ENCRYPT:
+            type = RSA_PRIVATE_ENCRYPT;
+            break;
+        case com_wolfssl_wolfcrypt_Rsa_RSA_PRIVATE_DECRYPT:
+            type = RSA_PRIVATE_DECRYPT;
+            break;
+        default:
+            ret = BAD_FUNC_ARG;
+            break;
+    }
+
+    if (ret == 0 && (input_object == NULL || key == NULL || rng == NULL)) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        input = getByteArrayIsCopy(env, input_object, &inputIsCopy);
+        if ((*env)->ExceptionOccurred(env)) {
+            /* GetByteArrayElements failed, leave exception pending */
+            return NULL;
+        }
+        inputSz = getByteArrayLength(env, input_object);
+        if (input == NULL) {
+            ret = BAD_FUNC_ARG;
+        }
+    }
+
+    if (ret == 0) {
+        encSz = wc_RsaEncryptSize(key);
+        if (encSz < 0) {
+            ret = encSz;
+        } else if (encSz == 0) {
+            /* Treat 0 length modulus as error */
+            ret = BAD_FUNC_ARG;
+        } else {
+            outputSz = (word32)encSz;
+        }
+    }
+
+    if (ret == 0) {
+        output = (byte*)XMALLOC(outputSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (output == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        XMEMSET(output, 0, outputSz);
+        ret = wc_RsaDirect(input, inputSz, output, &outputSz, key, type, rng);
+        if (ret > 0) {
+            outputSz = (word32)ret;
+            ret = 0;
+        }
+    }
+
+    if (ret == 0) {
+        result = (*env)->NewByteArray(env, outputSz);
+        if (result) {
+            (*env)->SetByteArrayRegion(env, result, 0, outputSz,
+                                       (const jbyte*) output);
+        } else {
+            throwWolfCryptException(env, "Failed to create RSA output array");
+        }
+    } else {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_RsaDirect(type=%d) = %d\n", type, ret);
+
+    if (output != NULL) {
+        #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+            !defined(WOLFSSL_NO_FORCE_ZERO)
+            wc_ForceZero(output, (word32)encSz);
+        #else
+            XMEMSET(output, 0, (word32)encSz);
+        #endif
+        XFREE(output, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+    zeroizeByteArrayCopy(input, inputSz, inputIsCopy);
+    releaseByteArray(env, input_object, input, JNI_ABORT);
+#else
+    (void)this;
+    (void)input_object;
+    (void)opType;
+    (void)rng_object;
+    throwNotCompiledInException(env);
+#endif
+
+    return result;
+}
+
 JNIEXPORT jbyteArray JNICALL
 Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSSL_1Sign(
     JNIEnv* env, jobject this, jbyteArray data_object, jobject rng_object)

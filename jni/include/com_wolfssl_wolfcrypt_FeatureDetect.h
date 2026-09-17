@@ -353,6 +353,14 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_RsaOaepEnabl
 
 /*
  * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    RsaNoPaddingEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_RsaNoPaddingEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
  * Method:    DhEnabled
  * Signature: ()Z
  */
