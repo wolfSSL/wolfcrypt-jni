@@ -43,7 +43,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
    jbyteArray saltBuf, jint sBufLen, jint iterations, jint kLen,
    jint typeH, jint id)
 {
-#if !defined(NO_PWDBASED) && defined(WOLFSSL_PKCS12)
+#if !defined(NO_PWDBASED) && defined(HAVE_PKCS12)
     int ret = 0;
     byte* pass = NULL;
     byte* salt = NULL;
