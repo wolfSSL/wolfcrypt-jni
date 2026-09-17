@@ -302,6 +302,20 @@ public class WolfCryptLmsSignatureTest {
         tampered[tampered.length / 2] ^= (byte) 0xFF;
         assertFalse("RFC 8554 TC1 tampered signature",
             verify(pub, tampered, RFC8554_TC1_MSG));
+
+        /* Wrong length signature must report false, not throw */
+        byte[] truncated = new byte[RFC8554_TC1_SIG.length - 1];
+        System.arraycopy(RFC8554_TC1_SIG, 0, truncated, 0, truncated.length);
+        assertFalse("RFC 8554 TC1 truncated signature",
+            verify(pub, truncated, RFC8554_TC1_MSG));
+
+        /* Corrupted embedded OTS type field must report false, not throw.
+         * Type word sits after the 4 byte levels and 4 byte q fields for
+         * every parameter set. */
+        byte[] badType = RFC8554_TC1_SIG.clone();
+        badType[8] ^= (byte)0x01;
+        assertFalse("RFC 8554 TC1 corrupted type signature",
+            verify(pub, badType, RFC8554_TC1_MSG));
     }
 
     @Test

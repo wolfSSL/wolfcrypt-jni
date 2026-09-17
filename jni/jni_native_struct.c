@@ -250,6 +250,37 @@ word32 getByteArrayLength(JNIEnv* env, jbyteArray array)
     return array ? (*env)->GetArrayLength(env, array) : 0;
 }
 
+/* Zeroize sensitive buffer 'buf' of size 'sz' bytes, using wc_ForceZero
+ * when available, otherwise XMEMSET. */
+#if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && !defined(WOLFSSL_NO_FORCE_ZERO)
+    #define WC_JNI_FORCE_ZERO(buf, sz) wc_ForceZero((buf), (sz))
+#else
+    #define WC_JNI_FORCE_ZERO(buf, sz) XMEMSET((buf), 0, (sz))
+#endif
+
+/* Pin secret input array elements, capturing if JVM returned a copy */
+byte* getSecretByteArray(JNIEnv* env, jbyteArray array, jboolean* isCopy)
+{
+    *isCopy = JNI_FALSE;
+
+    if (array == NULL) {
+        return NULL;
+    }
+
+    return (byte*)(*env)->GetByteArrayElements(env, array, isCopy);
+}
+
+/* Zero a pinned copy of secret input, then release without copy back. */
+void releaseSecretByteArray(JNIEnv* env, jbyteArray array,
+    byte* elements, word32 len, jboolean isCopy)
+{
+    if (elements != NULL && isCopy == JNI_TRUE) {
+        WC_JNI_FORCE_ZERO(elements, len);
+    }
+
+    releaseByteArray(env, array, elements, JNI_ABORT);
+}
+
 void initializeNativeStruct(JNIEnv* env, jobject obj)
 {
     jclass class;

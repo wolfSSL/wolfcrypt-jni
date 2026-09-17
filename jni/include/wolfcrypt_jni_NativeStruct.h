@@ -40,6 +40,9 @@ byte* getByteArrayIsCopy(JNIEnv* env, jbyteArray array, jboolean* isCopy);
 void zeroizeByteArrayCopy(byte* buf, word32 sz, jboolean isCopy);
 void releaseByteArray(JNIEnv* env, jbyteArray array, byte* elements, jint abort);
 word32 getByteArrayLength(JNIEnv* env, jbyteArray array);
+byte* getSecretByteArray(JNIEnv* env, jbyteArray array, jboolean* isCopy);
+void releaseSecretByteArray(JNIEnv* env, jbyteArray array, byte* elements,
+    word32 len, jboolean isCopy);
 void initializeNativeStruct(JNIEnv* env, jobject obj);
 
 #ifdef __cplusplus

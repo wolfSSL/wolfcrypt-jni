@@ -287,6 +287,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wolfSSL_1X
     if (ret != WOLFSSL_SUCCESS) {
         LogStr("wolfSSL_X509_STORE_add_cert() failed: %d\n", ret);
         wolfSSL_X509_free(x509);
+        /* Normalize to negative so Java does not read failure as success */
+        if (ret >= 0) {
+            ret = BAD_STATE_E;
+        }
         return ret;
     }
     ret = 0;

@@ -51,6 +51,7 @@ public class AesCtr extends NativeStruct {
      * NativeStruct.java. We wrap calls to these below in order to
      * synchronize access to native pointer between threads */
     private native long mallocNativeStruct_internal() throws OutOfMemoryError;
+    private native void wc_AesFree();
     private native void native_set_key_internal(byte[] key, byte[] iv);
     private native int native_update_internal(byte[] input,
         int offset, int length, byte[] output, int outputOffset);
@@ -315,10 +316,14 @@ public class AesCtr extends NativeStruct {
     @Override
     public synchronized void releaseNativeStruct() {
         synchronized (stateLock) {
-            if (state != WolfCryptState.RELEASED) {
-                super.releaseNativeStruct();
-                state = WolfCryptState.RELEASED;
+            if ((state != WolfCryptState.UNINITIALIZED) &&
+                (state != WolfCryptState.RELEASED)) {
+                synchronized (pointerLock) {
+                    wc_AesFree();
+                    super.releaseNativeStruct();
+                }
             }
+            state = WolfCryptState.RELEASED;
         }
     }
 }

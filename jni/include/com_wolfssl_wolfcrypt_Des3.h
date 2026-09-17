@@ -19,6 +19,14 @@ extern "C" {
 #define com_wolfssl_wolfcrypt_Des3_DECRYPT_MODE 1L
 /*
  * Class:     com_wolfssl_wolfcrypt_Des3
+ * Method:    wc_Des3Free
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Des3_wc_1Des3Free
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Des3
  * Method:    native_set_key_internal
  * Signature: ([B[BI)V
  */

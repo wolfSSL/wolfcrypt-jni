@@ -51,12 +51,18 @@ public class Aes extends BlockCipher {
      * NativeStruct.java. We wrap calls to these below in order to
      * synchronize access to native pointer between threads */
     private native long mallocNativeStruct_internal() throws OutOfMemoryError;
+    private native void wc_AesFree();
     private native void native_set_key_internal(byte[] key, byte[] iv,
         int opmode);
     private native int native_update_internal(int opmode, byte[] input,
         int offset, int length, byte[] output, int outputOffset);
     private native int native_update_internal(int opmode, ByteBuffer input,
         int offset, int length, ByteBuffer output, int outputOffset);
+
+    @Override
+    protected void nativeFree() {
+        wc_AesFree();
+    }
 
     /**
      * Malloc native JNI AES structure
