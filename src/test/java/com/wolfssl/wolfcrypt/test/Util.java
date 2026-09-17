@@ -21,7 +21,22 @@
 
 package com.wolfssl.wolfcrypt.test;
 
+import java.security.Security;
+
 public class Util {
+    /**
+     * Return the name of a JCE provider available for interop checks, or
+     * null if none of SunJCE, AndroidOpenSSL and BC is installed.
+     */
+    public static String interopProvider() {
+        for (String prov : new String[] {"SunJCE", "AndroidOpenSSL", "BC"}) {
+            if (Security.getProvider(prov) != null) {
+                return prov;
+            }
+        }
+        return null;
+    }
+
     public static synchronized byte[] h2b(String s) {
         int len = s.length();
         byte[] data = new byte[len / 2];

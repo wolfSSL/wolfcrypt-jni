@@ -84,6 +84,7 @@ import java.security.AlgorithmParameters;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.test.Util;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import java.security.GeneralSecurityException;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -349,23 +350,7 @@ public class WolfCryptCipherTest {
         expectedBlockSizes.put("RSA/ECB/PKCS1Padding", 0);
 
         /* try to set up interop provider, if available */
-        p = Security.getProvider("SunJCE");
-        if (p != null) {
-            interopProvider = "SunJCE";
-        }
-        else {
-            /* Try Android providers if SunJCE not available */
-            p = Security.getProvider("AndroidOpenSSL");
-            if (p != null) {
-                interopProvider = "AndroidOpenSSL";
-            }
-            else {
-                p = Security.getProvider("BC");
-                if (p != null) {
-                    interopProvider = "BC";
-                }
-            }
-        }
+        interopProvider = Util.interopProvider();
 
         /* Generate RSA key pair once up front to reduce test execution time. */
         if (enabledJCEAlgos.contains("RSA") ||
@@ -7895,6 +7880,165 @@ public class WolfCryptCipherTest {
         dec.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
         assertArrayEquals(pt, dec.doFinal(ct));
         assertArrayEquals(pt, dec.doFinal(ct));
+    }
+
+    /**
+     * AES/GCM/NoPadding encrypt init without parameters generates a 96-bit
+     * IV inside native wolfCrypt, without using the caller's SecureRandom.
+     */
+    @Test
+    public void testGCMInternalIv() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[16];
+        byte[] explicitIv = new byte[12];
+        byte[] pt = "GCM internal IV test".getBytes();
+        byte[] aad = "GCM internal IV aad".getBytes();
+        byte[] iv = null;
+        byte[] ct = null;
+        byte[] out = null;
+        byte[] wrapped = null;
+        GCMParameterSpec spec = null;
+        Cipher enc = null;
+        Cipher dec = null;
+
+        /* SecureRandom that fails the test if used */
+        SecureRandom unused = new SecureRandom() {
+            @Override
+            public void nextBytes(byte[] bytes) {
+                fail("SecureRandom should not be used for the GCM IV");
+            }
+        };
+
+        secureRandom.nextBytes(keyBytes);
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+
+        enc = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        enc.init(Cipher.ENCRYPT_MODE, key, unused);
+
+        iv = enc.getIV();
+        assertNotNull(iv);
+        assertEquals("Internal GCM IV should be 12 bytes", 12, iv.length);
+
+        spec = enc.getParameters().getParameterSpec(GCMParameterSpec.class);
+        assertArrayEquals(iv, spec.getIV());
+        assertEquals(128, spec.getTLen());
+
+        enc.updateAAD(aad);
+        ct = enc.doFinal(pt);
+        assertArrayEquals("getIV() should not change after doFinal()",
+            iv, enc.getIV());
+
+        dec = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        dec.updateAAD(aad);
+        assertArrayEquals(pt, dec.doFinal(ct));
+
+        /* each init without parameters generates a new IV */
+        enc.init(Cipher.ENCRYPT_MODE, key, unused);
+        assertEquals(12, enc.getIV().length);
+        assertFalse("Second init should generate a different IV",
+            Arrays.equals(iv, enc.getIV()));
+        enc.doFinal(pt);
+
+        /* a tag length from an earlier init does not carry over */
+        secureRandom.nextBytes(explicitIv);
+        enc.init(Cipher.ENCRYPT_MODE, key,
+            new GCMParameterSpec(96, explicitIv));
+        enc.doFinal(pt);
+        enc.init(Cipher.ENCRYPT_MODE, key);
+        spec = enc.getParameters().getParameterSpec(GCMParameterSpec.class);
+        assertEquals(128, spec.getTLen());
+        assertEquals(pt.length + 16, enc.doFinal(pt).length);
+
+        /* null spec on encrypt init also takes the internal IV path */
+        enc.init(Cipher.ENCRYPT_MODE, key, (AlgorithmParameterSpec)null);
+        assertEquals(12, enc.getIV().length);
+        assertFalse(Arrays.equals(iv, enc.getIV()));
+
+        /* AAD only */
+        enc.init(Cipher.ENCRYPT_MODE, key);
+        enc.updateAAD(aad);
+        ct = enc.doFinal(new byte[0]);
+        assertEquals(16, ct.length);
+        dec.init(Cipher.DECRYPT_MODE, key,
+            new GCMParameterSpec(128, enc.getIV()));
+        dec.updateAAD(aad);
+        assertEquals(0, dec.doFinal(ct).length);
+
+        /* output array form sized by getOutputSize() */
+        enc.init(Cipher.ENCRYPT_MODE, key);
+        out = new byte[enc.getOutputSize(pt.length)];
+        assertEquals(pt.length + 16, enc.doFinal(pt, 0, pt.length, out, 0));
+        dec.init(Cipher.DECRYPT_MODE, key,
+            new GCMParameterSpec(128, enc.getIV()));
+        assertArrayEquals(pt, dec.doFinal(out));
+
+        /* wrap uses the internal IV, unwrap needs it as a spec */
+        enc.init(Cipher.WRAP_MODE, key);
+        wrapped = enc.wrap(new SecretKeySpec(keyBytes, "AES"));
+        dec.init(Cipher.UNWRAP_MODE, key,
+            new GCMParameterSpec(128, enc.getIV()));
+        assertArrayEquals(keyBytes,
+            dec.unwrap(wrapped, "AES", Cipher.SECRET_KEY).getEncoded());
+
+        /* decrypt init requires parameters */
+        try {
+            dec.init(Cipher.DECRYPT_MODE, key);
+            fail("GCM decrypt init without parameters should throw");
+        } catch (InvalidKeyException e) {
+            /* expected */
+        }
+        try {
+            dec.init(Cipher.DECRYPT_MODE, key, (AlgorithmParameterSpec)null);
+            fail("GCM decrypt init with null spec should throw");
+        } catch (InvalidAlgorithmParameterException e) {
+            /* expected */
+        }
+    }
+
+    /**
+     * Ciphertext from a wolfJCE AES/GCM/NoPadding encrypt init without
+     * parameters decrypts with the interop provider using getIV().
+     */
+    @Test
+    public void testGCMInternalIvInterop() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding") ||
+            interopProvider == null) {
+            return;
+        }
+
+        byte[] keyBytes = new byte[32];
+        byte[] iv = new byte[12];
+        byte[] pt = "GCM internal IV interop test".getBytes();
+        byte[] ct = null;
+        Cipher wolf = null;
+        Cipher interop = null;
+
+        secureRandom.nextBytes(keyBytes);
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+
+        /* wolfJCE encrypt without parameters, interop decrypt */
+        wolf = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+        wolf.init(Cipher.ENCRYPT_MODE, key);
+        ct = wolf.doFinal(pt);
+
+        interop = Cipher.getInstance("AES/GCM/NoPadding", interopProvider);
+        interop.init(Cipher.DECRYPT_MODE, key,
+            new GCMParameterSpec(128, wolf.getIV()));
+        assertArrayEquals(pt, interop.doFinal(ct));
+
+        /* interop encrypt with a 12-byte IV, wolfJCE decrypt */
+        secureRandom.nextBytes(iv);
+        interop.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        ct = interop.doFinal(pt);
+
+        wolf.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        assertArrayEquals(pt, wolf.doFinal(ct));
     }
 
     private static boolean isAndroid() {

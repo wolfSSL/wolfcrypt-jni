@@ -32,6 +32,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.spec.GCMParameterSpec;
+
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -44,6 +48,7 @@ import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.AesGcm;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.NativeStruct;
+import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
@@ -1199,5 +1204,241 @@ public class AesGcmTest {
         enc.releaseNativeStruct();
         dec.releaseNativeStruct();
     }
-}
 
+    /**
+     * setIV() generates the IV natively and returns a copy of it
+     */
+    @Test
+    public void testSetIV() throws WolfCryptException {
+        AesGcm aes = new AesGcm();
+        Rng rng = new Rng();
+        byte[] fixed = new byte[] { 0x01, 0x02, 0x03, 0x04 };
+        byte[] ivA = null;
+        byte[] ivB = null;
+
+        Assume.assumeTrue(FeatureDetect.Aes256Enabled());
+        rng.init();
+
+        /* setIV() before setKey() should throw, setKey() resets the IV */
+        try {
+            aes.setIV(12, rng);
+            fail("setIV() before setKey() should throw exception");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        aes.setKey(k1);
+
+        ivA = aes.setIV(12, rng);
+        assertNotNull(ivA);
+        assertEquals(12, ivA.length);
+
+        ivB = aes.setIV(12, rng);
+        assertEquals(12, ivB.length);
+        assertFalse("Generated IVs should differ", Arrays.equals(ivA, ivB));
+
+        /* fixed field forms the first 4 bytes of the IV */
+        ivA = aes.setIV(12, fixed, rng);
+        assertEquals(12, ivA.length);
+        assertArrayEquals(fixed, Arrays.copyOf(ivA, fixed.length));
+
+        ivB = aes.setIV(16, fixed, rng);
+        assertEquals(16, ivB.length);
+        assertArrayEquals(fixed, Arrays.copyOf(ivB, fixed.length));
+
+        /* IV size must be 8, 12 or 16 */
+        try {
+            aes.setIV(7, rng);
+            fail("setIV() with 7-byte IV should throw exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+        try {
+            aes.setIV(17, rng);
+            fail("setIV() with 17-byte IV should throw exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* fixed field must be 4 bytes */
+        try {
+            aes.setIV(12, new byte[3], rng);
+            fail("setIV() with 3-byte fixed field should throw exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* Rng is required */
+        try {
+            aes.setIV(12, (Rng)null);
+            fail("setIV() with null Rng should throw exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        aes.releaseNativeStruct();
+
+        /* setIV() after release should throw */
+        try {
+            aes.setIV(12, rng);
+            fail("setIV() after releaseNativeStruct() should throw exception");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        rng.free();
+        rng.releaseNativeStruct();
+    }
+
+    /**
+     * encryptEx() uses the IV from setIV() and reports it through ivOut
+     */
+    @Test
+    public void testEncryptEx() throws Exception {
+        AesGcm enc = new AesGcm();
+        AesGcm dec = new AesGcm();
+        Rng rng = new Rng();
+        byte[] fixed = new byte[] { 0x01, 0x02, 0x03, 0x04 };
+        byte[] iv = null;
+        byte[] ivOut = new byte[12];
+        byte[] ivOut2 = new byte[12];
+        byte[] ivOut16 = new byte[16];
+        byte[] tag = new byte[16];
+        byte[] tag2 = new byte[16];
+        byte[] cipher = null;
+        byte[] plain = null;
+        byte[] ctWithTag = null;
+        String interop = Util.interopProvider();
+        Cipher jce = null;
+
+        Assume.assumeTrue(FeatureDetect.Aes256Enabled());
+        rng.init();
+
+        /* encryptEx() before setKey() should throw */
+        try {
+            enc.encryptEx(p, ivOut, tag, a);
+            fail("encryptEx() before setKey() should throw exception");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        enc.setKey(k1);
+        dec.setKey(k1);
+
+        /* encryptEx() before setIV() should throw */
+        try {
+            enc.encryptEx(p, ivOut, tag, a);
+            fail("encryptEx() before setIV() should throw exception");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        iv = enc.setIV(12, rng);
+
+        /* ivOut must match the IV size given to setIV() */
+        try {
+            enc.encryptEx(p, new byte[16], tag, a);
+            fail("encryptEx() with wrong ivOut size should throw exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+        try {
+            enc.encryptEx(p, null, tag, a);
+            fail("encryptEx() with null ivOut should throw exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* authTagOut is required */
+        try {
+            enc.encryptEx(p, ivOut, null, a);
+            fail("encryptEx() with null auth tag should throw exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        cipher = enc.encryptEx(p, ivOut, tag, a);
+        assertEquals(p.length, cipher.length);
+        assertArrayEquals("ivOut should match IV from setIV()", iv, ivOut);
+
+        /* decrypt with the reported IV on a second object */
+        plain = dec.decrypt(cipher, ivOut, tag, a);
+        assertArrayEquals(p, plain);
+
+        /* decrypt with another JCE provider when one is available */
+        if (interop != null) {
+            jce = Cipher.getInstance("AES/GCM/NoPadding", interop);
+            jce.init(Cipher.DECRYPT_MODE, new SecretKeySpec(k1, "AES"),
+                new GCMParameterSpec(tag.length * 8, ivOut));
+            jce.updateAAD(a);
+            ctWithTag = new byte[cipher.length + tag.length];
+            System.arraycopy(cipher, 0, ctWithTag, 0, cipher.length);
+            System.arraycopy(tag, 0, ctWithTag, cipher.length, tag.length);
+            assertArrayEquals(p, jce.doFinal(ctWithTag));
+        }
+
+        /* a second encryptEx() without setIV() uses the incremented IV */
+        cipher = enc.encryptEx(p, ivOut2, tag2, a);
+        assertFalse("IV should change between encryptEx() calls",
+            Arrays.equals(ivOut, ivOut2));
+        plain = dec.decrypt(cipher, ivOut2, tag2, a);
+        assertArrayEquals(p, plain);
+
+        /* AAD only, tag-only case */
+        cipher = enc.encryptEx(null, ivOut, tag, a);
+        assertEquals(0, cipher.length);
+        dec.decrypt(null, ivOut, tag, a);
+
+        cipher = enc.encryptEx(new byte[0], ivOut, tag, a);
+        assertEquals(0, cipher.length);
+        dec.decrypt(null, ivOut, tag, a);
+
+        /* fixed field IV, prefix is kept while the rest advances */
+        iv = enc.setIV(12, fixed, rng);
+        cipher = enc.encryptEx(p, ivOut, tag, a);
+        assertArrayEquals(iv, ivOut);
+        assertArrayEquals(fixed, Arrays.copyOf(ivOut, fixed.length));
+        assertArrayEquals(p, dec.decrypt(cipher, ivOut, tag, a));
+
+        cipher = enc.encryptEx(p, ivOut2, tag2, a);
+        assertArrayEquals(fixed, Arrays.copyOf(ivOut2, fixed.length));
+        assertFalse("IV should change between encryptEx() calls",
+            Arrays.equals(ivOut, ivOut2));
+        assertArrayEquals(p, dec.decrypt(cipher, ivOut2, tag2, a));
+
+        /* 16-byte IV */
+        iv = enc.setIV(16, rng);
+        cipher = enc.encryptEx(p, ivOut16, tag, a);
+        assertArrayEquals(iv, ivOut16);
+        assertArrayEquals(p, dec.decrypt(cipher, ivOut16, tag, a));
+
+        /* a failed setIV() disables encryptEx() until the next success */
+        try {
+            enc.setIV(7, rng);
+            fail("setIV() with 7-byte IV should throw exception");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+        try {
+            enc.encryptEx(p, ivOut, tag, a);
+            fail("encryptEx() after failed setIV() should throw exception");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        enc.releaseNativeStruct();
+
+        /* encryptEx() after release should throw */
+        try {
+            enc.encryptEx(p, ivOut, tag, a);
+            fail("encryptEx() after releaseNativeStruct() should throw " +
+                "exception");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        dec.releaseNativeStruct();
+        rng.free();
+        rng.releaseNativeStruct();
+    }
+}

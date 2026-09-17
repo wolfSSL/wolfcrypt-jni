@@ -29,6 +29,15 @@
 #include <wolfssl/version.h>
 #include <wolfssl/wolfcrypt/aes.h>
 
+/* FIPS v2 headers do not name the AES-GCM nonce sizes */
+#if defined(HAVE_FIPS) && \
+    (!defined(HAVE_FIPS_VERSION) || (HAVE_FIPS_VERSION < 5))
+    #define GCM_NONCE_MAX_SZ 16
+    #define GCM_NONCE_MID_SZ 12
+    #define GCM_NONCE_MIN_SZ 8
+    #define AES_IV_FIXED_SZ  4
+#endif
+
 #include <com_wolfssl_wolfcrypt_AesGcm.h>
 #include <wolfcrypt_jni_NativeStruct.h>
 #include <wolfcrypt_jni_error.h>
@@ -443,3 +452,250 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
 #endif
 }
 
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmSetIV
+  (JNIEnv* env, jobject this, jint ivSz, jbyteArray ivFixedArr, jobject rng_object)
+{
+#if !defined(NO_AES) && defined(HAVE_AESGCM) && !defined(WC_NO_RNG)
+    int ret = 0;
+    Aes* aes = NULL;
+    WC_RNG* rng = NULL;
+    const byte* ivFixed = NULL;
+    word32 ivFixedSz = 0;
+    jbyteArray ivArr = NULL;
+
+    aes = (Aes*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* Return on getNativeStruct exception */
+        return NULL;
+    }
+
+    rng = (WC_RNG*) getNativeStruct(env, rng_object);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* Return on getNativeStruct exception */
+        return NULL;
+    }
+
+    if (ivFixedArr != NULL) {
+        ivFixedSz = (*env)->GetArrayLength(env, ivFixedArr);
+        ivFixed = (const byte*)(*env)->GetByteArrayElements(env, ivFixedArr,
+            NULL);
+        if (ivFixed == NULL) {
+            /* OutOfMemoryError pending from GetByteArrayElements */
+            return NULL;
+        }
+    }
+
+    /* IV read back from aes->reg below, only allow sizes wolfCrypt accepts */
+    if (aes == NULL || rng == NULL ||
+        (ivSz != GCM_NONCE_MIN_SZ && ivSz != GCM_NONCE_MID_SZ &&
+         ivSz != GCM_NONCE_MAX_SZ) ||
+        (ivFixed != NULL && ivFixedSz != AES_IV_FIXED_SZ)) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    if (ret == 0) {
+        ret = wc_AesGcmSetIV(aes, (word32)ivSz, ivFixed, ivFixedSz, rng);
+    }
+
+    /* Return a copy of the IV, wolfCrypt has no getter for it and it is
+     * only in aes->reg until the next encrypt call increments it */
+    if (ret == 0) {
+        ivArr = (*env)->NewByteArray(env, ivSz);
+        if (ivArr == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            (*env)->SetByteArrayRegion(env, ivArr, 0, ivSz, (jbyte*)aes->reg);
+            if ((*env)->ExceptionOccurred(env)) {
+                (*env)->ExceptionDescribe(env);
+                (*env)->ExceptionClear(env);
+                (*env)->DeleteLocalRef(env, ivArr);
+                ivArr = NULL;
+                ret = -1;
+            }
+        }
+    }
+
+    if (ivFixed != NULL) {
+        (*env)->ReleaseByteArrayElements(env, ivFixedArr, (jbyte*)ivFixed,
+            JNI_ABORT);
+    }
+
+    LogStr("wc_AesGcmSetIV(aes = %p, ivSz = %d, ivFixedSz = %d) = %d\n",
+        aes, ivSz, ivFixedSz, ret);
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+        return NULL;
+    }
+
+    return ivArr;
+
+#else
+    (void)this;
+    (void)ivSz;
+    (void)ivFixedArr;
+    (void)rng_object;
+    throwNotCompiledInException(env);
+    return NULL;
+#endif
+}
+
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt_1ex
+  (JNIEnv* env, jobject this, jbyteArray inputArr, jbyteArray ivOutArr, jbyteArray authTagArr, jbyteArray authInArr)
+{
+#if !defined(NO_AES) && defined(HAVE_AESGCM) && !defined(WC_NO_RNG)
+    int ret = 0;
+    Aes* aes = NULL;
+    const byte* in = NULL;
+    byte* ivOut = NULL;
+    byte* authTag = NULL;
+    const byte* authIn = NULL;
+    word32 inLen = 0;
+    word32 ivOutSz = 0;
+    word32 authTagSz = 0;
+    word32 authInSz = 0;
+    jboolean inIsCopy = JNI_FALSE;
+
+    byte* out = NULL;
+    jbyteArray outArr = NULL;
+
+    aes = (Aes*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* Return on getNativeStruct exception */
+        return NULL;
+    }
+
+    if (inputArr != NULL) {
+        inLen = (*env)->GetArrayLength(env, inputArr);
+        in = (const byte*)(*env)->GetByteArrayElements(env, inputArr,
+            &inIsCopy);
+        if (in == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+    if (ret == 0 && ivOutArr != NULL) {
+        ivOutSz = (*env)->GetArrayLength(env, ivOutArr);
+        ivOut = (byte*)(*env)->GetByteArrayElements(env, ivOutArr, NULL);
+        if (ivOut == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+    if (ret == 0 && authTagArr != NULL) {
+        authTagSz = (*env)->GetArrayLength(env, authTagArr);
+        authTag = (byte*)(*env)->GetByteArrayElements(env, authTagArr, NULL);
+        if (authTag == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+    if (ret == 0 && authInArr != NULL) {
+        authInSz = (*env)->GetArrayLength(env, authInArr);
+        authIn = (byte*)(*env)->GetByteArrayElements(env, authInArr, NULL);
+        if (authIn == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+
+    /* in may be null, users might only pass in AAD to generate tag */
+    if (ret == 0 && (ivOut == NULL || ivOutSz == 0 || authTag == NULL ||
+        authTagSz == 0 || authTagSz > AES_BLOCK_SIZE ||
+        (inLen != 0 && in == NULL))) {
+        ret = BAD_FUNC_ARG;
+    }
+
+    /* Allocate new buffer to hold ciphertext, none needed for AAD only */
+    if (ret == 0 && inLen > 0) {
+        out = (byte*)XMALLOC(inLen, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        if (out == NULL) {
+            ret = MEMORY_E;
+        }
+        else {
+            XMEMSET(out, 0, inLen);
+        }
+    }
+
+    if (ret == 0) {
+        ret = wc_AesGcmEncrypt_ex(aes, out, in, inLen, ivOut, ivOutSz,
+            authTag, authTagSz, authIn, authInSz);
+    }
+
+    /* Create new jbyteArray to return output */
+    if (ret == 0) {
+        outArr = (*env)->NewByteArray(env, inLen);
+        if (outArr == NULL) {
+            ret = MEMORY_E;
+        }
+    }
+    if (ret == 0 && inLen > 0) {
+        (*env)->SetByteArrayRegion(env, outArr, 0, inLen, (jbyte*)out);
+        if ((*env)->ExceptionOccurred(env)) {
+            (*env)->ExceptionDescribe(env);
+            (*env)->ExceptionClear(env);
+            (*env)->DeleteLocalRef(env, outArr);
+            outArr = NULL;
+            ret = -1;
+        }
+    }
+
+    /* Commit ivOut/authTag changes back to original Java arrays on success */
+    if (ivOut != NULL) {
+        if (ret == 0) {
+            (*env)->ReleaseByteArrayElements(env, ivOutArr, (jbyte*)ivOut, 0);
+        }
+        else {
+            (*env)->ReleaseByteArrayElements(env, ivOutArr, (jbyte*)ivOut,
+                JNI_ABORT);
+        }
+    }
+    if (authTag != NULL) {
+        if (ret == 0) {
+            (*env)->ReleaseByteArrayElements(env, authTagArr,
+                (jbyte*)authTag, 0);
+        }
+        else {
+            (*env)->ReleaseByteArrayElements(env, authTagArr, (jbyte*)authTag,
+                JNI_ABORT);
+        }
+    }
+
+    /* Release other byte arrays without changing original arrays, wiping
+     * any plaintext copy first */
+    if (in != NULL) {
+        zeroizeByteArrayCopy((byte*)in, inLen, inIsCopy);
+        (*env)->ReleaseByteArrayElements(env, inputArr, (jbyte*)in, JNI_ABORT);
+    }
+    if (authIn != NULL) {
+        (*env)->ReleaseByteArrayElements(env, authInArr, (jbyte*)authIn,
+            JNI_ABORT);
+    }
+
+    if (out != NULL) {
+        XFREE(out, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    }
+
+    LogStr("wc_AesGcmEncrypt_ex(aes = %p, inLen = %d, ivOutSz = %d, "
+            "authTagSz = %d, authInSz = %d) = %d\n", aes, inLen, ivOutSz,
+            authTagSz, authInSz, ret);
+
+    if ((*env)->ExceptionOccurred(env)) {
+        /* Leave the pending OutOfMemoryError in place */
+        return NULL;
+    }
+
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+        return NULL;
+    }
+
+    return outArr;
+
+#else
+    (void)this;
+    (void)inputArr;
+    (void)ivOutArr;
+    (void)authTagArr;
+    (void)authInArr;
+    throwNotCompiledInException(env);
+    return NULL;
+#endif
+}
