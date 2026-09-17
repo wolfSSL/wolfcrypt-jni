@@ -126,9 +126,12 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmSetKey
     }
 
     if (keyArr != NULL) {
+        keyLen = (*env)->GetArrayLength(env, keyArr);
         key = (const byte*)(*env)->GetByteArrayElements(env, keyArr,
             &keyIsCopy);
-        keyLen = (*env)->GetArrayLength(env, keyArr);
+        if ((*env)->ExceptionOccurred(env)) {
+            return;
+        }
     }
 
     if (key == NULL || keyLen == 0) {
@@ -139,7 +142,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmSetKey
         ret = wc_AesGcmSetKey(aes, key, keyLen);
     }
 
-    if (keyArr != NULL) {
+    if (key != NULL) {
         zeroizeByteArrayCopy((byte*)key, keyLen, keyIsCopy);
         (*env)->ReleaseByteArrayElements(env, keyArr, (jbyte*)key, JNI_ABORT);
     }
@@ -185,27 +188,39 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
     }
 
     if (inputArr != NULL) {
-        in = (const byte*)(*env)->GetByteArrayElements(env, inputArr, NULL);
         inLen = (*env)->GetArrayLength(env, inputArr);
+        in = (const byte*)(*env)->GetByteArrayElements(env, inputArr, NULL);
+        if ((*env)->ExceptionOccurred(env)) {
+            ret = MEMORY_E;
+        }
     }
-    if (ivArr != NULL) {
-        iv = (byte*)(*env)->GetByteArrayElements(env, ivArr, NULL);
+    if (ret == 0 && ivArr != NULL) {
         ivSz = (*env)->GetArrayLength(env, ivArr);
+        iv = (byte*)(*env)->GetByteArrayElements(env, ivArr, NULL);
+        if ((*env)->ExceptionOccurred(env)) {
+            ret = MEMORY_E;
+        }
     }
-    if (authTagArr != NULL) {
-        authTag = (byte*)(*env)->GetByteArrayElements(env, authTagArr, NULL);
+    if (ret == 0 && authTagArr != NULL) {
         authTagSz = (*env)->GetArrayLength(env, authTagArr);
+        authTag = (byte*)(*env)->GetByteArrayElements(env, authTagArr, NULL);
+        if ((*env)->ExceptionOccurred(env)) {
+            ret = MEMORY_E;
+        }
     }
-    if (authInArr != NULL) {
-        authIn = (byte*)(*env)->GetByteArrayElements(env, authInArr, NULL);
+    if (ret == 0 && authInArr != NULL) {
         authInSz = (*env)->GetArrayLength(env, authInArr);
+        authIn = (byte*)(*env)->GetByteArrayElements(env, authInArr, NULL);
+        if ((*env)->ExceptionOccurred(env)) {
+            ret = MEMORY_E;
+        }
     }
 
     /* in may be null, users might only pass in AAD to generate tag */
-    if (authTagSz > AES_BLOCK_SIZE || iv == NULL || ivSz == 0 ||
+    if (ret == 0 && (authTagSz > AES_BLOCK_SIZE || iv == NULL || ivSz == 0 ||
         (inLen != 0 && in == NULL) ||
         ((authTagSz > 0) && (authTag == NULL)) ||
-        ((authInSz > 0) && (authIn == NULL))) {
+        ((authInSz > 0) && (authIn == NULL)))) {
         ret = BAD_FUNC_ARG;
     }
 
@@ -252,7 +267,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
     if (ret == 0) {
         outArr = (*env)->NewByteArray(env, inLen);
         if (outArr == NULL) {
-            ret = MEMORY_E; 
+            ret = MEMORY_E;
         }
         else {
             (*env)->SetByteArrayRegion(env, outArr, 0, inLen, (jbyte*)out);
@@ -267,7 +282,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
     }
 
     /* Commit authTag changes back to original Java array on success. */
-    if (authTagArr != NULL) {
+    if (authTag != NULL) {
         if (ret == 0) {
             (*env)->ReleaseByteArrayElements(env, authTagArr,
                 (jbyte*)authTag, 0);
@@ -279,15 +294,15 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
     }
 
     /* Release all other byte arrays without changing original arrays */
-    if (inputArr != NULL) {
+    if (in != NULL) {
         (*env)->ReleaseByteArrayElements(env, inputArr, (jbyte*)in,
             JNI_ABORT);
     }
-    if (ivArr != NULL) {
+    if (iv != NULL) {
         (*env)->ReleaseByteArrayElements(env, ivArr, (jbyte*)iv,
             JNI_ABORT);
     }
-    if (authInArr != NULL) {
+    if (authIn != NULL) {
         (*env)->ReleaseByteArrayElements(env, authInArr, (jbyte*)authIn,
             JNI_ABORT);
     }
@@ -299,6 +314,11 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
     LogStr("wc_AesGcmEncrypt(aes = %p, inLen = %d, ivSz = %d, "
             "authTagSz = %d, authInSz = %d)\n", aes, inLen, ivSz,
             authTagSz, authInSz);
+
+    if ((*env)->ExceptionOccurred(env)) {
+        /* Leave the pending OutOfMemoryError in place */
+        return NULL;
+    }
 
     if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
@@ -343,26 +363,38 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
     }
 
     if (inputArr != NULL) {
-        in = (byte*)(*env)->GetByteArrayElements(env, inputArr, NULL);
         inLen = (*env)->GetArrayLength(env, inputArr);
+        in = (byte*)(*env)->GetByteArrayElements(env, inputArr, NULL);
+        if ((*env)->ExceptionOccurred(env)) {
+            ret = MEMORY_E;
+        }
     }
-    if (ivArr != NULL) {
-        iv = (byte*)(*env)->GetByteArrayElements(env, ivArr, NULL);
+    if (ret == 0 && ivArr != NULL) {
         ivSz = (*env)->GetArrayLength(env, ivArr);
+        iv = (byte*)(*env)->GetByteArrayElements(env, ivArr, NULL);
+        if ((*env)->ExceptionOccurred(env)) {
+            ret = MEMORY_E;
+        }
     }
-    if (authTagArr != NULL) {
-        authTag = (byte*)(*env)->GetByteArrayElements(env, authTagArr, NULL);
+    if (ret == 0 && authTagArr != NULL) {
         authTagSz = (*env)->GetArrayLength(env, authTagArr);
+        authTag = (byte*)(*env)->GetByteArrayElements(env, authTagArr, NULL);
+        if ((*env)->ExceptionOccurred(env)) {
+            ret = MEMORY_E;
+        }
     }
-    if (authInArr != NULL) {
-        authIn = (byte*)(*env)->GetByteArrayElements(env, authInArr, NULL);
+    if (ret == 0 && authInArr != NULL) {
         authInSz = (*env)->GetArrayLength(env, authInArr);
+        authIn = (byte*)(*env)->GetByteArrayElements(env, authInArr, NULL);
+        if ((*env)->ExceptionOccurred(env)) {
+            ret = MEMORY_E;
+        }
     }
 
     /* If inLen is non-zero, both in and out must be set. If inLen is 0,
      * in and out are don't cares, as this is the GMAC case */
-    if (iv == NULL || ivSz == 0 || (inLen != 0 && in == NULL) ||
-        authTag == NULL || (authTagSz > AES_BLOCK_SIZE) || authTagSz == 0) {
+    if (ret == 0 && (iv == NULL || ivSz == 0 || (inLen != 0 && in == NULL) ||
+        authTag == NULL || (authTagSz > AES_BLOCK_SIZE) || authTagSz == 0)) {
         ret = BAD_FUNC_ARG;
     }
 
@@ -390,7 +422,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
     if (ret == 0) {
         outArr = (*env)->NewByteArray(env, inLen);
         if (outArr == NULL) {
-            ret = MEMORY_E; 
+            ret = MEMORY_E;
         }
         else {
             (*env)->SetByteArrayRegion(env, outArr, 0, inLen, (jbyte*)out);
@@ -405,19 +437,19 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
     }
 
     /* Release all byte arrays without changing original arrays */
-    if (inputArr != NULL) {
+    if (in != NULL) {
         (*env)->ReleaseByteArrayElements(env, inputArr, (jbyte*)in,
             JNI_ABORT);
     }
-    if (ivArr != NULL) {
+    if (iv != NULL) {
         (*env)->ReleaseByteArrayElements(env, ivArr, (jbyte*)iv,
             JNI_ABORT);
     }
-    if (authInArr != NULL) {
+    if (authIn != NULL) {
         (*env)->ReleaseByteArrayElements(env, authInArr, (jbyte*)authIn,
             JNI_ABORT);
     }
-    if (authTagArr != NULL) {
+    if (authTag != NULL) {
         (*env)->ReleaseByteArrayElements(env, authTagArr, (jbyte*)authTag,
             JNI_ABORT);
     }
@@ -435,6 +467,11 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
     LogStr("wc_AesGcmDecrypt(aes = %p, inLen = %d, ivSz = %d, "
             "authTagSz = %d, authInSz = %d)\n", aes, inLen, ivSz,
             authTagSz, authInSz);
+
+    if ((*env)->ExceptionOccurred(env)) {
+        /* Leave the pending OutOfMemoryError in place */
+        return NULL;
+    }
 
     if (ret != 0) {
         throwWolfCryptExceptionFromError(env, ret);
