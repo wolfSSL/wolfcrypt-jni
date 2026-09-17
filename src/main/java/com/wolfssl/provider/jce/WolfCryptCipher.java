@@ -2106,8 +2106,8 @@ public class WolfCryptCipher extends CipherSpi {
     }
 
     /**
-     * Sanity check output buffer size is large enough for update() call,
-     * based on padding and buffered data.
+     * Check the output buffer holds the bytes this update() call will output,
+     * which is fewer than getOutputSize() reports for a final() call.
      *
      * @param inputSz size of input data to update()
      * @param outputSz total size of output buffer provided
