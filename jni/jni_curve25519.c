@@ -171,11 +171,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
     pub    = getByteArray(env, pub_object);
     pubSz  = getByteArrayLength(env, pub_object);
 
-    /* pub may be null if only importing private key */
     if (!curve25519 || !priv) {
         ret = BAD_FUNC_ARG;
     } else {
-        /* detect, and later skip, leading zero byte */
+        /* Import raw fixed width private and public key bytes unchanged */
         ret = wc_curve25519_import_private_raw(priv, privSz, pub,
                                                pubSz, curve25519);
     }
@@ -211,11 +210,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
     priv   = getByteArrayIsCopy(env, priv_object, &privIsCopy);
     privSz = getByteArrayLength(env, priv_object);
 
-    /* pub may be null if only importing private key */
     if (!curve25519 || !priv) {
         ret = BAD_FUNC_ARG;
     } else {
-        /* detect, and later skip, leading zero byte */
+        /* Import raw fixed width private key bytes unchanged */
         ret = wc_curve25519_import_private(priv, privSz, curve25519);
     }
 
@@ -251,7 +249,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1imp
     if (!curve25519 || !pub) {
         ret = BAD_FUNC_ARG;
     } else {
-        /* detect, and later skip, leading zero byte */
+        /* Import raw fixed width public key bytes unchanged */
         ret = wc_curve25519_import_public(pub, pubSz, curve25519);
     }
 

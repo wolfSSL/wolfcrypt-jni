@@ -184,9 +184,22 @@ public abstract class BlockCipher extends NativeStruct {
         checkStateAndInitialize();
         throwIfKeyNotLoaded();
 
-        byte[] output = new byte[input.length];
+        if (input == null || offset < 0 || length < 0 ||
+            ((long)offset + (long)length) > input.length) {
+            throw new WolfCryptException(WolfCryptError.BAD_FUNC_ARG.getCode());
+        }
 
-        native_update(opmode, input, offset, length, output, 0);
+        int outputLength;
+        byte[] output = new byte[length];
+
+        outputLength = native_update(opmode, input, offset, length, output, 0);
+
+        if (outputLength != length) {
+            /* resize array to match actual output length */
+            byte[] tmp = new byte[outputLength];
+            System.arraycopy(output, 0, tmp, 0, outputLength);
+            output = tmp;
+        }
 
         return output;
     }
