@@ -61,7 +61,6 @@ dist:
 	rm -rf "$(NAME)-$(VERSION)"
 
 rpm: dist
-	@env
 	@rm -f *.rpm
 	rpmdev-setuptree
 	find ~/rpmbuild/RPMS ~/rpmbuild/SRPMS -name "$(PACKAGE)-$(VERSION)*.rpm" | xargs rm -f
