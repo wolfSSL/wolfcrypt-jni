@@ -43,7 +43,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
    jbyteArray saltBuf, jint sBufLen, jint iterations, jint kLen,
    jint typeH, jint id)
 {
-#if !defined(NO_PWDBASED) && defined(WOLFSSL_PKCS12)
+#if !defined(NO_PWDBASED) && defined(HAVE_PKCS12)
     int ret = 0;
     byte* pass = NULL;
     byte* salt = NULL;
@@ -66,15 +66,24 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
 
     if (passBuf != NULL) {
         pass = (byte*)(*env)->GetByteArrayElements(env, passBuf, &passIsCopy);
-    }
-    if (saltBuf != NULL) {
-        salt = (byte*)(*env)->GetByteArrayElements(env, saltBuf, NULL);
+        if ((*env)->ExceptionOccurred(env)) {
+            ret = MEMORY_E;
+        }
     }
 
-    PRIVATE_KEY_UNLOCK();
-    ret = wc_PKCS12_PBKDF(outKey, pass, passBufLen, salt, sBufLen,
-                          iterations, kLen, typeH, id);
-    PRIVATE_KEY_LOCK();
+    if ((ret == 0) && (saltBuf != NULL)) {
+        salt = (byte*)(*env)->GetByteArrayElements(env, saltBuf, NULL);
+        if ((*env)->ExceptionOccurred(env)) {
+            ret = MEMORY_E;
+        }
+    }
+
+    if (ret == 0) {
+        PRIVATE_KEY_UNLOCK();
+        ret = wc_PKCS12_PBKDF(outKey, pass, passBufLen, salt, sBufLen,
+                              iterations, kLen, typeH, id);
+        PRIVATE_KEY_LOCK();
+    }
     if (ret == 0) {
         result = (*env)->NewByteArray(env, kLen);
         if (result != NULL) {
@@ -110,6 +119,11 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PKCS12_1PBK
     }
     if (salt != NULL) {
         (*env)->ReleaseByteArrayElements(env, saltBuf, (jbyte*)salt, JNI_ABORT);
+    }
+
+    if ((*env)->ExceptionOccurred(env)) {
+        /* Leave the pending OutOfMemoryError in place */
+        return NULL;
     }
 
     if (ret != 0) {

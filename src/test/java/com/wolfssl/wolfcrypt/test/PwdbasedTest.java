@@ -116,23 +116,64 @@ public class PwdbasedTest {
     @Test
     public void testPkcs12PbkdfDoesNotModifyPassword() {
 
+        Assume.assumeTrue("PKCS12 PBKDF not compiled in native wolfSSL",
+            FeatureDetect.Pkcs12PbkdfEnabled());
+
         byte[] pass = makePassword();
         byte[] passCopy = pass.clone();
         byte[] salt = new byte[] {1, 2, 3, 4, 5, 6, 7, 8};
-        byte[] key = null;
-
-        try {
-            key = Pwdbased.PKCS12_PBKDF(pass, salt, 100, 24,
-                WolfCrypt.WC_HASH_TYPE_SHA256, 1);
-        } catch (WolfCryptException e) {
-            Assume.assumeTrue("PKCS12 PBKDF not compiled in native wolfSSL",
-                e.getError() != WolfCryptError.NOT_COMPILED_IN);
-            throw e;
-        }
+        byte[] key = Pwdbased.PKCS12_PBKDF(pass, salt, 100, 24,
+            WolfCrypt.WC_HASH_TYPE_SHA256, 1);
 
         assertNotNull(key);
         assertArrayEquals("PKCS12_PBKDF modified caller password array",
             passCopy, pass);
+    }
+
+    /**
+     * PKCS12 PBKDF known answer test, vectors from wolfSSL test.c.
+     */
+    @Test
+    public void testPkcs12PbkdfKnownAnswer() {
+
+        Assume.assumeTrue("PKCS12 PBKDF not compiled in native wolfSSL",
+            FeatureDetect.Pkcs12PbkdfEnabled());
+
+        /* "smeg" as big endian UTF-16 with terminator */
+        byte[] pass1 = new byte[] {
+            0x00, 0x73, 0x00, 0x6d, 0x00, 0x65, 0x00, 0x67, 0x00, 0x00
+        };
+        byte[] salt1 = new byte[] {
+            0x0a, 0x58, (byte)0xcf, 0x64, 0x53, 0x0d, (byte)0x82, 0x3f
+        };
+        byte[] expected1 = new byte[] {
+            0x27, (byte)0xe9, 0x0d, 0x7e, (byte)0xd5, (byte)0xa1,
+            (byte)0xc4, 0x11, (byte)0xba, (byte)0x87, (byte)0x8b,
+            (byte)0xc0, (byte)0x90, (byte)0xf5, (byte)0xce, (byte)0xbe,
+            0x5e, (byte)0x9d, 0x5f, (byte)0xe3, (byte)0xd6, 0x2b, 0x73,
+            (byte)0xaa
+        };
+
+        /* "queeg" as big endian UTF-16 with terminator */
+        byte[] pass2 = new byte[] {
+            0x00, 0x71, 0x00, 0x75, 0x00, 0x65, 0x00, 0x65, 0x00, 0x67,
+            0x00, 0x00
+        };
+        byte[] salt2 = new byte[] {
+            0x16, (byte)0x82, (byte)0xc0, (byte)0xfc, 0x5b, 0x3f, 0x7e,
+            (byte)0xc5
+        };
+        byte[] expected2 = new byte[] {
+            (byte)0x90, 0x1b, 0x49, 0x70, (byte)0xf0, (byte)0x94,
+            (byte)0xf0, (byte)0xf8, 0x45, (byte)0xc0, (byte)0xf3,
+            (byte)0xf3, 0x13, 0x59, 0x18, 0x6a, 0x35, (byte)0xe3, 0x67,
+            (byte)0xfe, (byte)0xd3, 0x21, (byte)0xfd, 0x7c
+        };
+
+        assertArrayEquals(expected1, Pwdbased.PKCS12_PBKDF(pass1, salt1, 1,
+            24, WolfCrypt.WC_HASH_TYPE_SHA256, 1));
+        assertArrayEquals(expected2, Pwdbased.PKCS12_PBKDF(pass2, salt2, 1000,
+            24, WolfCrypt.WC_HASH_TYPE_SHA256, 1));
     }
 
     /**
@@ -165,6 +206,9 @@ public class PwdbasedTest {
     @Test
     public void testPkcs12PbkdfRejectsNonPositiveKeyLength() {
 
+        Assume.assumeTrue("PKCS12 PBKDF not compiled in native wolfSSL",
+            FeatureDetect.Pkcs12PbkdfEnabled());
+
         byte[] pass = makePassword();
         byte[] salt = new byte[] {1, 2, 3, 4, 5, 6, 7, 8};
 
@@ -174,9 +218,6 @@ public class PwdbasedTest {
                     WolfCrypt.WC_HASH_TYPE_SHA256, 1);
                 fail("PKCS12_PBKDF should reject kLen: " + kLen);
             } catch (WolfCryptException e) {
-                Assume.assumeTrue(
-                    "PKCS12 PBKDF not compiled in native wolfSSL",
-                    e.getError() != WolfCryptError.NOT_COMPILED_IN);
                 assertEquals("kLen " + kLen + " must map to BAD_FUNC_ARG",
                     WolfCryptError.BAD_FUNC_ARG, e.getError());
             }
