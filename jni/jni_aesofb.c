@@ -99,6 +99,7 @@ Java_com_wolfssl_wolfcrypt_AesOfb_native_1set_1key_1internal(
     byte* key = NULL;
     byte* iv  = NULL;
     word32 keySz = 0;
+    word32 ivSz = 0;
     (void)opmode;
 
     aes = (Aes*) getNativeStruct(env, this);
@@ -110,8 +111,10 @@ Java_com_wolfssl_wolfcrypt_AesOfb_native_1set_1key_1internal(
     key = getByteArray(env, key_object);
     iv  = getByteArray(env, iv_object);
     keySz = getByteArrayLength(env, key_object);
+    ivSz = getByteArrayLength(env, iv_object);
 
-    if (aes == NULL || key == NULL || iv == NULL) {
+    /* wc_AesSetKey reads AES_BLOCK_SIZE IV bytes, reject a short array */
+    if (aes == NULL || key == NULL || iv == NULL || ivSz != AES_BLOCK_SIZE) {
         ret = BAD_FUNC_ARG;
     }
 

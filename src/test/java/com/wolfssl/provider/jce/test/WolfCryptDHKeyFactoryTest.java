@@ -32,6 +32,7 @@ import java.math.BigInteger;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Provider;
@@ -53,6 +54,8 @@ import org.junit.Test;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import java.lang.reflect.Field;
 import com.wolfssl.provider.jce.WolfCryptDHPublicKey;
+import com.wolfssl.provider.jce.WolfCryptDHPrivateKey;
+import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
@@ -440,6 +443,68 @@ public class WolfCryptDHKeyFactoryTest {
                 fail("Failed to test key size " + keySize + ": " +
                     e.getMessage());
             }
+        }
+    }
+
+    /**
+     * A prime below Dh.DH_MIN_SIZE, the floor wolfCrypt uses when generating
+     * DH keys, must be rejected on import so the KeyFactory doesn't accept a
+     * group weaker than one wolfJCE produces.
+     */
+    @Test
+    public void testWeakPrimeRejected() throws Exception {
+
+        Assume.assumeTrue(FeatureDetect.DhEnabled());
+
+        KeyFactory kf = KeyFactory.getInstance("DH", "wolfJCE");
+
+        /* Prime one bit below the enforced minimum, this is not a real
+         * DH prime but only the bit length is checked at intake */
+        BigInteger weakP = BigInteger.ONE.shiftLeft(Dh.DH_MIN_SIZE - 2);
+        BigInteger g = BigInteger.valueOf(2);
+        BigInteger y = BigInteger.valueOf(3);
+        BigInteger x = BigInteger.valueOf(3);
+
+        try {
+            kf.generatePublic(new DHPublicKeySpec(y, weakP, g));
+            fail("weak DH prime should be rejected on public key import");
+        } catch (InvalidKeySpecException e) {
+            /* expected */
+        }
+
+        try {
+            kf.generatePrivate(new DHPrivateKeySpec(x, weakP, g));
+            fail("weak DH prime should be rejected on private key import");
+        } catch (InvalidKeySpecException e) {
+            /* expected */
+        }
+
+        /* Build weak-prime DER via the raw key constructors (which do not
+         * validate) and confirm the X.509 and PKCS#8 DER import paths and
+         * translateKey all reject it */
+        DHParameterSpec weakParams = new DHParameterSpec(weakP, g);
+        byte[] pubDer = new WolfCryptDHPublicKey(y, weakParams).getEncoded();
+        byte[] privDer = new WolfCryptDHPrivateKey(x, weakParams).getEncoded();
+
+        try {
+            kf.generatePublic(new X509EncodedKeySpec(pubDer));
+            fail("weak DH prime should be rejected on X.509 import");
+        } catch (InvalidKeySpecException e) {
+            /* expected */
+        }
+
+        try {
+            kf.generatePrivate(new PKCS8EncodedKeySpec(privDer));
+            fail("weak DH prime should be rejected on PKCS#8 import");
+        } catch (InvalidKeySpecException e) {
+            /* expected */
+        }
+
+        try {
+            kf.translateKey(new WolfCryptDHPublicKey(y, weakParams));
+            fail("weak DH prime should be rejected on translateKey");
+        } catch (InvalidKeyException e) {
+            /* expected */
         }
     }
 

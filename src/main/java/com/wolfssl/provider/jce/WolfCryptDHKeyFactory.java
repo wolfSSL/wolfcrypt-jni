@@ -295,6 +295,9 @@ public class WolfCryptDHKeyFactory extends KeyFactorySpi {
                 "Private key value must be positive");
         }
 
+        /* Reject a prime below the minimum wolfCrypt will generate */
+        checkDhPrimeSize(keySpec.getP());
+
         try {
             /* Create DHParameterSpec from p and g */
             DHParameterSpec paramSpec = new DHParameterSpec(
@@ -308,6 +311,26 @@ public class WolfCryptDHKeyFactory extends KeyFactorySpi {
             throw new InvalidKeySpecException(
                 "Failed to create DHPrivateKey from spec: " +
                 e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Enforce a minimum DH prime size on imported keys.
+     *
+     * wolfCrypt does not generate DH keys below DH_MIN_SIZE, so accepting a
+     * smaller prime on import would allow a group weaker than any wolfJCE
+     * produces. Reject those at the KeyFactory boundary.
+     *
+     * @param p DH prime modulus to check
+     *
+     * @throws InvalidKeySpecException if p has fewer than DH_MIN_SIZE bits
+     */
+    private static void checkDhPrimeSize(BigInteger p)
+        throws InvalidKeySpecException {
+
+        if (p.bitLength() < Dh.DH_MIN_SIZE) {
+            throw new InvalidKeySpecException(
+                "DH prime must be at least " + Dh.DH_MIN_SIZE + " bits");
         }
     }
 
@@ -402,6 +425,9 @@ public class WolfCryptDHKeyFactory extends KeyFactorySpi {
             throw new InvalidKeySpecException(
                 "Public key out of valid range: must satisfy 1 < Y < p-1");
         }
+
+        /* Reject a prime below the minimum wolfCrypt will generate */
+        checkDhPrimeSize(keySpec.getP());
 
         try {
             /* Create DHParameterSpec from p and g */

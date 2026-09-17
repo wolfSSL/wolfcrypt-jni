@@ -207,6 +207,12 @@ public class WolfCryptDHPrivateKey implements DHPrivateKey, Destroyable {
             p = new BigInteger(1, pBytes);
             idx += pLen;
 
+            /* Reject a prime below the minimum wolfCrypt will generate */
+            if (p.bitLength() < Dh.DH_MIN_SIZE) {
+                throw new IllegalArgumentException(
+                    "DH prime must be at least " + Dh.DH_MIN_SIZE + " bits");
+            }
+
             /* g INTEGER */
             if (derData[idx++] != 0x02) {
                 throw new IllegalArgumentException(

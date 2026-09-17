@@ -99,6 +99,48 @@ public class Des3Test {
         }
     }
 
+    @Test
+    public void checkSetKeyParams() {
+        byte[] key = Util.h2b(
+            "e61a38548694f1fd8cef251c518cc70bb613751c1ce52aa8");
+        byte[] iv = Util.h2b("48a8ceb8551fd4ad");
+
+        Des3 des = new Des3();
+
+        /* wc_Des3_SetKey reads full 24 byte key, reject a short/long key */
+        try {
+            des.setKey(new byte[1], iv, Des3.ENCRYPT_MODE);
+            fail("undersized key should be rejected.");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
+        try {
+            des.setKey(new byte[Des3.KEY_SIZE + 1], iv, Des3.ENCRYPT_MODE);
+            fail("oversized key should be rejected.");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
+        /* IV is optional, but non-null iv must be the block size */
+        try {
+            des.setKey(key, new byte[1], Des3.ENCRYPT_MODE);
+            fail("undersized iv should be rejected.");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
+        try {
+            des.setKey(key, new byte[Des3.BLOCK_SIZE + 1], Des3.ENCRYPT_MODE);
+            fail("oversized iv should be rejected.");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
+        des.setKey(key, iv, Des3.ENCRYPT_MODE);
+        des.releaseNativeStruct();
+    }
+
     @Test(expected=ShortBufferException.class)
     public void updateShouldMatchUsingByteByffer() throws ShortBufferException {
         String[] keys = new String[] {

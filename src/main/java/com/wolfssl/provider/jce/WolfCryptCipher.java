@@ -1748,8 +1748,20 @@ public class WolfCryptCipher extends CipherSpi {
                             tmpIn = Arrays.copyOfRange(tmpIn, 0,
                                         tmpIn.length - this.gcmTagLen);
 
-                            tmpOut = this.aesCcm.decrypt(tmpIn, this.iv, tag,
-                                        aad);
+                            try {
+                                tmpOut = this.aesCcm.decrypt(tmpIn, this.iv,
+                                            tag, aad);
+
+                            } catch (WolfCryptException e) {
+                                /* Convert to AEADBadTagException */
+                                if (e.getCode() ==
+                                    WolfCryptError.AES_CCM_AUTH_E.getCode()) {
+                                    /* Authentication check fail */
+                                    throw new AEADBadTagException(
+                                        e.getMessage());
+                                }
+                                throw e;
+                            }
                         }
                     }
                     else if (cipherMode == CipherMode.WC_ECB) {

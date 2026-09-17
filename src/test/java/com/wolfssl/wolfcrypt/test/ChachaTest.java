@@ -132,6 +132,22 @@ public class ChachaTest {
             /* test must throw */
         }
 
+        /* IV shorter than 12 bytes should be rejected */
+        try {
+            chacha.setIV(new byte[4]);
+            fail("IV shorter than 12 bytes should be rejected.");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
+        /* An IV longer than 12 bytes is not a valid ChaCha nonce */
+        try {
+            chacha.setIV(new byte[16]);
+            fail("IV longer than 12 bytes should be rejected.");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
         chacha.setIV(IV);
         chacha.releaseNativeStruct();
     }
