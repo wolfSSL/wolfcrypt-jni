@@ -659,8 +659,8 @@ public class AesOfb extends NativeStruct {
     }
 
     /**
-     * Release native AES-OFB structure.
-     * Object cannot be used again after calling this method.
+     * Release native AES-OFB structure. Object may be re-initialized and
+     * used again after release by calling setKey().
      */
     @Override
     public synchronized void releaseNativeStruct() {
