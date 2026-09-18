@@ -110,7 +110,8 @@ public class AesCmac extends NativeStruct {
                 wc_CmacSetKey(key);
             }
 
-            /* Store key for reset functionality */
+            /* Store key for reset, zeroize any prior key clone */
+            zeroizeKey();
             this.key = new byte[key.length];
             System.arraycopy(key, 0, this.key, 0, key.length);
 

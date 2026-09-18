@@ -395,15 +395,19 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1final_1internal___3B(
 
     hash = getByteArray(env, hash_buffer);
 
-    ret = (!sha || !hash)
-        ? BAD_FUNC_ARG
-        : wc_ShaFinal(sha, hash);
+    if (sha == NULL || hash == NULL ||
+        getByteArrayLength(env, hash_buffer) < SHA_DIGEST_SIZE) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_ShaFinal(sha, hash);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_ShaFinal(sha=%p, hash) = %d\n", sha, ret);
-    if (hash != NULL) {
+    if (ret == 0) {
         LogStr("hash[%u]: [%p]\n", (word32)SHA_DIGEST_SIZE, hash);
         LogHex(hash, 0, SHA_DIGEST_SIZE);
     }
@@ -632,7 +636,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1final_1internal
 
     hash = getByteArray(env, hash_buffer);
 
-    if (sha == NULL || hash == NULL) {
+    if (sha == NULL || hash == NULL ||
+        getByteArrayLength(env, hash_buffer) < SHA224_DIGEST_SIZE) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -644,7 +649,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1final_1internal
     }
 
     LogStr("wc_Sha224Final(sha=%p, hash) = %d\n", sha, ret);
-    if (hash != NULL) {
+    if (ret == 0) {
         LogStr("hash[%u]: [%p]\n", (word32)SHA224_DIGEST_SIZE, hash);
         LogHex(hash, 0, SHA224_DIGEST_SIZE);
     }
@@ -856,15 +861,19 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1final_1internal___3B(
 
     hash = getByteArray(env, hash_buffer);
 
-    ret = (!sha || !hash)
-        ? BAD_FUNC_ARG
-        : wc_Sha256Final(sha, hash);
+    if (sha == NULL || hash == NULL ||
+        getByteArrayLength(env, hash_buffer) < SHA256_DIGEST_SIZE) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_Sha256Final(sha, hash);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Sha256Final(sha=%p, hash) = %d\n", sha, ret);
-    if (hash != NULL) {
+    if (ret == 0) {
         LogStr("hash[%u]: [%p]\n", (word32)SHA256_DIGEST_SIZE, hash);
         LogHex(hash, 0, SHA256_DIGEST_SIZE);
     }
@@ -1070,15 +1079,19 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1final_1internal___3B(
 
     hash = getByteArray(env, hash_buffer);
 
-    ret = (!sha || !hash)
-        ? BAD_FUNC_ARG
-        : wc_Sha384Final(sha, hash);
+    if (sha == NULL || hash == NULL ||
+        getByteArrayLength(env, hash_buffer) < SHA384_DIGEST_SIZE) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_Sha384Final(sha, hash);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Sha384Final(sha=%p, hash) = %d\n", sha, ret);
-    if (hash != NULL) {
+    if (ret == 0) {
         LogStr("hash[%u]: [%p]\n", (word32)SHA384_DIGEST_SIZE, hash);
         LogHex(hash, 0, SHA384_DIGEST_SIZE);
     }
@@ -1285,15 +1298,19 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1final_1internal___3B(
 
     hash = getByteArray(env, hash_buffer);
 
-    ret = (!sha || !hash)
-        ? BAD_FUNC_ARG
-        : wc_Sha512Final(sha, hash);
+    if (sha == NULL || hash == NULL ||
+        getByteArrayLength(env, hash_buffer) < SHA512_DIGEST_SIZE) {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
+        ret = wc_Sha512Final(sha, hash);
+    }
 
     if (ret != 0)
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Sha512Final(sha=%p, hash) = %d\n", sha, ret);
-    if (hash != NULL) {
+    if (ret == 0) {
         LogStr("hash[%u]: [%p]\n", (word32)SHA512_DIGEST_SIZE, hash);
         LogHex(hash, 0, SHA512_DIGEST_SIZE);
     }
@@ -1646,6 +1663,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1final_1internal__
     int ret = 0;
     wc_Sha3* sha = NULL;
     byte* hash = NULL;
+    word32 hashSz = 0;
 
     sha = (wc_Sha3*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1660,18 +1678,39 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1final_1internal__
     }
 
     if (ret == 0) {
+        hashSz = getByteArrayLength(env, hash_buffer);
         switch(hashType) {
             case WC_HASH_TYPE_SHA3_224:
-                ret = wc_Sha3_224_Final(sha, hash);
+                if (hashSz < WC_SHA3_224_DIGEST_SIZE) {
+                    ret = BAD_FUNC_ARG;
+                }
+                else {
+                    ret = wc_Sha3_224_Final(sha, hash);
+                }
                 break;
             case WC_HASH_TYPE_SHA3_256:
-                ret = wc_Sha3_256_Final(sha, hash);
+                if (hashSz < WC_SHA3_256_DIGEST_SIZE) {
+                    ret = BAD_FUNC_ARG;
+                }
+                else {
+                    ret = wc_Sha3_256_Final(sha, hash);
+                }
                 break;
             case WC_HASH_TYPE_SHA3_384:
-                ret = wc_Sha3_384_Final(sha, hash);
+                if (hashSz < WC_SHA3_384_DIGEST_SIZE) {
+                    ret = BAD_FUNC_ARG;
+                }
+                else {
+                    ret = wc_Sha3_384_Final(sha, hash);
+                }
                 break;
             case WC_HASH_TYPE_SHA3_512:
-                ret = wc_Sha3_512_Final(sha, hash);
+                if (hashSz < WC_SHA3_512_DIGEST_SIZE) {
+                    ret = BAD_FUNC_ARG;
+                }
+                else {
+                    ret = wc_Sha3_512_Final(sha, hash);
+                }
                 break;
             default:
                 ret = BAD_FUNC_ARG;
