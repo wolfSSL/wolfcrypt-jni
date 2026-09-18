@@ -43,6 +43,7 @@
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesEcb.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesGcm.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesGmac.h" />
+    <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesKeyWrap.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_AesOfb.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Asn.h" />
     <ClInclude Include="..\..\jni\include\com_wolfssl_wolfcrypt_Chacha.h" />
@@ -83,6 +84,7 @@
     <ClCompile Include="..\..\jni\jni_aesecb.c" />
     <ClCompile Include="..\..\jni\jni_aesgcm.c" />
     <ClCompile Include="..\..\jni\jni_aesgmac.c" />
+    <ClCompile Include="..\..\jni\jni_aeskeywrap.c" />
     <ClCompile Include="..\..\jni\jni_aesofb.c" />
     <ClCompile Include="..\..\jni\jni_asn.c" />
     <ClCompile Include="..\..\jni\jni_chacha.c" />

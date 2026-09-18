@@ -50,6 +50,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/AesEcb.java \
     src/main/java/com/wolfssl/wolfcrypt/AesGcm.java \
     src/main/java/com/wolfssl/wolfcrypt/AesGmac.java \
+    src/main/java/com/wolfssl/wolfcrypt/AesKeyWrap.java \
     src/main/java/com/wolfssl/wolfcrypt/AesOfb.java \
     src/main/java/com/wolfssl/wolfcrypt/Asn.java \
     src/main/java/com/wolfssl/wolfcrypt/BlockCipher.java \

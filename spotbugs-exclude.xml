@@ -104,6 +104,11 @@
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
     </Match>
     <Match>
+        <Class name="com.wolfssl.wolfcrypt.AesKeyWrap"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
         <Class name="com.wolfssl.wolfcrypt.AesOfb"/>
         <Method name="&lt;init&gt;"/>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>

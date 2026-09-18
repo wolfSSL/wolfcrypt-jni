@@ -40,6 +40,8 @@ import javax.crypto.spec.PSource;
 import javax.crypto.spec.SecretKeySpec;
 
 import java.security.SecureRandom;
+import java.security.Security;
+import java.security.Provider;
 import java.security.MessageDigest;
 import java.security.KeyFactory;
 import java.security.spec.MGF1ParameterSpec;
@@ -65,6 +67,7 @@ import com.wolfssl.wolfcrypt.AesOfb;
 import com.wolfssl.wolfcrypt.AesGcm;
 import com.wolfssl.wolfcrypt.AesCcm;
 import com.wolfssl.wolfcrypt.AesCts;
+import com.wolfssl.wolfcrypt.AesKeyWrap;
 import com.wolfssl.wolfcrypt.Des3;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Rng;
@@ -93,7 +96,8 @@ public class WolfCryptCipher extends CipherSpi {
         WC_OFB,
         WC_GCM,
         WC_CCM,
-        WC_CTS
+        WC_CTS,
+        WC_KW
     }
 
     enum PaddingType {
@@ -126,6 +130,15 @@ public class WolfCryptCipher extends CipherSpi {
 
     private int blockSize = 0;
 
+    /* Key size locked by services like AESWrap_128, -1 for any */
+    private int fixedKeySize = -1;
+
+    /* wolfJCE used by engineGetParameters() when wolfJCE is not
+     * registered with Security. Created once on first use. */
+    private static final class FallbackProvider {
+        static final Provider INSTANCE = new WolfCryptProvider();
+    }
+
     private Aes  aes      = null;
     private AesEcb aesEcb = null;
     private AesCtr aesCtr = null;
@@ -133,6 +146,7 @@ public class WolfCryptCipher extends CipherSpi {
     private AesGcm aesGcm = null;
     private AesCcm aesCcm = null;
     private AesCts aesCts = null;
+    private AesKeyWrap aesKeyWrap = null;
     private Des3 des3     = null;
     private Rsa  rsa      = null;
     private Rng  rng      = null;
@@ -265,9 +279,16 @@ public class WolfCryptCipher extends CipherSpi {
     private WolfCryptCipher(CipherType type, CipherMode mode,
             PaddingType pad) {
 
+        this(type, mode, pad, -1);
+    }
+
+    private WolfCryptCipher(CipherType type, CipherMode mode, PaddingType pad,
+        int fixedKeySize) {
+
         this.cipherType = type;
         this.cipherMode = mode;
         this.paddingType = pad;
+        this.fixedKeySize = fixedKeySize;
 
         /* Initialize OAEP parameters if using OAEP padding */
         if (pad == PaddingType.WC_OAEP_SHA256) {
@@ -278,7 +299,13 @@ public class WolfCryptCipher extends CipherSpi {
 
         switch (cipherType) {
             case WC_AES:
-                blockSize = Aes.BLOCK_SIZE;
+                if (mode == CipherMode.WC_KW) {
+                    /* AES Key Wrap works on 8-byte blocks */
+                    blockSize = AesKeyWrap.KEYWRAP_BLOCK_SIZE;
+                }
+                else {
+                    blockSize = Aes.BLOCK_SIZE;
+                }
                 break;
 
             case WC_DES3:
@@ -505,6 +532,13 @@ public class WolfCryptCipher extends CipherSpi {
                     }
                     aesCts = new AesCts();
                 }
+                else if (cipherMode == CipherMode.WC_KW) {
+                    if (aesKeyWrap != null) {
+                        aesKeyWrap.releaseNativeStruct();
+                        aesKeyWrap = null;
+                    }
+                    aesKeyWrap = new AesKeyWrap();
+                }
                 break;
 
             case WC_DES3:
@@ -527,7 +561,20 @@ public class WolfCryptCipher extends CipherSpi {
 
         int supported = 0;
 
-        if (mode.equals("ECB")) {
+        /* standard mode names are not case sensitive */
+        if (cipherType == CipherType.WC_AES &&
+            cipherMode == CipherMode.WC_KW) {
+
+            if (mode.equalsIgnoreCase("KW") || mode.equalsIgnoreCase("ECB")) {
+                log("mode " + mode + " accepted for AES Key Wrap");
+                return;
+            }
+
+            throw new NoSuchAlgorithmException(
+                "Unsupported cipher mode for AES Key Wrap: " + mode);
+        }
+
+        if (mode.equalsIgnoreCase("ECB")) {
 
             /* RSA and AES support ECB mode */
             if (cipherType == CipherType.WC_RSA ||
@@ -538,7 +585,7 @@ public class WolfCryptCipher extends CipherSpi {
                 log("set mode to ECB");
             }
 
-        } else if (mode.equals("CBC")) {
+        } else if (mode.equalsIgnoreCase("CBC")) {
 
             /* AES and 3DES support CBC */
             if (cipherType == CipherType.WC_AES ||
@@ -549,7 +596,7 @@ public class WolfCryptCipher extends CipherSpi {
                 log("set mode to CBC");
             }
 
-        } else if (mode.equals("CTR")) {
+        } else if (mode.equalsIgnoreCase("CTR")) {
 
             /* AES supports CTR */
             if (cipherType == CipherType.WC_AES) {
@@ -559,7 +606,7 @@ public class WolfCryptCipher extends CipherSpi {
                 log("set mode to CTR");
             }
 
-        } else if (mode.equals("OFB")) {
+        } else if (mode.equalsIgnoreCase("OFB")) {
 
             /* AES supports OFB */
             if (cipherType == CipherType.WC_AES) {
@@ -569,7 +616,7 @@ public class WolfCryptCipher extends CipherSpi {
                 log("set mode to OFB");
             }
 
-        } else if (mode.equals("GCM")) {
+        } else if (mode.equalsIgnoreCase("GCM")) {
 
             /* AES supports GCM */
             if (cipherType == CipherType.WC_AES) {
@@ -579,7 +626,7 @@ public class WolfCryptCipher extends CipherSpi {
                 log("set mode to GCM");
             }
 
-        } else if (mode.equals("CCM")) {
+        } else if (mode.equalsIgnoreCase("CCM")) {
 
             /* AES supports CCM */
             if (cipherType == CipherType.WC_AES) {
@@ -589,7 +636,7 @@ public class WolfCryptCipher extends CipherSpi {
                 log("set mode to CCM");
             }
 
-        } else if (mode.equals("CTS")) {
+        } else if (mode.equalsIgnoreCase("CTS")) {
 
             /* AES supports CTS */
             if (cipherType == CipherType.WC_AES) {
@@ -613,7 +660,7 @@ public class WolfCryptCipher extends CipherSpi {
 
         int supported = 0;
 
-        if (padding.equals("NoPadding")) {
+        if (padding.equalsIgnoreCase("NoPadding")) {
 
             if (cipherType == CipherType.WC_AES ||
                 cipherType == CipherType.WC_DES3) {
@@ -623,7 +670,7 @@ public class WolfCryptCipher extends CipherSpi {
                 log("set padding to NoPadding");
             }
 
-        } else if (padding.equals("PKCS1Padding")) {
+        } else if (padding.equalsIgnoreCase("PKCS1Padding")) {
 
             if (cipherType == CipherType.WC_RSA) {
                 paddingType = PaddingType.WC_PKCS1;
@@ -632,11 +679,12 @@ public class WolfCryptCipher extends CipherSpi {
                 log("set padding to PKCS1Padding");
             }
 
-        } else if (padding.equals("PKCS5Padding")) {
+        } else if (padding.equalsIgnoreCase("PKCS5Padding")) {
 
             if ((cipherType == CipherType.WC_AES) &&
                 (cipherMode == CipherMode.WC_CBC ||
-                 cipherMode == CipherMode.WC_ECB)) {
+                 cipherMode == CipherMode.WC_ECB ||
+                 cipherMode == CipherMode.WC_KW)) {
 
                 paddingType = PaddingType.WC_PKCS5;
                 supported = 1;
@@ -644,8 +692,8 @@ public class WolfCryptCipher extends CipherSpi {
                 log("set padding to PKCS5Padding");
             }
 
-        } else if (padding.equals("OAEPWithSHA-256AndMGF1Padding") ||
-                   padding.equals("OAEPWithSHA256AndMGF1Padding")) {
+        } else if (padding.equalsIgnoreCase("OAEPWithSHA-256AndMGF1Padding") ||
+                   padding.equalsIgnoreCase("OAEPWithSHA256AndMGF1Padding")) {
 
             if (cipherType == CipherType.WC_RSA) {
                 paddingType = PaddingType.WC_OAEP_SHA256;
@@ -655,8 +703,8 @@ public class WolfCryptCipher extends CipherSpi {
                 log("set padding to OAEPWithSHA-256AndMGF1Padding");
             }
 
-        } else if (padding.equals("OAEPWithSHA-1AndMGF1Padding") ||
-                   padding.equals("OAEPWithSHA1AndMGF1Padding")) {
+        } else if (padding.equalsIgnoreCase("OAEPWithSHA-1AndMGF1Padding") ||
+                   padding.equalsIgnoreCase("OAEPWithSHA1AndMGF1Padding")) {
 
             if (cipherType == CipherType.WC_RSA) {
                 paddingType = PaddingType.WC_OAEP_SHA1;
@@ -701,13 +749,14 @@ public class WolfCryptCipher extends CipherSpi {
             }
 
             /* For block ciphers that require block boundaries, round
-             * to next block size. GCM, CCM, CTR, CTS, and OFB do not require
-             * block boundaries. */
+             * to next block size. GCM, CCM, CTR, CTS, OFB, and KW do not
+             * require block boundaries. */
             if (cipherMode != CipherMode.WC_GCM &&
                 cipherMode != CipherMode.WC_CCM &&
                 cipherMode != CipherMode.WC_CTR &&
                 cipherMode != CipherMode.WC_CTS &&
-                cipherMode != CipherMode.WC_OFB) {
+                cipherMode != CipherMode.WC_OFB &&
+                cipherMode != CipherMode.WC_KW) {
                 totalBlocks = totalSz / blockSize;
                 totalSz = totalBlocks * blockSize;
             }
@@ -715,7 +764,22 @@ public class WolfCryptCipher extends CipherSpi {
 
         switch (this.cipherType) {
             case WC_AES:
-                if (paddingType == PaddingType.WC_NONE) {
+                if (cipherMode == CipherMode.WC_KW) {
+                    /* Wrap adds 8 bytes (plus PKCS#5 pad to 8), unwrap
+                     * removes 8 */
+                    if (this.direction == OpMode.WC_ENCRYPT) {
+                        outSize = totalSz + AesKeyWrap.KEYWRAP_BLOCK_SIZE;
+                        if (paddingType == PaddingType.WC_PKCS5) {
+                            outSize += Aes.getPKCS7PadSize(totalSz,
+                                AesKeyWrap.KEYWRAP_BLOCK_SIZE);
+                        }
+                    }
+                    else {
+                        outSize = Math.max(
+                            totalSz - AesKeyWrap.KEYWRAP_BLOCK_SIZE, 0);
+                    }
+                }
+                else if (paddingType == PaddingType.WC_NONE) {
                     if (cipherMode == CipherMode.WC_GCM) {
                         /* In AES-GCM mode we append the authentication tag
                          * to the end of ciphertext, When decrypting, output
@@ -836,6 +900,20 @@ public class WolfCryptCipher extends CipherSpi {
                     }
                     break;
 
+                case WC_KW:
+                    /* Only return an explicitly-set IV. null is the RFC 3394
+                     * default. Always use wolfJCE AES parameters, JDK 8/11
+                     * SunJCE rejects 8-byte IVs. */
+                    if (this.iv != null) {
+                        Provider wolf = Security.getProvider("wolfJCE");
+                        if (wolf == null) {
+                            wolf = FallbackProvider.INSTANCE;
+                        }
+                        params = AlgorithmParameters.getInstance("AES", wolf);
+                        params.init(new IvParameterSpec(this.iv));
+                    }
+                    break;
+
                 /* ECB mode doesn't have parameters to return */
                 case WC_ECB:
                     break;
@@ -936,6 +1014,33 @@ public class WolfCryptCipher extends CipherSpi {
         if (this.cipherType == CipherType.WC_AES &&
             this.cipherMode == CipherMode.WC_ECB)
             return;
+
+        /* AES Key Wrap: 8-byte IV is the RFC 3394 integrity check value,
+         * not a nonce. Null means the default (0xA6 x 8). */
+        if (this.cipherType == CipherType.WC_AES &&
+            this.cipherMode == CipherMode.WC_KW) {
+
+            if (spec == null) {
+                this.iv = null;
+            }
+            else if (spec instanceof IvParameterSpec) {
+                byte[] kwIv = ((IvParameterSpec)spec).getIV();
+
+                if (kwIv == null || kwIv.length != AesKeyWrap.IV_SIZE) {
+                    throw new InvalidAlgorithmParameterException(
+                        "AES Key Wrap IV must be " + AesKeyWrap.IV_SIZE +
+                        " bytes long, got " +
+                        ((kwIv == null) ? 0 : kwIv.length));
+                }
+                this.iv = kwIv.clone();
+            }
+            else {
+                throw new InvalidAlgorithmParameterException(
+                    "AlgorithmParameterSpec must be of type " +
+                    "IvParameterSpec for AES Key Wrap");
+            }
+            return;
+        }
 
         /* store IV, or generate random IV if not available */
         if (spec == null) {
@@ -1069,7 +1174,20 @@ public class WolfCryptCipher extends CipherSpi {
         try {
             switch (cipherType) {
                 case WC_AES:
-                    if (this.direction == OpMode.WC_ENCRYPT) {
+                    if (cipherMode == CipherMode.WC_KW) {
+                        checkKeyWrapKeySize(encodedKey.length);
+                        try {
+                            this.aesKeyWrap.setKey(encodedKey,
+                                (this.direction == OpMode.WC_ENCRYPT) ?
+                                AesKeyWrap.ENCRYPT_MODE :
+                                AesKeyWrap.DECRYPT_MODE);
+                        } catch (WolfCryptException e) {
+                            throw new InvalidKeyException(
+                                "Failed to set AES Key Wrap key: " +
+                                e.getMessage(), e);
+                        }
+                    }
+                    else if (this.direction == OpMode.WC_ENCRYPT) {
                         if (cipherMode == CipherMode.WC_GCM) {
                             this.aesGcm.setKey(encodedKey);
                         }
@@ -1154,6 +1272,29 @@ public class WolfCryptCipher extends CipherSpi {
             }
         } finally {
             zeroArray(encodedKey);
+        }
+    }
+
+    /**
+     * Validate an AES Key Wrap key encryption key length, helps throw
+     * proper InvalidKeyException from init().
+     *
+     * @param keyLen encoded key length in bytes
+     *
+     * @throws InvalidKeyException if keyLen is not 16, 24, or 32, or does
+     *         not match the size this Cipher service is locked to
+     */
+    private void checkKeyWrapKeySize(int keyLen) throws InvalidKeyException {
+
+        if (this.fixedKeySize > 0 && keyLen != this.fixedKeySize) {
+            throw new InvalidKeyException("Invalid AES key length: " + keyLen +
+                " bytes, this Cipher requires " + this.fixedKeySize + " bytes");
+        }
+
+        if (keyLen != Aes.KEY_SIZE_128 && keyLen != Aes.KEY_SIZE_192 &&
+            keyLen != Aes.KEY_SIZE_256) {
+            throw new InvalidKeyException("Invalid AES key length: " +
+                keyLen + " bytes");
         }
     }
 
@@ -1396,13 +1537,14 @@ public class WolfCryptCipher extends CipherSpi {
             return true;
         }
 
-        /* AES-GCM, AES-CCM, and AES-CTS keep all data buffered until
-         * final() call. wolfJCE does not support streaming GCM/CCM yet.
-         * CTS requires the entire message for ciphertext stealing. */
+        /* AES-GCM, AES-CCM, AES-CTS, and AES Key Wrap keep all data buffered
+         * until final(). wolfJCE does not support streaming GCM/CCM yet, CTS
+         * and Key Wrap need the entire message. */
         if (cipherType == CipherType.WC_AES &&
             (cipherMode == CipherMode.WC_GCM ||
              cipherMode == CipherMode.WC_CCM ||
-             cipherMode == CipherMode.WC_CTS)) {
+             cipherMode == CipherMode.WC_CTS ||
+             cipherMode == CipherMode.WC_KW)) {
             return true;
         }
 
@@ -1498,8 +1640,7 @@ public class WolfCryptCipher extends CipherSpi {
             switch (this.cipherType) {
 
                 /* Only CBC/ECB/CTR/OFB mode reaches this point currently,
-                 * GCM/CCM/CTS cache all data internally above until final
-                 * call */
+                 * GCM/CCM/CTS/KW cache all data internally until final call */
                 case WC_AES:
                     if (cipherMode == CipherMode.WC_ECB) {
                         output = this.aesEcb.update(tmpIn, 0, tmpIn.length);
@@ -1577,6 +1718,82 @@ public class WolfCryptCipher extends CipherSpi {
         return padded;
     }
 
+    /**
+     * AES Key Wrap doFinal() for both directions, with optional PKCS#5
+     * padding to the 8-byte block size.
+     *
+     * @param tmpIn complete input, zeroized by caller
+     *
+     * @return wrapped or unwrapped output
+     *
+     * @throws IllegalBlockSizeException if input length is invalid
+     * @throws BadPaddingException if integrity check or PKCS#5 unpad fails
+     */
+    private byte[] keyWrapFinal(byte[] tmpIn)
+        throws IllegalBlockSizeException, BadPaddingException {
+
+        byte[] out = null;
+        byte[] padded = null;
+        int len = tmpIn.length;
+
+        if (this.direction == OpMode.WC_ENCRYPT) {
+            if (this.paddingType == PaddingType.WC_PKCS5) {
+                padded = Aes.padPKCS7(tmpIn, AesKeyWrap.KEYWRAP_BLOCK_SIZE);
+                len = padded.length;
+            }
+
+            if (len < AesKeyWrap.MIN_WRAP_INPUT_SIZE ||
+                (len % AesKeyWrap.KEYWRAP_BLOCK_SIZE) != 0) {
+                zeroArray(padded);
+                throw new IllegalBlockSizeException(
+                    "AES Key Wrap input must be at least " +
+                    AesKeyWrap.MIN_WRAP_INPUT_SIZE + " bytes and a " +
+                    "multiple of " + AesKeyWrap.KEYWRAP_BLOCK_SIZE +
+                    " bytes, got " + len);
+            }
+
+            try {
+                out = this.aesKeyWrap.wrap(
+                    (padded != null) ? padded : tmpIn, this.iv);
+            } finally {
+                /* caller zeroizes tmpIn */
+                zeroArray(padded);
+            }
+        }
+        else {
+            if (len < AesKeyWrap.MIN_UNWRAP_INPUT_SIZE ||
+                (len % AesKeyWrap.KEYWRAP_BLOCK_SIZE) != 0) {
+                throw new IllegalBlockSizeException(
+                    "AES Key Wrap wrapped data must be at least " +
+                    AesKeyWrap.MIN_UNWRAP_INPUT_SIZE + " bytes and a " +
+                    "multiple of " + AesKeyWrap.KEYWRAP_BLOCK_SIZE +
+                    " bytes, got " + len);
+            }
+
+            try {
+                out = this.aesKeyWrap.unwrap(tmpIn, this.iv);
+            } catch (WolfCryptException e) {
+                if (e.getCode() == WolfCryptError.BAD_KEYWRAP_IV_E.getCode()) {
+                    throw new BadPaddingException("Integrity check failed");
+                }
+                throw e;
+            }
+
+            if (this.paddingType == PaddingType.WC_PKCS5) {
+                padded = out;
+                try {
+                    out = Aes.unPadPKCS7(padded, AesKeyWrap.KEYWRAP_BLOCK_SIZE);
+                } catch (WolfCryptException e) {
+                    throw new BadPaddingException("Decryption error");
+                } finally {
+                    zeroArray(padded);
+                }
+            }
+        }
+
+        return out;
+    }
+
     private byte[] wolfCryptFinal(byte[] input, int inputOffset, int len)
         throws IllegalBlockSizeException, BadPaddingException {
 
@@ -1596,13 +1813,15 @@ public class WolfCryptCipher extends CipherSpi {
         }
 
         /* AES-GCM, AES-CCM, AES-CTR, AES-CTS, and AES-OFB do not require
-         * block size inputs */
+         * block size inputs. AES Key Wrap validates its own 8-byte block
+         * sizes in keyWrapFinal(). */
         if (isBlockCipher() &&
             (cipherMode != CipherMode.WC_GCM) &&
             (cipherMode != CipherMode.WC_CCM) &&
             (cipherMode != CipherMode.WC_CTR) &&
             (cipherMode != CipherMode.WC_CTS) &&
             (cipherMode != CipherMode.WC_OFB) &&
+            (cipherMode != CipherMode.WC_KW) &&
             (this.direction == OpMode.WC_DECRYPT ||
             (this.direction == OpMode.WC_ENCRYPT &&
              this.paddingType != PaddingType.WC_PKCS5)) &&
@@ -1630,13 +1849,14 @@ public class WolfCryptCipher extends CipherSpi {
             /* Add padding if encrypting and PKCS5 padding is used, PKCS#5
              * padding is treated the same as PKCS#7 padding here, using
              * each algorithm's specific block size. CCM, CTR, CTS, and OFB
-             * modes do not use padding */
+             * modes do not use padding. Key Wrap pads in keyWrapFinal(). */
             if (this.direction == OpMode.WC_ENCRYPT &&
                 this.paddingType == PaddingType.WC_PKCS5 &&
                 cipherMode != CipherMode.WC_CCM &&
                 cipherMode != CipherMode.WC_CTR &&
                 cipherMode != CipherMode.WC_CTS &&
-                cipherMode != CipherMode.WC_OFB) {
+                cipherMode != CipherMode.WC_OFB &&
+                cipherMode != CipherMode.WC_KW) {
                 if (this.cipherType == CipherType.WC_AES) {
                     byte[] padded = Aes.padPKCS7(tmpIn, Aes.BLOCK_SIZE);
                     /* Zeroize plaintext copy orphaned by padding */
@@ -1653,7 +1873,17 @@ public class WolfCryptCipher extends CipherSpi {
             switch (this.cipherType) {
 
                 case WC_AES:
-                    if (cipherMode == CipherMode.WC_GCM) {
+                    if (cipherMode == CipherMode.WC_KW) {
+                        try {
+                            tmpOut = keyWrapFinal(tmpIn);
+                        } catch (IllegalBlockSizeException |
+                                 BadPaddingException | WolfCryptException e) {
+                            /* discard buffered update() data */
+                            bufferedReset();
+                            throw e;
+                        }
+                    }
+                    else if (cipherMode == CipherMode.WC_GCM) {
                         if (this.direction == OpMode.WC_ENCRYPT) {
 
                             /* A second encryption without re-init would reuse
@@ -1783,14 +2013,16 @@ public class WolfCryptCipher extends CipherSpi {
                     }
 
                     /* strip PKCS#5/PKCS#7 padding if required,
-                     * CCM, CTR, CTS, and OFB modes do not use padding */
+                     * CCM, CTR, CTS, and OFB modes do not use padding,
+                     * KW strips its own in keyWrapFinal() */
                     if (tmpOut != null && tmpOut.length > 0) {
                         if (this.direction == OpMode.WC_DECRYPT &&
                             this.paddingType == PaddingType.WC_PKCS5 &&
                             cipherMode != CipherMode.WC_CCM &&
                             cipherMode != CipherMode.WC_CTR &&
                             cipherMode != CipherMode.WC_CTS &&
-                            cipherMode != CipherMode.WC_OFB) {
+                            cipherMode != CipherMode.WC_OFB &&
+                            cipherMode != CipherMode.WC_KW) {
                             try {
                                 byte[] padded = tmpOut;
                                 tmpOut = Aes.unPadPKCS7(padded, Aes.BLOCK_SIZE);
@@ -2248,7 +2480,7 @@ public class WolfCryptCipher extends CipherSpi {
 
         try {
             wcBuf = wolfCryptFinal(encodedKey, 0, encodedKey.length);
-        } catch (BadPaddingException e) {
+        } catch (BadPaddingException | WolfCryptException e) {
             throw new InvalidKeyException("Failed to wrap key: " +
                 e.getMessage(), e);
         } finally {
@@ -2265,21 +2497,31 @@ public class WolfCryptCipher extends CipherSpi {
         byte[] unwrappedKey;
 
         if (wrappedKey == null || wrappedKey.length == 0) {
-            throw new InvalidKeyException(
-                "Wrapped key bytes must not be null or empty");
+            throw new InvalidKeyException("Failed to unwrap key");
+        }
+
+        if (wrappedKeyAlgo == null || wrappedKeyAlgo.isEmpty()) {
+            throw new NoSuchAlgorithmException(
+                "Wrapped key algorithm must not be null or empty");
         }
 
         try {
             unwrappedKey = wolfCryptFinal(wrappedKey, 0, wrappedKey.length);
 
-        } catch (BadPaddingException | IllegalBlockSizeException e) {
+        } catch (BadPaddingException | IllegalBlockSizeException |
+                 WolfCryptException e) {
             throw new InvalidKeyException("Failed to unwrap key");
         }
 
         try {
             switch (wrappedKeyType) {
                 case Cipher.SECRET_KEY:
-                    return new SecretKeySpec(unwrappedKey, wrappedKeyAlgo);
+                    try {
+                        return new SecretKeySpec(unwrappedKey, wrappedKeyAlgo);
+                    } catch (IllegalArgumentException e) {
+                        /* Empty unwrapped data or null algorithm name */
+                        throw new InvalidKeyException("Failed to unwrap key");
+                    }
 
                 case Cipher.PUBLIC_KEY:
                     try {
@@ -2337,6 +2579,14 @@ public class WolfCryptCipher extends CipherSpi {
                 return "GCM";
             case WC_CCM:
                 return "CCM";
+            case WC_CTS:
+                return "CTS";
+            case WC_CTR:
+                return "CTR";
+            case WC_OFB:
+                return "OFB";
+            case WC_KW:
+                return "KW";
             default:
                 return "None";
         }
@@ -2384,6 +2634,11 @@ public class WolfCryptCipher extends CipherSpi {
             if (this.aesCts != null) {
                 this.aesCts.releaseNativeStruct();
                 this.aesCts = null;
+            }
+
+            if (this.aesKeyWrap != null) {
+                this.aesKeyWrap.releaseNativeStruct();
+                this.aesKeyWrap = null;
             }
 
             if (this.des3 != null) {
@@ -2531,6 +2786,111 @@ public class WolfCryptCipher extends CipherSpi {
          */
         public wcAESCTSNoPadding() {
             super(CipherType.WC_AES, CipherMode.WC_CTS, PaddingType.WC_NONE);
+        }
+    }
+
+    /**
+     * Class for AES Key Wrap (AESWrap, AES/KW/NoPadding) with no padding
+     */
+    public static final class wcAESKWNoPadding extends WolfCryptCipher {
+        /**
+         * Create new wcAESKWNoPadding object
+         */
+        public wcAESKWNoPadding() {
+            super(CipherType.WC_AES, CipherMode.WC_KW, PaddingType.WC_NONE);
+        }
+    }
+
+    /**
+     * Class for AES Key Wrap with no padding, AES-128 KEK only
+     */
+    public static final class wcAES128KWNoPadding extends WolfCryptCipher {
+        /**
+         * Create new wcAES128KWNoPadding object
+         */
+        public wcAES128KWNoPadding() {
+            super(CipherType.WC_AES, CipherMode.WC_KW, PaddingType.WC_NONE,
+                  Aes.KEY_SIZE_128);
+        }
+    }
+
+    /**
+     * Class for AES Key Wrap with no padding, AES-192 KEK only
+     */
+    public static final class wcAES192KWNoPadding extends WolfCryptCipher {
+        /**
+         * Create new wcAES192KWNoPadding object
+         */
+        public wcAES192KWNoPadding() {
+            super(CipherType.WC_AES, CipherMode.WC_KW, PaddingType.WC_NONE,
+                  Aes.KEY_SIZE_192);
+        }
+    }
+
+    /**
+     * Class for AES Key Wrap with no padding, AES-256 KEK only
+     */
+    public static final class wcAES256KWNoPadding extends WolfCryptCipher {
+        /**
+         * Create new wcAES256KWNoPadding object
+         */
+        public wcAES256KWNoPadding() {
+            super(CipherType.WC_AES, CipherMode.WC_KW, PaddingType.WC_NONE,
+                  Aes.KEY_SIZE_256);
+        }
+    }
+
+    /**
+     * Class for AES Key Wrap (AES/KW/PKCS5Padding) with PKCS#5 padding
+     */
+    public static final class wcAESKWPKCS5Padding extends WolfCryptCipher {
+        /**
+         * Create new wcAESKWPKCS5Padding object
+         */
+        public wcAESKWPKCS5Padding() {
+            super(CipherType.WC_AES, CipherMode.WC_KW, PaddingType.WC_PKCS5);
+        }
+    }
+
+    /**
+     * Class for AES Key Wrap with PKCS#5 padding, AES-128 KEK only
+     */
+    public static final class wcAES128KWPKCS5Padding
+        extends WolfCryptCipher {
+        /**
+         * Create new wcAES128KWPKCS5Padding object
+         */
+        public wcAES128KWPKCS5Padding() {
+            super(CipherType.WC_AES, CipherMode.WC_KW, PaddingType.WC_PKCS5,
+                  Aes.KEY_SIZE_128);
+        }
+    }
+
+    /**
+     * Class for AES Key Wrap with PKCS#5 padding, AES-192 KEK only
+     */
+    public static final class wcAES192KWPKCS5Padding
+        extends WolfCryptCipher {
+        /**
+         * Create new wcAES192KWPKCS5Padding object
+         */
+        public wcAES192KWPKCS5Padding() {
+            super(CipherType.WC_AES, CipherMode.WC_KW, PaddingType.WC_PKCS5,
+                  Aes.KEY_SIZE_192);
+        }
+    }
+
+    /**
+     * Class for AES Key Wrap with PKCS#5 padding, AES-256 KEK only
+     */
+    public static final class wcAES256KWPKCS5Padding
+        extends WolfCryptCipher {
+        /**
+         * Create new wcAES256KWPKCS5Padding object
+         */
+        public wcAES256KWPKCS5Padding() {
+            super(CipherType.WC_AES, CipherMode.WC_KW, PaddingType.WC_PKCS5,
+                  Aes.KEY_SIZE_256);
         }
     }
 
