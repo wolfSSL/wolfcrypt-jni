@@ -1968,8 +1968,8 @@ public class WolfCryptCipher extends CipherSpi {
     }
 
     /**
-     * Sanity check output buffer size is large enough for update() call,
-     * based on padding and buffered data.
+     * Check the output buffer holds the bytes this update() call will output,
+     * which is fewer than getOutputSize() reports for a final() call.
      *
      * @param inputSz size of input data to update()
      * @param outputSz total size of output buffer provided
@@ -1979,28 +1979,30 @@ public class WolfCryptCipher extends CipherSpi {
     private void checkUpdateOutputBufferSize(int inputSz, int outputSz)
         throws ShortBufferException {
 
+        int total = inputSz + bufferedLen;
         int outSize;
 
-        if (!isNoOpUpdate(inputSz)) {
-            outSize = engineGetOutputSize(inputSz);
+        if (isNoOpUpdate(total)) {
+            return;
+        }
 
-            /* update() in DECRYPT mode with PKCS5 padding will hold
-             * back one block of data for padding check in final() */
+        if (cipherMode == CipherMode.WC_CTR ||
+            cipherMode == CipherMode.WC_OFB) {
+            outSize = total;
+        }
+        else {
+            outSize = (total / blockSize) * blockSize;
+            /* PKCS5 decrypt holds back one block for the padding check */
             if (direction == OpMode.WC_DECRYPT &&
                 paddingType == PaddingType.WC_PKCS5) {
-                if (outSize % blockSize == 0) {
-                    outSize -= blockSize;
-                }
-                else {
-                    outSize -= (outSize % blockSize);
-                }
+                outSize = Math.max(0, outSize - blockSize);
             }
+        }
 
-            if (outputSz < outSize) {
-                throw new ShortBufferException(
-                    "Output buffer too small, need " + outSize +
-                    " bytes, got " + outputSz);
-            }
+        if (outputSz < outSize) {
+            throw new ShortBufferException(
+                "Output buffer too small, need " + outSize +
+                " bytes, got " + outputSz);
         }
     }
 
