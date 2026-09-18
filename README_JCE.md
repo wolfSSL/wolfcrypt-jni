@@ -155,6 +155,8 @@ The JCE provider currently supports the following algorithms:
             OIDs: 2.16.840.1.101.3.4.1.2, 2.16.840.1.101.3.4.1.22, 2.16.840.1.101.3.4.1.42
         AES/CBC/PKCS5Padding
         AES/CTS/NoPadding
+        AES/XTS/NoPadding
+            Aliases: AES_128/XTS/NoPadding, AES_256/XTS/NoPadding
         AES/CCM/NoPadding
         AES/CTR/NoPadding
         AES/ECB/NoPadding
@@ -446,6 +448,31 @@ Interoperability with the JDK reference implementation:
 
 See `examples/provider/MlKemExample.java` for a complete encapsulate /
 decapsulate and key encoding example.
+
+### AES-XTS Notes
+
+`AES/XTS/NoPadding` (IEEE 1619, NIST SP 800-38E) differs from the other AES
+modes in a few ways:
+
+- The `SecretKey` is two concatenated AES keys of equal size, the data key
+  followed by the tweak key: 32 bytes for AES-128-XTS or 64 bytes for
+  AES-256-XTS. The two halves must differ. The `AES_128/XTS/NoPadding` and
+  `AES_256/XTS/NoPadding` aliases follow that naming but do not enforce the
+  key size.
+- The 16 byte tweak is passed as the `IvParameterSpec`. Encryption generates
+  a random tweak when none is given, decryption requires one.
+- Each `doFinal()` completes one data unit of 16 to 16,777,216 bytes (2^20
+  AES blocks). Output length equals input length, a partial last block uses
+  ciphertext stealing and no padding. Input past the limit is rejected before
+  any of it is consumed, with `IllegalArgumentException` from `update()` or
+  `IllegalBlockSizeException` from `doFinal()`, and the Cipher must be
+  re-initialized.
+- `doFinal()` resets the Cipher to its initialized state, so a second data
+  unit without a new `init()` is encrypted under the same tweak. Give every
+  data unit its own tweak. For sector based use, the JNI level
+  `AesXts.updateSector()` takes the sector number directly.
+
+See `examples/provider/AesXtsExample.java` for a sector style example.
 
 ### SecureRandom.getInstanceStrong()
 

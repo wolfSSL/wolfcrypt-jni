@@ -31,6 +31,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AesEcbTest.class,
     AesCtrTest.class,
     AesCtsTest.class,
+    AesXtsTest.class,
     AesOfbTest.class,
     AesGcmTest.class,
     AesCcmTest.class,

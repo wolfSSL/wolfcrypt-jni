@@ -169,6 +169,22 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesCtsEnable
 
 /*
  * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    AesXtsEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesXtsEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    AesXtsStreamEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_AesXtsStreamEnabled
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
  * Method:    AesCmacEnabled
  * Signature: ()Z
  */

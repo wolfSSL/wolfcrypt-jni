@@ -95,13 +95,18 @@ jobs:
 
   # -------------------- enable-all sanity checks -----------------------
   # Only check one Linux and Mac JDK version with --enable-jni --enable-all
-  # as sanity. Using Zulu, but this can be expanded if needed.
+  # as sanity. Using Zulu, but this can be expanded if needed. The
+  # --disable-aesxts-stream permutation covers the AES-XTS
+  # buffer-until-doFinal() path in WolfCryptCipher, which is otherwise only
+  # reachable when wolfSSL is built without WOLFSSL_AESXTS_STREAM.
   linux-zulu-all:
     strategy:
       matrix:
         os: [ 'ubuntu-latest', 'macos-latest' ]
         jdk_version: [ '11' ]
-        wolfssl_configure: [ '--enable-jni --enable-all' ]
+        wolfssl_configure:
+          - '--enable-jni --enable-all'
+          - '--enable-jni --enable-all --disable-aesxts-stream'
     name: ${{ matrix.os }} (Zulu JDK ${{ matrix.jdk_version }}, ${{ matrix.wolfssl_configure}})
     uses: ./.github/workflows/linux-common.yml
     with:
