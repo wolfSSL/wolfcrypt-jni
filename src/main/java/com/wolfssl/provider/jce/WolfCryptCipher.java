@@ -850,6 +850,7 @@ public class WolfCryptCipher extends CipherSpi {
                 case WC_CTR:
                 case WC_OFB:
                 case WC_XTS:
+                case WC_CTS:
                     if (this.iv != null) {
                         if (this.cipherType == CipherType.WC_AES) {
                             params = AlgorithmParameters.getInstance("AES");
