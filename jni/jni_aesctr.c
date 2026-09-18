@@ -177,7 +177,7 @@ Java_com_wolfssl_wolfcrypt_AesCtr_native_1update_1internal___3BII_3BI(
         LogStr("wc_AesCtrEncrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
     }
 
-    if (input != NULL && output != NULL) {
+    if (ret == 0) {
         LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
         LogHex((byte*) input, offset, length);
         LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
@@ -249,9 +249,6 @@ Java_com_wolfssl_wolfcrypt_AesCtr_native_1update_1internal__Ljava_nio_ByteBuffer
     }
     else {
         ret = length;
-    }
-
-    if (input != NULL && output != NULL) {
         LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
         LogHex((byte*) input, offset, length);
         LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);

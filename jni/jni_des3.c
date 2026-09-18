@@ -178,7 +178,7 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update_1internal__I_3BII_3BI(
         LogStr("wc_Des3CbcDecrypt(des=%p, out, in, inSz) = %d\n", des, ret);
     }
 
-    if (input != NULL && output != NULL) {
+    if (ret == 0) {
         LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
         LogHex((byte*) input, offset, length);
         LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
@@ -255,9 +255,6 @@ Java_com_wolfssl_wolfcrypt_Des3_native_1update_1internal__ILjava_nio_ByteBuffer_
     }
     else {
         ret = length;
-    }
-
-    if (input != NULL && output != NULL) {
         LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
         LogHex((byte*) input, offset, length);
         LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);

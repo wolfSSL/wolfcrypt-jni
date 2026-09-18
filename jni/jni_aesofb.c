@@ -190,7 +190,7 @@ Java_com_wolfssl_wolfcrypt_AesOfb_native_1update_1internal__I_3BII_3BI(
 #endif
     }
 
-    if (input != NULL && output != NULL) {
+    if (ret == 0) {
         LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
         LogHex((byte*) input, offset, length);
         LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
@@ -214,7 +214,6 @@ Java_com_wolfssl_wolfcrypt_AesOfb_native_1update_1internal__I_3BII_3BI(
 
     return ret;
 }
-
 
 JNIEXPORT jint JNICALL
 Java_com_wolfssl_wolfcrypt_AesOfb_native_1update_1internal__ILjava_nio_ByteBuffer_2IILjava_nio_ByteBuffer_2I(
@@ -277,9 +276,6 @@ Java_com_wolfssl_wolfcrypt_AesOfb_native_1update_1internal__ILjava_nio_ByteBuffe
     }
     else {
         ret = length;
-    }
-
-    if (input != NULL && output != NULL) {
         LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
         LogHex((byte*) input, offset, length);
         LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
