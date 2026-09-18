@@ -289,7 +289,7 @@ public class WolfCryptPBEKey implements PBEKey {
                 return false;
             }
 
-            if (!Arrays.equals(pKeyPass, thisPass)) {
+            if (!WolfCryptUtil.constantTimeEquals(pKeyPass, thisPass)) {
                 return false;
             }
 
