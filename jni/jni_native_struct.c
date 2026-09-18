@@ -123,18 +123,24 @@ void* getNativeStruct(JNIEnv* env, jobject this)
         class = (*env)->GetObjectClass(env, this);
         field = (*env)->GetFieldID(env, class, "pointer", "J");
 
-        /* GetFieldID may throw exception */
-        if ((*env)->ExceptionOccurred(env)) {
-            (*env)->ExceptionDescribe(env);
-            (*env)->ExceptionClear(env);
-
-        } else {
-            nativeStruct = (*env)->GetLongField(env, this, field);
+        /* GetFieldID() may throw or return NULL. Leave any exception pending
+         * so the caller sees the original error, and never use an unresolved
+         * field ID below. */
+        if ((field == NULL) || ((*env)->ExceptionOccurred(env))) {
+            return NULL;
         }
+
+        nativeStruct = (*env)->GetLongField(env, this, field);
 
         if (nativeStruct == 0) {
             /* Try to initialize Java NativeStruct */
             initializeNativeStruct(env, this);
+
+            /* initializeNativeStruct() may leave a pending exception, do
+             * not access field again with exception pending. */
+            if ((*env)->ExceptionOccurred(env)) {
+                return NULL;
+            }
 
             /* Try to get again, sanity check */
             nativeStruct = (*env)->GetLongField(env, this, field);
