@@ -38,6 +38,7 @@
 #include <wolfssl/wolfio.h>
 #include <com_wolfssl_wolfcrypt_WolfCrypt.h>
 #include <wolfcrypt_jni_error.h>
+#include <wolfcrypt_jni_NativeStruct.h>
 
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
@@ -45,6 +46,11 @@
 /* Max PEM input size for the single-block PEM to DER conversion functions.
  * Ample room for real cert/key, but bounds upper memory use. */
 #define WC_JNI_MAX_PEM_SIZE (1024 * 1024)
+
+/* Max password size for encrypted PEM conversion, the public Java constant
+ * through the generated header */
+#define WC_JNI_MAX_PASSWORD_SIZE \
+    com_wolfssl_wolfcrypt_WolfCrypt_MAX_PEM_PASSWORD_SIZE
 
 /* Force-zero a buffer holding sensitive material */
 #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && !defined(WOLFSSL_NO_FORCE_ZERO)
@@ -367,7 +373,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcBase16Decode
 }
 
 JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
-    (JNIEnv* env, jclass jcl, jbyteArray pemArr, jstring passwordStr)
+    (JNIEnv* env, jclass jcl, jbyteArray pemArr, jbyteArray pwArr)
 {
 #if !defined(NO_ASN) && !defined(WOLFSSL_NO_PEM) && !defined(NO_CODING)
     int ret = 0;
@@ -375,8 +381,11 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
     jint pemSz = 0;
     byte* pem = NULL;
     byte* der = NULL;
-    const char* password = NULL;
+    byte* pw = NULL;
+    jint pwSz = 0;
+    char* password = NULL;
     jboolean pwIsCopy = JNI_FALSE;
+    jboolean pemIsCopy = JNI_FALSE;
     jbyteArray derArr = NULL;
     (void)jcl;
 
@@ -396,7 +405,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
     }
 
     if (ret == 0) {
-        pem = (byte*)(*env)->GetByteArrayElements(env, pemArr, NULL);
+        pem = (byte*)(*env)->GetByteArrayElements(env, pemArr, &pemIsCopy);
         if (pem == NULL) {
             ret = BAD_FUNC_ARG;
         }
@@ -413,12 +422,32 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
         }
     }
 
-    /* Get password if provided */
-    if (ret == 0) {
-        if (passwordStr != NULL) {
-            password = (*env)->GetStringUTFChars(env, passwordStr, &pwIsCopy);
+    /* Copy the password into a NUL terminated buffer. Reject an embedded NUL
+     * rather than let wc_KeyPemToDer() silently truncate the password. */
+    if (ret == 0 && pwArr != NULL) {
+        pwSz = (*env)->GetArrayLength(env, pwArr);
+        if (pwSz < 0 || pwSz > WC_JNI_MAX_PASSWORD_SIZE) {
+            ret = BAD_FUNC_ARG;
+        }
+        if (ret == 0 && pwSz > 0) {
+            pw = (byte*)(*env)->GetByteArrayElements(env, pwArr, &pwIsCopy);
+            if (pw == NULL) {
+                ret = MEMORY_E;
+            }
+        }
+        if (ret == 0) {
+            password = (char*)XMALLOC(pwSz + 1, NULL, DYNAMIC_TYPE_TMP_BUFFER);
             if (password == NULL) {
                 ret = MEMORY_E;
+            }
+        }
+        if (ret == 0) {
+            if (pwSz > 0) {
+                XMEMCPY(password, pw, pwSz);
+            }
+            password[pwSz] = '\0';
+            if (XSTRLEN(password) != (size_t)pwSz) {
+                ret = BAD_FUNC_ARG;
             }
         }
     }
@@ -448,14 +477,16 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
     }
 
     if (pem != NULL) {
+        zeroizeByteArrayCopy(pem, pemSz, pemIsCopy);
         (*env)->ReleaseByteArrayElements(env, pemArr, (jbyte*)pem, JNI_ABORT);
     }
+    if (pw != NULL) {
+        zeroizeByteArrayCopy(pw, pwSz, pwIsCopy);
+        (*env)->ReleaseByteArrayElements(env, pwArr, (jbyte*)pw, JNI_ABORT);
+    }
     if (password != NULL) {
-        /* Only clear when JNI handed back a private copy */
-        if (pwIsCopy == JNI_TRUE) {
-            WC_JNI_FORCE_ZERO((void*)password, XSTRLEN(password));
-        }
-        (*env)->ReleaseStringUTFChars(env, passwordStr, password);
+        WC_JNI_FORCE_ZERO(password, pwSz + 1);
+        XFREE(password, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
     if (der != NULL) {
         WC_JNI_FORCE_ZERO(der, pemSz);
@@ -471,7 +502,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcKeyPemToDer
     (void)env;
     (void)jcl;
     (void)pemArr;
-    (void)passwordStr;
+    (void)pwArr;
     throwNotCompiledInException(env);
     return NULL;
 #endif /* !NO_ASN && !WOLFSSL_NO_PEM && !NO_CODING) */
