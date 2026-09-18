@@ -1338,6 +1338,11 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1init_1internal
     wc_Sha3* sha = NULL;
 
     sha = (wc_Sha3*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
     if (sha == NULL) {
         ret = BAD_FUNC_ARG;
     }
