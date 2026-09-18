@@ -283,9 +283,9 @@ public class AesOfb extends NativeStruct {
      * @param opmode AES mode, either AesOfb.ENCRYPT_MODE or
      *        AesOfb.DECRYPT_MODE
      *
-     * @throws IllegalStateException if key has already been set, if object
-     *         fails to initialize, or if releaseNativeStruct() has been
-     *         called and object has been released.
+     * @throws IllegalStateException if key has already been set or if
+     *         object fails to initialize. A released object is
+     *         re-initialized by this call.
      */
     public synchronized void setKey(byte[] key, byte[] iv, int opmode)
         throws IllegalStateException {
@@ -305,9 +305,9 @@ public class AesOfb extends NativeStruct {
      * @param key AES key byte array
      * @param iv AES initialization vector byte array
      *
-     * @throws IllegalStateException if key has already been set, if object
-     *         fails to initialize, or if releaseNativeStruct() has been
-     *         called and object has been released.
+     * @throws IllegalStateException if key has already been set or if
+     *         object fails to initialize. A released object is
+     *         re-initialized by this call.
      */
     public synchronized void setKey(byte[] key, byte[] iv)
         throws IllegalStateException {
@@ -659,8 +659,8 @@ public class AesOfb extends NativeStruct {
     }
 
     /**
-     * Release native AES-OFB structure.
-     * Object cannot be used again after calling this method.
+     * Release native AES-OFB structure. Object may be re-initialized and
+     * used again after release by calling setKey().
      */
     @Override
     public synchronized void releaseNativeStruct() {

@@ -200,9 +200,9 @@ public class AesCts extends NativeStruct {
      * @param iv AES initialization vector byte array
      * @param opmode operation mode (ENCRYPT_MODE or DECRYPT_MODE)
      *
-     * @throws IllegalStateException if key has already been set, if object
-     *         fails to initialize, or if releaseNativeStruct() has been
-     *         called and object has been released.
+     * @throws IllegalStateException if key has already been set or if
+     *         object fails to initialize. A released object is
+     *         re-initialized by this call.
      */
     public synchronized void setKey(byte[] key, byte[] iv, int opmode)
         throws IllegalStateException {
