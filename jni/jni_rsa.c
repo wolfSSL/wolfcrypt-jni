@@ -1930,6 +1930,13 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaExportCrtKey(
     jlong nSz = 0, eSz = 0, dSz = 0, pSz = 0;
     jlong qSz = 0, dPSz = 0, dQSz = 0, uSz = 0;
     word32 nSz32 = 0, eSz32 = 0, dSz32 = 0, pSz32 = 0, qSz32 = 0;
+    word32 dLen = 0, pLen = 0, qLen = 0, dPLen = 0, dQLen = 0, uLen = 0;
+    jboolean dIsCopy = JNI_FALSE;
+    jboolean pIsCopy = JNI_FALSE;
+    jboolean qIsCopy = JNI_FALSE;
+    jboolean dPIsCopy = JNI_FALSE;
+    jboolean dQIsCopy = JNI_FALSE;
+    jboolean uIsCopy = JNI_FALSE;
 
     key = (RsaKey*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1953,72 +1960,78 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaExportCrtKey(
         return;
     }
 
-    d = getByteArray(env, d_object);
+    d = getByteArrayIsCopy(env, d_object, &dIsCopy);
+    dLen = getByteArrayLength(env, d_object);
     (*env)->GetLongArrayRegion(env, dSize, 0, 1, &dSz);
     if ((*env)->ExceptionOccurred(env)) {
         releaseByteArray(env, n_object, n, ret);
         releaseByteArray(env, e_object, e, ret);
-        releaseByteArray(env, d_object, d, ret);
+        releaseByteArrayZeroize(env, d_object, d, dLen, dIsCopy, ret);
         return;
     }
 
-    p = getByteArray(env, p_object);
+    p = getByteArrayIsCopy(env, p_object, &pIsCopy);
+    pLen = getByteArrayLength(env, p_object);
     (*env)->GetLongArrayRegion(env, pSize, 0, 1, &pSz);
     if ((*env)->ExceptionOccurred(env)) {
         releaseByteArray(env, n_object, n, ret);
         releaseByteArray(env, e_object, e, ret);
-        releaseByteArray(env, d_object, d, ret);
-        releaseByteArray(env, p_object, p, ret);
+        releaseByteArrayZeroize(env, d_object, d, dLen, dIsCopy, ret);
+        releaseByteArrayZeroize(env, p_object, p, pLen, pIsCopy, ret);
         return;
     }
 
-    q = getByteArray(env, q_object);
+    q = getByteArrayIsCopy(env, q_object, &qIsCopy);
+    qLen = getByteArrayLength(env, q_object);
     (*env)->GetLongArrayRegion(env, qSize, 0, 1, &qSz);
     if ((*env)->ExceptionOccurred(env)) {
         releaseByteArray(env, n_object, n, ret);
         releaseByteArray(env, e_object, e, ret);
-        releaseByteArray(env, d_object, d, ret);
-        releaseByteArray(env, p_object, p, ret);
-        releaseByteArray(env, q_object, q, ret);
+        releaseByteArrayZeroize(env, d_object, d, dLen, dIsCopy, ret);
+        releaseByteArrayZeroize(env, p_object, p, pLen, pIsCopy, ret);
+        releaseByteArrayZeroize(env, q_object, q, qLen, qIsCopy, ret);
         return;
     }
 
-    dP = getByteArray(env, dP_object);
+    dP = getByteArrayIsCopy(env, dP_object, &dPIsCopy);
+    dPLen = getByteArrayLength(env, dP_object);
     (*env)->GetLongArrayRegion(env, dPSize, 0, 1, &dPSz);
     if ((*env)->ExceptionOccurred(env)) {
         releaseByteArray(env, n_object, n, ret);
         releaseByteArray(env, e_object, e, ret);
-        releaseByteArray(env, d_object, d, ret);
-        releaseByteArray(env, p_object, p, ret);
-        releaseByteArray(env, q_object, q, ret);
-        releaseByteArray(env, dP_object, dP, ret);
+        releaseByteArrayZeroize(env, d_object, d, dLen, dIsCopy, ret);
+        releaseByteArrayZeroize(env, p_object, p, pLen, pIsCopy, ret);
+        releaseByteArrayZeroize(env, q_object, q, qLen, qIsCopy, ret);
+        releaseByteArrayZeroize(env, dP_object, dP, dPLen, dPIsCopy, ret);
         return;
     }
 
-    dQ = getByteArray(env, dQ_object);
+    dQ = getByteArrayIsCopy(env, dQ_object, &dQIsCopy);
+    dQLen = getByteArrayLength(env, dQ_object);
     (*env)->GetLongArrayRegion(env, dQSize, 0, 1, &dQSz);
     if ((*env)->ExceptionOccurred(env)) {
         releaseByteArray(env, n_object, n, ret);
         releaseByteArray(env, e_object, e, ret);
-        releaseByteArray(env, d_object, d, ret);
-        releaseByteArray(env, p_object, p, ret);
-        releaseByteArray(env, q_object, q, ret);
-        releaseByteArray(env, dP_object, dP, ret);
-        releaseByteArray(env, dQ_object, dQ, ret);
+        releaseByteArrayZeroize(env, d_object, d, dLen, dIsCopy, ret);
+        releaseByteArrayZeroize(env, p_object, p, pLen, pIsCopy, ret);
+        releaseByteArrayZeroize(env, q_object, q, qLen, qIsCopy, ret);
+        releaseByteArrayZeroize(env, dP_object, dP, dPLen, dPIsCopy, ret);
+        releaseByteArrayZeroize(env, dQ_object, dQ, dQLen, dQIsCopy, ret);
         return;
     }
 
-    u = getByteArray(env, u_object);
+    u = getByteArrayIsCopy(env, u_object, &uIsCopy);
+    uLen = getByteArrayLength(env, u_object);
     (*env)->GetLongArrayRegion(env, uSize, 0, 1, &uSz);
     if ((*env)->ExceptionOccurred(env)) {
         releaseByteArray(env, n_object, n, ret);
         releaseByteArray(env, e_object, e, ret);
-        releaseByteArray(env, d_object, d, ret);
-        releaseByteArray(env, p_object, p, ret);
-        releaseByteArray(env, q_object, q, ret);
-        releaseByteArray(env, dP_object, dP, ret);
-        releaseByteArray(env, dQ_object, dQ, ret);
-        releaseByteArray(env, u_object, u, ret);
+        releaseByteArrayZeroize(env, d_object, d, dLen, dIsCopy, ret);
+        releaseByteArrayZeroize(env, p_object, p, pLen, pIsCopy, ret);
+        releaseByteArrayZeroize(env, q_object, q, qLen, qIsCopy, ret);
+        releaseByteArrayZeroize(env, dP_object, dP, dPLen, dPIsCopy, ret);
+        releaseByteArrayZeroize(env, dQ_object, dQ, dQLen, dQIsCopy, ret);
+        releaseByteArrayZeroize(env, u_object, u, uLen, uIsCopy, ret);
         return;
     }
 
@@ -2133,12 +2146,12 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaExportCrtKey(
     /* Release all byte arrays */
     releaseByteArray(env, n_object, n, ret);
     releaseByteArray(env, e_object, e, ret);
-    releaseByteArray(env, d_object, d, ret);
-    releaseByteArray(env, p_object, p, ret);
-    releaseByteArray(env, q_object, q, ret);
-    releaseByteArray(env, dP_object, dP, ret);
-    releaseByteArray(env, dQ_object, dQ, ret);
-    releaseByteArray(env, u_object, u, ret);
+    releaseByteArrayZeroize(env, d_object, d, dLen, dIsCopy, ret);
+    releaseByteArrayZeroize(env, p_object, p, pLen, pIsCopy, ret);
+    releaseByteArrayZeroize(env, q_object, q, qLen, qIsCopy, ret);
+    releaseByteArrayZeroize(env, dP_object, dP, dPLen, dPIsCopy, ret);
+    releaseByteArrayZeroize(env, dQ_object, dQ, dQLen, dQIsCopy, ret);
+    releaseByteArrayZeroize(env, u_object, u, uLen, uIsCopy, ret);
 #else
     (void)env;
     (void)this;

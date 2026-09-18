@@ -166,6 +166,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
     RNG*  rng    = NULL;
     byte* buffer = NULL;
     word32 bufferSz = 0;
+    jboolean bufferIsCopy = JNI_FALSE;
 
     rng = (RNG*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -173,7 +174,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
         return;
     }
 
-    buffer = getByteArray(env, buffer_buffer);
+    buffer = getByteArrayIsCopy(env, buffer_buffer, &bufferIsCopy);
     bufferSz = getByteArrayLength(env, buffer_buffer);
 
     if (rng == NULL || buffer == NULL ||
@@ -196,7 +197,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
         LogHex(buffer, offset, length);
     }
 
-    releaseByteArray(env, buffer_buffer, buffer, ret);
+    releaseByteArrayZeroize(env, buffer_buffer, buffer, bufferSz,
+        bufferIsCopy, ret);
 #else
     throwNotCompiledInException(env);
 #endif

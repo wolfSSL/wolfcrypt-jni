@@ -38,7 +38,10 @@ void setDirectBufferLimit(JNIEnv* env, jobject buffer, jint limit);
 byte* getByteArray(JNIEnv* env, jbyteArray array);
 byte* getByteArrayIsCopy(JNIEnv* env, jbyteArray array, jboolean* isCopy);
 void zeroizeByteArrayCopy(byte* buf, word32 sz, jboolean isCopy);
-void releaseByteArray(JNIEnv* env, jbyteArray array, byte* elements, jint abort);
+void releaseByteArrayZeroize(JNIEnv* env, jbyteArray array, byte* elements,
+    word32 sz, jboolean isCopy, jint abort);
+void releaseByteArray(JNIEnv* env, jbyteArray array, byte* elements,
+    jint abort);
 word32 getByteArrayLength(JNIEnv* env, jbyteArray array);
 byte* getSecretByteArray(JNIEnv* env, jbyteArray array, jboolean* isCopy);
 void releaseSecretByteArray(JNIEnv* env, jbyteArray array, byte* elements,

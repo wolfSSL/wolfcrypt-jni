@@ -237,6 +237,29 @@ void zeroizeByteArrayCopy(byte* buf, word32 sz, jboolean isCopy)
     }
 }
 
+/* Release a byte array. A JNI copy is committed unless abort is set and
+ * zeroized before it is freed, a pinned array is released as is */
+void releaseByteArrayZeroize(JNIEnv* env, jbyteArray array, byte* elements,
+    word32 sz, jboolean isCopy, jint abort)
+{
+    if (env == NULL || array == NULL || elements == NULL) {
+        return;
+    }
+
+    if (isCopy != JNI_TRUE) {
+        releaseByteArray(env, array, elements, abort);
+        return;
+    }
+
+    if (!abort) {
+        (*env)->ReleaseByteArrayElements(env, array, (jbyte*)elements,
+            JNI_COMMIT);
+    }
+
+    zeroizeByteArrayCopy(elements, sz, isCopy);
+    (*env)->ReleaseByteArrayElements(env, array, (jbyte*)elements, JNI_ABORT);
+}
+
 void releaseByteArray(JNIEnv* env, jbyteArray array, byte* elements, jint abort)
 {
     if ((env != NULL) && (array != NULL) && (elements != NULL)) {
