@@ -1875,15 +1875,15 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1CheckPadding(
             /* Now check the PSS padding against the digest */
             ret = wc_RsaPSS_CheckPadding_ex(digest, digestSz, pssData,
                 pssDataSz, (enum wc_HashType)hashType, saltLen, 0);
+            if (ret == 0) {
+                result = JNI_TRUE;
+            }
         }
 
         /* Throw OutOfMemoryError on memory error, other codes map to false */
         if (ret == MEMORY_E) {
             throwWolfCryptExceptionFromError(env, ret);
         }
-    }
-    if (ret == 0) {
-        result = JNI_TRUE;
     }
 
     LogStr("wc_RsaPSS_CheckPadding_ex(digest, digestSz, pss, pssSz, "
