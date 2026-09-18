@@ -310,8 +310,8 @@ public class AesCtr extends NativeStruct {
     }
 
     /**
-     * Release native AES-CTR structure.
-     * Object cannot be used again after calling this method.
+     * Release native AES-CTR structure. Object may be re-initialized and
+     * used again after release by calling setKey().
      */
     @Override
     public synchronized void releaseNativeStruct() {
