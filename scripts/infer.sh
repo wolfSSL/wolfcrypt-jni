@@ -78,6 +78,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/Sha384.java \
     src/main/java/com/wolfssl/wolfcrypt/Sha512.java \
     src/main/java/com/wolfssl/wolfcrypt/Sha3.java \
+    src/main/java/com/wolfssl/wolfcrypt/Shake.java \
     src/main/java/com/wolfssl/wolfcrypt/SlhDsa.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfCrypt.java \
     src/main/java/com/wolfssl/wolfcrypt/WolfCryptError.java \
@@ -129,6 +130,8 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha256.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha384.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha512.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestSha3.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptMessageDigestShake.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPBEKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPKIXCertPathBuilder.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPKIXCertPathValidator.java \

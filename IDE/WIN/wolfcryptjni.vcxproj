@@ -107,6 +107,7 @@
     <ClCompile Include="..\..\jni\jni_rng.c" />
     <ClCompile Include="..\..\jni\jni_rsa.c" />
     <ClCompile Include="..\..\jni\jni_sha.c" />
+    <ClCompile Include="..\..\jni\jni_shake.c" />
     <ClCompile Include="..\..\jni\jni_wolfcrypt.c" />
     <ClCompile Include="..\..\jni\jni_wolfobject.c" />
     <ClCompile Include="..\..\jni\jni_wolfssl_cert_manager.c" />
