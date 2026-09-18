@@ -29,6 +29,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @SuiteClasses({
     AesTest.class,
     AesEcbTest.class,
+    AesCfbTest.class,
     AesCtrTest.class,
     AesCtsTest.class,
     AesOfbTest.class,

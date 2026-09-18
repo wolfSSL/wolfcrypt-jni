@@ -165,6 +165,11 @@ The JCE provider currently supports the following algorithms:
         AES/OFB/NoPadding
             Aliases: AES_128/OFB/NoPadding, AES_192/OFB/NoPadding, AES_256/OFB/NoPadding
             OIDs: 2.16.840.1.101.3.4.1.3, 2.16.840.1.101.3.4.1.23, 2.16.840.1.101.3.4.1.43
+        AES/CFB/NoPadding
+            Aliases: AES/CFB128/NoPadding, AES_128/CFB/NoPadding, AES_192/CFB/NoPadding, AES_256/CFB/NoPadding
+            OIDs: 2.16.840.1.101.3.4.1.4, 2.16.840.1.101.3.4.1.24, 2.16.840.1.101.3.4.1.44
+        AES/CFB8/NoPadding
+        AES/CFB1/NoPadding
         DESede/CBC/NoPadding
         RSA
         RSA/ECB/PKCS1Padding

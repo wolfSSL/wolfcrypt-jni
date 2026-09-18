@@ -134,6 +134,9 @@
     <ClCompile Include="..\..\jni\jni_aescmac.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\jni\jni_aescfb.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\jni\jni_aesctr.c">
       <Filter>Source Files</Filter>
     </ClCompile>
