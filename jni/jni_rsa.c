@@ -170,10 +170,12 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw__Ljava_nio_ByteBuffer_2
     }
 
     LogStr("wc_RsaPublicKeyDecodeRaw(n, nSz, e, eSz) = %d\n", ret);
-    LogStr("n[%u]: [%p]\n", (word32)nSize, n);
-    LogHex((byte*) n, 0, nSize);
-    LogStr("e[%u]: [%p]\n", (word32)eSize, e);
-    LogHex((byte*) e, 0, eSize);
+    if (ret == 0) {
+        LogStr("n[%u]: [%p]\n", (word32)nSize, n);
+        LogHex((byte*) n, 0, nSize);
+        LogStr("e[%u]: [%p]\n", (word32)eSize, e);
+        LogHex((byte*) e, 0, eSize);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -213,10 +215,12 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicKeyDecodeRaw___3BJ_3BJ(
     }
 
     LogStr("wc_RsaPublicKeyDecodeRaw(n, nSz, e, eSz) = %d\n", ret);
-    LogStr("n[%u]: [%p]\n", (word32)nSize, n);
-    LogHex((byte*) n, 0, nSize);
-    LogStr("e[%u]: [%p]\n", (word32)eSize, e);
-    LogHex((byte*) e, 0, eSize);
+    if (ret == 0) {
+        LogStr("n[%u]: [%p]\n", (word32)nSize, n);
+        LogHex((byte*) n, 0, nSize);
+        LogStr("e[%u]: [%p]\n", (word32)eSize, e);
+        LogHex((byte*) e, 0, eSize);
+    }
 
     releaseByteArray(env, n_object, n, JNI_ABORT);
     releaseByteArray(env, e_object, e, JNI_ABORT);
