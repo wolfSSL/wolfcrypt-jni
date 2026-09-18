@@ -41,13 +41,11 @@
 #include <wolfcrypt_jni_debug.h>
 
 /* Check if CertPathBuilder feature is available.
- * CertPathBuilder requires wolfSSL >= 5.8.0 for proper X509_STORE chain
- * building support. Older versions have issues with reference counting
- * and chain building. */
+ * CertPathBuilder requires wolfSSL >= 5.9.2. Older versions have issues
+ * with reference counting and chain building. */
 static int isCertPathBuilderAvailable(void)
 {
-#if defined(OPENSSL_EXTRA) && \
-    (LIBWOLFSSL_VERSION_HEX >= 0x05008000)
+#if defined(OPENSSL_EXTRA) && (LIBWOLFSSL_VERSION_HEX >= 0x05009002)
     return 1;
 #else
     return 0;
@@ -137,7 +135,7 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_WolfSSLX509StoreCtx_wolfSSL_1
     (void)jcl;
 
     if (!isCertPathBuilderAvailable()) {
-        LogStr("CertPathBuilder requires wolfSSL >= 5.8.0\n");
+        LogStr("CertPathBuilder requires wolfSSL >= 5.9.2\n");
         return 0;
     }
 

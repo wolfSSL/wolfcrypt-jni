@@ -938,6 +938,59 @@ public class WolfCryptSecretKeyFactoryTest {
     }
 
     /**
+     * Test that translateKey() rejects a PBKDF2 key whose PRF algorithm does
+     * not match this SecretKeyFactory.
+     */
+    @Test
+    public void testTranslateKeyRejectsMismatchedPRF()
+        throws NoSuchAlgorithmException, InvalidKeySpecException,
+               NoSuchProviderException, InvalidKeyException {
+
+        char[] pass = "passwordpassword".toCharArray();
+        byte[] salt = {
+            (byte)0x78, (byte)0x57, (byte)0x8E, (byte)0x5a,
+            (byte)0x5d, (byte)0x63, (byte)0xcb, (byte)0x06
+        };
+        int iterations = 2048;
+        int kLen = 192;
+
+        if (!FeatureDetect.Pbkdf2Enabled() ||
+            !FeatureDetect.HmacShaEnabled() ||
+            !FeatureDetect.HmacSha256Enabled() ||
+            !algoSupported("PBKDF2WithHmacSHA1") ||
+            !algoSupported("PBKDF2WithHmacSHA256")) {
+            /* skipped */
+            Assume.assumeTrue(false);
+        }
+
+        /* Generate a PBKDF2WithHmacSHA1 key with the wolfJCE provider */
+        SecretKeyFactory sha1Factory =
+            SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1", provider);
+        PBEKeySpec spec = new PBEKeySpec(pass, salt, iterations, kLen);
+        SecretKey sha1Key = sha1Factory.generateSecret(spec);
+        assertNotNull(sha1Key);
+        assertEquals("PBKDF2WithHmacSHA1", sha1Key.getAlgorithm());
+
+        /* Translating the SHA1 key through a SHA256 factory must be rejected
+         * rather than returning a re-derived SHA256 key */
+        SecretKeyFactory sha256Factory =
+            SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256", provider);
+        try {
+            sha256Factory.translateKey(sha1Key);
+            fail("translateKey should reject a mismatched PBKDF2 PRF");
+        } catch (InvalidKeyException e) {
+            /* expected */
+        }
+
+        /* Translating through a matching SHA1 factory must still succeed */
+        SecretKeyFactory sha1Factory2 =
+            SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1", provider);
+        SecretKey translated = sha1Factory2.translateKey(sha1Key);
+        assertNotNull(translated);
+        assertEquals("PBKDF2WithHmacSHA1", translated.getAlgorithm());
+    }
+
+    /**
      * Set up one SecretKeyFactory and KeySpec, then test parallel
      * threaded calls to generateSecret.
      */

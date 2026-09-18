@@ -947,7 +947,7 @@ public final class WolfCryptProvider extends Provider {
         put("CertPathValidator.PKIX",
                 "com.wolfssl.provider.jce.WolfCryptPKIXCertPathValidator");
 
-        /* CertPathBuilder requires wolfSSL 5.8.0 or later */
+        /* CertPathBuilder requires wolfSSL 5.9.2 or later */
         if (WolfSSLX509StoreCtx.isSupported()) {
             put("CertPathBuilder.PKIX",
                     "com.wolfssl.provider.jce.WolfCryptPKIXCertPathBuilder");

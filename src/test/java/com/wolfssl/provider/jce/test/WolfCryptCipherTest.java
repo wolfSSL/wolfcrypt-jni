@@ -2939,6 +2939,91 @@ public class WolfCryptCipherTest {
     }
 
     /**
+     * Test Cipher("AES/CCM/NoPadding") getOutputSize() method for various
+     * use cases. AES-CCM appends the auth tag on encryption and strips it on
+     * decryption (same as AES-GCM), so getOutputSize() must account for tag
+     * in both directions.
+     */
+    @Test
+    public void testAesCcmGetOutputSize() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            /* skip if AES-CCM is not enabled */
+            return;
+        }
+
+        final int TAG_LENGTH_BYTES = 16;  /* Default tag length */
+        final int KEY_LENGTH_BYTES = 16;  /* 128-bit AES key */
+        final int NONCE_LENGTH_BYTES = 12;
+
+        /* Fill key and nonce with non-zero values */
+        byte[] keyBytes = new byte[KEY_LENGTH_BYTES];
+        java.util.Arrays.fill(keyBytes, (byte) 0x01);
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+
+        byte[] nonce = new byte[NONCE_LENGTH_BYTES];
+        java.util.Arrays.fill(nonce, (byte) 0x02);
+        GCMParameterSpec spec = new GCMParameterSpec(TAG_LENGTH_BYTES * 8,
+            nonce);
+
+        Cipher cipher = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+
+        /* Test ENCRYPT with zero-length input */
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        assertEquals("Output size for zero-length input should be tag length",
+            TAG_LENGTH_BYTES, cipher.getOutputSize(0));
+
+        /* Test ENCRYPT with small input */
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        assertEquals("Output size should be input length plus tag length",
+            10 + TAG_LENGTH_BYTES, cipher.getOutputSize(10));
+
+        /* Test ENCRYPT with block boundary input */
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        assertEquals("Output size should be input length plus tag length " +
+            "at block boundary", 16 + TAG_LENGTH_BYTES,
+            cipher.getOutputSize(16));
+
+        /* Test DECRYPT with tag included */
+        cipher.init(Cipher.DECRYPT_MODE, key, spec);
+        assertEquals("Output size for decryption should be input length " +
+            "minus tag length", 10,
+            cipher.getOutputSize(10 + TAG_LENGTH_BYTES));
+
+        /* Test ENCRYPT after partial update */
+        byte[] partialInput = new byte[5];
+        cipher.init(Cipher.ENCRYPT_MODE, key, spec);
+        cipher.update(partialInput); /* Process some data */
+        assertEquals("Output size after update should account for remaining " +
+            "input plus tag", 16 + TAG_LENGTH_BYTES, cipher.getOutputSize(11));
+
+        /* Test with a non-default (64-bit) tag length to confirm the tag
+         * accounting uses the requested tag size in both directions */
+        final int SHORT_TAG_BYTES = 8;
+        GCMParameterSpec shortTagSpec =
+            new GCMParameterSpec(SHORT_TAG_BYTES * 8, nonce);
+
+        cipher.init(Cipher.ENCRYPT_MODE, key, shortTagSpec);
+        assertEquals("Output size should be input length plus 8-byte tag",
+            10 + SHORT_TAG_BYTES, cipher.getOutputSize(10));
+
+        cipher.init(Cipher.DECRYPT_MODE, key, shortTagSpec);
+        assertEquals("Output size for decryption should be input length " +
+            "minus 8-byte tag", 10,
+            cipher.getOutputSize(10 + SHORT_TAG_BYTES));
+
+        /* Test getOutputSize() before initialization, expect exception */
+        Cipher uninitializedCipher =
+            Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+        try {
+            uninitializedCipher.getOutputSize(10);
+            fail("Expected IllegalStateException for uninitialized cipher");
+        } catch (IllegalStateException e) {
+            /* Expected exception */
+        }
+    }
+
+    /**
      * Verify that getOutputSize() in DECRYPT mode does not add pad bytes.
      */
     @Test
@@ -6126,31 +6211,139 @@ public class WolfCryptCipherTest {
                            e.getMessage().contains("nonce length"));
             }
 
-            /* Test nonce too long (16 bytes) */
-            byte[] longNonce = new byte[Aes.BLOCK_SIZE];
-            GCMParameterSpec longSpec = new GCMParameterSpec(128, longNonce);
+            /* Test nonce too long. The native layer only accepts a 7-13 byte
+             * nonce, so 14 through 17 byte nonces must be rejected at init
+             * rather than deferring the failure to doFinal(). */
+            for (int len = 14; len <= 17; len++) {
+                byte[] longNonce = new byte[len];
+                GCMParameterSpec longSpec =
+                    new GCMParameterSpec(128, longNonce);
 
-            try {
-                cipher.init(Cipher.ENCRYPT_MODE, keySpec, longSpec);
-                fail("Should reject nonce longer than 15 bytes");
-            } catch (InvalidAlgorithmParameterException e) {
-                assertTrue("Error message should mention nonce length",
-                           e.getMessage().contains("nonce length"));
+                try {
+                    cipher.init(Cipher.ENCRYPT_MODE, keySpec, longSpec);
+                    fail("Should reject nonce longer than 13 bytes, got " +
+                        len);
+                } catch (InvalidAlgorithmParameterException e) {
+                    assertTrue("Error message should mention nonce length",
+                        e.getMessage().contains("nonce length"));
+                }
             }
 
-            /* Test valid nonce lengths (7-15 bytes) */
-            for (int len = 7; len <= (Aes.BLOCK_SIZE - 1); len++) {
+            /* Test valid nonce lengths (7-13 bytes) */
+            for (int len = 7; len <= 13; len++) {
                 byte[] validNonce = new byte[len];
                 GCMParameterSpec validSpec =
                     new GCMParameterSpec(128, validNonce);
 
-                /* Should not throw exception */
+                /* Should not throw exception at init, and encryption should
+                 * succeed instead of failing at doFinal() */
                 cipher.init(Cipher.ENCRYPT_MODE, keySpec, validSpec);
+                cipher.doFinal("CCM nonce length test".getBytes());
             }
 
         } catch (Exception e) {
             fail("Unexpected exception in nonce length validation: " +
                 e.getMessage());
+        }
+    }
+
+    /**
+     * Verify parameterless AES-CCM init generates a native-acceptable nonce.
+     * A blockSize (16) byte nonce would be rejected by the native layer, so
+     * encryption must succeed at doFinal() and the reset path must rebuild a
+     * GCMParameterSpec for the generated nonce.
+     */
+    @Test
+    public void testAesCcmParameterlessInit() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            /* algorithm not enabled */
+            return;
+        }
+
+        byte[] keyBytes = {
+            (byte)0x2b, (byte)0x7e, (byte)0x15, (byte)0x16,
+            (byte)0x28, (byte)0xae, (byte)0xd2, (byte)0xa6,
+            (byte)0xab, (byte)0xf7, (byte)0x15, (byte)0x88,
+            (byte)0x09, (byte)0xcf, (byte)0x4f, (byte)0x3c
+        };
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        byte[] plaintext = "CCM parameterless init test".getBytes();
+
+        /* Parameterless init generates a random nonce internally. This must
+         * be a valid CCM length so doFinal() succeeds instead of failing in
+         * the native layer. */
+        Cipher enc = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+        enc.init(Cipher.ENCRYPT_MODE, key);
+        byte[] ciphertext = enc.doFinal(plaintext);
+
+        byte[] nonce = enc.getIV();
+        assertNotNull("CCM should expose a generated nonce", nonce);
+        assertTrue("Generated CCM nonce must be within 7-13 bytes, got " +
+            nonce.length, nonce.length >= 7 && nonce.length <= 13);
+
+        /* Roundtrip with the generated nonce. The first doFinal() above
+         * already exercised the auto-reset that runs at the end of an AEAD
+         * final, which for parameterless CCM must rebuild a GCMParameterSpec
+         * rather than an IvParameterSpec (wolfCryptSetIV() rejects the latter
+         * for CCM). If that reset path were broken the first doFinal() would
+         * have thrown, so no second encryption under the same nonce is done
+         * here. */
+        Cipher dec = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+        dec.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, nonce));
+        assertArrayEquals("CCM parameterless roundtrip should match plaintext",
+            plaintext, dec.doFinal(ciphertext));
+    }
+
+    /**
+     * Verify parameterless AEAD init resets the tag length to the 128-bit
+     * default rather than carrying over a shorter tag length set by a previous
+     * init() on the same Cipher object.
+     */
+    @Test
+    public void testAesAeadParameterlessInitResetsTagLength()
+        throws Exception {
+
+        byte[] keyBytes = new byte[16];
+        java.util.Arrays.fill(keyBytes, (byte) 0x01);
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+
+        byte[] nonce = new byte[12];
+        java.util.Arrays.fill(nonce, (byte) 0x02);
+        byte[] plaintext = new byte[10];
+
+        if (enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            Cipher ccm = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+
+            /* First init with a 64-bit (8-byte) tag */
+            ccm.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(64, nonce));
+            assertEquals("Short tag should be in effect after explicit init",
+                10 + 8, ccm.getOutputSize(10));
+
+            /* Re-init parameterless, tag length must reset to 16 bytes */
+            ccm.init(Cipher.ENCRYPT_MODE, key);
+            assertEquals("Parameterless init should reset CCM tag to 16 bytes",
+                10 + 16, ccm.getOutputSize(10));
+            byte[] ct = ccm.doFinal(plaintext);
+            assertEquals("Parameterless CCM should produce a 16-byte tag",
+                plaintext.length + 16, ct.length);
+        }
+
+        if (enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            Cipher gcm = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+
+            /* First init with a 64-bit (8-byte) tag */
+            gcm.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(64, nonce));
+            assertEquals("Short tag should be in effect after explicit init",
+                10 + 8, gcm.getOutputSize(10));
+
+            /* Re-init parameterless, tag length must reset to 16 bytes */
+            gcm.init(Cipher.ENCRYPT_MODE, key);
+            assertEquals("Parameterless init should reset GCM tag to 16 bytes",
+                10 + 16, gcm.getOutputSize(10));
+            byte[] ct = gcm.doFinal(plaintext);
+            assertEquals("Parameterless GCM should produce a 16-byte tag",
+                plaintext.length + 16, ct.length);
         }
     }
 

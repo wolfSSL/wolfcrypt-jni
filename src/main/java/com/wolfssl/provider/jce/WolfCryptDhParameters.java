@@ -66,16 +66,22 @@ public class WolfCryptDhParameters extends AlgorithmParametersSpi {
 
         int idx = 0;
         int seqLen = 0;
+        int seqEnd = 0;
         int pLen = 0;
         int gLen = 0;
+        int lLen = 0;
         byte[] pBytes = null;
         byte[] gBytes = null;
+        byte[] lBytes = null;
+        BigInteger lValue = null;
 
         /* Parse DER-encoded DH parameters. Doing basic DER parsing here
          * since wolfCrypt does not have DER parsing support for this
-         * encoded parameters format.
+         * encoded parameters format. The SEQUENCE must span the entire
+         * input, any trailing data is rejected.
          *
-         * Format: SEQUENCE { prime INTEGER, generator INTEGER } */
+         * Format: SEQUENCE { prime INTEGER, generator INTEGER,
+         *                    privateValueLength INTEGER OPTIONAL } */
         try {
             /* Check SEQUENCE tag */
             if (params[idx++] != 0x30) {
@@ -90,7 +96,13 @@ public class WolfCryptDhParameters extends AlgorithmParametersSpi {
                 throw new IOException(
                     "Invalid DH parameters: bad SEQUENCE length: " + seqLen);
             }
-            int seqEnd = idx + seqLen;
+            seqEnd = idx + seqLen;
+
+            /* SEQUENCE must span the entire input, reject any trailing data */
+            if (seqEnd != params.length) {
+                throw new IOException(
+                    "Invalid DH parameters: trailing data after SEQUENCE");
+            }
 
             /* Decode prime (p) INTEGER */
             if (idx >= seqEnd || params[idx++] != 0x02) {
@@ -124,8 +136,40 @@ public class WolfCryptDhParameters extends AlgorithmParametersSpi {
             idx += gLen;
             this.g = new BigInteger(1, gBytes);
 
-            /* Private value length not encoded in standard DH params */
-            this.l = 0;
+            /* Decode optional private-value length (l) INTEGER, if present. */
+            if (idx < seqEnd) {
+                if (params[idx++] != 0x02) {
+                    throw new IOException(
+                        "Invalid DH parameters: expected INTEGER tag for l");
+                }
+                lLen = WolfCryptASN1Util.getDERLength(params, idx);
+                idx += WolfCryptASN1Util.getDERLengthSize(params, idx);
+                if (lLen <= 0 || lLen > (seqEnd - idx)) {
+                    throw new IOException(
+                        "Invalid DH parameters: bad length for l: " + lLen);
+                }
+                lBytes = new byte[lLen];
+                System.arraycopy(params, idx, lBytes, 0, lLen);
+                idx += lLen;
+                lValue = new BigInteger(1, lBytes);
+                this.l = lValue.intValue();
+                /* Reject a value that does not fit in a Java int */
+                if (!BigInteger.valueOf(this.l).equals(lValue)) {
+                    throw new IOException(
+                        "Invalid DH parameters: private value length too big");
+                }
+            }
+            else {
+                /* Private value length is optional and absent */
+                this.l = 0;
+            }
+
+            /* Reject any trailing data inside the SEQUENCE */
+            if (idx != seqEnd) {
+                throw new IOException(
+                    "Invalid DH parameters: unexpected trailing data " +
+                    "in SEQUENCE");
+            }
 
         } catch (ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw new IOException("Invalid DH parameters encoding: " +
@@ -194,7 +238,8 @@ public class WolfCryptDhParameters extends AlgorithmParametersSpi {
             byte[] pBytes = this.p.toByteArray();
             byte[] gBytes = this.g.toByteArray();
 
-            /* Encode as ASN.1 SEQUENCE { prime, generator } */
+            /* Encode as ASN.1 SEQUENCE { prime, generator,
+             * privateValueLength OPTIONAL } */
             ByteArrayOutputStream seq = new ByteArrayOutputStream();
 
             /* Encode p as INTEGER */
@@ -206,6 +251,12 @@ public class WolfCryptDhParameters extends AlgorithmParametersSpi {
             seq.write(0x02); /* INTEGER tag */
             seq.write(WolfCryptASN1Util.encodeDERLength(gBytes.length));
             seq.write(gBytes);
+
+            /* Encode optional private-value length (l) as the third INTEGER */
+            if (this.l > 0) {
+                seq.write(WolfCryptASN1Util.encodeDERInteger(
+                    BigInteger.valueOf(this.l)));
+            }
 
             byte[] seqBytes = seq.toByteArray();
 

@@ -150,8 +150,18 @@ public class WolfCryptCipher extends CipherSpi {
     private AlgorithmParameterSpec storedSpec = null;
     private byte[] iv = null;
 
+    /* Default AEAD (AES-GCM/CCM) tag length in bytes (128 bits) */
+    private static final int AEAD_DEFAULT_TAG_LEN_SZ = 16;
+
     /* AES-GCM/CCM tag length (bytes), default to 128 bits */
-    private int gcmTagLen = 16;
+    private int gcmTagLen = AEAD_DEFAULT_TAG_LEN_SZ;
+
+    /* Native AES-CCM nonce length bounds (bytes) */
+    private static final int CCM_NONCE_MIN_SZ = 7;
+    private static final int CCM_NONCE_MAX_SZ = 13;
+
+    /* Nonce length generated for parameterless AES-CCM init (bytes). */
+    private static final int CCM_NONCE_GEN_SZ = 12;
 
     /* AAD data for AES-GCM/CCM, accumulated via engineUpdateAAD() */
     private ByteArrayOutputStream aadStream = null;
@@ -716,8 +726,9 @@ public class WolfCryptCipher extends CipherSpi {
         switch (this.cipherType) {
             case WC_AES:
                 if (paddingType == PaddingType.WC_NONE) {
-                    if (cipherMode == CipherMode.WC_GCM) {
-                        /* In AES-GCM mode we append the authentication tag
+                    if (cipherMode == CipherMode.WC_GCM ||
+                        cipherMode == CipherMode.WC_CCM) {
+                        /* In AES-GCM or AES-CCM mode we append the auth tag
                          * to the end of ciphertext, When decrypting, output
                          * size will have it taken off. */
                         if (this.direction == OpMode.WC_ENCRYPT) {
@@ -939,7 +950,15 @@ public class WolfCryptCipher extends CipherSpi {
 
         /* store IV, or generate random IV if not available */
         if (spec == null) {
-            this.iv = new byte[this.blockSize];
+            /* No parameters given, reset AEAD tag length to the default so
+             * shorter tag length from a previous init() is not reused */
+            this.gcmTagLen = AEAD_DEFAULT_TAG_LEN_SZ;
+
+            if (cipherMode == CipherMode.WC_CCM) {
+                this.iv = new byte[CCM_NONCE_GEN_SZ];
+            } else {
+                this.iv = new byte[this.blockSize];
+            }
 
             if (random != null) {
                 random.nextBytes(this.iv);
@@ -990,10 +1009,11 @@ public class WolfCryptCipher extends CipherSpi {
                         "AES-CCM nonce is null or 0 length");
                 }
 
-                /* CCM nonce length validation (7-15 bytes typical) */
-                if (ccmSpec.getIV().length < 7 || ccmSpec.getIV().length > 15) {
+                if (ccmSpec.getIV().length < CCM_NONCE_MIN_SZ ||
+                    ccmSpec.getIV().length > CCM_NONCE_MAX_SZ) {
                     throw new InvalidAlgorithmParameterException(
-                        "CCM nonce length must be 7-15 bytes, got: " +
+                        "CCM nonce length must be " + CCM_NONCE_MIN_SZ + "-" +
+                        CCM_NONCE_MAX_SZ + " bytes, got: " +
                         ccmSpec.getIV().length);
                 }
 
@@ -1920,9 +1940,10 @@ public class WolfCryptCipher extends CipherSpi {
                 /* Create appropriate ParameterSpec with the current IV to avoid
                  * generating a new random IV during reset */
                 AlgorithmParameterSpec currentIvSpec;
-                if (cipherMode == CipherMode.WC_GCM) {
-                    /* For GCM mode, create GCMParameterSpec with current
-                     * IV and tag length */
+                if (cipherMode == CipherMode.WC_GCM ||
+                    cipherMode == CipherMode.WC_CCM) {
+                    /* AES-GCM and AES-CCM both expect a GCMParameterSpec
+                     * carrying the current IV and tag length */
                     currentIvSpec = new GCMParameterSpec(
                         this.gcmTagLen * 8, this.iv.clone());
                 } else {
