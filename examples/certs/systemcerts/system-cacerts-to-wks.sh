@@ -51,7 +51,11 @@ fi
 
 # ARGS: <input-keystore-name> <output-keystore-name> <in-password> <out-password> <java home>
 jks_to_wks() {
-    ${5}/bin/keytool -importkeystore -srckeystore ${1} -destkeystore ${2}.wks -srcstoretype JKS -deststoretype WKS -srcstorepass "$3" -deststorepass "$3" -deststorepass "$4" -provider com.wolfssl.provider.jce.WolfCryptProvider --providerpath "$PROVIDER_PATH"
+    "${5}/bin/keytool" -importkeystore -srckeystore "${1}" \
+        -destkeystore "${2}.wks" -srcstoretype JKS -deststoretype WKS \
+        -srcstorepass "$3" -deststorepass "$4" \
+        -provider com.wolfssl.provider.jce.WolfCryptProvider \
+        --providerpath "$PROVIDER_PATH"
     if [ $? -ne 0 ]; then
         printf "Failed to convert JKS to WKS!"
         exit 1
@@ -120,7 +124,7 @@ if [ -f "$javaHome/$CACERTS_JDK9" ]; then
     if [ -f "$OUTDIR/cacerts.wks" ]; then
         rm "$OUTDIR/cacerts.wks"
     fi
-    jks_to_wks "$javaHome/$CACERTS_JDK9" "$OUTDIR/cacerts" "changeit" "changeitchangeit" $javaHome
+    jks_to_wks "$javaHome/$CACERTS_JDK9" "$OUTDIR/cacerts" "changeit" "changeitchangeit" "$javaHome"
 fi
 
 if [ -f "$javaHome/$CACERTS_JDK8" ]; then
@@ -132,10 +136,10 @@ if [ -f "$javaHome/$CACERTS_JDK8" ]; then
     if [ -f "$OUTDIR/cacerts.wks" ]; then
         rm "$OUTDIR/cacerts.wks"
     fi
-    jks_to_wks "$javaHome/$CACERTS_JDK8" "$OUTDIR/cacerts" "changeit" "changeitchangeit" $javaHome
+    jks_to_wks "$javaHome/$CACERTS_JDK8" "$OUTDIR/cacerts" "changeit" "changeitchangeit" "$javaHome"
 fi
 
-if [ -f "$javaHome/$JSSECERTS_JDK9" ]; then
+if [ -f "$javaHome/$JSSECACERTS_JDK9" ]; then
     echo "System jssecacerts found, converting from JKS to WKS:"
     echo "    FROM: $javaHome/$JSSECACERTS_JDK9"
     echo "    TO:   $OUTDIR/jssecacerts.wks"
@@ -144,10 +148,10 @@ if [ -f "$javaHome/$JSSECERTS_JDK9" ]; then
     if [ -f "$OUTDIR/jssecacerts.wks" ]; then
         rm "$OUTDIR/jssecacerts.wks"
     fi
-    jks_to_wks "$javaHome/$JSSECACERTS_JDK9" "$OUTDIR/jssecacerts" "changeit" "changeitchangeit" $javaHome
+    jks_to_wks "$javaHome/$JSSECACERTS_JDK9" "$OUTDIR/jssecacerts" "changeit" "changeitchangeit" "$javaHome"
 fi
 
-if [ -f "$javaHome/$JSSECERTS_JDK8" ]; then
+if [ -f "$javaHome/$JSSECACERTS_JDK8" ]; then
     echo "System jssecacerts found, converting from JKS to WKS:"
     echo "    FROM: $javaHome/$JSSECACERTS_JDK8"
     echo "    TO:   $OUTDIR/jssecacerts.wks"
@@ -156,7 +160,7 @@ if [ -f "$javaHome/$JSSECERTS_JDK8" ]; then
     if [ -f "$OUTDIR/jssecacerts.wks" ]; then
         rm "$OUTDIR/jssecacerts.wks"
     fi
-    jks_to_wks "$javaHome/$JSSECACERTS_JDK8" "$OUTDIR/jssecacerts" "changeit" "changeitchangeit" $javaHome
+    jks_to_wks "$javaHome/$JSSECACERTS_JDK8" "$OUTDIR/jssecacerts" "changeit" "changeitchangeit" "$javaHome"
 fi
 
 echo ""

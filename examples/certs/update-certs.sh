@@ -22,7 +22,11 @@ if [ -z "$1" ]; then
     printf "\tExample use ./update-certs.sh ~/wolfssl/certs\n"
     exit 1;
 fi
-CERT_LOCATION=$1
+CERT_LOCATION="$1"
+if [ ! -d "$CERT_LOCATION" ]; then
+    printf "Error: %s is not a directory\n" "$CERT_LOCATION"
+    exit 1
+fi
 
 # Copy cert files from wolfssl/certs to local examples/certs
 certList=(
@@ -115,7 +119,7 @@ slhdsaCertList=(
 for i in ${!certList[@]};
 do
     printf "Updating: ${certList[$i]}\n"
-    cp $CERT_LOCATION/${certList[$i]} ./${certList[$i]}
+    cp -- "$CERT_LOCATION/${certList[$i]}" "./${certList[$i]}"
     if [ $? -ne 0 ]; then
         printf "Failed to copy cert: ${certList[$i]}\n"
         exit 1
@@ -126,7 +130,7 @@ if [ -d "$CERT_LOCATION/mldsa" ]; then
     for i in ${!mldsaCertList[@]};
     do
         printf "Updating: ${mldsaCertList[$i]}\n"
-        cp $CERT_LOCATION/${mldsaCertList[$i]} ./${mldsaCertList[$i]}
+        cp -- "$CERT_LOCATION/${mldsaCertList[$i]}" "./${mldsaCertList[$i]}"
         if [ $? -ne 0 ]; then
             printf "Warning: skipped missing ML-DSA cert: "
             printf "${mldsaCertList[$i]}\n"
@@ -142,7 +146,7 @@ if [ -d "$CERT_LOCATION/xmss" ]; then
     for i in ${!xmssCertList[@]};
     do
         printf "Updating: ${xmssCertList[$i]}\n"
-        cp $CERT_LOCATION/${xmssCertList[$i]} ./${xmssCertList[$i]}
+        cp -- "$CERT_LOCATION/${xmssCertList[$i]}" "./${xmssCertList[$i]}"
         if [ $? -ne 0 ]; then
             printf "Warning: skipped missing XMSS cert: "
             printf "${xmssCertList[$i]}\n"
@@ -158,7 +162,7 @@ if [ -d "$CERT_LOCATION/lms" ]; then
     for i in ${!lmsCertList[@]};
     do
         printf "Updating: ${lmsCertList[$i]}\n"
-        cp $CERT_LOCATION/${lmsCertList[$i]} ./${lmsCertList[$i]}
+        cp -- "$CERT_LOCATION/${lmsCertList[$i]}" "./${lmsCertList[$i]}"
         if [ $? -ne 0 ]; then
             printf "Warning: skipped missing LMS cert: "
             printf "${lmsCertList[$i]}\n"
@@ -174,7 +178,7 @@ if [ -d "$CERT_LOCATION/slhdsa" ]; then
     for i in ${!slhdsaCertList[@]};
     do
         printf "Updating: ${slhdsaCertList[$i]}\n"
-        cp $CERT_LOCATION/${slhdsaCertList[$i]} ./${slhdsaCertList[$i]}
+        cp -- "$CERT_LOCATION/${slhdsaCertList[$i]}" "./${slhdsaCertList[$i]}"
         if [ $? -ne 0 ]; then
             printf "Warning: skipped missing SLH-DSA cert: "
             printf "${slhdsaCertList[$i]}\n"
