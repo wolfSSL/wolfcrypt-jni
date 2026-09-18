@@ -48,6 +48,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.Cipher;
 import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.interfaces.PBEKey;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.security.auth.DestroyFailedException;
@@ -1202,6 +1203,60 @@ public class WolfCryptSecretKeyFactoryTest {
         keyB.destroy();
         assertFalse(keyA.equals(keyB));
         assertFalse(keyB.equals(keyA));
+    }
+
+    /**
+     * PBEKey built from another key's fields, with its own password.
+     */
+    private static PBEKey pbeKeyWithPassword(final PBEKey base,
+        final char[] password) {
+        return new PBEKey() {
+            public char[] getPassword() { return password.clone(); }
+            public byte[] getSalt() { return base.getSalt(); }
+            public int getIterationCount() {
+                return base.getIterationCount();
+            }
+            public String getAlgorithm() { return base.getAlgorithm(); }
+            public String getFormat() { return base.getFormat(); }
+            public byte[] getEncoded() { return base.getEncoded(); }
+        };
+    }
+
+    /**
+     * equals() must compare the whole password, differing only in the
+     * last character or in length must still be unequal.
+     */
+    @Test
+    public void testPBKDF2WithHmacSHA256_KeyEqualsComparesPassword()
+        throws NoSuchAlgorithmException, InvalidKeySpecException,
+               NoSuchProviderException {
+
+        char[] pass = "passwordpassword".toCharArray();
+        byte[] salt = {
+            (byte)0x78, (byte)0x57, (byte)0x8E, (byte)0x5a,
+            (byte)0x5d, (byte)0x63, (byte)0xcb, (byte)0x06
+        };
+
+        if (!FeatureDetect.Pbkdf2Enabled() ||
+            !FeatureDetect.HmacSha256Enabled() ||
+            !algoSupported("PBKDF2WithHmacSHA256")) {
+            System.out.println(
+                "Skipped: SecretKeyFactory PBEKey password equals test");
+            Assume.assumeTrue(false);
+        }
+
+        SecretKeyFactory sf =
+            SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256", provider);
+        PBEKey key = (PBEKey)sf.generateSecret(
+            new PBEKeySpec(pass, salt, 2048, 192));
+
+        assertTrue(key.equals(pbeKeyWithPassword(key, pass)));
+        assertFalse(key.equals(pbeKeyWithPassword(key,
+            "passwordpassworX".toCharArray())));
+        assertFalse(key.equals(pbeKeyWithPassword(key,
+            "passwordpasswor".toCharArray())));
+        assertFalse(key.equals(pbeKeyWithPassword(key,
+            "passwordpasswordX".toCharArray())));
     }
 
     /**

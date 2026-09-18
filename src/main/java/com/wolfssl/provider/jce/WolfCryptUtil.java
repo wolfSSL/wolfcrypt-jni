@@ -1355,5 +1355,27 @@ public class WolfCryptUtil {
 
         return encoded;
     }
-}
 
+    /**
+     * Constant time compare two char arrays.
+     *
+     * @param a first array, may be null
+     * @param b second array, may be null
+     *
+     * @return true if both are null or hold the same characters
+     */
+    public static boolean constantTimeEquals(char[] a, char[] b) {
+        int diff;
+
+        if (a == null || b == null) {
+            return (a == b);
+        }
+
+        diff = a.length ^ b.length;
+        for (int i = 0; i < a.length && i < b.length; i++) {
+            diff |= (a[i] ^ b[i]);
+        }
+
+        return (diff == 0);
+    }
+}

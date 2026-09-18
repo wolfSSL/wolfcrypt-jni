@@ -1244,6 +1244,53 @@ public class WolfSSLKeyStoreTest {
     }
 
     @Test
+    public void testStoreKeyRejectsChainNotIssuingLeaf()
+        throws KeyStoreException, IOException, FileNotFoundException,
+               NoSuchProviderException, NoSuchAlgorithmException,
+               CertificateException {
+
+        KeyStore store = null;
+        Certificate[] chain = null;
+
+        /* SUN JKS allows loading invalid cert chains, but we don't */
+        if (storeProvider.equals("SUN")) {
+            return;
+        }
+
+        /* Leaf matches the key but the only CA did not issue it */
+        chain = new Certificate[] {
+            serverCertRsa, certFileToCertificate(caEccCertDer) };
+        store = KeyStore.getInstance(storeType, storeProvider);
+        store.load(null, storePass.toCharArray());
+        try {
+            store.setKeyEntry("serverRsa", serverKeyRsa,
+                storePass.toCharArray(), chain);
+            fail("setKeyEntry() with unrelated CA should fail");
+        } catch (KeyStoreException e) {
+            /* expected */
+        }
+        assertEquals(0, store.size());
+
+        /* Valid intermediates but a leaf they did not issue */
+        chain = new Certificate[] {
+            serverCertRsa, rsaServerChain[1], rsaServerChain[2] };
+        try {
+            store.setKeyEntry("serverRsa", serverKeyRsa,
+                storePass.toCharArray(), chain);
+            fail("setKeyEntry() with foreign leaf should fail");
+        } catch (KeyStoreException e) {
+            /* expected */
+        }
+        assertEquals(0, store.size());
+
+        /* Leaf issued by the single CA is accepted */
+        chain = new Certificate[] { rsaServerChain[0], rsaServerChain[1] };
+        store.setKeyEntry("serverRsa", serverKeyRsa,
+            storePass.toCharArray(), chain);
+        assertEquals(1, store.size());
+    }
+
+    @Test
     public void testStoreMultipleKeyAndCertChains()
         throws KeyStoreException, IOException, FileNotFoundException,
                NoSuchProviderException, NoSuchAlgorithmException,
