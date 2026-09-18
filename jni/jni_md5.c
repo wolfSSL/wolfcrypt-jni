@@ -163,8 +163,8 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1update_1internal__Ljava_nio_ByteBuffer_2I
 
     LogStr("wc_Md5Update(md5=%p, data, len)\n", md5);
     if (ret == 0) {
-        LogStr("data[%u]: [%p]\n", (word32)len, data);
-        LogHex(data, 0, len);
+        LogStr("data[%u]: [%p]\n", (word32)len, data + position);
+        LogHex(data, position, len);
     }
 #else
     throwNotCompiledInException(env);
@@ -243,8 +243,10 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final_1internal__Ljava_nio_ByteBuffer_2I(
     }
 
     LogStr("wc_Md5Final(md5=%p, hash)\n", md5);
-    LogStr("hash[%u]: [%p]\n", (word32)MD5_DIGEST_SIZE, hash);
-    LogHex(hash, 0, MD5_DIGEST_SIZE);
+    if (hash != NULL) {
+        LogStr("hash[%u]: [%p]\n", (word32)MD5_DIGEST_SIZE, hash + position);
+        LogHex(hash, position, MD5_DIGEST_SIZE);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -277,8 +279,10 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final_1internal___3B(
     }
 
     LogStr("wc_Md5Final(md5=%p, hash)\n", md5);
-    LogStr("hash[%u]: [%p]\n", (word32)MD5_DIGEST_SIZE, hash);
-    LogHex(hash, 0, MD5_DIGEST_SIZE);
+    if (hash != NULL) {
+        LogStr("hash[%u]: [%p]\n", (word32)MD5_DIGEST_SIZE, hash);
+        LogHex(hash, 0, MD5_DIGEST_SIZE);
+    }
 
     releaseByteArray(env, hash_buffer, hash, 0);
 #else

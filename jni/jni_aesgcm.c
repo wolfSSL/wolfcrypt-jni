@@ -211,12 +211,17 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
 
     /* Allocate new buffer to hold ciphertext */
     if (ret == 0) {
-        out = (byte*)XMALLOC(inLen, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        word32 outSz = inLen;
+        if (outSz == 0) {
+            /* AAD-only case, allocate 1 byte to avoid XMALLOC(0) */
+            outSz = 1;
+        }
+        out = (byte*)XMALLOC(outSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         if (out == NULL) {
             ret = MEMORY_E;
         }
         else {
-            XMEMSET(out, 0, inLen);
+            XMEMSET(out, 0, outSz);
         }
     }
 
@@ -362,12 +367,17 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
     }
 
     if (ret == 0) {
-        out = (byte*)XMALLOC(inLen, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        word32 outSz = inLen;
+        if (outSz == 0) {
+            /* AAD-only case, allocate 1 byte to avoid XMALLOC(0) */
+            outSz = 1;
+        }
+        out = (byte*)XMALLOC(outSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         if (out == NULL) {
             ret = MEMORY_E;
         }
         else {
-            XMEMSET(out, 0, inLen);
+            XMEMSET(out, 0, outSz);
         }
     }
 

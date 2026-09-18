@@ -291,8 +291,8 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update_1internal__Ljava_nio_ByteBuffer_2I
 
     LogStr("wc_ShaUpdate(sha=%p, data, len) = %d\n", sha, ret);
     if (ret == 0) {
-        LogStr("data[%u]: [%p]\n", (word32)len, data);
-        LogHex(data, 0, len);
+        LogStr("data[%u]: [%p]\n", (word32)len, data + position);
+        LogHex(data, position, len);
     }
 #else
     throwNotCompiledInException(env);
@@ -331,7 +331,7 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1update_1internal___3BII(
 
     LogStr("wc_ShaUpdate_fips(sha=%p, data, len) = %d\n", sha, ret);
     if (ret == 0) {
-        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
         LogHex(data, offset, len);
     }
 
@@ -369,8 +369,10 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1final_1internal__Ljava_nio_ByteBuffer_2I(
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_ShaFinal(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA_DIGEST_SIZE);
+    if (hash != NULL) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA_DIGEST_SIZE, hash + position);
+        LogHex(hash, position, SHA_DIGEST_SIZE);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -401,8 +403,10 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1final_1internal___3B(
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_ShaFinal(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA_DIGEST_SIZE);
+    if (hash != NULL) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA_DIGEST_SIZE);
+    }
 
     releaseByteArray(env, hash_buffer, hash, ret);
 #else
@@ -507,8 +511,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1update_1interna
 
     LogStr("wc_Sha224Update(sha=%p, data, len) = %d\n", sha, ret);
     if (ret == 0) {
-        LogStr("data[%u]: [%p]\n", (word32)len, data);
-        LogHex(data, 0, len);
+        LogStr("data[%u]: [%p]\n", (word32)len, data + position);
+        LogHex(data, position, len);
     }
 #else
     (void)env;
@@ -598,8 +602,11 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1final_1internal
     }
 
     LogStr("wc_Sha224Final(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA224_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA224_DIGEST_SIZE);
+    if (hash != NULL) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA224_DIGEST_SIZE,
+            hash + position);
+        LogHex(hash, position, SHA224_DIGEST_SIZE);
+    }
 #else
     (void)env;
     (void)this;
@@ -637,8 +644,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1final_1internal
     }
 
     LogStr("wc_Sha224Final(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA224_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA224_DIGEST_SIZE);
+    if (hash != NULL) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA224_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA224_DIGEST_SIZE);
+    }
 
     releaseByteArray(env, hash_buffer, hash, ret);
 #else
@@ -740,8 +749,8 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update_1internal__Ljava_nio_ByteBuffer
 
     LogStr("wc_Sha256Update(sha=%p, data, len) = %d\n", sha, ret);
     if (ret == 0) {
-        LogStr("data[%u]: [%p]\n", (word32)len, data);
-        LogHex(data, 0, len);
+        LogStr("data[%u]: [%p]\n", (word32)len, data + position);
+        LogHex(data, position, len);
     }
 #else
     throwNotCompiledInException(env);
@@ -782,8 +791,8 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1update_1internal___3BII(
 
     LogStr("wc_Sha256Update(sha=%p, data, len) = %d\n", sha, ret);
     if (ret == 0) {
-        LogStr("data[%u]: [%p]\n", (word32)len, data);
-        LogHex(data, 0, len);
+        LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
+        LogHex(data, offset, len);
     }
 
     releaseByteArray(env, data_buffer, data, JNI_ABORT);
@@ -820,8 +829,11 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1final_1internal__Ljava_nio_ByteBuffer_
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Sha256Final(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA256_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA256_DIGEST_SIZE);
+    if (hash != NULL) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA256_DIGEST_SIZE,
+            hash + position);
+        LogHex(hash, position, SHA256_DIGEST_SIZE);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -852,8 +864,10 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1final_1internal___3B(
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Sha256Final(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA256_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA256_DIGEST_SIZE);
+    if (hash != NULL) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA256_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA256_DIGEST_SIZE);
+    }
 
     releaseByteArray(env, hash_buffer, hash, ret);
 #else
@@ -950,8 +964,8 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1update_1internal__Ljava_nio_ByteBuffer
 
     LogStr("wc_Sha384Update(sha=%p, data, len) = %d\n", sha, ret);
     if (ret == 0) {
-        LogStr("data[%u]: [%p]\n", (word32)len, data);
-        LogHex(data, 0, len);
+        LogStr("data[%u]: [%p]\n", (word32)len, data + position);
+        LogHex(data, position, len);
     }
 #else
     throwNotCompiledInException(env);
@@ -1029,8 +1043,11 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1final_1internal__Ljava_nio_ByteBuffer_
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Sha384Final(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA384_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA384_DIGEST_SIZE);
+    if (hash != NULL) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA384_DIGEST_SIZE,
+            hash + position);
+        LogHex(hash, position, SHA384_DIGEST_SIZE);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -1061,8 +1078,10 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1final_1internal___3B(
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Sha384Final(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA384_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA384_DIGEST_SIZE);
+    if (hash != NULL) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA384_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA384_DIGEST_SIZE);
+    }
 
     releaseByteArray(env, hash_buffer, hash, ret);
 #else
@@ -1159,8 +1178,8 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1update_1internal__Ljava_nio_ByteBuffer
 
     LogStr("wc_Sha512Update(sha=%p, data, len) = %d\n", sha, ret);
     if (ret == 0) {
-        LogStr("data[%u]: [%p]\n", (word32)len, data);
-        LogHex(data, 0, len);
+        LogStr("data[%u]: [%p]\n", (word32)len, data + position);
+        LogHex(data, position, len);
     }
 #else
     throwNotCompiledInException(env);
@@ -1239,8 +1258,11 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1final_1internal__Ljava_nio_ByteBuffer_
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Sha512Final(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA512_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA512_DIGEST_SIZE);
+    if (hash != NULL) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA512_DIGEST_SIZE,
+            hash + position);
+        LogHex(hash, position, SHA512_DIGEST_SIZE);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -1271,8 +1293,10 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1final_1internal___3B(
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_Sha512Final(sha=%p, hash) = %d\n", sha, ret);
-    LogStr("hash[%u]: [%p]\n", (word32)SHA512_DIGEST_SIZE, hash);
-    LogHex(hash, 0, SHA512_DIGEST_SIZE);
+    if (hash != NULL) {
+        LogStr("hash[%u]: [%p]\n", (word32)SHA512_DIGEST_SIZE, hash);
+        LogHex(hash, 0, SHA512_DIGEST_SIZE);
+    }
 
     releaseByteArray(env, hash_buffer, hash, ret);
 #else
@@ -1453,8 +1477,8 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1update_1internal_
 
     LogStr("wc_Sha3_Update(sha=%p, data, len) = %d\n", sha, ret);
     if (ret == 0) {
-        LogStr("data[%u]: [%p]\n", (word32)len, data);
-        LogHex(data, 0, len);
+        LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
+        LogHex(data, offset, len);
     }
 #else
     (void)env;
@@ -1516,7 +1540,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1update_1internal_
 
     LogStr("wc_Sha3_Update(sha=%p, data, len) = %d\n", sha, ret);
     if (ret == 0) {
-        LogStr("data[%u]: [%p]\n", (word32)len, data);
+        LogStr("data[%u]: [%p]\n", (word32)len, data + offset);
         LogHex(data, offset, len);
     }
 

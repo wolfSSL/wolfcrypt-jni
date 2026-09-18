@@ -153,6 +153,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Hmac_getCodeSha3_1512
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Hmac_mallocNativeStruct
   (JNIEnv *, jobject);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_Hmac
+ * Method:    native_free
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_native_1free
+  (JNIEnv *, jobject);
+
 #ifdef __cplusplus
 }
 #endif

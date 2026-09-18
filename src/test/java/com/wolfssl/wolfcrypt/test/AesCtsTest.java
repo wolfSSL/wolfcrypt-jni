@@ -123,6 +123,20 @@ public class AesCtsTest {
             /* test must throw */
         }
 
+        try {
+            aesCts.setKey(KEY_128, new byte[8], AesCts.ENCRYPT_MODE);
+            fail("iv shorter than one AES block should be rejected.");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
+        try {
+            aesCts.setKey(KEY_128, new byte[24], AesCts.ENCRYPT_MODE);
+            fail("iv longer than one AES block should be rejected.");
+        } catch (WolfCryptException e) {
+            /* test must throw */
+        }
+
         aesCts.setKey(KEY_128, IV, AesCts.ENCRYPT_MODE);
         aesCts.releaseNativeStruct();
 

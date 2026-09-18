@@ -508,7 +508,8 @@ public class WolfCryptUtilTest {
     }
 
     /**
-     * Test converting WKS to WKS (should return same InputStream)
+     * Test converting WKS to a newly serialized WKS InputStream while
+     * preserving all entries
      */
     @Test
     public void testConvertWksToWks() throws Exception {

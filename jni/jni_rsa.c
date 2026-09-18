@@ -742,6 +742,10 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaSetRNG(
     else {
         return JNI_TRUE;
     }
+#else
+    (void)env;
+    (void)this;
+    (void)rng_object;
 #endif
 
 #else

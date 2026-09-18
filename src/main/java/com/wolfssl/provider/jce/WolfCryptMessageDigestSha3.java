@@ -138,7 +138,7 @@ public class WolfCryptMessageDigestSha3
     }
 
     /**
-     * wolfJCE SHA1wECDSA message digest class
+     * wolfJCE SHA3-224 message digest class
      */
     public static final class wcSHA3_224 extends WolfCryptMessageDigestSha3 {
         /**

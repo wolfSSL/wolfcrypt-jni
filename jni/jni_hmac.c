@@ -148,6 +148,34 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Hmac_mallocNativeStruct
 #endif
 }
 
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_native_1free
+    (JNIEnv* env, jobject this)
+{
+#ifndef NO_HMAC
+    Hmac* hmac = (Hmac*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    LogStr("free Hmac %p\n", hmac);
+
+    if (hmac) {
+        /* Free device/async/inner-hash resources, then zeroize key-derived
+         * ipad/opad. NativeStruct.xfree() frees the memory. */
+        wc_HmacFree(hmac);
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(hmac, sizeof(Hmac));
+    #else
+        XMEMSET(hmac, 0, sizeof(Hmac));
+    #endif
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacSetKey
     (JNIEnv* env, jobject this, jint type, jbyteArray key_object)
 {
@@ -259,8 +287,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_HmacUpdate(hmac=%p, data, length) = %d\n", hmac, ret);
-    LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
-    LogHex((byte*) data, offset, length);
+    if (data != NULL) {
+        LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
+        LogHex((byte*) data, offset, length);
+    }
 
     releaseByteArray(env, data_object, data, JNI_ABORT);
 #else
@@ -298,8 +328,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_HmacUpdate(hmac=%p, data, length) = %d\n", hmac, ret);
-    LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
-    LogHex((byte*) data, offset, length);
+    if (data != NULL) {
+        LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
+        LogHex((byte*) data, offset, length);
+    }
 #else
     throwNotCompiledInException(env);
 #endif

@@ -41,6 +41,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setKey
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setIV
   (JNIEnv *, jobject, jbyteArray);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_Chacha
+ * Method:    native_free
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_native_1free
+  (JNIEnv *, jobject);
+
 #ifdef __cplusplus
 }
 #endif

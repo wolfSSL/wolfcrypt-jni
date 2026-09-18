@@ -71,6 +71,43 @@ public class HmacTest {
     }
 
     @Test
+    public void hmacReleaseLifecycle() {
+        byte[] key = new byte[32];
+        byte[] data = new byte[64];
+
+        try {
+            /* Release before any setKey() must be a safe no-op */
+            Hmac unused = new Hmac();
+            unused.releaseNativeStruct();
+
+            /* Release after use, then re-key and produce the same MAC */
+            Hmac hmac = new Hmac();
+            hmac.setKey(Hmac.SHA256, key);
+            hmac.update(data);
+            byte[] mac1 = hmac.doFinal();
+
+            hmac.releaseNativeStruct();
+
+            hmac.setKey(Hmac.SHA256, key);
+            hmac.update(data);
+            byte[] mac2 = hmac.doFinal();
+            assertArrayEquals("MAC after release and re-key must match",
+                mac1, mac2);
+
+            /* Double release must not crash */
+            hmac.releaseNativeStruct();
+            hmac.releaseNativeStruct();
+        } catch (WolfCryptException e) {
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                System.out.println("Hmac release test skipped: " +
+                    e.getError());
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    @Test
     public void shaHmacShouldMatch() {
         String[] keyVector = new String[] {
                 "fd42f5044e3f70825102017f8521",

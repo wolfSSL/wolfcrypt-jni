@@ -179,10 +179,12 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update_1internal__I_3BII_3BI(
         LogStr("wc_AesCbcDecrypt(aes=%p, out, in, inSz) = %d\n", aes, ret);
     }
 
-    LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
-    LogHex((byte*) input, offset, length);
-    LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
-    LogHex((byte*) output, outputOffset, length);
+    if (input != NULL && output != NULL) {
+        LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
+        LogHex((byte*) input, offset, length);
+        LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
+        LogHex((byte*) output, outputOffset, length);
+    }
 
     releaseByteArray(env, input_object, input, JNI_ABORT);
     releaseByteArray(env, output_object, output, ret);
@@ -257,10 +259,12 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1update_1internal__ILjava_nio_ByteBuffer_2
         ret = length;
     }
 
-    LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
-    LogHex((byte*) input, offset, length);
-    LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
-    LogHex((byte*) output, outputOffset, length);
+    if (input != NULL && output != NULL) {
+        LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
+        LogHex((byte*) input, offset, length);
+        LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
+        LogHex((byte*) output, outputOffset, length);
+    }
 #else
     throwNotCompiledInException(env);
     ret = NOT_COMPILED_IN;

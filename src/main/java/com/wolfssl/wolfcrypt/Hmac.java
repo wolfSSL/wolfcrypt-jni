@@ -126,6 +126,8 @@ public class Hmac extends NativeStruct {
      */
     protected native long mallocNativeStruct() throws OutOfMemoryError;
 
+    private native void native_free();
+
     /**
      * Check if type is -1, if so that type is not compiled in at native
      * wolfSSL level.
@@ -223,6 +225,9 @@ public class Hmac extends NativeStruct {
     @Override
     public synchronized void releaseNativeStruct() {
         synchronized (pointerLock) {
+            if (getNativeStruct() != NativeStruct.NULL) {
+                native_free();
+            }
             super.releaseNativeStruct();
         }
     }

@@ -148,8 +148,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_ni
     }
 
     LogStr("wc_RNG_GenerateBlock(rng=%p, buffer, size) = %d\n", rng, ret);
-    LogStr("output[%u]: [%p]\n", (word32)size, buffer);
-    LogHex(buffer, 0, size);
+    if (buffer != NULL) {
+        LogStr("output[%u]: [%p]\n", (word32)size, buffer + position);
+        LogHex(buffer, position, size);
+    }
 #else
     throwNotCompiledInException(env);
 #endif
@@ -189,8 +191,10 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
     }
 
     LogStr("wc_RNG_GenerateBlock(rng=%p, buffer, length) = %d\n", rng, ret);
-    LogStr("output[%u]: [%p]\n", (word32)length, buffer);
-    LogHex(buffer, 0, length);
+    if (buffer != NULL) {
+        LogStr("output[%u]: [%p]\n", (word32)length, buffer + offset);
+        LogHex(buffer, offset, length);
+    }
 
     releaseByteArray(env, buffer_buffer, buffer, ret);
 #else

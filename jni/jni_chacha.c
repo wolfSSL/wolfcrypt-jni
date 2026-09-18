@@ -65,6 +65,32 @@ Java_com_wolfssl_wolfcrypt_Chacha_mallocNativeStruct(
 #endif
 }
 
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_native_1free
+    (JNIEnv* env, jobject this)
+{
+#ifdef HAVE_CHACHA
+    ChaCha* chacha = (ChaCha*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    LogStr("free ChaCha %p\n", chacha);
+
+    if (chacha) {
+        /* Zeroize ChaCha key/state, NativeStruct.xfree() frees memory */
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(chacha, sizeof(ChaCha));
+    #else
+        XMEMSET(chacha, 0, sizeof(ChaCha));
+    #endif
+    }
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Chacha_wc_1Chacha_1setIV
   (JNIEnv* env, jobject this, jbyteArray iv_object)
 {

@@ -116,6 +116,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1set_1key_1inter
     byte* key = NULL;
     byte* iv  = NULL;
     word32 keySz = 0;
+    word32 ivSz  = 0;
 
     ctx = (AesCtsCtx*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -126,8 +127,12 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1set_1key_1inter
     key = getByteArray(env, key_object);
     iv  = getByteArray(env, iv_object);
     keySz = getByteArrayLength(env, key_object);
+    ivSz  = getByteArrayLength(env, iv_object);
 
     if (ctx == NULL || key == NULL || iv == NULL) {
+        ret = BAD_FUNC_ARG;
+    }
+    else if (ivSz != AES_BLOCK_SIZE) {
         ret = BAD_FUNC_ARG;
     }
 
@@ -254,10 +259,12 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
             ctx, opmode, length, ret);
     }
 
-    LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
-    LogHex((byte*) input, offset, length);
-    LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
-    LogHex((byte*) output, outputOffset, length);
+    if (input != NULL && output != NULL) {
+        LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
+        LogHex((byte*) input, offset, length);
+        LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
+        LogHex((byte*) output, outputOffset, length);
+    }
 
     releaseByteArray(env, input_object, input, JNI_ABORT);
     releaseByteArray(env, output_object, output,
