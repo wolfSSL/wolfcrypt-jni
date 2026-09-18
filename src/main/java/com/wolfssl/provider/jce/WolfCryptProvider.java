@@ -280,6 +280,24 @@ public final class WolfCryptProvider extends Provider {
                   "com.wolfssl.provider.jce.WolfCryptSignature$wcSHA3_512wECDSAP1363");
         }
 
+        /* EdDSA (RFC 8032) Signature support: Ed25519, Ed448 */
+        if (FeatureDetect.Ed25519Enabled()) {
+            put("Signature.Ed25519",
+                "com.wolfssl.provider.jce.WolfCryptEdDSASignature$wcEd25519");
+            put("Alg.Alias.Signature.1.3.101.112", "Ed25519");
+            put("Alg.Alias.Signature.OID.1.3.101.112", "Ed25519");
+        }
+        if (FeatureDetect.Ed448Enabled()) {
+            put("Signature.Ed448",
+                "com.wolfssl.provider.jce.WolfCryptEdDSASignature$wcEd448");
+            put("Alg.Alias.Signature.1.3.101.113", "Ed448");
+            put("Alg.Alias.Signature.OID.1.3.101.113", "Ed448");
+        }
+        if (FeatureDetect.Ed25519Enabled() || FeatureDetect.Ed448Enabled()) {
+            put("Signature.EdDSA",
+                "com.wolfssl.provider.jce.WolfCryptEdDSASignature$wcEdDSA");
+        }
+
         /* RSA-PSS Signature support.
          * Include Bouncy Castle and other alias styles for compatibility */
         if (FeatureDetect.RsaEnabled()) {
@@ -803,6 +821,27 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenECC");
             put("Alg.Alias.KeyPairGenerator.1.2.840.10045.2.1", "EC");
         }
+        /* EdDSA (RFC 8032) key pair generation */
+        if (FeatureDetect.Ed25519KeyGenEnabled()) {
+            put("KeyPairGenerator.Ed25519",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator" +
+                "$wcKeyPairGenEd25519");
+            put("Alg.Alias.KeyPairGenerator.1.3.101.112", "Ed25519");
+            put("Alg.Alias.KeyPairGenerator.OID.1.3.101.112", "Ed25519");
+        }
+        if (FeatureDetect.Ed448KeyGenEnabled()) {
+            put("KeyPairGenerator.Ed448",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator" +
+                "$wcKeyPairGenEd448");
+            put("Alg.Alias.KeyPairGenerator.1.3.101.113", "Ed448");
+            put("Alg.Alias.KeyPairGenerator.OID.1.3.101.113", "Ed448");
+        }
+        if (FeatureDetect.Ed25519KeyGenEnabled() ||
+            FeatureDetect.Ed448KeyGenEnabled()) {
+            put("KeyPairGenerator.EdDSA",
+                "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator" +
+                "$wcKeyPairGenEdDSA");
+        }
         if (FeatureDetect.DhEnabled()) {
             put("KeyPairGenerator.DH",
                 "com.wolfssl.provider.jce.WolfCryptKeyPairGenerator$wcKeyPairGenDH");
@@ -1007,6 +1046,23 @@ public final class WolfCryptProvider extends Provider {
                 "com.wolfssl.provider.jce.WolfCryptECKeyFactory");
             put("Alg.Alias.KeyFactory.1.2.840.10045.2.1", "EC");
             put("Alg.Alias.KeyFactory.OID.1.2.840.10045.2.1", "EC");
+        }
+        /* EdDSA (RFC 8032 / RFC 8410) KeyFactory */
+        if (FeatureDetect.Ed25519Enabled()) {
+            put("KeyFactory.Ed25519",
+                "com.wolfssl.provider.jce.WolfCryptEdDSAKeyFactory$wcEd25519");
+            put("Alg.Alias.KeyFactory.1.3.101.112", "Ed25519");
+            put("Alg.Alias.KeyFactory.OID.1.3.101.112", "Ed25519");
+        }
+        if (FeatureDetect.Ed448Enabled()) {
+            put("KeyFactory.Ed448",
+                "com.wolfssl.provider.jce.WolfCryptEdDSAKeyFactory$wcEd448");
+            put("Alg.Alias.KeyFactory.1.3.101.113", "Ed448");
+            put("Alg.Alias.KeyFactory.OID.1.3.101.113", "Ed448");
+        }
+        if (FeatureDetect.Ed25519Enabled() || FeatureDetect.Ed448Enabled()) {
+            put("KeyFactory.EdDSA",
+                "com.wolfssl.provider.jce.WolfCryptEdDSAKeyFactory$wcEdDSA");
         }
         if (FeatureDetect.DhEnabled()) {
             put("KeyFactory.DH",

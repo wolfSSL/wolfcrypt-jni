@@ -59,6 +59,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/wolfcrypt/Dh.java \
     src/main/java/com/wolfssl/wolfcrypt/Ecc.java \
     src/main/java/com/wolfssl/wolfcrypt/Ed25519.java \
+    src/main/java/com/wolfssl/wolfcrypt/Ed448.java \
     src/main/java/com/wolfssl/wolfcrypt/FeatureDetect.java \
     src/main/java/com/wolfssl/wolfcrypt/Fips.java \
     src/main/java/com/wolfssl/wolfcrypt/Hmac.java \
@@ -102,6 +103,13 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptECParameterSpec.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptECPrivateKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptECPublicKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptEdDSACurve.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptEdDSAKeyFactory.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptEdDSAKeys.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptEdDSAParameterSpec.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptEdDSAPrivateKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptEdDSAPublicKey.java \
+    src/main/java/com/wolfssl/provider/jce/WolfCryptEdDSASignature.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptRSAKeyFactory.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptRSAPrivateCrtKey.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptRSAPrivateKey.java \
@@ -134,6 +142,7 @@ infer --fail-on-issue run -- javac \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPKIXCertPathValidator.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPKIXRevocationChecker.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptProvider.java \
+    src/main/java/com/wolfssl/provider/jce/WolfEdECJdkCompat.java \
     src/main/java/com/wolfssl/provider/jce/WolfPQCJdkCompat.java \
     src/main/java/com/wolfssl/provider/jce/WolfPQCParameterSpec.java \
     src/main/java/com/wolfssl/provider/jce/WolfCryptPssParameters.java \

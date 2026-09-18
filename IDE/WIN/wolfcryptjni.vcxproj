@@ -91,6 +91,7 @@
     <ClCompile Include="..\..\jni\jni_dh.c" />
     <ClCompile Include="..\..\jni\jni_ecc.c" />
     <ClCompile Include="..\..\jni\jni_ed25519.c" />
+    <ClCompile Include="..\..\jni\jni_ed448.c" />
     <ClCompile Include="..\..\jni\jni_error.c" />
     <ClCompile Include="..\..\jni\jni_feature_detect.c" />
     <ClCompile Include="..\..\jni\jni_fips.c" />

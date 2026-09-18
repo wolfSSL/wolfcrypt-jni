@@ -44,6 +44,7 @@ public class CryptoBenchmark {
       "secp384r1", "secp521r1"};
     private static final int[] DH_KEY_SIZES = {2048, 3072, 4096};
     private static final String DH_ALGORITHM = "DH";
+    private static final String[] ED_DSA_CURVES = {"Ed25519", "Ed448"};
     private static final String[] ML_DSA_LEVELS = {"ML-DSA-44",
       "ML-DSA-65", "ML-DSA-87"};
 
@@ -61,6 +62,7 @@ public class CryptoBenchmark {
     private static final String BENCHMARK_KEYGEN = "keygen";
     private static final String BENCHMARK_RANDOM = "random";
     private static final String BENCHMARK_MLDSA = "mldsa";
+    private static final String BENCHMARK_EDDSA = "eddsa";
 
     /**
      * Prints usage instructions for the benchmark tool
@@ -91,6 +93,8 @@ public class CryptoBenchmark {
           "  random     - Secure random number generator benchmarks");
         System.out.println(
           "  mldsa      - ML-DSA (FIPS 204) key gen/sign/verify benchmarks");
+        System.out.println(
+          "  eddsa      - Ed25519/Ed448 key gen/sign/verify benchmarks");
         System.out.println("\nExample: java CryptoBenchmark rsa");
     }
 
@@ -772,11 +776,11 @@ public class CryptoBenchmark {
           finalProviderName, "EC");
     }
 
-    /* ML-DSA (FIPS 204) key gen, sign, and verify benchmark for one parameter
-     * set (level). The level string doubles as the JCE KeyPairGenerator and
-     * Signature algorithm name (e.g. "ML-DSA-65"). */
-    private static void runMlDsaBenchmark(String providerName, String level)
-        throws Exception {
+    /* Key gen, sign, and verify benchmark for a signature scheme whose
+     * KeyPairGenerator and Signature share one algorithm name and need no
+     * initialize()/setParameter() (ML-DSA parameter sets, EdDSA curves). */
+    private static void runNamedSignatureBenchmark(String providerName,
+        String algorithm) throws Exception {
 
         KeyPairGenerator keyGen;
         KeyPair keyPair;
@@ -789,8 +793,8 @@ public class CryptoBenchmark {
 
         testData = generateTestData(SMALL_MESSAGE_SIZE);
 
-        keyGen = KeyPairGenerator.getInstance(level, providerName);
-        signature = Signature.getInstance(level, providerName);
+        keyGen = KeyPairGenerator.getInstance(algorithm, providerName);
+        signature = Signature.getInstance(algorithm, providerName);
 
         /* Key generation benchmark */
         TimingResult keyGenResult = runBenchmark(() -> {
@@ -804,10 +808,10 @@ public class CryptoBenchmark {
         double keyGenOpsPerSec =
             keyGenResult.operations / keyGenResult.elapsedTime;
         System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
-            level + " key gen (" + providerName + ")",
+            algorithm + " key gen (" + providerName + ")",
             keyGenResult.operations, keyGenResult.elapsedTime,
             keyGenOpsPerSec);
-        results.add(new BenchmarkResult(providerName, level + " key gen",
+        results.add(new BenchmarkResult(providerName, algorithm + " key gen",
             keyGenOpsPerSec));
 
         /* Generate one key pair for sign/verify benchmarks */
@@ -842,9 +846,9 @@ public class CryptoBenchmark {
 
         double signOpsPerSec = ops / elapsedTime;
         System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
-            level + " sign (" + providerName + ")", ops, elapsedTime,
+            algorithm + " sign (" + providerName + ")", ops, elapsedTime,
             signOpsPerSec);
-        results.add(new BenchmarkResult(providerName, level + " sign",
+        results.add(new BenchmarkResult(providerName, algorithm + " sign",
             signOpsPerSec));
 
         /* Verification benchmark */
@@ -861,9 +865,9 @@ public class CryptoBenchmark {
 
         double verifyOpsPerSec = ops / elapsedTime;
         System.out.printf(" %-40s  %8d ops took %.3f sec, %8.3f ops/sec%n",
-            level + " verify (" + providerName + ")", ops, elapsedTime,
+            algorithm + " verify (" + providerName + ")", ops, elapsedTime,
             verifyOpsPerSec);
-        results.add(new BenchmarkResult(providerName, level + " verify",
+        results.add(new BenchmarkResult(providerName, algorithm + " verify",
             verifyOpsPerSec));
     }
 
@@ -1303,11 +1307,14 @@ public class CryptoBenchmark {
         }
 
         for (String algorithm : supportedAlgorithms) {
-            /* ML-DSA is benchmarked separately by the dedicated "mldsa"
-             * section (runMlDsaBenchmark), skip it here so the generic
-             * RSA/ECDSA/DSA runner does not report it as unsupported.
+            /* ML-DSA and EdDSA are benchmarked separately by the dedicated
+             * "mldsa" / "eddsa" sections, skip them here so the generic
+             * RSA/ECDSA/DSA runner does not report them as unsupported.
              * Case-insensitive prefix check, locale-independent. */
-            if (algorithm.regionMatches(true, 0, "ML-DSA", 0, 6)) {
+            if (algorithm.regionMatches(true, 0, "ML-DSA", 0, 6) ||
+                algorithm.regionMatches(true, 0, "EdDSA", 0, 5) ||
+                algorithm.regionMatches(true, 0, "Ed25519", 0, 7) ||
+                algorithm.regionMatches(true, 0, "Ed448", 0, 5)) {
                 continue;
             }
             try {
@@ -1896,6 +1903,7 @@ public class CryptoBenchmark {
                     arg.equals(BENCHMARK_KEYGEN) ||
                     arg.equals(BENCHMARK_RANDOM) ||
                     arg.equals(BENCHMARK_MLDSA) ||
+                    arg.equals(BENCHMARK_EDDSA) ||
                     arg.equals(BENCHMARK_ALL)) {
                     benchmarkToRun = arg;
                 } else {
@@ -2068,11 +2076,41 @@ public class CryptoBenchmark {
                     System.out.println("\n" + provider.getName() + ":");
                     for (String level : ML_DSA_LEVELS) {
                         try {
-                            runMlDsaBenchmark(provider.getName(), level);
+                            runNamedSignatureBenchmark(
+                                provider.getName(), level);
+                        } catch (Exception e) {
+                            System.out.printf(" %-40s  Not supported: %s%n",
+                                level + " (" + provider.getName() + ")",
+                                e.getMessage());
+                        }
+                    }
+                }
+            }
+
+            /* Run EdDSA benchmarks with clean provider setup */
+            if (shouldRunBenchmark(BENCHMARK_EDDSA, benchmarkToRun)) {
+                System.out.println("\n-----------------------------------------"
+                  + "------------------------------------");
+                System.out.println("EdDSA (Ed25519 / Ed448) Benchmark Results");
+                System.out.println("-------------------------------------------"
+                  + "----------------------------------\n");
+
+                for (Provider provider : providers) {
+                    if (provider instanceof WolfCryptProvider &&
+                      !FeatureDetect.Ed25519KeyGenEnabled() &&
+                      !FeatureDetect.Ed448KeyGenEnabled()) {
+                        continue;
+                    }
+                    setupProvidersForTest(provider);
+                    System.out.println("\n" + provider.getName() + ":");
+                    for (String curve : ED_DSA_CURVES) {
+                        try {
+                            runNamedSignatureBenchmark(
+                                provider.getName(), curve);
                         } catch (Exception e) {
                             System.out.printf(
                               " %-40s  Not supported: %s%n",
-                              level + " (" + provider.getName() + ")",
+                              curve + " (" + provider.getName() + ")",
                               e.getMessage());
                         }
                     }
