@@ -426,8 +426,6 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaKeyToDer
     }
 
     LogStr("wc_RsaKeyToDer() = %d\n", ret);
-    LogStr("output[%u]: [%p]\n", outputSz, output);
-    LogHex((byte*) output, 0, outputSz);
 
     if (output != NULL) {
     #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
@@ -787,8 +785,6 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecode(
     }
 
     LogStr("wc_RsaPrivateKeyDecode(k, kSize, key) = %d\n", ret);
-    LogStr("key[%u]: [%p]\n", (word32)kSz, k);
-    LogHex((byte*) k, 0, kSz);
 
     zeroizeByteArrayCopy(k, kSz, kIsCopy);
     releaseByteArray(env, key_object, k, JNI_ABORT);
@@ -838,8 +834,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyDecodePKC
     }
 
     LogStr("wc_RsaPrivateKeyDecodePKCS8(k, kSize, key) = %d\n", ret);
-    LogStr("key[%u]: [%p]\n", (word32)kSz, k);
-    LogHex((byte*) k, 0, kSz);
 
     zeroizeByteArrayCopy(k, kSz, kIsCopy);
     releaseByteArray(env, key_object, k, JNI_ABORT);
@@ -1082,8 +1076,6 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt(
     }
 
     LogStr("wc_RsaPrivateDecrypt(in, inSz, out, outSz, key) = %d\n", ret);
-    LogStr("output[%u]: [%p]\n", outputSz, output);
-    LogHex((byte*) output, 0, outputSz);
 
     if (output != NULL) {
         #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
