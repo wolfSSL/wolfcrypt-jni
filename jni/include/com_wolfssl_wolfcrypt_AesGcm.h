@@ -57,6 +57,22 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt
 JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmDecrypt
   (JNIEnv *, jobject, jbyteArray, jbyteArray, jbyteArray, jbyteArray);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_AesGcm
+ * Method:    wc_AesGcmSetIV
+ * Signature: (I[BLcom/wolfssl/wolfcrypt/Rng;)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmSetIV
+  (JNIEnv *, jobject, jint, jbyteArray, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_AesGcm
+ * Method:    wc_AesGcmEncrypt_ex
+ * Signature: ([B[B[B[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt_1ex
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jbyteArray, jbyteArray);
+
 #ifdef __cplusplus
 }
 #endif
