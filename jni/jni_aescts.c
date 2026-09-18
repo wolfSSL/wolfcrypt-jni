@@ -211,9 +211,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
 
         LogStr("update called: ctx=%p, opmode=%d, length=%d\n",
             ctx, opmode, length);
-        LogStr("Input plaintext:\n");
-        LogHex((byte*)(input + offset), 0, length);
-
         if (length == AES_BLOCK_SIZE) {
             /* RFC 3962/8009: Special case for exactly one block.
              * CTS reduces to plain CBC encryption - no stealing needed.
@@ -242,9 +239,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
                 output + outputOffset, (size_t)length, &ctx->key,
                 iv, (cbc128_f)AES_cbc_encrypt);
         }
-
-        LogStr("Output ciphertext:\n");
-        LogHex((byte*)(output + outputOffset), 0, (outLen > 0) ? outLen : 0);
 
         if (outLen == 0) {
             /* CTS functions return 0 on error */
