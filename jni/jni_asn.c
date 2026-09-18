@@ -345,8 +345,11 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getPkcs8AlgoID
     word32 p8Len = 0;
 
     if (pkcs8Der != NULL) {
-        p8 = (byte*)(*env)->GetByteArrayElements(env, pkcs8Der, NULL);
         p8Len = (*env)->GetArrayLength(env, pkcs8Der);
+        p8 = (byte*)(*env)->GetByteArrayElements(env, pkcs8Der, NULL);
+        if ((*env)->ExceptionOccurred(env)) {
+            return 0;
+        }
     }
 
     if (p8 == NULL || p8Len == 0) {
@@ -382,7 +385,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getPkcs8AlgoID
         XFREE(p8Copy, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     }
 
-    if (pkcs8Der != NULL) {
+    if (p8 != NULL) {
         (*env)->ReleaseByteArrayElements(env, pkcs8Der, (jbyte*)p8, JNI_ABORT);
     }
 
