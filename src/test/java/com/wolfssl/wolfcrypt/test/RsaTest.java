@@ -40,7 +40,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.math.BigInteger;
+import java.security.KeyFactory;
 import java.security.MessageDigest;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.X509EncodedKeySpec;
 
 import com.wolfssl.wolfcrypt.Sha;
 import com.wolfssl.wolfcrypt.Sha224;
@@ -1912,5 +1916,98 @@ public class RsaTest {
             return null;
         }
     }
-}
 
+    @Test
+    public void testDirectMatchesModPow() throws Exception {
+        Assume.assumeTrue(FeatureDetect.RsaNoPaddingEnabled());
+
+        Rsa key = makeKeyWithRetry(2048, 65537, rng);
+        int keySz = key.getEncryptSize();
+        byte[] msg = new byte[keySz];
+        rng.generateBlock(msg);
+        msg[0] = 0; /* keep the value below the modulus */
+
+        /* independent oracle for the public operation */
+        RSAPublicKey pub = (RSAPublicKey)KeyFactory.getInstance("RSA")
+            .generatePublic(new X509EncodedKeySpec(key.exportPublicDer()));
+        byte[] expected = Util.toFixedLength(new BigInteger(1, msg).modPow(
+            pub.getPublicExponent(), pub.getModulus()), keySz);
+
+        byte[] enc = key.direct(msg, Rsa.RSA_PUBLIC_ENCRYPT, rng);
+        assertArrayEquals("public encrypt should match BigInteger modPow",
+            expected, enc);
+        assertArrayEquals("private decrypt should restore the input",
+            msg, key.direct(enc, Rsa.RSA_PRIVATE_DECRYPT, rng));
+
+        /* private encrypt and public decrypt are the other pair */
+        byte[] sig = key.direct(msg, Rsa.RSA_PRIVATE_ENCRYPT, rng);
+        assertEquals(keySz, sig.length);
+        assertArrayEquals("public decrypt should restore the input",
+            msg, key.direct(sig, Rsa.RSA_PUBLIC_DECRYPT, rng));
+        assertArrayEquals("private encrypt must be deterministic",
+            sig, key.direct(msg, Rsa.RSA_PRIVATE_ENCRYPT, rng));
+
+        key.releaseNativeStruct();
+    }
+
+    @Test
+    public void testDirectRejectsBadInput() throws Exception {
+        Assume.assumeTrue(FeatureDetect.RsaNoPaddingEnabled());
+
+        Rsa key = makeKeyWithRetry(2048, 65537, rng);
+        int keySz = key.getEncryptSize();
+        byte[] block = new byte[keySz];
+        byte[] big = new byte[keySz];
+        rng.generateBlock(block);
+        block[0] = 0; /* a valid message, below the modulus and not tiny */
+        Arrays.fill(big, (byte)0xFF);
+
+        /* only key size input is accepted */
+        try {
+            key.direct(new byte[keySz - 1], Rsa.RSA_PUBLIC_ENCRYPT, rng);
+            fail("short input should throw");
+        } catch (WolfCryptException e) {
+            assertEquals(WolfCryptError.BAD_FUNC_ARG, e.getError());
+        }
+        /* native checks the decrypt input against the modulus */
+        try {
+            key.direct(big, Rsa.RSA_PRIVATE_DECRYPT, rng);
+            fail("ciphertext above the modulus should throw");
+        } catch (WolfCryptException e) {
+            assertEquals(WolfCryptError.RSA_OUT_OF_RANGE_E, e.getError());
+        }
+        try {
+            key.direct(block, 4, rng);
+            fail("unknown opType should throw");
+        } catch (IllegalArgumentException e) {
+            /* expected */
+        }
+        try {
+            key.direct(null, Rsa.RSA_PUBLIC_ENCRYPT, rng);
+            fail("null input should throw");
+        } catch (IllegalArgumentException e) {
+            /* expected */
+        }
+        try {
+            key.direct(block, Rsa.RSA_PUBLIC_ENCRYPT, null);
+            fail("null rng should throw");
+        } catch (IllegalArgumentException e) {
+            /* expected */
+        }
+
+        /* a public only key cannot run the private primitives */
+        Rsa pub = new Rsa();
+        pub.decodePublicKey(key.exportPublicDer());
+        assertEquals(keySz, pub.direct(block, Rsa.RSA_PUBLIC_ENCRYPT,
+            rng).length);
+        try {
+            pub.direct(block, Rsa.RSA_PRIVATE_DECRYPT, rng);
+            fail("private decrypt without a private key should throw");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        pub.releaseNativeStruct();
+        key.releaseNativeStruct();
+    }
+}

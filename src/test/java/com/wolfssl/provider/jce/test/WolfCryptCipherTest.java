@@ -82,6 +82,7 @@ import java.security.spec.InvalidParameterSpecException;
 import java.security.AlgorithmParameters;
 
 import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.test.Util;
 import com.wolfssl.wolfcrypt.Aes;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.provider.jce.WolfCryptProvider;
@@ -105,7 +106,8 @@ public class WolfCryptCipherTest {
         "AES/OFB/NoPadding",
         "DESede/CBC/NoPadding",
         "RSA",
-        "RSA/ECB/PKCS1Padding"
+        "RSA/ECB/PKCS1Padding",
+        "RSA/ECB/NoPadding"
     };
 
     /* JCE provider to run below tests against */
@@ -330,6 +332,12 @@ public class WolfCryptCipherTest {
 
             } catch (NoSuchAlgorithmException e) {
                 /* algorithm not enabled */
+            } catch (NoSuchPaddingException e) {
+                /* only RSA/ECB/NoPadding can fail here, when native wolfSSL
+                 * has no raw RSA primitive */
+                if (!supportedJCEAlgos[i].equals("RSA/ECB/NoPadding")) {
+                    throw e;
+                }
             }
         }
 
@@ -347,6 +355,7 @@ public class WolfCryptCipherTest {
         expectedBlockSizes.put("DESede/CBC/NoPadding", 8);
         expectedBlockSizes.put("RSA", 0);
         expectedBlockSizes.put("RSA/ECB/PKCS1Padding", 0);
+        expectedBlockSizes.put("RSA/ECB/NoPadding", 0);
 
         /* try to set up interop provider, if available */
         p = Security.getProvider("SunJCE");
@@ -369,7 +378,8 @@ public class WolfCryptCipherTest {
 
         /* Generate RSA key pair once up front to reduce test execution time. */
         if (enabledJCEAlgos.contains("RSA") ||
-            enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding") ||
+            enabledJCEAlgos.contains("RSA/ECB/NoPadding")) {
             try {
                 KeyPairGenerator keyGen =
                     KeyPairGenerator.getInstance("RSA");
@@ -9493,5 +9503,337 @@ public class WolfCryptCipherTest {
         assertTrue("Decrypted data should match original input",
             Arrays.equals(input, recoveredText));
     }
-}
 
+    @Test
+    public void testRSANoPadding()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException,
+               ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/NoPadding")) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        Cipher cipher = Cipher.getInstance("RSA/ECB/NoPadding", jceProvider);
+        int keySz = (((RSAPublicKey)rsaPair.getPublic()).getModulus()
+            .bitLength() + 7) / 8;
+        byte[] msg = {1, 2, 3, 4, 5};
+
+        /* short input is zero padded on the left, output is the key size */
+        cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        assertEquals(keySz, cipher.getOutputSize(msg.length));
+        byte[] ct = cipher.doFinal(msg);
+        assertEquals(keySz, ct.length);
+
+        /* update() buffers, doFinal() gives the same result */
+        cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        assertEquals(0, cipher.update(msg, 0, 3).length);
+        assertArrayEquals(ct, cipher.doFinal(msg, 3, 2));
+
+        /* output buffer form, sized by getOutputSize() */
+        byte[] out = new byte[cipher.getOutputSize(msg.length)];
+        assertEquals(keySz, cipher.doFinal(msg, 0, msg.length, out, 0));
+        assertArrayEquals(ct, out);
+        try {
+            cipher.doFinal(msg, 0, msg.length, new byte[keySz - 1], 0);
+            fail("short output buffer should throw");
+        } catch (ShortBufferException e) {
+            /* expected */
+        }
+
+        /* decrypt keeps the full block including the leading zeros */
+        cipher.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate());
+        byte[] pt = cipher.doFinal(ct);
+        assertEquals(keySz, pt.length);
+        assertArrayEquals(new byte[keySz - msg.length],
+            Arrays.copyOf(pt, keySz - msg.length));
+        assertArrayEquals(msg, Arrays.copyOfRange(pt, keySz - msg.length,
+            keySz));
+
+        /* private key encrypt then public key decrypt */
+        cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPrivate());
+        byte[] sig = cipher.doFinal(msg);
+        cipher.init(Cipher.DECRYPT_MODE, rsaPair.getPublic());
+        assertArrayEquals(pt, cipher.doFinal(sig));
+
+        /* 0, 1 and n - 1 are refused, n - 2 is the last accepted value,
+         * an empty input is the zero block */
+        BigInteger n = ((RSAPublicKey)rsaPair.getPublic()).getModulus();
+        byte[] one = new byte[keySz];
+        one[keySz - 1] = 1;
+        cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        try {
+            cipher.doFinal();
+            fail("zero message should throw");
+        } catch (BadPaddingException e) {
+            /* expected */
+        }
+        for (byte[] bad : new byte[][] { one,
+                Util.toFixedLength(n.subtract(BigInteger.ONE), keySz) }) {
+            try {
+                cipher.doFinal(bad);
+                fail("1 and n - 1 should throw");
+            } catch (BadPaddingException e) {
+                /* expected */
+            }
+        }
+        /* a rejected value leaves the Cipher usable without init() */
+        assertArrayEquals(ct, cipher.doFinal(msg));
+        assertEquals(keySz, cipher.doFinal(Util.toFixedLength(
+            n.subtract(BigInteger.valueOf(2)), keySz)).length);
+        cipher.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate());
+        try {
+            cipher.doFinal(new byte[keySz]);
+            fail("zero ciphertext should throw");
+        } catch (BadPaddingException e) {
+            /* expected */
+        }
+
+        /* a failed doFinal() must not leave buffered input for the next */
+        cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        cipher.update(msg);
+        try {
+            cipher.doFinal(new byte[keySz]);
+            fail("buffered input plus a full block should throw");
+        } catch (IllegalBlockSizeException e) {
+            /* expected */
+        }
+        assertArrayEquals("stale buffered input was encrypted",
+            ct, cipher.doFinal(msg));
+
+        /* longer than the key size, and a block not below the modulus */
+        try {
+            cipher.doFinal(new byte[keySz + 1]);
+            fail("input longer than the key should throw");
+        } catch (IllegalBlockSizeException e) {
+            /* expected */
+        }
+        byte[] big = new byte[keySz];
+        Arrays.fill(big, (byte)0xFF);
+        cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        try {
+            cipher.doFinal(big);
+            fail("input above the modulus should throw");
+        } catch (BadPaddingException e) {
+            /* expected */
+        }
+
+        /* wrap and unwrap carry the whole block */
+        byte[] rawKey = new byte[Aes.KEY_SIZE_128];
+        secureRandom.nextBytes(rawKey);
+        cipher.init(Cipher.WRAP_MODE, rsaPair.getPublic());
+        byte[] wrapped = cipher.wrap(new SecretKeySpec(rawKey, "AES"));
+        assertEquals(keySz, wrapped.length);
+        cipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+        byte[] unwrapped = cipher.unwrap(wrapped, "AES",
+            Cipher.SECRET_KEY).getEncoded();
+        assertEquals(keySz, unwrapped.length);
+        assertArrayEquals(rawKey, Arrays.copyOfRange(unwrapped,
+            keySz - rawKey.length, keySz));
+    }
+
+    @Test
+    public void testRSANoPaddingInterop()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, BadPaddingException {
+
+        if (!enabledJCEAlgos.contains("RSA/ECB/NoPadding") ||
+            interopProvider == null) {
+            return;
+        }
+
+        assertNotNull("RSA key pair was not generated", rsaPair);
+
+        Cipher interop;
+        try {
+            interop = Cipher.getInstance("RSA/ECB/NoPadding", interopProvider);
+        } catch (NoSuchAlgorithmException e) {
+            return;
+        }
+
+        Cipher wolf = Cipher.getInstance("RSA/ECB/NoPadding", jceProvider);
+        byte[] msg = new byte[32];
+        secureRandom.nextBytes(msg);
+
+        /* wolfJCE encrypt, interop decrypt, and the reverse */
+        wolf.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        interop.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate());
+        byte[] viaWolf = wolf.doFinal(msg);
+        byte[] ptInterop = interop.doFinal(viaWolf);
+        interop.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        wolf.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate());
+        byte[] viaInterop = interop.doFinal(msg);
+        byte[] ptWolf = wolf.doFinal(viaInterop);
+        assertArrayEquals("raw RSA is deterministic, ciphertexts must match",
+            viaWolf, viaInterop);
+        /* providers differ on leading zeros, compare the message itself */
+        assertArrayEquals(msg, Arrays.copyOfRange(ptInterop,
+            ptInterop.length - msg.length, ptInterop.length));
+        assertArrayEquals(msg, Arrays.copyOfRange(ptWolf,
+            ptWolf.length - msg.length, ptWolf.length));
+
+        /* private key primitive must agree byte for byte */
+        wolf.init(Cipher.ENCRYPT_MODE, rsaPair.getPrivate());
+        interop.init(Cipher.ENCRYPT_MODE, rsaPair.getPrivate());
+        assertArrayEquals(interop.doFinal(msg), wolf.doFinal(msg));
+    }
+
+    @Test
+    public void testDoFinalFailureResetsCipher()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        byte[] plaintext = new byte[2 * Aes.BLOCK_SIZE];
+        secureRandom.nextBytes(plaintext);
+
+        /* CBC pushes blocks through native before the failing doFinal(),
+         * CTS buffers everything, all must come back to the init() state */
+        String[] transforms = { "AES/CBC/NoPadding", "AES/CTS/NoPadding",
+            "DESede/CBC/NoPadding" };
+        String[] keyAlgos = { "AES", "AES", "DESede" };
+        int[] keySizes = { Aes.KEY_SIZE_128, Aes.KEY_SIZE_128, 24 };
+        int[] ivSizes = { Aes.BLOCK_SIZE, Aes.BLOCK_SIZE, 8 };
+        int[] updateLens = { 20, 5, 20 };
+
+        for (int i = 0; i < transforms.length; i++) {
+            if (!enabledJCEAlgos.contains(transforms[i])) {
+                continue;
+            }
+            SecretKeySpec key = new SecretKeySpec(new byte[keySizes[i]],
+                keyAlgos[i]);
+            IvParameterSpec iv = new IvParameterSpec(new byte[ivSizes[i]]);
+            Cipher cipher = Cipher.getInstance(transforms[i], jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+            byte[] expected = cipher.doFinal(plaintext);
+
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+            cipher.update(plaintext, 0, updateLens[i]);
+            try {
+                cipher.doFinal(plaintext, updateLens[i], 3);
+                fail(transforms[i] + " should reject the input length");
+            } catch (IllegalBlockSizeException e) {
+                /* expected */
+            }
+            assertArrayEquals(transforms[i] + " did not reset after a " +
+                "failed doFinal()", expected, cipher.doFinal(plaintext));
+        }
+    }
+
+    @Test
+    public void testDoFinalFailureResetsAeadAndRsa()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               IllegalBlockSizeException, InvalidAlgorithmParameterException,
+               BadPaddingException {
+
+        if (enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            SecretKeySpec key = new SecretKeySpec(new byte[Aes.KEY_SIZE_128],
+                "AES");
+            GCMParameterSpec spec = new GCMParameterSpec(128, new byte[12]);
+            byte[] aad = { 1, 2, 3 };
+            byte[] pt = new byte[32];
+            secureRandom.nextBytes(pt);
+
+            Cipher enc = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+            enc.init(Cipher.ENCRYPT_MODE, key, spec);
+            enc.updateAAD(aad);
+            byte[] ct = enc.doFinal(pt);
+
+            /* a second encrypt without init() is refused, and the reset that
+             * refusal triggers must not lift the refusal */
+            for (int i = 0; i < 2; i++) {
+                try {
+                    enc.doFinal(pt);
+                    fail("GCM encrypt reuse should be refused");
+                } catch (IllegalStateException e) {
+                    /* expected */
+                }
+            }
+
+            /* a bad tag resets the Cipher, the AAD of the failed call must
+             * not carry over and a fresh AAD then decrypts */
+            Cipher dec = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+            byte[] bad = ct.clone();
+            bad[bad.length - 1] ^= 1;
+            dec.init(Cipher.DECRYPT_MODE, key, spec);
+            dec.updateAAD(aad);
+            try {
+                dec.doFinal(bad);
+                fail("corrupted tag should throw");
+            } catch (AEADBadTagException e) {
+                /* expected */
+            }
+            try {
+                dec.doFinal(ct);
+                fail("AAD from the failed call carried over");
+            } catch (AEADBadTagException e) {
+                /* expected */
+            }
+            dec.updateAAD(aad);
+            assertArrayEquals(pt, dec.doFinal(ct));
+        }
+
+        if (enabledJCEAlgos.contains("AES/CCM/NoPadding")) {
+            SecretKeySpec key = new SecretKeySpec(new byte[Aes.KEY_SIZE_128],
+                "AES");
+            GCMParameterSpec spec = new GCMParameterSpec(128, new byte[12]);
+            byte[] aad = { 1, 2, 3 };
+            byte[] pt = new byte[32];
+            secureRandom.nextBytes(pt);
+
+            Cipher enc = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+            enc.init(Cipher.ENCRYPT_MODE, key, spec);
+            enc.updateAAD(aad);
+            byte[] ct = enc.doFinal(pt);
+
+            /* same as GCM, the AAD of a failed decrypt must not carry over */
+            Cipher dec = Cipher.getInstance("AES/CCM/NoPadding", jceProvider);
+            byte[] bad = ct.clone();
+            bad[bad.length - 1] ^= 1;
+            dec.init(Cipher.DECRYPT_MODE, key, spec);
+            dec.updateAAD(aad);
+            try {
+                dec.doFinal(bad);
+                fail("corrupted tag should throw");
+            } catch (BadPaddingException | WolfCryptException e) {
+                /* expected */
+            }
+            try {
+                dec.doFinal(ct);
+                fail("AAD from the failed call carried over");
+            } catch (BadPaddingException | WolfCryptException e) {
+                /* expected */
+            }
+            dec.updateAAD(aad);
+            assertArrayEquals(pt, dec.doFinal(ct));
+        }
+
+        if (enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding")) {
+            assertNotNull("RSA key pair was not generated", rsaPair);
+            byte[] msg = { 1, 2, 3, 4, 5 };
+
+            Cipher enc = Cipher.getInstance("RSA/ECB/PKCS1Padding",
+                jceProvider);
+            enc.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+            byte[] ct = enc.doFinal(msg);
+
+            /* a padding failure resets the Cipher for the next decrypt */
+            Cipher dec = Cipher.getInstance("RSA/ECB/PKCS1Padding",
+                jceProvider);
+            dec.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate());
+            try {
+                dec.doFinal(new byte[ct.length]);
+                fail("garbage ciphertext should throw");
+            } catch (BadPaddingException e) {
+                /* expected */
+            }
+            assertArrayEquals(msg, dec.doFinal(ct));
+        }
+    }
+}

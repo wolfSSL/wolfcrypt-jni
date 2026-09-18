@@ -550,6 +550,18 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_RsaOaepEnabl
 #endif
 }
 
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_RsaNoPaddingEnabled
+  (JNIEnv* env, jclass jcl)
+{
+    (void)env;
+    (void)jcl;
+#if !defined(NO_RSA) && (defined(WC_RSA_DIRECT) || defined(WC_RSA_NO_PADDING))
+    return JNI_TRUE;
+#else
+    return JNI_FALSE;
+#endif
+}
+
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_DhEnabled
   (JNIEnv* env, jclass jcl)
 {
