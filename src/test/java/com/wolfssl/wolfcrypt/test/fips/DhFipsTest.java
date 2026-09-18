@@ -38,6 +38,7 @@ import com.wolfssl.wolfcrypt.Dh;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.Fips;
 
 import com.wolfssl.wolfcrypt.test.Util;
@@ -285,5 +286,84 @@ public class DhFipsTest extends FipsTest {
             badKey.remaining()) < 0);
 
         Fips.FreeDhKey(key);
+    }
+
+    @Test
+    public void agreeShouldRejectUndersizedPrivUsingByteArray() {
+        Dh key = new Dh();
+        long[] agreeSz = { 256 };
+
+        Fips.InitDhKey(key);
+
+        /* privSz claims 256 bytes but the array is only 1 byte */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.DhAgree(key, new byte[256], agreeSz, new byte[1], 256,
+                new byte[256], 256));
+
+        Fips.FreeDhKey(key);
+    }
+
+    @Test
+    public void generateKeyPairShouldRejectOversizedPrivSzUsingByteArray() {
+        Dh key = new Dh();
+        Rng rng = new Rng();
+        /* privSz claims 257 bytes but priv is only 256 bytes */
+        long[] privSz = { 257 };
+        long[] pubSz = { 256 };
+
+        Fips.InitDhKey(key);
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRng_fips(rng));
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.DhGenerateKeyPair(key, rng, new byte[256], privSz,
+                new byte[256], pubSz));
+
+        Fips.FreeDhKey(key);
+        Fips.FreeRng_fips(rng);
+    }
+
+    @Test
+    public void agreeShouldRejectOversizedAgreeSzUsingByteArray() {
+        Dh key = new Dh();
+        /* agreeSz claims 257 bytes but agree is only 256 bytes */
+        long[] agreeSz = { 257 };
+
+        Fips.InitDhKey(key);
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.DhAgree(key, new byte[256], agreeSz, new byte[256], 256,
+                new byte[256], 256));
+
+        Fips.FreeDhKey(key);
+    }
+
+    @Test
+    public void agreeShouldRejectOversizedAgreeSzUsingByteBuffer() {
+        Dh key = new Dh();
+        ByteBuffer agree = ByteBuffer.allocateDirect(256);
+        ByteBuffer priv = ByteBuffer.allocateDirect(256);
+        ByteBuffer pub = ByteBuffer.allocateDirect(256);
+        /* agreeSz claims 257 bytes but agree is only 256 bytes */
+        long[] agreeSz = { 257 };
+
+        Fips.InitDhKey(key);
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.DhAgree(key, agree, agreeSz, priv, 256, pub, 256));
+
+        Fips.FreeDhKey(key);
+    }
+
+    @Test
+    public void paramsLoadShouldRejectOversizedPSzUsingByteBuffer() {
+        ByteBuffer input = ByteBuffer.allocateDirect(16);
+        ByteBuffer p = ByteBuffer.allocateDirect(16);
+        ByteBuffer g = ByteBuffer.allocateDirect(16);
+        /* pInOutSz claims 17 bytes but p is only 16 bytes */
+        long[] pSz = { 17 };
+        long[] gSz = { 16 };
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.DhParamsLoad(input, 16, p, pSz, g, gSz));
     }
 }

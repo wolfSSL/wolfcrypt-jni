@@ -25,15 +25,19 @@ import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
+import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.Fips;
 
 import com.wolfssl.wolfcrypt.test.Util;
@@ -46,6 +50,22 @@ public class Sha384FipsTest extends FipsTest {
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
+
+    /* Rule to skip tests when native wolfSSL is built without SHA-384 */
+    @Rule(order = Integer.MIN_VALUE + 3)
+    public TestRule sha384Available = new TestRule() {
+        @Override
+        public Statement apply(final Statement base, Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    Assume.assumeTrue("SHA-384 not compiled in native wolfSSL",
+                        FeatureDetect.Sha384Enabled());
+                    base.evaluate();
+                }
+            };
+        }
+    };
 
     @BeforeClass
     public static void setupClass() {
@@ -126,5 +146,12 @@ public class Sha384FipsTest extends FipsTest {
 
             assertArrayEquals(expected, result);
         }
+    }
+
+    @Test
+    public void finalShouldRejectUndersizedHashUsingByteArray() {
+        /* hash must hold the digest but the array is only 1 byte */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.Sha384Final_fips(new Sha384(), new byte[1]));
     }
 }

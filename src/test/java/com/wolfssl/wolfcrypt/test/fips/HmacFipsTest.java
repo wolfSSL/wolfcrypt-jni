@@ -38,6 +38,7 @@ import com.wolfssl.wolfcrypt.Sha256;
 import com.wolfssl.wolfcrypt.Sha384;
 import com.wolfssl.wolfcrypt.Sha512;
 import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.Fips;
 
 import com.wolfssl.wolfcrypt.test.Util;
@@ -371,5 +372,31 @@ public class HmacFipsTest extends FipsTest {
 
             assertArrayEquals(expected, result);
         }
+    }
+
+    @Test
+    public void updateShouldRejectUndersizedDataUsingByteArray() {
+        /* len claims 16 bytes but the array is only 1 byte */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.HmacUpdate_fips(new Hmac(), new byte[1], 16));
+    }
+
+    @Test
+    public void finalShouldRejectUndersizedHashUsingByteArray() {
+        Hmac hmac = new Hmac();
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.HmacSetKey_fips(hmac,
+            Hmac.SHA256, new byte[32], 32));
+        /* hash must hold a SHA-256 digest but the array is only 1 byte */
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.HmacFinal_fips(hmac, new byte[1]));
+    }
+
+    @Test
+    public void updateShouldRejectUndersizedDataUsingByteBuffer() {
+        ByteBuffer smallData = ByteBuffer.allocateDirect(1);
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.HmacUpdate_fips(new Hmac(), smallData, 16));
     }
 }

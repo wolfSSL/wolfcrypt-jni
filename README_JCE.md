@@ -34,7 +34,8 @@ file for JCE provider customization:
 
 | Security Property | Default | To Enable | Description |
 | --- | --- | --- | --- |
-| wolfjce.wks.iterationCount | 210,000 | Numeric | PBKDF2 iteration count (10,000 minimum) |
+| wolfjce.wks.iterationCount | 210,000 | Numeric | PBKDF2 iteration count (10,000 minimum, 10,000,000 maximum) |
+| wolfjce.wks.maxIterations | 10,000,000 | Integer | Max PBKDF2 iteration count accepted when loading WKS |
 | wolfjce.wks.maxCertChainLength | 100 | Integer | Max cert chain length |
 | wolfjce.wks.maxEntrySize | 10485760 | Integer | Max encoded entry size in bytes when loading WKS (10 MB default) |
 | wolfjce.keystore.kekCacheEnabled | false | true | Enable KEK caching in WKS KeyStore for performance |
@@ -490,6 +491,10 @@ is user overridable with wolfjce.wks.iterationCount Security property in
 java.security file. User password is converted from char[] to byte[] using
 UTF-8, consistent with how SunJCE uses UTF-8 for PBKDF2 SecretKeyFactory.
 AES-CBC IV is randomly generated for each key storage operation
+
+Iteration counts above 10,000,000 are capped when writing, and a WKS file
+written by an earlier release with a higher count only loads after raising the
+wolfjce.wks.maxIterations Security property.
 
 This KeyStore uses a different format that is not directly compatible with
 existing formats (ex: JKS, PKCS12, etc). Other KeyStore types will need to be
