@@ -1482,17 +1482,17 @@ public class WolfSSLKeyStore extends KeyStoreSpi {
             }
 
             try {
-                for (i = chain.length-2; i > 0; i--) {
+                for (i = chain.length-2; i >= 0; i--) {
                     encodedCert = chain[i].getEncoded();
                     /* Verify chain cert first against loaded CAs */
                     cm.CertManagerVerifyBuffer(encodedCert, encodedCert.length,
                         WolfCrypt.SSL_FILETYPE_ASN1);
 
                     if (i > 0) {
-                        /* If verification passes, load as trusted */
+                        /* If verification passes, load as trusted, the
+                         * leaf is only verified */
                         cm.CertManagerLoadCABuffer(encodedCert,
-                            encodedCert.length,
-                            WolfCrypt.SSL_FILETYPE_ASN1);
+                            encodedCert.length, WolfCrypt.SSL_FILETYPE_ASN1);
                     }
                 }
             } catch (WolfCryptException | CertificateEncodingException e) {
