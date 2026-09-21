@@ -1910,6 +1910,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1GenerateBlock_1f
 
     RNG*  rng = NULL;
     byte* buf = NULL;
+    jlong bufCap = 0;
 
     rng = (RNG*) getNativeStruct(env, rng_object);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1918,9 +1919,13 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1GenerateBlock_1f
     }
 
     buf = getDirectBufferAddress(env, buf_buffer);
+    bufCap = (*env)->GetDirectBufferCapacity(env, buf_buffer);
 
-    if (!rng || !buf)
+    /* reject NULL, negative, or bufSz beyond the buffer capacity, the
+     * capacity ceiling also keeps the word32 cast from wrapping */
+    if (rng == NULL || buf == NULL || bufSz < 0 || bufSz > bufCap) {
         return BAD_FUNC_ARG;
+    }
 
     #if FIPS_VERSION_GT(5,0)
         ret = wc_RNG_GenerateBlock_fips(rng, buf, (word32)bufSz);
@@ -1930,7 +1935,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1GenerateBlock_1f
 
     LogStr("RNG_GenerateBlock_fips(rng=%p, buf, bufSz) = %d\n", rng, ret);
     LogStr("output[%u]: [%p]\n", (word32)bufSz, buf);
-    LogHex(buf, 0, bufSz);
+    LogHex(buf, 0, (word32)bufSz);
 
 #endif
 
@@ -1947,6 +1952,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1GenerateBlock_1f
 
     RNG*  rng = NULL;
     byte* buf = NULL;
+    word32 bufLen = 0;
 
     rng = (RNG*) getNativeStruct(env, rng_object);
     if ((*env)->ExceptionOccurred(env)) {
@@ -1955,8 +1961,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1GenerateBlock_1f
     }
 
     buf = getByteArray(env, buf_buffer);
+    bufLen = getByteArrayLength(env, buf_buffer);
 
-    if (rng == NULL || buf == NULL) {
+    /* reject NULL, negative, or bufSz beyond the backing array */
+    if (rng == NULL || buf == NULL || bufSz < 0 || bufSz > (jlong)bufLen) {
         ret = BAD_FUNC_ARG;
     }
     else {
@@ -1968,8 +1976,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1GenerateBlock_1f
     }
 
     LogStr("RNG_GenerateBlock_fips(rng=%p, buf, bufSz) = %d\n", rng, ret);
-    LogStr("output[%u]: [%p]\n", (word32)bufSz, buf);
-    LogHex(buf, 0, bufSz);
+    if (buf != NULL && ret == 0) {
+        LogStr("output[%u]: [%p]\n", (word32)bufSz, buf);
+        LogHex(buf, 0, (word32)bufSz);
+    }
 
     releaseByteArray(env, buf_buffer, buf, ret);
 
