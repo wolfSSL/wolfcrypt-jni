@@ -343,9 +343,10 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getPkcs8AlgoID
     byte* p8 = NULL;
     byte* p8Copy = NULL;
     word32 p8Len = 0;
+    jboolean p8IsCopy = JNI_FALSE;
 
     if (pkcs8Der != NULL) {
-        p8 = (byte*)(*env)->GetByteArrayElements(env, pkcs8Der, NULL);
+        p8 = (byte*)(*env)->GetByteArrayElements(env, pkcs8Der, &p8IsCopy);
         p8Len = (*env)->GetArrayLength(env, pkcs8Der);
     }
 
@@ -383,6 +384,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getPkcs8AlgoID
     }
 
     if (pkcs8Der != NULL) {
+        zeroizeByteArrayCopy(p8, p8Len, p8IsCopy);
         (*env)->ReleaseByteArrayElements(env, pkcs8Der, (jbyte*)p8, JNI_ABORT);
     }
 

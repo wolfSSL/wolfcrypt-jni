@@ -742,6 +742,207 @@ public class WolfCryptTest {
         }
     }
 
+    @Test
+    public void testEncryptedKeyPemToDerCharArrayPassword() throws Exception {
+
+        byte[] expected = decryptEncKeyPem();
+        if (expected == null) {
+            System.out.println("Skipping: encrypted PKCS#8 not compiled in");
+            return;
+        }
+
+        char[] pass = encKeyPassword.toCharArray();
+        byte[] der = WolfCrypt.encryptedKeyPemToDer(
+            encKeyPem.getBytes("UTF-8"), pass);
+
+        assertArrayEquals("char[] password must match the String path",
+            expected, der);
+        assertArrayEquals("caller's password array must be left intact",
+            encKeyPassword.toCharArray(), pass);
+
+        try {
+            WolfCrypt.encryptedKeyPemToDer(encKeyPem.getBytes("UTF-8"),
+                "wrongpassword".toCharArray());
+            fail("Should reject an incorrect password");
+
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testEncryptedKeyPemToDerNullPasswordUnencrypted()
+        throws Exception {
+
+        if (!fileExists(clientKeyPem) || !fileExists(clientKeyDer)) {
+            System.out.println("Skipping: test files not found");
+            return;
+        }
+
+        assertArrayEquals(readFile(clientKeyDer),
+            WolfCrypt.encryptedKeyPemToDer(readFile(clientKeyPem), null));
+    }
+
+    /* AES-256 encrypted PKCS#8 EC P-256 key, password below contains a
+     * supplementary character, which is where standard and JNI modified
+     * UTF-8 differ, and is over the 14 byte FIPS PBKDF2 minimum. This is a
+     * test key only, so safe to ship with password. */
+    private static final String encKeyPasswordUtf8 =
+        "wolfssl\uD83D\uDE00password";
+    private static final String encKeyPemUtf8 =
+        "-----BEGIN ENCRYPTED PRIVATE KEY-----\n" +
+        "MIH0MF8GCSqGSIb3DQEFDTBSMDEGCSqGSIb3DQEFDDAkBBBXcsV2PHPp90Urr4Sa\n" +
+        "RdDjAgIIADAMBggqhkiG9w0CCQUAMB0GCWCGSAFlAwQBKgQQpx+8ZNKWhQjl3lt+\n" +
+        "zZXCXASBkDpeYNwa0ohOScwRIp+AYSzbELNGu0FlmhNrVKztBa2f7s0L+RElUVVQ\n" +
+        "Xw2QLsQw0fXDBnTvH5Z6EdPUXEGYJeFmmCvmfZFDf7aYBvVo1zBUPhDkxpV3pJDy\n" +
+        "Yq6g4x+0Tr9Muno5KWo+UCmmKVhxd8uxRZqKDvjwDpLWKKi0BcR3gL+2hOgPLgsh\n" +
+        "g1CnkdUh9Q==\n" +
+        "-----END ENCRYPTED PRIVATE KEY-----\n";
+
+    @Test
+    public void testKeyPemToDerSupplementaryPasswordParity()
+        throws Exception {
+
+        if (decryptEncKeyPem() == null) {
+            System.out.println("Skipping: encrypted PKCS#8 not compiled in");
+            return;
+        }
+
+        byte[] pem = encKeyPemUtf8.getBytes("UTF-8");
+        byte[] viaString = WolfCrypt.keyPemToDer(pem, encKeyPasswordUtf8);
+        byte[] viaChars = WolfCrypt.encryptedKeyPemToDer(pem,
+            encKeyPasswordUtf8.toCharArray());
+
+        assertEquals("DER should start with SEQUENCE tag", 0x30,
+            viaString[0] & 0xFF);
+        assertArrayEquals("String and char[] encodings must agree", viaString,
+            viaChars);
+    }
+
+    @Test
+    public void testEncryptedKeyPemToDerEmptyPassword() throws Exception {
+
+        if (!fileExists(clientKeyPem) || !fileExists(clientKeyDer)) {
+            System.out.println("Skipping: test files not found");
+            return;
+        }
+
+        /* An empty password is passed through, an unencrypted key ignores it */
+        assertArrayEquals(readFile(clientKeyDer),
+            WolfCrypt.encryptedKeyPemToDer(readFile(clientKeyPem),
+                new char[0]));
+
+        if (decryptEncKeyPem() == null) {
+            return;
+        }
+        try {
+            WolfCrypt.encryptedKeyPemToDer(encKeyPem.getBytes("UTF-8"),
+                new char[0]);
+            fail("Should reject an empty password for an encrypted key");
+
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testEncryptedKeyPemToDerRejectsBadPemWithPassword() {
+
+        byte[][] badPems = { null, new byte[0] };
+
+        for (byte[] pem : badPems) {
+            try {
+                WolfCrypt.encryptedKeyPemToDer(pem, "secret".toCharArray());
+                fail("Should reject null or empty PEM");
+
+            } catch (WolfCryptException e) {
+                /* expected */
+            }
+        }
+    }
+
+    @Test
+    public void testKeyPemToDerRejectsOversizedPassword() throws Exception {
+
+        if (decryptEncKeyPem() == null) {
+            System.out.println("Skipping: encrypted PKCS#8 not compiled in");
+            return;
+        }
+
+        /* One char past 64 KB limit */
+        byte[] pem = encKeyPem.getBytes("UTF-8");
+        char[] huge = new char[64 * 1024 + 1];
+        Arrays.fill(huge, 'a');
+
+        try {
+            WolfCrypt.encryptedKeyPemToDer(pem, huge);
+            fail("char[] password over the size limit should be rejected");
+
+        } catch (WolfCryptException e) {
+            assertEquals(WolfCryptError.BAD_FUNC_ARG, e.getError());
+        }
+        try {
+            WolfCrypt.keyPemToDer(pem, new String(huge));
+            fail("String password over the size limit should be rejected");
+
+        } catch (WolfCryptException e) {
+            assertEquals(WolfCryptError.BAD_FUNC_ARG, e.getError());
+        }
+    }
+
+    @Test
+    public void testKeyPemToDerRejectsNulInPassword() throws Exception {
+
+        if (decryptEncKeyPem() == null) {
+            System.out.println("Skipping: encrypted PKCS#8 not compiled in");
+            return;
+        }
+
+        byte[] pem = encKeyPem.getBytes("UTF-8");
+        String nulPass = "wolfssl\u0000password";
+
+        try {
+            WolfCrypt.keyPemToDer(pem, nulPass);
+            fail("String password with NUL should be rejected");
+
+        } catch (WolfCryptException e) {
+            assertEquals(WolfCryptError.BAD_FUNC_ARG, e.getError());
+        }
+        try {
+            WolfCrypt.encryptedKeyPemToDer(pem, nulPass.toCharArray());
+            fail("char[] password with NUL should be rejected");
+
+        } catch (WolfCryptException e) {
+            assertEquals(WolfCryptError.BAD_FUNC_ARG, e.getError());
+        }
+    }
+
+    @Test
+    public void testKeyPemToDerRejectsMalformedPassword() throws Exception {
+
+        if (decryptEncKeyPem() == null) {
+            System.out.println("Skipping: encrypted PKCS#8 not compiled in");
+            return;
+        }
+
+        byte[] pem = encKeyPem.getBytes("UTF-8");
+        /* a lone high surrogate is not valid UTF-16 */
+        char[] lone = { 'w', 'o', 'l', 'f', '\uD83D', 's', 's', 'l' };
+
+        try {
+            WolfCrypt.encryptedKeyPemToDer(pem, lone);
+            fail("char[] password with a lone surrogate should be rejected");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+        try {
+            WolfCrypt.keyPemToDer(pem, new String(lone));
+            fail("String password with a lone surrogate should be rejected");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+    }
+
     @Test(expected = WolfCryptException.class)
     public void testPubKeyPemToDerNullInput() throws Exception {
         WolfCrypt.pubKeyPemToDer(null);
