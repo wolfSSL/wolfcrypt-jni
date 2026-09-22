@@ -122,6 +122,14 @@ public class WolfCrypt extends WolfObject {
     public static final int WC_HASH_TYPE_SHA3_512 =
         WolfCrypt.getWC_HASH_TYPE_SHA3_512();
 
+    /** wolfSSL hash type: SHAKE-128, FAILURE if not compiled in */
+    public static final int WC_HASH_TYPE_SHAKE128 =
+        WolfCrypt.getWC_HASH_TYPE_SHAKE128();
+
+    /** wolfSSL hash type: SHAKE-256, FAILURE if not compiled in */
+    public static final int WC_HASH_TYPE_SHAKE256 =
+        WolfCrypt.getWC_HASH_TYPE_SHAKE256();
+
     /** Native JNI function bindings */
     private static native int getWC_HASH_TYPE_NONE();
     private static native int getWC_HASH_TYPE_MD2();
@@ -137,6 +145,8 @@ public class WolfCrypt extends WolfObject {
     private static native int getWC_HASH_TYPE_SHA3_256();
     private static native int getWC_HASH_TYPE_SHA3_384();
     private static native int getWC_HASH_TYPE_SHA3_512();
+    private static native int getWC_HASH_TYPE_SHAKE128();
+    private static native int getWC_HASH_TYPE_SHAKE256();
     private static native byte[] wcBase16Encode(byte[] input);
     private static native byte[] wcBase16Decode(byte[] input);
     private static native byte[] wcKeyPemToDer(byte[] pem, byte[] password);

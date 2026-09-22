@@ -144,6 +144,10 @@ The JCE provider currently supports the following algorithms:
         SHA3-256
         SHA3-384
         SHA3-512
+        SHAKE128-256 (aliased also as: SHAKE128)
+            id-shake128 OID: 2.16.840.1.101.3.4.2.11
+        SHAKE256-512 (aliased also as: SHAKE256)
+            id-shake256 OID: 2.16.840.1.101.3.4.2.12
 
     SecureRandom Class
         DEFAULT (maps to HashDRBG)

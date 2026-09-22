@@ -143,6 +143,26 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1S
     return WC_HASH_TYPE_SHA3_512;
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHAKE128
+  (JNIEnv* env, jclass class)
+{
+#ifdef WOLFSSL_SHAKE128
+    return WC_HASH_TYPE_SHAKE128;
+#else
+    return -1;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHAKE256
+  (JNIEnv* env, jclass class)
+{
+#ifdef WOLFSSL_SHAKE256
+    return WC_HASH_TYPE_SHAKE256;
+#else
+    return -1;
+#endif
+}
+
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_CrlEnabled
   (JNIEnv* env, jclass jcl)
 {

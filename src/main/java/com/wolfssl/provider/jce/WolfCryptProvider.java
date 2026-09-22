@@ -183,6 +183,28 @@ public final class WolfCryptProvider extends Provider {
             put("MessageDigest.SHA3-512",
                     "com.wolfssl.provider.jce.WolfCryptMessageDigestSha3$wcSHA3_512");
         }
+        if (FeatureDetect.Shake128Enabled()) {
+            put("MessageDigest.SHAKE128-256",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestShake" +
+                    "$wcSHAKE128_256");
+            put("Alg.Alias.MessageDigest.SHAKE128", "SHAKE128-256");
+            /* id-shake128 OID */
+            put("Alg.Alias.MessageDigest.2.16.840.1.101.3.4.2.11",
+                    "SHAKE128-256");
+            put("Alg.Alias.MessageDigest.OID.2.16.840.1.101.3.4.2.11",
+                    "SHAKE128-256");
+        }
+        if (FeatureDetect.Shake256Enabled()) {
+            put("MessageDigest.SHAKE256-512",
+                    "com.wolfssl.provider.jce.WolfCryptMessageDigestShake" +
+                    "$wcSHAKE256_512");
+            put("Alg.Alias.MessageDigest.SHAKE256", "SHAKE256-512");
+            /* id-shake256 OID */
+            put("Alg.Alias.MessageDigest.2.16.840.1.101.3.4.2.12",
+                    "SHAKE256-512");
+            put("Alg.Alias.MessageDigest.OID.2.16.840.1.101.3.4.2.12",
+                    "SHAKE256-512");
+        }
 
         /* SecureRandom */
         /* TODO: May need to add "SHA1PRNG" alias, other JCA consumemrs may

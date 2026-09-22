@@ -47,7 +47,7 @@ if ("${WOLFSSL_PKG_TYPE}" MATCHES "normal")
         # optimizations.
         add_definitions(-DWOLFSSL_JNI -DATOMIC_USER -DHAVE_PK_CALLBACKS -DERROR_QUEUE_PER_THREAD
                 -DHAVE_EX_DATA -DHAVE_CRL -DHAVE_CRL_MONITOR -DHAVE_OCSP -DHAVE_THREAD_LS
-                -DKEEP_PEER_CERT -DPERSIST_CERT_CACHE -DPERSIST_SESSION_CACHE
+                -DHAVE_GMTIME_R -DKEEP_PEER_CERT -DPERSIST_CERT_CACHE -DPERSIST_SESSION_CACHE
                 -DSESSION_CERTS -DWC_NO_ASYNC_THREADING -DWOLFSSL_ALT_CERT_CHAINS
                 -DWOLFSSL_ALT_NAMES -DWOLFSSL_ALWAYS_KEEP_SNI -DWOLFSSL_ALWAYS_VERIFY_CB
                 -DWOLFSSL_VERIFY_CB_ALL_CERTS -DWOLFSSL_ASN_PRINT -DWOLFSSL_ASN_TEMPLATE
@@ -72,7 +72,7 @@ if ("${WOLFSSL_PKG_TYPE}" MATCHES "normal")
                 -DHAVE_DH_DEFAULT_PARAMS -DHAVE_FFDHE_2048
                 -DHAVE_HASHDRBG -DHAVE_HKDF
                 -DNO_DES3 -DNO_DES3_TLS_SUITES -DNO_DO178 -DNO_DSA -DNO_ERROR_QUEUE -DNO_MD4
-                -DNO_OLD_TLS -DNO_RC4 -DWOLFSSL_NO_SHAKE128 -DWOLFSSL_NO_SHAKE256
+                -DNO_OLD_TLS -DNO_RC4 -DWOLFSSL_SHAKE128 -DWOLFSSL_SHAKE256
 
                 -DSIZEOF_LONG=4 -DSIZEOF_LONG_LONG=8 -DWOLFSSL_CUSTOM_CONFIG
 
@@ -150,6 +150,7 @@ elseif("${WOLFSSL_PKG_TYPE}" MATCHES "fipsready")
                 -DWOLFSSL_FIPS_READY -DHAVE_FIPS -DHAVE_FIPS_VERSION=7
                 -DHAVE_FIPS_VERSION_MAJOR=7 -DHAVE_FIPS_VERSION_MINOR=0
                 -DHAVE_FIPS_VERSION_PATCH=0 -DWC_RNG_SEED_CB -DHAVE_THREAD_LS
+                -DHAVE_GMTIME_R
 
                 -DWOLFSSL_WOLFSSH -DNO_DO178 -DHAVE_REPRODUCIBLE_BUILD -DWC_NO_ASYNC_THREADING
                 -DNO_OLD_TLS -DWOLFSSL_TLS13 -DHAVE_TLS_EXTENSIONS -DHAVE_SNI
@@ -391,6 +392,7 @@ add_library(wolfcryptjni SHARED
         ${wolfcryptjni_DIR}/jni/jni_rng.c
         ${wolfcryptjni_DIR}/jni/jni_rsa.c
         ${wolfcryptjni_DIR}/jni/jni_sha.c
+        ${wolfcryptjni_DIR}/jni/jni_shake.c
         ${wolfcryptjni_DIR}/jni/jni_wolfcrypt.c
         ${wolfcryptjni_DIR}/jni/jni_wolfobject.c
         ${wolfcryptjni_DIR}/jni/jni_wolfssl_cert_manager.c

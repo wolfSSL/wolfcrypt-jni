@@ -77,6 +77,20 @@ public class FeatureDetect {
     public static native boolean Sha3Enabled();
 
     /**
+     * Tests if SHAKE-128 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Shake128Enabled();
+
+    /**
+     * Tests if SHAKE-256 is compiled into the native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean Shake256Enabled();
+
+    /**
      * Tests if AES is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.

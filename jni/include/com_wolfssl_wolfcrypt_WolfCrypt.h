@@ -161,6 +161,22 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1S
 
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    getWC_HASH_TYPE_SHAKE128
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHAKE128
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    getWC_HASH_TYPE_SHAKE256
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1SHAKE256
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
  * Method:    wcBase16Encode
  * Signature: ([B)[B
  */

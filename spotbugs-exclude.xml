@@ -199,6 +199,11 @@
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
     </Match>
     <Match>
+        <Class name="com.wolfssl.wolfcrypt.Shake"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
         <Class name="com.wolfssl.wolfcrypt.Sha384"/>
         <Method name="&lt;init&gt;"/>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
@@ -250,6 +255,11 @@
     </Match>
     <Match>
         <Class name="com.wolfssl.provider.jce.WolfCryptMessageDigestSha3"/>
+        <Method name="&lt;init&gt;"/>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptMessageDigestShake"/>
         <Method name="&lt;init&gt;"/>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
     </Match>
@@ -517,6 +527,11 @@
         <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
     </Match>
     <Match>
+        <Class name="com.wolfssl.wolfcrypt.Shake"/>
+        <Method name="clone"/>
+        <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
+    </Match>
+    <Match>
         <Class name="com.wolfssl.wolfcrypt.Sha384"/>
         <Method name="clone"/>
         <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
@@ -528,6 +543,11 @@
     </Match>
     <Match>
         <Class name="com.wolfssl.provider.jce.WolfCryptMessageDigestSha3"/>
+        <Method name="clone"/>
+        <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
+    </Match>
+    <Match>
+        <Class name="com.wolfssl.provider.jce.WolfCryptMessageDigestShake"/>
         <Method name="clone"/>
         <Bug pattern="CN_IDIOM_NO_SUPER_CALL"/>
     </Match>
