@@ -189,6 +189,12 @@ that are already set up to use and consume Maven packages.
 wolfSSL JNI/JCE's Maven build configuration is defined in the included
 `pom.xml` file.
 
+The included Maven Wrapper, `./mvnw` (or `mvnw.cmd` on Windows), downloads
+the Maven release pinned in `.mvn/wrapper/maven-wrapper.properties`, verifies
+its SHA-256 checksum, and runs Maven with `--strict-checksums` from
+`.mvn/maven.config` so a dependency or plugin download that fails its checksum
+stops the build. It can be used in place of `mvn` in the commands below.
+
 First, compile the native JNI shared library (libwolfcryptjni.so/dylib) same
 as above. This will create the native JNI shared library under the `./lib`
 directory:

@@ -53,7 +53,7 @@ jobs:
       # in one lifecycle pass. A separate mvn test step would run the
       # filtered-providers test suite twice.
       - name: mvn package (filtered-providers tests + jars)
-        run: mvn package -Dmain.tests.skip=true
+        run: ./mvnw package -Dmain.tests.skip=true
 
       # ----- Verify the ant-built jar (classes + copier + ServiceLoader) ---
       - name: Verify ant filtered-providers.jar contents

@@ -7991,6 +7991,11 @@ public class WolfCryptCipherTest {
             testGetParametersAesOfb();
         }
 
+        /* Test AES-CTS mode */
+        if (enabledJCEAlgos.contains("AES/CTS/NoPadding")) {
+            testGetParametersAesCts();
+        }
+
         /* Test 3DES-CBC mode */
         if (enabledJCEAlgos.contains("DESede/CBC/NoPadding")) {
             testGetParametersDesEdeCbc();
@@ -8233,6 +8238,45 @@ public class WolfCryptCipherTest {
                 extractedSpec.getIV());
 
         } catch (java.security.spec.InvalidParameterSpecException e) {
+            fail("Should be able to extract IvParameterSpec: " +
+                 e.getMessage());
+        }
+    }
+
+    private void testGetParametersAesCts()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               InvalidKeyException, InvalidAlgorithmParameterException,
+               NoSuchPaddingException {
+
+        byte[] keyBytes = new byte[Aes.BLOCK_SIZE];
+        byte[] ivBytes = new byte[Aes.BLOCK_SIZE];
+        secureRandom.nextBytes(keyBytes);
+        secureRandom.nextBytes(ivBytes);
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes, "AES");
+        IvParameterSpec iv = new IvParameterSpec(ivBytes);
+
+        Cipher cipher = Cipher.getInstance("AES/CTS/NoPadding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+
+        AlgorithmParameters params = cipher.getParameters();
+        assertNotNull("AES/CTS/NoPadding should return AlgorithmParameters",
+            params);
+        assertEquals("Algorithm should be AES", "AES", params.getAlgorithm());
+
+        try {
+            assertArrayEquals("IV should match", ivBytes,
+                params.getParameterSpec(IvParameterSpec.class).getIV());
+
+            /* A provider generated IV is returned the same way */
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+            params = cipher.getParameters();
+            assertNotNull("AES/CTS/NoPadding should return generated IV",
+                params);
+            assertArrayEquals("IV should match getIV()", cipher.getIV(),
+                params.getParameterSpec(IvParameterSpec.class).getIV());
+
+        } catch (InvalidParameterSpecException e) {
             fail("Should be able to extract IvParameterSpec: " +
                  e.getMessage());
         }
