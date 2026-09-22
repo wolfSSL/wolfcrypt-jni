@@ -1639,5 +1639,25 @@ public class WolfCryptUtilTest {
             }
         }
     }
-}
 
+    @Test
+    public void testConstantTimeEquals() {
+        char[] a = "passwordpassword".toCharArray();
+
+        assertTrue(WolfCryptUtil.constantTimeEquals(a, a.clone()));
+        assertTrue(WolfCryptUtil.constantTimeEquals(new char[0],
+            new char[0]));
+        assertTrue(WolfCryptUtil.constantTimeEquals(null, null));
+
+        assertFalse(WolfCryptUtil.constantTimeEquals(a, null));
+        assertFalse(WolfCryptUtil.constantTimeEquals(null, a));
+        assertFalse(WolfCryptUtil.constantTimeEquals(a,
+            "passwordpassworX".toCharArray()));
+        assertFalse(WolfCryptUtil.constantTimeEquals(a,
+            "Xasswordpassword".toCharArray()));
+        assertFalse(WolfCryptUtil.constantTimeEquals(a,
+            "passwordpasswor".toCharArray()));
+        assertFalse(WolfCryptUtil.constantTimeEquals(a,
+            "passwordpasswordX".toCharArray()));
+    }
+}

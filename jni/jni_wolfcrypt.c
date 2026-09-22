@@ -230,9 +230,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcBase16Encode
         }
     }
 
-    /* Check for integer overflow: inputSz * 2 must fit in word32 */
+    /* Encoded output is twice the input and must fit in a Java array */
     if (ret == 0) {
-        if (inputSz < 0 || (word32)inputSz > (0xFFFFFFFFU / 2)) {
+        if (inputSz < 0 || inputSz > (0x7FFFFFFF / 2)) {
             ret = BAD_FUNC_ARG;
         }
     }
@@ -246,7 +246,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcBase16Encode
 
     if (ret == 0) {
         /* Output size is 2x input size */
-        outLen = (word32)(inputSz * 2);
+        outLen = (word32)inputSz * 2U;
         output = (byte*)XMALLOC(outLen, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         if (output == NULL) {
             ret = MEMORY_E;
