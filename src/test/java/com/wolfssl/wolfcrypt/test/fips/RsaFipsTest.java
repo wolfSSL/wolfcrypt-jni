@@ -37,6 +37,7 @@ import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.Sha256;
 import com.wolfssl.wolfcrypt.WolfCrypt;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.Fips;
 
 import com.wolfssl.wolfcrypt.test.Util;
@@ -644,6 +645,39 @@ public class RsaFipsTest extends FipsTest {
                 cipher.length, plain, plain.length, rsa));
 
         assertArrayEquals(plain, message);
+
+        Fips.FreeRsaKey_fips(rsa);
+        Fips.FreeRng_fips(rng);
+    }
+
+    @Test
+    public void sslSignShouldRejectNegativeOutLenUsingByteArray() {
+        Rsa rsa = new Rsa();
+        Rng rng = new Rng();
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRsaKey_fips(rsa, null));
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRng_fips(rng));
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.RsaSSL_Sign_fips(new byte[32], 32, new byte[256], -1,
+                rsa, rng));
+
+        Fips.FreeRsaKey_fips(rsa);
+        Fips.FreeRng_fips(rng);
+    }
+
+    @Test
+    public void sslSignShouldRejectNegativeOutLenUsingByteBuffer() {
+        Rsa rsa = new Rsa();
+        Rng rng = new Rng();
+        ByteBuffer in = ByteBuffer.allocateDirect(32);
+        ByteBuffer out = ByteBuffer.allocateDirect(256);
+
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRsaKey_fips(rsa, null));
+        assertEquals(WolfCrypt.SUCCESS, Fips.InitRng_fips(rng));
+
+        assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
+            Fips.RsaSSL_Sign_fips(in, 32, out, -1, rsa, rng));
 
         Fips.FreeRsaKey_fips(rsa);
         Fips.FreeRng_fips(rng);

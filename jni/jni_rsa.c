@@ -466,7 +466,7 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaKeyToPublicDe
         ret = BAD_FUNC_ARG;
     }
 
-    /* Get length of DER encoded RSA private key */
+    /* Get length of DER encoded RSA public key */
     if (ret == 0) {
         ret = wc_RsaKeyToPublicDer(key, NULL, 0);
         if (ret > 0) {
