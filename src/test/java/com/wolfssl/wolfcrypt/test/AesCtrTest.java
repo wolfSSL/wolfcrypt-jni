@@ -209,6 +209,20 @@ public class AesCtrTest {
     }
 
     @Test
+    public void reuseAfterReleaseTest() {
+        AesCtr aesCtr = new AesCtr();
+
+        aesCtr.setKey(KEY_128, IV_128);
+        assertArrayEquals(CIPHERTEXT_128, aesCtr.update(PLAINTEXT));
+        aesCtr.releaseNativeStruct();
+
+        /* setKey() re-initializes the released object */
+        aesCtr.setKey(KEY_128, IV_128);
+        assertArrayEquals(CIPHERTEXT_128, aesCtr.update(PLAINTEXT));
+        aesCtr.releaseNativeStruct();
+    }
+
+    @Test
     public void aes256CtrEncryptDecryptTest() {
         AesCtr aesCtr = new AesCtr();
 

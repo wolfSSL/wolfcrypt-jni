@@ -112,6 +112,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1set_1key_1inter
 #if defined(OPENSSL_EXTRA) && !defined(NO_AES) && defined(HAVE_CTS) && \
     !defined(WOLFSSL_NO_OPENSSL_AES_LOW_LEVEL_API)
     int ret = 0;
+    int rc = 0;
     AesCtsCtx* ctx = NULL;
     byte* key = NULL;
     byte* iv  = NULL;
@@ -141,15 +142,19 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1set_1key_1inter
          * CTS uses CBC mode internally. */
         if (opmode == 0) {
             /* ENCRYPT_MODE */
-            ret = AES_set_encrypt_key(key, keySz * 8, &ctx->key);
+            rc = AES_set_encrypt_key(key, keySz * 8, &ctx->key);
         }
         else {
             /* DECRYPT_MODE */
-            ret = AES_set_decrypt_key(key, keySz * 8, &ctx->key);
+            rc = AES_set_decrypt_key(key, keySz * 8, &ctx->key);
         }
 
-        /* Store IV for use in update operations */
-        if (ret == 0) {
+        /* Compatibility layer status is not a wolfCrypt error code */
+        if (rc != 0) {
+            ret = BAD_FUNC_ARG;
+        }
+        else {
+            /* Store IV for use in update operations */
             XMEMCPY(ctx->iv, iv, AES_BLOCK_SIZE);
         }
     }
