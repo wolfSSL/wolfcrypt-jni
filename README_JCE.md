@@ -402,6 +402,23 @@ The JCE provider currently supports the following algorithms:
     AlgorithmParameterGenerator
         DH
 
+### AES-GCM Notes
+
+`Cipher.init()` for `AES/GCM/NoPadding` encryption without an
+`AlgorithmParameterSpec` generates a 96-bit IV inside native wolfCrypt using
+the wolfCrypt DRBG. A `SecureRandom` passed to `init()` is not used for this
+IV. `Cipher.getIV()` and `Cipher.getParameters()` return the generated IV,
+which the decrypting side must be given as a `GCMParameterSpec`. Decrypt
+`init()` without a `GCMParameterSpec` throws `InvalidKeyException` from the
+key-only `init()` forms and `InvalidAlgorithmParameterException` from the
+forms that take parameters.
+
+With wolfCrypt FIPS, this internal IV generation is the approved AES-GCM
+encryption path (FIPS 140-3 IG C.H). An IV supplied through `GCMParameterSpec`
+is an external IV, which the wolfCrypt FIPS security policy only allows in the
+protocol cases IG C.H describes (such as TLS 1.2). Applications that need FIPS
+approved AES-GCM encryption should let the Cipher generate the IV.
+
 ### ML-KEM (FIPS 203) Notes
 
 wolfJCE supports ML-KEM (the Module-Lattice-Based Key Encapsulation Mechanism
