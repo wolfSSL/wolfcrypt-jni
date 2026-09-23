@@ -9970,6 +9970,126 @@ public class WolfCryptCipherTest {
         }
     }
 
+    /**
+     * Buffer firstLen bytes with update(), then pass one more byte that
+     * completes a block into an output buffer one byte short of it. The
+     * ShortBufferException must be thrown before that byte is consumed, so
+     * retrying it with enough room and finishing with doFinal() gives the
+     * same result as a single doFinal() over the whole input.
+     */
+    private void assertUpdateShortBufferLeavesStateIntact(Cipher cipher,
+        byte[] input, int firstLen) throws IllegalBlockSizeException,
+        BadPaddingException, ShortBufferException {
+
+        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        byte[] out;
+        int len;
+
+        out = new byte[cipher.getOutputSize(firstLen)];
+        len = cipher.update(input, 0, firstLen, out, 0);
+        result.write(out, 0, len);
+
+        try {
+            cipher.update(input, firstLen, 1, new byte[15], 0);
+            fail("Expected ShortBufferException for block completed by " +
+                 "buffered data");
+        } catch (ShortBufferException e) {
+            /* Expected */
+        }
+
+        /* Exactly the block this update() emits, less than getOutputSize() */
+        out = new byte[16];
+        len = cipher.update(input, firstLen, 1, out, 0);
+        assertEquals("update() retry after ShortBufferException should " +
+                     "return the completed block", 16, len);
+        result.write(out, 0, len);
+
+        out = new byte[cipher.getOutputSize(input.length - firstLen - 1)];
+        len = cipher.doFinal(input, firstLen + 1, input.length - firstLen - 1,
+            out, 0);
+        result.write(out, 0, len);
+
+        assertArrayEquals("Multi-part result should match single operation",
+            cipher.doFinal(input), result.toByteArray());
+    }
+
+    @Test
+    public void testUpdateShortBufferWithBufferedInputKeepsState()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException, IllegalBlockSizeException,
+               BadPaddingException, ShortBufferException {
+
+        if (!enabledJCEAlgos.contains("AES/CBC/NoPadding") ||
+            !enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            return;
+        }
+
+        SecretKeySpec keySpec =
+            new SecretKeySpec("1234567890123456".getBytes(), "AES");
+        IvParameterSpec ivSpec =
+            new IvParameterSpec("6543210987654321".getBytes());
+        byte[] plaintext = new byte[32];
+        secureRandom.nextBytes(plaintext);
+
+        /* 15 buffered bytes plus one more make the first block */
+        Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        assertUpdateShortBufferLeavesStateIntact(cipher, plaintext, 15);
+
+        cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        assertUpdateShortBufferLeavesStateIntact(cipher, plaintext, 15);
+        byte[] ciphertext = cipher.doFinal(plaintext);
+
+        /* Decrypting holds back the last block, so 31 buffered bytes plus
+         * one more release the first block */
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+        assertUpdateShortBufferLeavesStateIntact(cipher, ciphertext, 31);
+    }
+
+    /**
+     * A PKCS5 decrypt update() whose total is not block aligned outputs only
+     * whole blocks before the held back block, so the output size pre-check
+     * must not require more than that.
+     */
+    @Test
+    public void testUpdateDecryptPartialBlockNeedsNoOutput()
+        throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            return;
+        }
+
+        SecretKeySpec keySpec =
+            new SecretKeySpec("1234567890123456".getBytes(), "AES");
+        IvParameterSpec ivSpec =
+            new IvParameterSpec("6543210987654321".getBytes());
+        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        byte[] plaintext = new byte[32];
+        byte[] ciphertext;
+        byte[] out;
+        int len;
+        secureRandom.nextBytes(plaintext);
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
+        ciphertext = cipher.doFinal(plaintext);
+        out = new byte[ciphertext.length];
+
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
+        /* 17 buffered bytes hold back the only full block */
+        assertEquals(0, cipher.update(ciphertext, 0, 17, out, 0));
+        /* 18 in total still emits nothing, so no output room is needed */
+        assertEquals(0, cipher.update(ciphertext, 17, 1, new byte[0], 0));
+
+        len = cipher.update(ciphertext, 18, ciphertext.length - 18, out, 0);
+        result.write(out, 0, len);
+        len = cipher.doFinal(out, 0);
+        result.write(out, 0, len);
+        assertArrayEquals(plaintext, result.toByteArray());
+    }
+
     @Test
     public void testDoFinalInputValidation()
         throws NoSuchProviderException, NoSuchAlgorithmException,
