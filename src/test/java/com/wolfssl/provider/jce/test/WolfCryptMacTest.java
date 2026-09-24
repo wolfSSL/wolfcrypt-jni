@@ -2151,6 +2151,109 @@ public class WolfCryptMacTest {
     }
 
     @Test
+    public void testAesGmacRejectsInvalidTagLength()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException, InvalidAlgorithmParameterException {
+
+        if (!enabledAlgos.contains("AESGMAC")) {
+            return;
+        }
+
+        byte[] key = new byte[] {
+            (byte)0x89, (byte)0xc9, (byte)0x49, (byte)0xe9,
+            (byte)0xc8, (byte)0x04, (byte)0xaf, (byte)0x01,
+            (byte)0x4d, (byte)0x56, (byte)0x04, (byte)0xb3,
+            (byte)0x94, (byte)0x59, (byte)0xf2, (byte)0xc8
+        };
+
+        byte[] iv = new byte[] {
+            (byte)0xd1, (byte)0xb1, (byte)0x04, (byte)0xc8,
+            (byte)0x15, (byte)0xbf, (byte)0x1e, (byte)0x94,
+            (byte)0xe2, (byte)0x8c, (byte)0x8f, (byte)0x16
+        };
+
+        Mac mac = Mac.getInstance("AESGMAC", "wolfJCE");
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+
+        /* Tag lengths that are not a positive multiple of 8 bits (0, 4, 100),
+         * or that exceed the AES block size (136 bits = 17 bytes), must be
+         * rejected at init() rather than silently truncated. Exact native
+         * min (WOLFSSL_MIN_AUTH_TAG_SZ) is left to native wolfCrypt. */
+        int[] badTagBits = { 0, 4, 100, 136 };
+        for (int tagBits : badTagBits) {
+            try {
+                mac.init(keyspec, new GCMParameterSpec(tagBits, iv));
+                fail("GMAC should reject tag length " + tagBits + " bits");
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+        }
+
+        /* A valid 128 bit tag must still initialize */
+        mac.init(keyspec, new GCMParameterSpec(128, iv));
+        assertEquals(16, mac.getMacLength());
+    }
+
+    @Test
+    public void testAesGmacRejectedInitPreservesState()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException, InvalidAlgorithmParameterException,
+               ShortBufferException {
+
+        if (!enabledAlgos.contains("AESGMAC")) {
+            return;
+        }
+
+        byte[] key = new byte[] {
+            (byte)0x89, (byte)0xc9, (byte)0x49, (byte)0xe9,
+            (byte)0xc8, (byte)0x04, (byte)0xaf, (byte)0x01,
+            (byte)0x4d, (byte)0x56, (byte)0x04, (byte)0xb3,
+            (byte)0x94, (byte)0x59, (byte)0xf2, (byte)0xc8
+        };
+
+        byte[] iv = new byte[] {
+            (byte)0xd1, (byte)0xb1, (byte)0x04, (byte)0xc8,
+            (byte)0x15, (byte)0xbf, (byte)0x1e, (byte)0x94,
+            (byte)0xe2, (byte)0x8c, (byte)0x8f, (byte)0x16
+        };
+
+        byte[] authIn = new byte[] {
+            (byte)0x82, (byte)0xad, (byte)0xcd, (byte)0x63,
+            (byte)0x8d, (byte)0x3f, (byte)0xa9, (byte)0xd9,
+            (byte)0xf3, (byte)0xe8, (byte)0x41, (byte)0x00,
+            (byte)0xd6, (byte)0x1e, (byte)0x07, (byte)0x77
+        };
+
+        byte[] expectedTag = new byte[] {
+            (byte)0x88, (byte)0xdb, (byte)0x9d, (byte)0x62,
+            (byte)0x17, (byte)0x2e, (byte)0xd0, (byte)0x43,
+            (byte)0xaa, (byte)0x10, (byte)0xf1, (byte)0x6d,
+            (byte)0x22, (byte)0x7d, (byte)0xc4, (byte)0x1b
+        };
+
+        Mac mac = Mac.getInstance("AESGMAC", "wolfJCE");
+        SecretKeySpec keyspec = new SecretKeySpec(key, "AES");
+
+        /* Successful init with a valid 128 bit tag, then buffer auth data */
+        mac.init(keyspec, new GCMParameterSpec(128, iv));
+        mac.update(authIn);
+
+        /* A rejected init (invalid tag length) must not mutate the object,
+         * the prior valid configuration must remain intact. */
+        try {
+            mac.init(keyspec, new GCMParameterSpec(4, iv));
+            fail("GMAC should reject a 4 bit tag length");
+        } catch (InvalidAlgorithmParameterException e) {
+            /* expected */
+        }
+
+        /* getMacLength() and doFinal() must reflect the original config,
+         * not the rejected one */
+        assertEquals(16, mac.getMacLength());
+        assertArrayEquals(expectedTag, mac.doFinal());
+    }
+
+    @Test
     public void testAesGmacMultipleUpdate()
         throws InvalidKeyException, NoSuchAlgorithmException,
                NoSuchProviderException, InvalidAlgorithmParameterException {

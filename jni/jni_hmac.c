@@ -289,7 +289,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII
     LogStr("wc_HmacUpdate(hmac=%p, data, length) = %d\n", hmac, ret);
     if (data != NULL) {
         LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
-        LogHex((byte*) data, offset, length);
     }
 
     releaseByteArray(env, data_object, data, JNI_ABORT);
@@ -330,7 +329,6 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio
     LogStr("wc_HmacUpdate(hmac=%p, data, length) = %d\n", hmac, ret);
     if (data != NULL) {
         LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
-        LogHex((byte*) data, offset, length);
     }
 #else
     throwNotCompiledInException(env);
@@ -382,7 +380,6 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacFinal
 
     LogStr("wc_HmacFinal(hmac=%p, result) = %d\n", hmac, ret);
     LogStr("result[%u]: [%p]\n", (word32)hmacSz, tmp);
-    LogHex(tmp, 0, hmacSz);
     #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
         !defined(WOLFSSL_NO_FORCE_ZERO)
         wc_ForceZero(tmp, sizeof(tmp));

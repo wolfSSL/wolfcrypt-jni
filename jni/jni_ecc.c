@@ -432,7 +432,6 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1export_1private(
     LogStr("wc_ecc_export_private_only(ecc=%p, output=%p, outputSz) = %d\n",
             ecc, output, ret);
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
-    LogHex((byte*) output, 0, outputSz);
 
     if (output != NULL) {
     #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
@@ -667,7 +666,6 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccKeyToDer(
     LogStr("wc_EccKeyToDer(ecc = %p, output=%p, outputSz) = %d\n",
            ecc, output, ret);
     LogStr("output[%u]: [%p]\n", outputSz, output);
-    LogHex((byte*) output, 0, outputSz);
 
     if (output != NULL) {
     #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
@@ -883,7 +881,6 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1shared_1secret(
     LogStr("wc_ecc_shared_secret(priv, pub, output=%p, outputSz) = %d\n",
         output, ret);
     LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
-    LogHex((byte*) output, 0, outputSz);
 
     if (output != NULL) {
     #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
