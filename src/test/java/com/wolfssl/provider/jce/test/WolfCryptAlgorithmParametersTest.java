@@ -50,6 +50,7 @@ import javax.crypto.spec.IvParameterSpec;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
+import com.wolfssl.wolfcrypt.test.Util;
 
 public class WolfCryptAlgorithmParametersTest {
 
@@ -1579,5 +1580,86 @@ public class WolfCryptAlgorithmParametersTest {
             /* expected */
         }
     }
-}
 
+    /**
+     * AES parameters accept an 8-byte AES Key Wrap (RFC 3394) IV as well as
+     * the 16-byte block cipher IV, matching SunJCE 17+, and reject other
+     * size on spec/DER paths.
+     */
+    @Test
+    public void testAESParametersKeyWrapIvSize() throws Exception {
+
+        if (!FeatureDetect.AesEnabled()) {
+            return;
+        }
+
+        byte[] kwIv = Util.h2b("0011223344556677");
+
+        /* 8-byte IV encodes as 04 08 <iv> and decodes back */
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("AES", "wolfJCE");
+        params.init(new IvParameterSpec(kwIv));
+        byte[] encoded = params.getEncoded();
+        assertEquals(10, encoded.length);
+        assertEquals(0x04, encoded[0]);
+        assertEquals(0x08, encoded[1]);
+        assertArrayEquals(kwIv, Arrays.copyOfRange(encoded, 2, 10));
+
+        AlgorithmParameters decoded =
+            AlgorithmParameters.getInstance("AES", "wolfJCE");
+        decoded.init(encoded);
+        assertArrayEquals(kwIv,
+            decoded.getParameterSpec(IvParameterSpec.class).getIV());
+
+        /* 16-byte IVs still encode as 04 10 <iv> */
+        AlgorithmParameters cbc =
+            AlgorithmParameters.getInstance("AES", "wolfJCE");
+        cbc.init(new IvParameterSpec(new byte[16]));
+        assertEquals(18, cbc.getEncoded().length);
+        assertEquals(0x10, cbc.getEncoded()[1]);
+
+        /* Only 8 and 16 byte IVs are accepted by the spec path ... */
+        for (int sz : new int[] { 1, 4, 7, 9, 12, 15, 17, 24, 32 }) {
+            AlgorithmParameters bad =
+                AlgorithmParameters.getInstance("AES", "wolfJCE");
+            try {
+                bad.init(new IvParameterSpec(new byte[sz]));
+                fail("AES AlgorithmParameters should reject a " + sz +
+                    " byte IV");
+            } catch (InvalidParameterSpecException e) {
+                /* expected */
+            }
+        }
+
+        /* ... and by the DER path */
+        byte[][] badDer = {
+            /* 12 byte IV */
+            Util.h2b("040C000000000000000000000000"),
+            /* says 8, has 9 */
+            Util.h2b("0408000000000000000000"),
+            /* says 8, has 16 */
+            Util.h2b("040800000000000000000000000000000000"),
+            /* says 16, has 8 */
+            Util.h2b("04100000000000000000"),
+            /* 7 byte IV */
+            Util.h2b("040700000000000000"),
+            /* says 16, has 15 */
+            Util.h2b("0410000000000000000000000000000000"),
+            /* wrong tag */
+            Util.h2b("05080000000000000000"),
+            /* no IV bytes */
+            Util.h2b("0408")
+        };
+        for (byte[] der : badDer) {
+            AlgorithmParameters bad =
+                AlgorithmParameters.getInstance("AES", "wolfJCE");
+            try {
+                bad.init(der);
+                fail("AES AlgorithmParameters should reject encoding " +
+                    Arrays.toString(der));
+            } catch (IOException e) {
+                /* expected */
+            }
+        }
+    }
+}

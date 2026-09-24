@@ -172,6 +172,21 @@ The JCE provider currently supports the following algorithms:
         AES/OFB/NoPadding
             Aliases: AES_128/OFB/NoPadding, AES_192/OFB/NoPadding, AES_256/OFB/NoPadding
             OIDs: 2.16.840.1.101.3.4.1.3, 2.16.840.1.101.3.4.1.23, 2.16.840.1.101.3.4.1.43
+        AESWrap
+            Aliases: AES/KW/NoPadding, AESKW
+        AESWrap_128
+            Alias: AES_128/KW/NoPadding
+            OID: 2.16.840.1.101.3.4.1.5
+        AESWrap_192
+            Alias: AES_192/KW/NoPadding
+            OID: 2.16.840.1.101.3.4.1.25
+        AESWrap_256
+            Alias: AES_256/KW/NoPadding
+            OID: 2.16.840.1.101.3.4.1.45
+        AES/KW/PKCS5Padding
+        AES_128/KW/PKCS5Padding
+        AES_192/KW/PKCS5Padding
+        AES_256/KW/PKCS5Padding
         DESede/CBC/NoPadding
         RSA
         RSA/ECB/PKCS1Padding
@@ -478,6 +493,59 @@ modes in a few ways:
   `AesXts.updateSector()` takes the sector number directly.
 
 See `examples/provider/AesXtsExample.java` for a sector style example.
+
+### AES Key Wrap (RFC 3394) Notes
+
+wolfJCE provides AES Key Wrap (RFC 3394 / NIST SP 800-38F "KW") as a `Cipher`
+service when native wolfSSL is built with `--enable-aeskeywrap` (also pulled
+in by `--enable-all` and `--enable-pkcs7`, and on by default for FIPS v6/v7
+builds). `--enable-jni` alone does not enable it. When it is not compiled in,
+the services below are not registered.
+
+- `AESWrap`, registered aliases `AES/KW/NoPadding` and `AESKW`. The JDK 8
+  transformation forms `AESWrap/ECB/NoPadding` and `AESWrap/ECB/PKCS5Padding`
+  also resolve, through the JCE mode/padding fallback rather than as aliases.
+- `AESWrap_128`, `AESWrap_192`, `AESWrap_256` (aliases
+  `AES_128/KW/NoPadding`, ...) lock the KEK size and carry the NIST OIDs
+  `2.16.840.1.101.3.4.1.5`, `.25`, `.45`. A KEK of any other size is rejected
+  with `InvalidKeyException`.
+- `AES/KW/PKCS5Padding` (and `AES_128/192/256/KW/PKCS5Padding`), which
+  PKCS#5 pads the input to the 8-byte block size before wrapping. Use this to
+  wrap keys whose encodings are not a multiple of 8 bytes, such as X.509 public
+  keys and PKCS#8 private keys via `Cipher.PUBLIC_KEY` / `Cipher.PRIVATE_KEY`.
+  This matches SunJCE on JDK 21 and later. JDK 17 SunJCE pads
+  `AES/KW/PKCS5Padding` to 16-byte blocks instead, so PKCS#5-padded wrapped
+  keys do not interoperate with JDK 17.
+
+Usage details:
+
+- All four opmodes are supported: `WRAP_MODE`/`UNWRAP_MODE` for `wrap()`/
+  `unwrap()`, and `ENCRYPT_MODE`/`DECRYPT_MODE` for `doFinal()` over raw
+  data (`update()` buffers, all output comes from `doFinal()`).
+- Input to wrap must be at least 16 bytes and a multiple of 8 bytes, and
+  wrapped input to unwrap at least 24 bytes and a multiple of 8
+  (`IllegalBlockSizeException` otherwise). Wrapped output is 8 bytes longer
+  than the input. `getBlockSize()` returns 8 (the key wrap block size).
+- The 8-byte "IV" is the RFC 3394 integrity check value, not a nonce. With
+  no parameters the default `A6A6A6A6A6A6A6A6` is used and wolfJCE never
+  generates a random IV. An alternative value may be given as an 8-byte
+  `IvParameterSpec` (or an `AlgorithmParameters("AES")` holding one) and
+  must then be supplied to the unwrapping side as well. `getIV()` and
+  `getParameters()` return `null` unless an IV was set explicitly, in which
+  case `getParameters()` is an `AlgorithmParameters("AES")` holding the
+  8-byte IV, as with SunJCE 17+. That object can be passed to another
+  provider's `Cipher.init()` (which uses `getParameterSpec()`). Its DER
+  encoding, `04 08 <iv>`, is the same one SunJCE produces, but SunJCE's own
+  DER decoder only accepts 16-byte AES IVs, where wolfJCE decodes both.
+- `unwrap()` failures (bad length, wrong KEK, wrong IV, corrupted data, bad
+  padding) throw `InvalidKeyException`. In `DECRYPT_MODE`, an integrity check
+  failure throws `BadPaddingException` and a bad length throws
+  `IllegalBlockSizeException`.
+- Only RFC 3394 KW is available. AES Key Wrap with Padding (RFC 5649 KWP,
+  `AESWrapPad` / `AES/KWP/NoPadding`) is not implemented in native wolfSSL.
+
+See `examples/provider/AesKeyWrapExample.java` for a complete wrap / unwrap
+example.
 
 ### SecureRandom.getInstanceStrong()
 
@@ -901,6 +969,31 @@ plus the padding bytes.
 This descrepancy should not be an issue, since `doFinal()` returns the
 actual number of bytes written to the output buffer, so applications can use
 that to know the true output size in the output buffer returned.
+
+#### AES Key Wrap `DECRYPT_MODE` Integrity Failure Exception
+
+When an `AESWrap` / `AES/KW/NoPadding` Cipher in `DECRYPT_MODE` detects an
+integrity check failure, wolfJCE throws `BadPaddingException("Integrity check
+failed")`, consistent with its other authenticated modes and with Bouncy
+Castle. SunJCE (JDK 17+) throws `IllegalBlockSizeException` with the same
+message in this case. `UNWRAP_MODE` is unaffected: both providers throw
+`InvalidKeyException` for every `unwrap()` failure.
+
+`getParameters()` on an AES Key Wrap Cipher returns `null` unless an IV was
+set explicitly (JDK 8 and Bouncy Castle behavior), whereas SunJCE 17+ returns
+`AlgorithmParameters` holding the default IV. This keeps
+`otherCipher.init(mode, key, wolfCipher.getParameters())` working against
+providers that accept no AES Key Wrap parameters at all. With an explicit IV
+both providers return `AlgorithmParameters("AES")` with the same `04 08 <iv>`
+DER encoding; `AlgorithmParameters.getInstance("AES", "SunJCE")` rejects that
+encoding (even its own), while wolfJCE accepts both 8 and 16 byte IVs.
+
+#### Cipher `unwrap()` With a Null or Empty Algorithm Name
+
+`Cipher.unwrap()` on any wolfJCE Cipher throws `NoSuchAlgorithmException`
+when the wrapped key algorithm name is null or empty, before any unwrap is
+attempted. SunJCE lets the name reach `SecretKeySpec` or `KeyFactory` and
+throws `IllegalArgumentException` or `NullPointerException` instead.
 
 #### PKIXRevocationChecker `PREFER_CRLS` Check Order
 

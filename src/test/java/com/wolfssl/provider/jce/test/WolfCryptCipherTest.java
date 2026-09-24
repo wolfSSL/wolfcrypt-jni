@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.HashSet;
@@ -106,6 +107,9 @@ public class WolfCryptCipherTest {
         "AES/GCM/NoPadding",
         "AES/OFB/NoPadding",
         "AES/XTS/NoPadding",
+        "AESWrap",
+        "AES/KW/NoPadding",
+        "AES/KW/PKCS5Padding",
         "DESede/CBC/NoPadding",
         "RSA",
         "RSA/ECB/PKCS1Padding"
@@ -348,6 +352,9 @@ public class WolfCryptCipherTest {
         expectedBlockSizes.put("AES/GCM/NoPadding", 16);
         expectedBlockSizes.put("AES/OFB/NoPadding", 16);
         expectedBlockSizes.put("AES/XTS/NoPadding", 16);
+        expectedBlockSizes.put("AESWrap", 8);
+        expectedBlockSizes.put("AES/KW/NoPadding", 8);
+        expectedBlockSizes.put("AES/KW/PKCS5Padding", 8);
         expectedBlockSizes.put("DESede/CBC/NoPadding", 8);
         expectedBlockSizes.put("RSA", 0);
         expectedBlockSizes.put("RSA/ECB/PKCS1Padding", 0);
@@ -7445,6 +7452,11 @@ public class WolfCryptCipherTest {
                 continue;
             }
 
+            /* Skip AES Key Wrap, IV is a fixed integrity check value (not
+             * random) and it rejects the data sizes used below. */
+            if (mode.contains("Wrap") || mode.contains("KW")) {
+                continue;
+            }
 
             /* Skip 3DES if not compiled in */
             if (mode.startsWith("DESede") && !FeatureDetect.Des3Enabled()) {
@@ -10705,6 +10717,42 @@ public class WolfCryptCipherTest {
     }
 
     @Test
+    public void testUnwrapNullAlgorithmThrowsNoSuchAlgorithm()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException {
+
+        ArrayList<Cipher> ciphers = new ArrayList<Cipher>();
+        Cipher cipher;
+
+        if (enabledJCEAlgos.contains("RSA/ECB/PKCS1Padding") &&
+            rsaPair != null) {
+            cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding", jceProvider);
+            cipher.init(Cipher.UNWRAP_MODE, rsaPair.getPrivate());
+            ciphers.add(cipher);
+        }
+        if (enabledJCEAlgos.contains("AES/CBC/PKCS5Padding")) {
+            cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", jceProvider);
+            cipher.init(Cipher.UNWRAP_MODE,
+                new SecretKeySpec(new byte[Aes.KEY_SIZE_128], "AES"),
+                new IvParameterSpec(new byte[Aes.BLOCK_SIZE]));
+            ciphers.add(cipher);
+        }
+
+        /* rejected before any unwrap is attempted, on every Cipher */
+        for (Cipher c : ciphers) {
+            for (String alg : new String[] { null, "" }) {
+                try {
+                    c.unwrap(new byte[Aes.BLOCK_SIZE], alg, Cipher.SECRET_KEY);
+                    fail("unwrap() with null or empty algorithm should throw");
+                } catch (NoSuchAlgorithmException e) {
+                    /* expected */
+                }
+            }
+        }
+    }
+
+    @Test
     public void testAesInvalidKeyLengthThrowsInvalidKeyException()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidAlgorithmParameterException {
@@ -10733,6 +10781,22 @@ public class WolfCryptCipherTest {
                 fail(transform + " should reject a 20 byte AES key");
             } catch (InvalidKeyException e) {
                 /* expected */
+            }
+        }
+    }
+
+    @Test
+    public void testTransformationNamesAreCaseInsensitive()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               NoSuchPaddingException {
+
+        for (String name : enabledJCEAlgos) {
+            int blockSize = expectedBlockSizes.get(name);
+            for (String variant : new String[] {
+                    name.toLowerCase(Locale.ROOT),
+                    name.toUpperCase(Locale.ROOT) }) {
+                assertEquals("block size for " + variant, blockSize,
+                    Cipher.getInstance(variant, jceProvider).getBlockSize());
             }
         }
     }

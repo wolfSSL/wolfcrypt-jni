@@ -200,6 +200,14 @@ public class FeatureDetect {
     public static native boolean AesXtsStreamEnabled();
 
     /**
+     * Tests if AES Key Wrap (RFC 3394 / NIST SP 800-38F KW) is compiled
+     * into the native wolfSSL library (HAVE_AES_KEYWRAP).
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean AesKeyWrapEnabled();
+
+    /**
      * Tests if AES-CMAC is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.
