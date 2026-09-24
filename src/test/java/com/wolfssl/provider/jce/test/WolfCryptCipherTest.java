@@ -2272,6 +2272,13 @@ public class WolfCryptCipherTest {
             enc.init(Cipher.ENCRYPT_MODE, key, spec);
             enc.updateAAD(aesGcmVectors[i].getAAD());
 
+            /* With AES-GCM streaming (native WOLFSSL_AESGCM_STREAM), encrypt
+             * update() emits ciphertext incrementally and doFinal() returns
+             * only the tag; without it all output is buffered until doFinal().
+             * Both are valid per the JCE Cipher.update() contract. Decrypt is
+             * never streamed (plaintext withheld until the tag is verified). */
+            boolean gcmStreaming = FeatureDetect.AesGcmStreamEnabled();
+
             /* Expected output is size vOut + vTag.length */
             output = new byte[vOut.length + vTag.length];
 
@@ -2282,8 +2289,7 @@ public class WolfCryptCipherTest {
             for (int j = 0; j < fourByteBlocks; j++) {
                 tmp = enc.update(Arrays.copyOfRange(vIn, inIdx, inIdx + 4));
                 assertNotNull(tmp);
-                /* AES-GCM stream API not supported in JCE yet */
-                assertEquals(0, tmp.length);
+                assertEquals(gcmStreaming ? 4 : 0, tmp.length);
                 System.arraycopy(tmp, 0, output, outIdx, tmp.length);
                 inIdx += 4;
                 outIdx += tmp.length;
@@ -2295,19 +2301,18 @@ public class WolfCryptCipherTest {
                 tmp = enc.update(Arrays.copyOfRange(vIn, inIdx,
                         inIdx + remainingBytes));
                 assertNotNull(tmp);
-                /* AES-GCM stream API not supported in JCE yet */
-                assertEquals(0, tmp.length);
+                assertEquals(gcmStreaming ? remainingBytes : 0, tmp.length);
                 System.arraycopy(tmp, 0, output, outIdx, tmp.length);
                 inIdx += remainingBytes;
                 outIdx += tmp.length;
             }
 
-            /* doFinal() should get tag (or whole ciphertext if AES-GCM
-             * streaming is not enabled at native wolfSSL level) */
+            /* doFinal() returns only the tag when streaming, or the whole
+             * ciphertext + tag when buffered. */
             tmp = enc.doFinal();
             assertNotNull(tmp);
-            /* AES-GCM stream API not supported in JCE yet */
-            assertEquals(tmpOut.length, tmp.length);
+            assertEquals(gcmStreaming ? vTag.length : tmpOut.length,
+                tmp.length);
             System.arraycopy(tmp, 0, output, outIdx, tmp.length);
             outIdx += tmp.length;
 
@@ -2383,8 +2388,9 @@ public class WolfCryptCipherTest {
     }
 
     /*
-     * Test that many small update() calls match a single call. GCM buffers
-     * everything until doFinal(), so this drives buffer growth only.
+     * Test that many small update() calls match a single call. update() may
+     * return ciphertext (streaming GCM) or buffer it until doFinal(), so
+     * compare the concatenation of all output.
      */
     @Test
     public void testAesGcmChunkedUpdateMatchesSingle() throws Exception {
@@ -2419,12 +2425,17 @@ public class WolfCryptCipherTest {
         /* Same plaintext, sent one byte per update() call */
         Cipher chunked = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
         chunked.init(Cipher.ENCRYPT_MODE, key, spec);
+        ByteArrayOutputStream chunkedOut = new ByteArrayOutputStream();
         for (int i = 0; i < plaintext.length; i++) {
-            chunked.update(plaintext, i, 1);
+            byte[] out = chunked.update(plaintext, i, 1);
+            if (out != null) {
+                chunkedOut.write(out);
+            }
         }
+        chunkedOut.write(chunked.doFinal());
 
         assertArrayEquals("Chunked update should match single doFinal",
-            expected, chunked.doFinal());
+            expected, chunkedOut.toByteArray());
     }
 
     /*
@@ -2456,10 +2467,15 @@ public class WolfCryptCipherTest {
         /* Large message fed in chunks, so capacity grows well past the
          * retention limit */
         c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
+        ByteArrayOutputStream largeOut = new ByteArrayOutputStream();
         for (int i = 0; i < large.length; i += 4096) {
-            c.update(large, i, Math.min(4096, large.length - i));
+            byte[] out = c.update(large, i, Math.min(4096, large.length - i));
+            if (out != null) {
+                largeOut.write(out);
+            }
         }
-        byte[] largeCipher = c.doFinal();
+        largeOut.write(c.doFinal());
+        byte[] largeCipher = largeOut.toByteArray();
 
         /* Same instance, smaller message with a different IV */
         iv[0] = (byte)0x01;
@@ -2996,14 +3012,22 @@ public class WolfCryptCipherTest {
             "minus tag length", 10,
             cipher.getOutputSize(10 + TAG_LENGTH_BYTES));
 
-        /* Test ENCRYPT after partial update */
+        /* Test ENCRYPT after partial update. With AES-GCM streaming the 5
+         * bytes are emitted by update() immediately, so getOutputSize() only
+         * covers the remaining input + tag; without streaming they stay
+         * buffered and are included here. Both are the correct size for the
+         * respective native build. */
         byte[] partialInput = new byte[5];
         iv[0] = (byte) 0x05;
         spec = new GCMParameterSpec(TAG_LENGTH_BYTES * 8, iv);
         cipher.init(Cipher.ENCRYPT_MODE, key, spec);
         cipher.update(partialInput); /* Process some data */
+        int expectedSizeAfterUpdate = FeatureDetect.AesGcmStreamEnabled()
+            ? 11 + TAG_LENGTH_BYTES   /* 5 already emitted */
+            : 16 + TAG_LENGTH_BYTES;  /* 5 buffered + 11 input */
         assertEquals("Output size after update should account for remaining " +
-            "input plus tag", 16 + TAG_LENGTH_BYTES, cipher.getOutputSize(11));
+            "input plus tag", expectedSizeAfterUpdate,
+            cipher.getOutputSize(11));
 
         /* Test getOutputSize() before initialization, expect exception */
         Cipher uninitializedCipher = Cipher.getInstance("AES/GCM/NoPadding");
@@ -10069,12 +10093,20 @@ public class WolfCryptCipherTest {
 
             byte[] input = "Test GCM".getBytes();
 
-            /* AES-GCM update() should return empty array (no-op) */
+            /* AES-GCM update() behavior depends on the native build: with
+             * streaming it emits ciphertext incrementally (legal per the JCE
+             * Cipher.update() contract); without it, output is buffered until
+             * doFinal() and update() returns an empty array. */
             byte[] updateResult = cipher.update(input);
             assertNotNull("AES-GCM update should return non-null array",
                 updateResult);
-            assertEquals("AES-GCM update should return empty array", 0,
-                updateResult.length);
+            if (FeatureDetect.AesGcmStreamEnabled()) {
+                assertEquals("AES-GCM streaming update returns ciphertext",
+                    input.length, updateResult.length);
+            } else {
+                assertEquals("AES-GCM buffered update returns empty array",
+                    0, updateResult.length);
+            }
 
             /* All processing should happen in doFinal() */
             byte[] finalResult = cipher.doFinal();

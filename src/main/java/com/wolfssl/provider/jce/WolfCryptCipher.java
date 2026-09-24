@@ -143,6 +143,7 @@ public class WolfCryptCipher extends CipherSpi {
     /* RSA-OAEP parameters */
     private int oaepHashType = 0;
     private int oaepMgf = 0;
+    private OAEPParameterSpec oaepSpec = null;
 
     /* for debug logging */
     private String algString;
@@ -181,8 +182,15 @@ public class WolfCryptCipher extends CipherSpi {
     /* Has update/final been called yet, gates setting of AAD for GCM */
     private boolean operationStarted = false;
 
-    /* Has this Cipher been inintialized? */
+    /* Has this Cipher been initialized? */
     private boolean cipherInitialized = false;
+
+    /* Streaming GCM encrypt state (WOLFSSL_AESGCM_STREAM) */
+    private boolean gcmStreamingActive = false;
+    private boolean gcmAadPassed = false;
+    private long gcmBytesEncrypted = 0L;
+    /* NIST SP 800-38D: max plaintext = (2^32 - 2) * 16 bytes per session */
+    private static final long GCM_MAX_PLAINTEXT_BYTES = 0xFFFFFFFEL * 16L;
 
     /* Buffered data from update calls, only the first bufferedLen bytes
      * are valid. Capacity grows to max(2 * capacity, needed). */
@@ -313,6 +321,8 @@ public class WolfCryptCipher extends CipherSpi {
     private void initOaepParams() {
         this.oaepHashType = WolfCrypt.WC_HASH_TYPE_SHA256;
         this.oaepMgf = Rsa.WC_MGF1SHA1;
+        this.oaepSpec = new OAEPParameterSpec("SHA-256", "MGF1",
+            MGF1ParameterSpec.SHA1, PSource.PSpecified.DEFAULT);
     }
 
     /**
@@ -323,6 +333,8 @@ public class WolfCryptCipher extends CipherSpi {
     private void initOaepParamsSha1() {
         this.oaepHashType = WolfCrypt.WC_HASH_TYPE_SHA;
         this.oaepMgf = Rsa.WC_MGF1SHA1;
+        this.oaepSpec = new OAEPParameterSpec("SHA-1", "MGF1",
+            MGF1ParameterSpec.SHA1, PSource.PSpecified.DEFAULT);
     }
 
     /**
@@ -447,6 +459,9 @@ public class WolfCryptCipher extends CipherSpi {
                     "are not supported");
             }
         }
+
+        /* Store spec for AlgorithmParameters retrieval */
+        this.oaepSpec = spec;
 
         /* Set OAEP hash type */
         this.oaepHashType = hashNameToWolfCryptType(spec.getDigestAlgorithm());
@@ -869,6 +884,13 @@ public class WolfCryptCipher extends CipherSpi {
                 /* ECB mode doesn't have parameters to return */
                 case WC_ECB:
                     break;
+            }
+
+            if (params == null && this.oaepSpec != null) {
+                params = AlgorithmParameters.getInstance("OAEP");
+                if (params != null) {
+                    params.init(this.oaepSpec);
+                }
             }
 
         } catch (NoSuchAlgorithmException |
@@ -1359,6 +1381,17 @@ public class WolfCryptCipher extends CipherSpi {
         this.operationStarted = false;
         this.cipherInitialized = true;
         this.gcmEncryptNeedsReinit = false;
+
+        /* Initialize streaming GCM encrypt if available */
+        this.gcmStreamingActive = false;
+        this.gcmAadPassed = false;
+        this.gcmBytesEncrypted = 0L;
+        if (cipherMode == CipherMode.WC_GCM &&
+            direction == OpMode.WC_ENCRYPT &&
+            FeatureDetect.AesGcmStreamEnabled()) {
+            this.aesGcm.encryptInitStreaming(this.iv);
+            this.gcmStreamingActive = true;
+        }
     }
 
     @Override
@@ -1457,12 +1490,16 @@ public class WolfCryptCipher extends CipherSpi {
         }
 
         /* AES-GCM, AES-CCM, and AES-CTS keep all data buffered until
-         * final() call. wolfJCE does not support streaming GCM/CCM yet.
-         * CTS requires the entire message for ciphertext stealing. */
+         * final() call. Streaming GCM encrypt bypasses this. CCM and CTS
+         * always buffer (CCM requires total length upfront, CTS needs full
+         * message for ciphertext stealing). */
         if (cipherType == CipherType.WC_AES &&
             (cipherMode == CipherMode.WC_GCM ||
              cipherMode == CipherMode.WC_CCM ||
              cipherMode == CipherMode.WC_CTS)) {
+            if (gcmStreamingActive) {
+                return false;
+            }
             return true;
         }
 
@@ -1517,6 +1554,35 @@ public class WolfCryptCipher extends CipherSpi {
         }
 
         this.operationStarted = true;
+
+        /* Streaming GCM encrypt: process data immediately, skip buffering */
+        if (gcmStreamingActive) {
+            if (len > 0 && gcmBytesEncrypted + len > GCM_MAX_PLAINTEXT_BYTES) {
+                throw new IllegalStateException(
+                    "AES-GCM plaintext exceeds NIST SP 800-38D limit of " +
+                    GCM_MAX_PLAINTEXT_BYTES + " bytes");
+            }
+            byte[] aadForUpdate = null;
+            if (!gcmAadPassed && this.aadStream != null) {
+                aadForUpdate = this.aadStream.toByteArray();
+            }
+            gcmAadPassed = true;
+            byte[] inputSlice = (len > 0) ?
+                Arrays.copyOfRange(
+                    input, inputOffset, inputOffset + len) :
+                null;
+            byte[] ct;
+            try {
+                ct = this.aesGcm.encryptUpdateStreaming(inputSlice,
+                    aadForUpdate);
+            } finally {
+                zeroArray(inputSlice);
+            }
+            if (len > 0) {
+                gcmBytesEncrypted += len;
+            }
+            return (ct != null) ? ct : new byte[0];
+        }
 
         if ((bufferedLen + len) == 0) {
             /* no data to process */
@@ -1716,6 +1782,24 @@ public class WolfCryptCipher extends CipherSpi {
             this.operationStarted = false;
             this.cipherInitialized = true;
 
+            /* Streaming GCM may have already released ciphertext under this
+             * key/IV via update(), even if final() then failed. Require
+             * re-init so the same key/IV cannot encrypt again. */
+            if (this.gcmStreamingActive && this.gcmAadPassed) {
+                this.gcmEncryptNeedsReinit = true;
+            }
+
+            /* Re-initialize streaming GCM encrypt if available */
+            this.gcmStreamingActive = false;
+            this.gcmAadPassed = false;
+            this.gcmBytesEncrypted = 0L;
+            if (cipherMode == CipherMode.WC_GCM &&
+                direction == OpMode.WC_ENCRYPT &&
+                FeatureDetect.AesGcmStreamEnabled()) {
+                this.aesGcm.encryptInitStreaming(this.iv);
+                this.gcmStreamingActive = true;
+            }
+
         } catch (InvalidKeyException e) {
             throw new RuntimeException(
                 "Failed to reset cipher after final(): " + e.getMessage(), e);
@@ -1827,20 +1911,60 @@ public class WolfCryptCipher extends CipherSpi {
                                     "GCM encryption");
                             }
 
-                            byte[] tag = new byte[this.gcmTagLen];
-                            tmpOut = this.aesGcm.encrypt(tmpIn, this.iv, tag,
+                            if (gcmStreamingActive) {
+                                /* Streaming path: prior data was encrypted in
+                                 * update calls. Handle remaining plaintext
+                                 * and generate the authentication tag. */
+                                if (!gcmAadPassed && aad != null) {
+                                    this.aesGcm.encryptUpdateStreaming(null,
                                         aad);
+                                }
+                                gcmAadPassed = true;
+                                byte[] finalCt = null;
+                                if (tmpIn.length > 0) {
+                                    if (gcmBytesEncrypted + tmpIn.length >
+                                        GCM_MAX_PLAINTEXT_BYTES) {
+                                        throw new IllegalBlockSizeException(
+                                            "AES-GCM plaintext exceeds NIST " +
+                                            "SP 800-38D limit of " +
+                                            GCM_MAX_PLAINTEXT_BYTES +
+                                            " bytes");
+                                    }
+                                    finalCt =
+                                        this.aesGcm.encryptUpdateStreaming(
+                                            tmpIn, null);
+                                    gcmBytesEncrypted += tmpIn.length;
+                                }
+                                byte[] tag = this.aesGcm.encryptFinalStreaming(
+                                    this.gcmTagLen);
 
-                            this.gcmEncryptNeedsReinit = true;
+                                this.gcmEncryptNeedsReinit = true;
 
-                            /* Concatenate auth tag to end of ciphertext */
-                            byte[] totalOut =
-                                new byte[tmpOut.length + tag.length];
-                            System.arraycopy(tmpOut, 0, totalOut, 0,
-                                tmpOut.length);
-                            System.arraycopy(tag, 0, totalOut, tmpOut.length,
-                                             tag.length);
-                            tmpOut = totalOut;
+                                int ctLen =
+                                    (finalCt != null) ? finalCt.length : 0;
+                                tmpOut = new byte[ctLen + tag.length];
+                                if (ctLen > 0) {
+                                    System.arraycopy(finalCt, 0, tmpOut, 0,
+                                        ctLen);
+                                }
+                                System.arraycopy(tag, 0, tmpOut, ctLen,
+                                    tag.length);
+                            } else {
+                                byte[] tag = new byte[this.gcmTagLen];
+                                tmpOut = this.aesGcm.encrypt(tmpIn, this.iv,
+                                            tag, aad);
+
+                                this.gcmEncryptNeedsReinit = true;
+
+                                /* Concatenate auth tag to end of ciphertext */
+                                byte[] totalOut =
+                                    new byte[tmpOut.length + tag.length];
+                                System.arraycopy(tmpOut, 0, totalOut, 0,
+                                    tmpOut.length);
+                                System.arraycopy(tag, 0, totalOut,
+                                    tmpOut.length, tag.length);
+                                tmpOut = totalOut;
+                            }
                         }
                         else {
                             /* Case where input is only the authentication tag,
