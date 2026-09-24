@@ -106,6 +106,62 @@ lmsCertList=(
     "lms/bc_lms_native_bc_root.der"
 )
 
+# Ed25519 / Ed448 certs + PKCS#8 keys (RFC 8410), used by the wolfJCE WKS
+# KeyStore tests and BuildEdDSAKeystores.java. Copied from native wolfSSL
+# certs/ed25519/ and certs/ed448/ when present.
+ed25519CertList=(
+    "ed25519/ca-ed25519.der"
+    "ed25519/ca-ed25519.pem"
+    "ed25519/ca-ed25519-key.der"
+    "ed25519/ca-ed25519-key.pem"
+    "ed25519/ca-ed25519-priv.der"
+    "ed25519/ca-ed25519-priv.pem"
+    "ed25519/client-ed25519.der"
+    "ed25519/client-ed25519.pem"
+    "ed25519/client-ed25519-key.der"
+    "ed25519/client-ed25519-key.pem"
+    "ed25519/client-ed25519-priv.der"
+    "ed25519/client-ed25519-priv.pem"
+    "ed25519/root-ed25519.der"
+    "ed25519/root-ed25519.pem"
+    "ed25519/root-ed25519-key.der"
+    "ed25519/root-ed25519-key.pem"
+    "ed25519/root-ed25519-priv.der"
+    "ed25519/root-ed25519-priv.pem"
+    "ed25519/server-ed25519.der"
+    "ed25519/server-ed25519.pem"
+    "ed25519/server-ed25519-key.der"
+    "ed25519/server-ed25519-key.pem"
+    "ed25519/server-ed25519-priv.der"
+    "ed25519/server-ed25519-priv.pem"
+)
+ed448CertList=(
+    "ed448/ca-ed448.der"
+    "ed448/ca-ed448.pem"
+    "ed448/ca-ed448-key.der"
+    "ed448/ca-ed448-key.pem"
+    "ed448/ca-ed448-priv.der"
+    "ed448/ca-ed448-priv.pem"
+    "ed448/client-ed448.der"
+    "ed448/client-ed448.pem"
+    "ed448/client-ed448-key.der"
+    "ed448/client-ed448-key.pem"
+    "ed448/client-ed448-priv.der"
+    "ed448/client-ed448-priv.pem"
+    "ed448/root-ed448.der"
+    "ed448/root-ed448.pem"
+    "ed448/root-ed448-key.der"
+    "ed448/root-ed448-key.pem"
+    "ed448/root-ed448-priv.der"
+    "ed448/root-ed448-priv.pem"
+    "ed448/server-ed448.der"
+    "ed448/server-ed448.pem"
+    "ed448/server-ed448-key.der"
+    "ed448/server-ed448-key.pem"
+    "ed448/server-ed448-priv.der"
+    "ed448/server-ed448-priv.pem"
+)
+
 # SLH-DSA (FIPS 205) self-signed root certs + private keys, used by the
 # wolfJCE WKS KeyStore tests. Copied from native wolfSSL certs/slhdsa/ when
 # present.
@@ -189,6 +245,32 @@ else
     printf "certs (provided wolfSSL predates them), keeping existing\n"
     printf "local copies\n"
 fi
+
+for curve in ed25519 ed448; do
+    if [ "$curve" = "ed25519" ]; then
+        edList=("${ed25519CertList[@]}")
+    else
+        edList=("${ed448CertList[@]}")
+    fi
+    if [ -d "$CERT_LOCATION/$curve" ]; then
+        mkdir -p "./$curve"
+        for i in ${!edList[@]};
+        do
+            cp "$CERT_LOCATION/${edList[$i]}" "./${edList[$i]}"
+            if [ $? -ne 0 ]; then
+                printf 'Warning: skipped missing %s cert: %s\n' "$curve" \
+                    "${edList[$i]}"
+            else
+                printf 'Updating: %s\n' "${edList[$i]}"
+            fi
+        done
+    else
+        printf 'Notice: %s/%s not found, skipping %s\n' "$CERT_LOCATION" \
+            "$curve" "$curve"
+        printf "certs (provided wolfSSL predates them), keeping existing\n"
+        printf "local copies\n"
+    fi
+done
 
 # Generate ca-keyPkcs8.der, used by examples/X509CertificateGeneration.java
 openssl pkcs8 -topk8 -inform DER -outform DER -in ca-key.der -out ca-keyPkcs8.der -nocrypt

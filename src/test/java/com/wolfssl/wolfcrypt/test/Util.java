@@ -21,14 +21,27 @@
 
 package com.wolfssl.wolfcrypt.test;
 
+import java.security.CodeSource;
+
 public class Util {
-    public static synchronized byte[] h2b(String s) {
+
+    public static byte[] h2b(String s) {
+
         int len = s.length();
+
+        if ((len % 2) != 0) {
+            throw new IllegalArgumentException("odd length hex string");
+        }
         byte[] data = new byte[len / 2];
 
         for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4) + Character
-                    .digit(s.charAt(i + 1), 16));
+            int hi = Character.digit(s.charAt(i), 16);
+            int lo = Character.digit(s.charAt(i + 1), 16);
+            if (hi < 0 || lo < 0) {
+                throw new IllegalArgumentException(
+                    "invalid hex character at index " + i);
+            }
+            data[i / 2] = (byte) ((hi << 4) + lo);
         }
 
         return data;
@@ -36,7 +49,7 @@ public class Util {
 
     final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
 
-    public static synchronized String b2h(byte[] bytes) {
+    public static String b2h(byte[] bytes) {
         char[] hexChars = new char[bytes.length * 2];
 
         for (int j = 0; j < bytes.length; j++) {
@@ -47,4 +60,33 @@ public class Util {
 
         return new String(hexChars);
     }
+
+    /* True when cls was loaded from a JAR rather than a class directory.
+     * Multi-release (META-INF/versions) resolution only applies to JARs. */
+    public static boolean isLoadedFromJar(Class<?> cls) {
+        CodeSource cs = cls.getProtectionDomain().getCodeSource();
+        return cs != null && cs.getLocation() != null &&
+            cs.getLocation().getPath().toLowerCase().endsWith(".jar");
+    }
+
+    /* True when cls comes from a JAR that also ships the given versioned
+     * entry, i.e. the multi-release overlay is really in effect. */
+    public static boolean multiReleaseEntryActive(Class<?> cls,
+        String entry) {
+        ClassLoader cl = cls.getClassLoader();
+        if (cl == null) {
+            /* bootstrap loaded class */
+            cl = ClassLoader.getSystemClassLoader();
+        }
+        return isLoadedFromJar(cls) && cl.getResource(entry) != null;
+    }
+
+    /* ASN.1 tags, copies of the package-private set in WolfCryptSpkiUtil */
+    public static final int TAG_SEQUENCE     = 0x30;
+    public static final int TAG_OCTET_STRING = 0x04;
+    public static final int TAG_NULL         = 0x05;
+    /* RFC 5958 OneAsymmetricKey context-specific tags */
+    public static final int TAG_ATTRIBUTES   = 0xa0; /* attributes [0] */
+    public static final int TAG_PUBLIC_KEY   = 0x81; /* publicKey [1] */
+
 }

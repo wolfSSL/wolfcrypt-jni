@@ -11,8 +11,34 @@ extern "C" {
 #define com_wolfssl_wolfcrypt_Ed25519_NULL 0LL
 #undef com_wolfssl_wolfcrypt_Ed25519_ED25519_KEY_SIZE
 #define com_wolfssl_wolfcrypt_Ed25519_ED25519_KEY_SIZE 32L
+#undef com_wolfssl_wolfcrypt_Ed25519_ED25519_PUB_KEY_SIZE
+#define com_wolfssl_wolfcrypt_Ed25519_ED25519_PUB_KEY_SIZE 32L
+#undef com_wolfssl_wolfcrypt_Ed25519_ED25519_PRV_KEY_SIZE
+#define com_wolfssl_wolfcrypt_Ed25519_ED25519_PRV_KEY_SIZE 64L
 #undef com_wolfssl_wolfcrypt_Ed25519_ED25519_SIG_SIZE
 #define com_wolfssl_wolfcrypt_Ed25519_ED25519_SIG_SIZE 64L
+#undef com_wolfssl_wolfcrypt_Ed25519_ED25519_PREHASH_SIZE
+#define com_wolfssl_wolfcrypt_Ed25519_ED25519_PREHASH_SIZE 64L
+#undef com_wolfssl_wolfcrypt_Ed25519_ED25519_MAX_CONTEXT_LEN
+#define com_wolfssl_wolfcrypt_Ed25519_ED25519_MAX_CONTEXT_LEN 255L
+#undef com_wolfssl_wolfcrypt_Ed25519_ED25519_TYPE_PURE
+#define com_wolfssl_wolfcrypt_Ed25519_ED25519_TYPE_PURE -1L
+#undef com_wolfssl_wolfcrypt_Ed25519_ED25519_TYPE_CTX
+#define com_wolfssl_wolfcrypt_Ed25519_ED25519_TYPE_CTX 0L
+#undef com_wolfssl_wolfcrypt_Ed25519_ED25519_TYPE_PH
+#define com_wolfssl_wolfcrypt_Ed25519_ED25519_TYPE_PH 1L
+#undef com_wolfssl_wolfcrypt_Ed25519_INVALID_DEVID
+#define com_wolfssl_wolfcrypt_Ed25519_INVALID_DEVID -2L
+#undef com_wolfssl_wolfcrypt_Ed25519_FN_MSG
+#define com_wolfssl_wolfcrypt_Ed25519_FN_MSG 0L
+#undef com_wolfssl_wolfcrypt_Ed25519_FN_CTX_MSG
+#define com_wolfssl_wolfcrypt_Ed25519_FN_CTX_MSG 1L
+#undef com_wolfssl_wolfcrypt_Ed25519_FN_PH_MSG
+#define com_wolfssl_wolfcrypt_Ed25519_FN_PH_MSG 2L
+#undef com_wolfssl_wolfcrypt_Ed25519_FN_PH_HASH
+#define com_wolfssl_wolfcrypt_Ed25519_FN_PH_HASH 3L
+#undef com_wolfssl_wolfcrypt_Ed25519_FN_MSG_EX
+#define com_wolfssl_wolfcrypt_Ed25519_FN_MSG_EX 4L
 /*
  * Class:     com_wolfssl_wolfcrypt_Ed25519
  * Method:    mallocNativeStruct
@@ -28,6 +54,14 @@ JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_mallocNativeStruct
  */
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1init
   (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_init_ex
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1init_1ex
+  (JNIEnv *, jobject, jint);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Ed25519
@@ -47,10 +81,66 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1make_1key
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_make_public
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1make_1public
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
  * Method:    wc_ed25519_check_key
  * Signature: ()V
  */
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1check_1key
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    ed25519_key_privKeySet
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_ed25519_1key_1privKeySet
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    ed25519_key_pubKeySet
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_ed25519_1key_1pubKeySet
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_size
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1size
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_priv_size
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1priv_1size
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_pub_size
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1pub_1size
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_sig_size
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1sig_1size
   (JNIEnv *, jobject);
 
 /*
@@ -60,6 +150,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1check_1ke
  */
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1private
   (JNIEnv *, jobject, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_import_private_key_ex
+ * Signature: ([B[BZ)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1private_1key_1ex
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jboolean);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Ed25519
@@ -79,19 +177,11 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1p
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Ed25519
- * Method:    wc_ed25519_sign_msg
- * Signature: ([B)[B
+ * Method:    wc_ed25519_import_public_ex
+ * Signature: ([BZ)V
  */
-JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1sign_1msg
-  (JNIEnv *, jobject, jbyteArray);
-
-/*
- * Class:     com_wolfssl_wolfcrypt_Ed25519
- * Method:    wc_ed25519_verify_msg
- * Signature: ([B[B)Z
- */
-JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1verify_1msg
-  (JNIEnv *, jobject, jbyteArray, jbyteArray);
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1import_1public_1ex
+  (JNIEnv *, jobject, jbyteArray, jboolean);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Ed25519
@@ -115,6 +205,158 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1exp
  * Signature: ()[B
  */
 JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1public
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_export_key
+ * Signature: ()[[B
+ */
+JNIEXPORT jobjectArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1key
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_sign_msg
+ * Signature: ([B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1sign_1msg
+  (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519ctx_sign_msg
+ * Signature: ([B[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519ctx_1sign_1msg
+  (JNIEnv *, jobject, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519ph_sign_msg
+ * Signature: ([B[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519ph_1sign_1msg
+  (JNIEnv *, jobject, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519ph_sign_hash
+ * Signature: ([B[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519ph_1sign_1hash
+  (JNIEnv *, jobject, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_sign_msg_ex
+ * Signature: ([BI[B)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1sign_1msg_1ex
+  (JNIEnv *, jobject, jbyteArray, jint, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_verify_msg
+ * Signature: ([B[B)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1verify_1msg
+  (JNIEnv *, jobject, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519ctx_verify_msg
+ * Signature: ([B[B[B)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519ctx_1verify_1msg
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519ph_verify_msg
+ * Signature: ([B[B[B)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519ph_1verify_1msg
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519ph_verify_hash
+ * Signature: ([B[B[B)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519ph_1verify_1hash
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_verify_msg_ex
+ * Signature: ([B[BI[B)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1verify_1msg_1ex
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jint, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_verify_msg_init
+ * Signature: ([BI[B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1verify_1msg_1init
+  (JNIEnv *, jobject, jbyteArray, jint, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_verify_msg_update
+ * Signature: ([BII)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1verify_1msg_1update
+  (JNIEnv *, jobject, jbyteArray, jint, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_ed25519_verify_msg_final
+ * Signature: ([B)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1verify_1msg_1final
+  (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_Ed25519PublicKeyDecode
+ * Signature: ([B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1Ed25519PublicKeyDecode
+  (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_Ed25519PrivateKeyDecode
+ * Signature: ([B)V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1Ed25519PrivateKeyDecode
+  (JNIEnv *, jobject, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_Ed25519PublicKeyToDer
+ * Signature: (Z)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1Ed25519PublicKeyToDer
+  (JNIEnv *, jobject, jboolean);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_Ed25519PrivateKeyToDer
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1Ed25519PrivateKeyToDer
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Ed25519
+ * Method:    wc_Ed25519KeyToDer
+ * Signature: ()[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Ed25519_wc_1Ed25519KeyToDer
   (JNIEnv *, jobject);
 
 #ifdef __cplusplus
