@@ -209,7 +209,7 @@ public class WolfCryptECKeyFactory extends KeyFactorySpi {
     }
 
     /**
-     * Private helper method for generating ECPrivateKey from
+     * Private helper method for generating an ECPrivateKey from a
      * PKCS8EncodedKeySpec.
      *
      * @param keySpec the PKCS8EncodedKeySpec containing the private key
@@ -222,25 +222,41 @@ public class WolfCryptECKeyFactory extends KeyFactorySpi {
         throws InvalidKeySpecException {
 
         byte[] pkcs8Der = null;
+
+        if (keySpec == null) {
+            throw new InvalidKeySpecException(
+                "PKCS8EncodedKeySpec cannot be null");
+        }
+
+        /* Get DER-encoded PKCS#8 data from spec */
+        pkcs8Der = keySpec.getEncoded();
+        if (pkcs8Der == null) {
+            throw new InvalidKeySpecException(
+                "PKCS8EncodedKeySpec contains null encoded key");
+        }
+
+        return generatePrivateFromPKCS8Der(pkcs8Der);
+    }
+
+    /**
+     * Helper for generating ECPrivateKey from PKCS#8 DER.
+     *
+     * @param pkcs8Der PKCS#8 DER private key, zeroized before return
+     *
+     * @return the generated ECPrivateKey
+     *
+     * @throws InvalidKeySpecException if the DER is not a valid EC key
+     */
+    private PrivateKey generatePrivateFromPKCS8Der(byte[] pkcs8Der)
+        throws InvalidKeySpecException {
+
         byte[] privDer = null;
         Ecc ecc = null;
 
         try {
-            if (keySpec == null) {
-                throw new InvalidKeySpecException(
-                    "PKCS8EncodedKeySpec cannot be null");
-            }
-
-            /* Get DER-encoded PKCS#8 data from spec */
-            pkcs8Der = keySpec.getEncoded();
-            if (pkcs8Der == null) {
-                throw new InvalidKeySpecException(
-                    "PKCS8EncodedKeySpec contains null encoded key");
-            }
-
             log("decoding PKCS8 private key, length: " + pkcs8Der.length);
 
-            /* Read into Ecc object, validates PKCS#8 structure via wolfCrypt */
+            /* Read into Ecc, validates PKCS#8 structure */
             ecc = new Ecc();
             ecc.privateKeyDecode(pkcs8Der);
 
@@ -263,9 +279,7 @@ public class WolfCryptECKeyFactory extends KeyFactorySpi {
             if (ecc != null) {
                 ecc.releaseNativeStruct();
             }
-            if (pkcs8Der != null) {
-                Arrays.fill(pkcs8Der, (byte)0);
-            }
+            Arrays.fill(pkcs8Der, (byte)0);
             if (privDer != null) {
                 Arrays.fill(privDer, (byte)0);
             }
@@ -756,10 +770,7 @@ public class WolfCryptECKeyFactory extends KeyFactorySpi {
                     "ECPrivateKey.getEncoded() returned null");
             }
 
-            PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
-            Arrays.fill(encoded, (byte)0);
-
-            return engineGeneratePrivate(keySpec);
+            return generatePrivateFromPKCS8Der(encoded);
 
         } catch (InvalidKeySpecException e) {
             throw new InvalidKeyException(
