@@ -30,6 +30,8 @@ import org.junit.runner.Description;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.math.BigInteger;
+import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -38,6 +40,7 @@ import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
+import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
@@ -49,6 +52,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 
 import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -518,6 +522,81 @@ public class WolfCryptRSAKeyFactoryTest {
 
         /* Verify provider is wolfJCE */
         assertEquals("wolfJCE", kf.getProvider().getName());
+    }
+
+    @Test
+    public void testForeignPrivateKeyTranslation() throws Exception {
+
+        if (!rsaKeyFactoryAvailable()) {
+            return;
+        }
+
+        KeyFactory kf = KeyFactory.getInstance("RSA", "wolfJCE");
+        byte[] msg = "foreign RSA key translation".getBytes();
+
+        if (Security.getProvider("SunRsaSign") != null) {
+            KeyPairGenerator kpg =
+                KeyPairGenerator.getInstance("RSA", "SunRsaSign");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.generateKeyPair();
+
+            RSAPrivateKey priv = (RSAPrivateKey)kf.translateKey(
+                kp.getPrivate());
+            assertArrayEquals(kp.getPrivate().getEncoded(),
+                priv.getEncoded());
+
+            Signature signer = Signature.getInstance("SHA256withRSA",
+                "wolfJCE");
+            signer.initSign(priv);
+            signer.update(msg);
+            Signature verifier = Signature.getInstance("SHA256withRSA",
+                "SunRsaSign");
+            verifier.initVerify(kp.getPublic());
+            verifier.update(msg);
+            assertTrue(verifier.verify(signer.sign()));
+        }
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", "wolfJCE");
+        kpg.initialize(2048);
+        RSAPrivateKey src = (RSAPrivateKey)kpg.generateKeyPair().getPrivate();
+
+        String[] names = {"null key", "AES key", "null encoding",
+            "invalid encoding"};
+        Key[] bad = {null, new SecretKeySpec(new byte[16], "AES"),
+            foreignRSAPrivateKey(src, null),
+            foreignRSAPrivateKey(src, new byte[] {1, 2, 3})};
+
+        for (int i = 0; i < bad.length; i++) {
+            try {
+                kf.translateKey(bad[i]);
+                fail("translateKey accepted " + names[i]);
+            } catch (InvalidKeyException e) {
+                /* expected */
+            }
+        }
+    }
+
+    private static RSAPrivateKey foreignRSAPrivateKey(final RSAPrivateKey src,
+        final byte[] encoded) {
+
+        return new RSAPrivateKey() {
+            private static final long serialVersionUID = 1L;
+            public BigInteger getModulus() {
+                return src.getModulus();
+            }
+            public BigInteger getPrivateExponent() {
+                return src.getPrivateExponent();
+            }
+            public String getAlgorithm() {
+                return "RSA";
+            }
+            public String getFormat() {
+                return "PKCS#8";
+            }
+            public byte[] getEncoded() {
+                return encoded;
+            }
+        };
     }
 
     @Test
