@@ -348,7 +348,7 @@ public class WolfCryptPKIXCertPathBuilderTest {
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
-    /* Rule to check if CertPathBuilder is supported (requires wolfSSL 5.8.0+),
+    /* Rule to check if CertPathBuilder is supported (requires wolfSSL 5.9.2+),
      * skips tests if not. */
     @Rule(order = Integer.MIN_VALUE + 1)
     public TestRule certPathBuilderSupported = new TestRule() {
@@ -357,7 +357,7 @@ public class WolfCryptPKIXCertPathBuilderTest {
             return new Statement() {
                 @Override
                 public void evaluate() throws Throwable {
-                    Assume.assumeTrue("CertPathBuilder requires wolfSSL 5.8.0+",
+                    Assume.assumeTrue("CertPathBuilder requires wolfSSL 5.9.2+",
                         WolfSSLX509StoreCtx.isSupported());
                     base.evaluate();
                 }

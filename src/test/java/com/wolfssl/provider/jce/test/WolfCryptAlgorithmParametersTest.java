@@ -29,6 +29,7 @@ import org.junit.runner.Description;
 import org.junit.Test;
 import org.junit.BeforeClass;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.Security;
@@ -642,10 +643,10 @@ public class WolfCryptAlgorithmParametersTest {
             return;
         }
 
-        /* Test multiple round trips: spec -> params -> encoded ->
-         * params -> spec.
-         * NOTE: The 'l' parameter is not preserved through encoding/decoding
-         * since standard DH ASN.1 encoding only includes p and g. */
+        /* Test multiple round trips: spec->params->encoded->params->spec.
+         * This spec has no private-value length, so only p and g are encoded.
+         * Preservation of a nonzero 'l' is covered by
+         * testDHParametersEncodingPreservesL. */
         BigInteger p = new BigInteger(
             "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1" +
             "29024E088A67CC74020BBEA63B139B22514A08798E3404DD" +
@@ -690,6 +691,201 @@ public class WolfCryptAlgorithmParametersTest {
 
         /* Verify encodings are identical */
         assertTrue(Arrays.equals(encoded1, encoded2));
+    }
+
+    @Test
+    public void testDHParametersEncodingPreservesL()
+        throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
+        BigInteger p = new BigInteger(
+            "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1" +
+            "29024E088A67CC74020BBEA63B139B22514A08798E3404DD" +
+            "EF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245" +
+            "E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED" +
+            "EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3D" +
+            "C2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F" +
+            "83655D23DCA3AD961C62F356208552BB9ED529077096966D" +
+            "670C354E4ABC9804F1746C08CA18217C32905E462E36CE3B" +
+            "E39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9" +
+            "DE2BCBF6955817183995497CEA956AE515D2261898FA0510" +
+            "15728E5A8AACAA68FFFFFFFFFFFFFFFF", 16);
+        BigInteger g = BigInteger.valueOf(2);
+        int l = 256;
+
+        /* A nonzero private-value length must survive encode->decode as the
+         * optional third PKCS#3 INTEGER, otherwise the params change on
+         * round trip. */
+        DHParameterSpec spec = new DHParameterSpec(p, g, l);
+
+        AlgorithmParameters params1 =
+            AlgorithmParameters.getInstance("DH", "wolfJCE");
+        params1.init(spec);
+        byte[] encoded = params1.getEncoded();
+
+        AlgorithmParameters params2 =
+            AlgorithmParameters.getInstance("DH", "wolfJCE");
+        params2.init(encoded);
+
+        DHParameterSpec decodedSpec =
+            params2.getParameterSpec(DHParameterSpec.class);
+        assertEquals(p, decodedSpec.getP());
+        assertEquals(g, decodedSpec.getG());
+        assertEquals(l, decodedSpec.getL());
+
+        /* Re-encoding the decoded parameters must reproduce identical DER */
+        assertTrue(Arrays.equals(encoded, params2.getEncoded()));
+
+        /* A spec with l == 0 must not emit the optional INTEGER, so it stays
+         * shorter than the same p and g with a nonzero l */
+        AlgorithmParameters paramsNoL =
+            AlgorithmParameters.getInstance("DH", "wolfJCE");
+        paramsNoL.init(new DHParameterSpec(p, g));
+        assertTrue("Encoding with l should be longer than without",
+            encoded.length > paramsNoL.getEncoded().length);
+    }
+
+    @Test
+    public void testDHParametersInitRejectsTrailingData()
+        throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
+        BigInteger p = new BigInteger(
+            "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1" +
+            "29024E088A67CC74020BBEA63B139B22514A08798E3404DD" +
+            "EF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245" +
+            "E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED" +
+            "EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3D" +
+            "C2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F" +
+            "83655D23DCA3AD961C62F356208552BB9ED529077096966D" +
+            "670C354E4ABC9804F1746C08CA18217C32905E462E36CE3B" +
+            "E39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9" +
+            "DE2BCBF6955817183995497CEA956AE515D2261898FA0510" +
+            "15728E5A8AACAA68FFFFFFFFFFFFFFFF", 16);
+        BigInteger g = BigInteger.valueOf(2);
+
+        AlgorithmParameters params1 =
+            AlgorithmParameters.getInstance("DH", "wolfJCE");
+        params1.init(new DHParameterSpec(p, g));
+        byte[] encoded = params1.getEncoded();
+
+        /* Append a trailing byte after the declared SEQUENCE */
+        byte[] withTrailing = Arrays.copyOf(encoded, encoded.length + 1);
+
+        AlgorithmParameters params2 =
+            AlgorithmParameters.getInstance("DH", "wolfJCE");
+        try {
+            params2.init(withTrailing);
+            fail("AlgorithmParameters.init should reject trailing data " +
+                 "after the DH SEQUENCE");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testDHParametersInitRejectsNonIntegerThirdElement()
+        throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
+        /* SEQUENCE { INTEGER 5, INTEGER 2, OCTET STRING } - the optional
+         * third element must be an INTEGER (0x02), an OCTET STRING (0x04)
+         * tag must be rejected */
+        byte[] der = new byte[] {
+            0x30, 0x09,
+            0x02, 0x01, 0x05,
+            0x02, 0x01, 0x02,
+            0x04, 0x01, 0x08
+        };
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("DH", "wolfJCE");
+        try {
+            params.init(der);
+            fail("init should reject a non-INTEGER third element");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testDHParametersInitRejectsOversizedPrivateValueLength()
+        throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
+        /* SEQUENCE { INTEGER 5, INTEGER 2, INTEGER (32-byte value) }. A
+         * 32-byte third INTEGER does not fit in a Java int, so it must be
+         * rejected rather than silently truncated. */
+        ByteArrayOutputStream contents = new ByteArrayOutputStream();
+        contents.write(new byte[] { 0x02, 0x01, 0x05 }); /* p = 5 */
+        contents.write(new byte[] { 0x02, 0x01, 0x02 }); /* g = 2 */
+        contents.write(0x02);                            /* INTEGER tag */
+        contents.write(0x20);                            /* length 32 */
+        byte[] big = new byte[32];
+        Arrays.fill(big, (byte) 0x01);
+        contents.write(big);
+
+        byte[] body = contents.toByteArray();
+        ByteArrayOutputStream der = new ByteArrayOutputStream();
+        der.write(0x30);
+        der.write(body.length);
+        der.write(body);
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("DH", "wolfJCE");
+        try {
+            params.init(der.toByteArray());
+            fail("init should reject a private-value length that overflows " +
+                 "a Java int");
+        } catch (IOException e) {
+            /* expected */
+        }
+    }
+
+    @Test
+    public void testDHParametersInitRejectsFourthElement()
+        throws Exception {
+
+        /* skip test if DH is not compiled in native wolfSSL */
+        if (!FeatureDetect.DhEnabled()) {
+            return;
+        }
+
+        /* SEQUENCE { INTEGER 5, INTEGER 2, INTEGER 8, INTEGER 9 }. PKCS#3
+         * defines at most three elements, so a fourth element is trailing
+         * data inside the SEQUENCE and must be rejected. */
+        byte[] der = new byte[] {
+            0x30, 0x0C,
+            0x02, 0x01, 0x05,
+            0x02, 0x01, 0x02,
+            0x02, 0x01, 0x08,
+            0x02, 0x01, 0x09
+        };
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("DH", "wolfJCE");
+        try {
+            params.init(der);
+            fail("init should reject a fourth element inside the SEQUENCE");
+        } catch (IOException e) {
+            /* expected */
+        }
     }
 
     @Test
