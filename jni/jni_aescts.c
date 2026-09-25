@@ -48,7 +48,6 @@ typedef struct {
     byte iv[AES_BLOCK_SIZE];
 } AesCtsCtx;
 
-
 #endif /* OPENSSL_EXTRA && !NO_AES && HAVE_CTS */
 
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_AesCts_mallocNativeStruct_1internal
@@ -212,9 +211,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
 
         LogStr("update called: ctx=%p, opmode=%d, length=%d\n",
             ctx, opmode, length);
-        LogStr("Input plaintext:\n");
-        LogHex((byte*)(input + offset), 0, length);
-
         if (length == AES_BLOCK_SIZE) {
             /* RFC 3962/8009: Special case for exactly one block.
              * CTS reduces to plain CBC encryption - no stealing needed.
@@ -244,9 +240,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
                 iv, (cbc128_f)AES_cbc_encrypt);
         }
 
-        LogStr("Output ciphertext:\n");
-        LogHex((byte*)(output + outputOffset), 0, (outLen > 0) ? outLen : 0);
-
         if (outLen == 0) {
             /* CTS functions return 0 on error */
             ret = BAD_FUNC_ARG;
@@ -257,13 +250,6 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesCts_native_1update_1interna
 
         LogStr("CTS operation (ctx=%p, mode=%d, len=%d) = %d\n",
             ctx, opmode, length, ret);
-    }
-
-    if (input != NULL && output != NULL) {
-        LogStr("input[%u]: [%p]\n", (word32)length, input + offset);
-        LogHex((byte*) input, offset, length);
-        LogStr("output[%u]: [%p]\n", (word32)length, output + outputOffset);
-        LogHex((byte*) output, outputOffset, length);
     }
 
     releaseByteArray(env, input_object, input, JNI_ABORT);

@@ -33,7 +33,6 @@
 #include <wolfcrypt_jni_error.h>
 #include <wolfcrypt_jni_NativeStruct.h>
 
-
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
@@ -148,7 +147,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock__Ljava_ni
     }
 
     LogStr("wc_RNG_GenerateBlock(rng=%p, buffer, size) = %d\n", rng, ret);
-    if (buffer != NULL) {
+    if (ret == 0) {
         LogStr("output[%u]: [%p]\n", (word32)size, buffer + position);
         LogHex(buffer, position, size);
     }
@@ -191,7 +190,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Rng_rngGenerateBlock___3BII(
     }
 
     LogStr("wc_RNG_GenerateBlock(rng=%p, buffer, length) = %d\n", rng, ret);
-    if (buffer != NULL) {
+    if (ret == 0) {
         LogStr("output[%u]: [%p]\n", (word32)length, buffer + offset);
         LogHex(buffer, offset, length);
     }

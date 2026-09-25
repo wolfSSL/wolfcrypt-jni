@@ -287,7 +287,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate___3BII
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_HmacUpdate(hmac=%p, data, length) = %d\n", hmac, ret);
-    if (data != NULL) {
+    if (ret == 0) {
         LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
         LogHex((byte*) data, offset, length);
     }
@@ -328,7 +328,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Hmac_wc_1HmacUpdate__Ljava_nio
         throwWolfCryptExceptionFromError(env, ret);
 
     LogStr("wc_HmacUpdate(hmac=%p, data, length) = %d\n", hmac, ret);
-    if (data != NULL) {
+    if (ret == 0) {
         LogStr("data[%u]: [%p]\n", (word32)length, data + offset);
         LogHex((byte*) data, offset, length);
     }
