@@ -314,8 +314,6 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1export_1private(
     }
 
     LogStr("wc_curve25519_export_private(curve25519, output=%p, outputSz) = %d\n", output, ret);
-    LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
-    LogHex((byte*) output, 0, outputSz);
 
     #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
         !defined(WOLFSSL_NO_FORCE_ZERO)
@@ -449,8 +447,6 @@ Java_com_wolfssl_wolfcrypt_Curve25519_wc_1curve25519_1make_1shared_1secret(
 
     LogStr("wc_curve25519_shared_secret(priv, pub, output=%p, outputSz) = %d\n",
         output, ret);
-    LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
-    LogHex((byte*) output, 0, outputSz);
 
     #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
         !defined(WOLFSSL_NO_FORCE_ZERO)

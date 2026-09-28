@@ -137,7 +137,7 @@ jobs:
       - name: Maven build and verify module-info in JAR
         run: |
           echo "Building with Maven..."
-          mvn package -DskipTests -q
+          ./mvnw package -DskipTests -q
           echo ""
           # Exclude the filtered-providers classified jar, also built by
           # 'mvn package' on JDK 9+
@@ -157,7 +157,7 @@ jobs:
           jar --describe-module --file="$MAVEN_JAR"
 
       - name: Clean Maven build
-        run: mvn clean -q
+        run: ./mvnw clean -q
 
       - name: Show logs on failure
         if: failure() || cancelled()

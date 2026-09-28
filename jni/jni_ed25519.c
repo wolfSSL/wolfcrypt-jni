@@ -346,10 +346,8 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private(
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    LogStr("wc_ed25519_export_x963(ed25519, output=%p, outputSz) = %d\n",
+    LogStr("wc_ed25519_export_private(ed25519, output=%p, outputSz) = %d\n",
         output, ret);
-    LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
-    LogHex((byte*) output, 0, outputSz);
 
     #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
         !defined(WOLFSSL_NO_FORCE_ZERO)
@@ -416,9 +414,8 @@ Java_com_wolfssl_wolfcrypt_Ed25519_wc_1ed25519_1export_1private_1only(
         throwWolfCryptExceptionFromError(env, ret);
     }
 
-    LogStr("wc_ed25519_export_x963(ed25519, output=%p, outputSz) = %d\n", output, ret);
-    LogStr("output[%u]: [%p]\n", (word32)outputSz, output);
-    LogHex((byte*) output, 0, outputSz);
+    LogStr("wc_ed25519_export_private_only(ed25519, output=%p, outputSz) = "
+        "%d\n", output, ret);
 
     #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
         !defined(WOLFSSL_NO_FORCE_ZERO)

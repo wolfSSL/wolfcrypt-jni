@@ -270,21 +270,23 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final_1internal___3B(
     hash = getByteArray(env, hash_buffer);
 
     if (!md5 || !hash) {
-        throwWolfCryptExceptionFromError(env, BAD_FUNC_ARG);
-    } else {
+        ret = BAD_FUNC_ARG;
+    }
+    else {
         ret = wc_Md5Final(md5, hash);
-        if (ret != 0) {
-            throwWolfCryptExceptionFromError(env, ret);
-        }
     }
 
-    LogStr("wc_Md5Final(md5=%p, hash)\n", md5);
+    if (ret != 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
+    LogStr("wc_Md5Final(md5=%p, hash) = %d\n", md5, ret);
     if (hash != NULL) {
         LogStr("hash[%u]: [%p]\n", (word32)MD5_DIGEST_SIZE, hash);
         LogHex(hash, 0, MD5_DIGEST_SIZE);
     }
 
-    releaseByteArray(env, hash_buffer, hash, 0);
+    releaseByteArray(env, hash_buffer, hash, ret);
 #else
     throwNotCompiledInException(env);
 #endif
