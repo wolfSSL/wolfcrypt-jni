@@ -117,6 +117,14 @@ public class AesCtsTest {
         }
 
         try {
+            aesCts.setKey(new byte[20], IV, AesCts.ENCRYPT_MODE);
+            fail("unsupported key length should be rejected.");
+        } catch (WolfCryptException e) {
+            assertEquals("key length failure must map to BAD_FUNC_ARG",
+                WolfCryptError.BAD_FUNC_ARG, e.getError());
+        }
+
+        try {
             aesCts.setKey(KEY_128, null, AesCts.ENCRYPT_MODE);
             fail("iv should not be null for CTS mode.");
         } catch (WolfCryptException e) {

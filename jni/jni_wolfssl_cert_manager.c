@@ -313,8 +313,8 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
 
     /* Get JNIEnv for current thread. Native callback may be called from
      * different thread than original Java thread. */
-    if ((*jvm)->GetEnv(jvm, (void**)&jenv,
-        JNI_VERSION_1_6) == JNI_EDETACHED) {
+    result = (*jvm)->GetEnv(jvm, (void**)&jenv, JNI_VERSION_1_6);
+    if (result == JNI_EDETACHED) {
 #ifdef __ANDROID__
         result = (*jvm)->AttachCurrentThread(jvm, &jenv, NULL);
 #else
@@ -326,6 +326,11 @@ static int nativeVerifyCallback(int preverify, WOLFSSL_X509_STORE_CTX* store)
             return 0;
         }
         needsDetach = 1;
+    }
+    else if (result != JNI_OK) {
+        /* No usable JNIEnv, reject */
+        wc_UnLockMutex(&g_callbackMutex);
+        return 0;
     }
 
     /* Local reference keeps the callback object alive independent of ctx's

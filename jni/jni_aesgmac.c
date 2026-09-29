@@ -219,6 +219,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1Gmac(
 #ifdef HAVE_AESGCM
     int ret = 0;
     Gmac gmac;
+    int aesInited = 0;
     byte* key = NULL;
     byte* iv = NULL;
     byte* authIn = NULL;
@@ -246,6 +247,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1Gmac(
 
         ret = wc_AesInit(&gmac.aes, NULL, INVALID_DEVID);
         if (ret == 0) {
+            aesInited = 1;
             ret = wc_GmacSetKey(&gmac, key, keySz);
         }
 
@@ -282,7 +284,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1Gmac(
     releaseByteArray(env, authIn_object, authIn, JNI_ABORT);
     releaseByteArray(env, authTag_object, authTag, JNI_ABORT);
 
-    wc_AesFree(&gmac.aes);
+    if (aesInited) {
+        wc_AesFree(&gmac.aes);
+    }
 
     return ret;
 #else
@@ -298,6 +302,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacVerify(
 #ifdef HAVE_AESGCM
     int ret = 0;
     Gmac gmac;
+    int aesInited = 0;
     byte* key = NULL;
     byte* iv = NULL;
     byte* authIn = NULL;
@@ -325,6 +330,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacVerify(
 
         ret = wc_AesInit(&gmac.aes, NULL, INVALID_DEVID);
         if (ret == 0) {
+            aesInited = 1;
             ret = wc_GmacSetKey(&gmac, key, keySz);
         }
 
@@ -361,7 +367,9 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_AesGmac_wc_1GmacVerify(
     releaseByteArray(env, authIn_object, authIn, JNI_ABORT);
     releaseByteArray(env, authTag_object, authTag, JNI_ABORT);
 
-    wc_AesFree(&gmac.aes);
+    if (aesInited) {
+        wc_AesFree(&gmac.aes);
+    }
 
     return ret;
 #else
