@@ -1,4 +1,4 @@
-
+#!/bin/bash
 # Example KeyStore Update Script
 #
 # This script is Used to update all example JKS and WKS stores, using example
@@ -44,11 +44,17 @@ if [ -z "$1" ]; then
     printf "\tExample use ./update-jks-wks.sh ~/wolfssl/certs\n"
     exit 1;
 fi
-CERT_LOCATION=$1
+# Resolve the cert directory before moving to the script directory, so the
+# keystores, helpers and provider jar come from the repository
+CERT_LOCATION=$(CDPATH= cd -- "$1" && pwd) || exit 1
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
+LIB_DIR="$SCRIPT_DIR/../../lib"
+JAR="$LIB_DIR/wolfcrypt-jni.jar"
+cd "$SCRIPT_DIR" || exit 1
 
 # Export library paths for Linux and Mac to find shared JNI library
-export LD_LIBRARY_PATH=../../lib:$LD_LIBRARY_PATH
-export DYLD_LIBRARY_PATH=../../lib:$DYLD_LIBRARY_PATH
+export LD_LIBRARY_PATH="$LIB_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export DYLD_LIBRARY_PATH="$LIB_DIR${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
 
 # ARGS: <keystore-name> <keystore-type> <cert file> <alias> <password>
 add_cert() {
@@ -72,7 +78,7 @@ add_cert_key() {
 
 # ARGS: <keystore-name> <password>
 jks_to_wks() {
-    keytool -importkeystore -srckeystore ${1}.jks -destkeystore ${1}.wks -srcstoretype JKS -deststoretype WKS -srcstorepass "$2" -deststorepass "$2" -provider com.wolfssl.provider.jce.WolfCryptProvider --providerpath ../../lib/wolfcrypt-jni.jar &> /dev/null
+    keytool -importkeystore -srckeystore "${1}.jks" -destkeystore "${1}.wks" -srcstoretype JKS -deststoretype WKS -srcstorepass "$2" -deststorepass "$2" -provider com.wolfssl.provider.jce.WolfCryptProvider --providerpath "$JAR" &> /dev/null
     if [ $? -ne 0 ]; then
         printf "fail"
         exit 1
@@ -262,9 +268,8 @@ printf "done\n"
 
 printf "\nBuilding ML-DSA WKS keystores via wolfJCE helper ...\n"
 
-JAR=../../lib/wolfcrypt-jni.jar
 if [ ! -f "$JAR" ]; then
-    printf "\tSkipping: wolfcrypt-jni.jar not found at $JAR\n"
+    printf "\tSkipping: wolfcrypt-jni.jar not found at %s\n" "$JAR"
     printf "\t(Run 'ant build-jce-debug' first.)\n"
 else
     rm -f BuildMlDsaKeystores.class
@@ -276,7 +281,7 @@ else
     # Probe for wolfJCE ML-DSA support before deleting the prebuilt
     # keystores, native wolfSSL may not be compiled with ML-DSA
     java -cp "$JAR:." \
-        -Djava.library.path=../../lib BuildMlDsaKeystores --check
+        -Djava.library.path="$LIB_DIR" BuildMlDsaKeystores --check
     if [ $? -ne 0 ]; then
         printf "\tSkipping: native wolfSSL lacks ML-DSA support,\n"
         printf "\tleaving prebuilt ML-DSA keystores in place\n"
@@ -285,7 +290,7 @@ else
         rm -f client-mldsa44.wks client-mldsa65.wks client-mldsa87.wks
         rm -f ca-mldsa44.wks     ca-mldsa65.wks     ca-mldsa87.wks
         java -cp "$JAR:." \
-            -Djava.library.path=../../lib BuildMlDsaKeystores
+            -Djava.library.path="$LIB_DIR" BuildMlDsaKeystores
         if [ $? -ne 0 ]; then
             printf "\tBuildMlDsaKeystores failed\n"
             exit 1
