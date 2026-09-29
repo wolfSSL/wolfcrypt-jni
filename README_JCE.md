@@ -175,6 +175,7 @@ The JCE provider currently supports the following algorithms:
         DESede/CBC/NoPadding
         RSA
         RSA/ECB/PKCS1Padding
+        RSA/ECB/NoPadding
         RSA/ECB/OAEPWithSHA-256AndMGF1Padding
             Alias: RSA/ECB/OAEPWithSHA256AndMGF1Padding
         RSA/ECB/OAEPWithSHA-1AndMGF1Padding
@@ -901,6 +902,20 @@ plus the padding bytes.
 This descrepancy should not be an issue, since `doFinal()` returns the
 actual number of bytes written to the output buffer, so applications can use
 that to know the true output size in the output buffer returned.
+
+#### RSA/ECB/NoPadding Input Range
+
+`RSA/ECB/NoPadding` is registered only when native wolfSSL defines
+`WC_RSA_NO_PADDING` or `WC_RSA_DIRECT`, which `--enable-jni` and `--enable-all`
+both do. It matches SunJCE for the raw RSA primitive: input is zero padded on
+the left to the modulus size, output is always the modulus size, a private key
+may encrypt and a public key may decrypt, input longer than the modulus fails
+with `IllegalBlockSizeException`, and input numerically at or above the modulus
+fails with `BadPaddingException`. One difference is that wolfJCE also rejects
+the values 0, 1 and n - 1 in both directions with `BadPaddingException("Message
+is out of range")`, where SunJCE returns the value itself. `wrap()` and
+`unwrap()` use the same primitive, so an unwrapped key is the whole modulus
+size block with its leading zeros, as with SunJCE.
 
 #### PKIXRevocationChecker `PREFER_CRLS` Check Order
 

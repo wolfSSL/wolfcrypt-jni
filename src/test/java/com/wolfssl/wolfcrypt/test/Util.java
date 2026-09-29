@@ -21,6 +21,8 @@
 
 package com.wolfssl.wolfcrypt.test;
 
+import java.math.BigInteger;
+
 public class Util {
     public static synchronized byte[] h2b(String s) {
         int len = s.length();
@@ -46,5 +48,14 @@ public class Util {
         }
 
         return new String(hexChars);
+    }
+
+    /* Big-endian value of v as exactly len bytes */
+    public static byte[] toFixedLength(BigInteger v, int len) {
+        byte[] raw = v.toByteArray();
+        byte[] out = new byte[len];
+        int copy = Math.min(raw.length, len);
+        System.arraycopy(raw, raw.length - copy, out, len - copy, copy);
+        return out;
     }
 }

@@ -9,6 +9,14 @@ extern "C" {
 #endif
 #undef com_wolfssl_wolfcrypt_Rsa_NULL
 #define com_wolfssl_wolfcrypt_Rsa_NULL 0LL
+#undef com_wolfssl_wolfcrypt_Rsa_RSA_PUBLIC_ENCRYPT
+#define com_wolfssl_wolfcrypt_Rsa_RSA_PUBLIC_ENCRYPT 0L
+#undef com_wolfssl_wolfcrypt_Rsa_RSA_PUBLIC_DECRYPT
+#define com_wolfssl_wolfcrypt_Rsa_RSA_PUBLIC_DECRYPT 1L
+#undef com_wolfssl_wolfcrypt_Rsa_RSA_PRIVATE_ENCRYPT
+#define com_wolfssl_wolfcrypt_Rsa_RSA_PRIVATE_ENCRYPT 2L
+#undef com_wolfssl_wolfcrypt_Rsa_RSA_PRIVATE_DECRYPT
+#define com_wolfssl_wolfcrypt_Rsa_RSA_PRIVATE_DECRYPT 3L
 #undef com_wolfssl_wolfcrypt_Rsa_RSA_PSS_SALT_LEN_DEFAULT
 #define com_wolfssl_wolfcrypt_Rsa_RSA_PSS_SALT_LEN_DEFAULT -1L
 #undef com_wolfssl_wolfcrypt_Rsa_RSA_PSS_SALT_LEN_DISCOVER
@@ -260,6 +268,14 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPublicEncrypt
  */
 JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateDecrypt_1ex
   (JNIEnv *, jobject, jbyteArray, jint, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    wc_RsaDirect
+ * Signature: ([BILcom/wolfssl/wolfcrypt/Rng;)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaDirect
+  (JNIEnv *, jobject, jbyteArray, jint, jobject);
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa

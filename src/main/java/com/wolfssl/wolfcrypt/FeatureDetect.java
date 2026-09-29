@@ -370,6 +370,14 @@ public class FeatureDetect {
     public static native boolean RsaOaepEnabled();
 
     /**
+     * Tests if raw RSA primitive wc_RsaDirect() is compiled into the
+     * native wolfSSL library.
+     *
+     * @return true if enabled, otherwise false if not compiled in.
+     */
+    public static native boolean RsaNoPaddingEnabled();
+
+    /**
      * Tests if DH is compiled into the native wolfSSL library.
      *
      * @return true if enabled, otherwise false if not compiled in.
