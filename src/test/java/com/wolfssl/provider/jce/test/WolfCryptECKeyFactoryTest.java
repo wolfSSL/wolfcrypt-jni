@@ -29,6 +29,8 @@ import org.junit.runner.Description;
 
 import java.util.ArrayList;
 import java.math.BigInteger;
+import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -37,6 +39,7 @@ import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
+import java.security.Signature;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.ECPoint;
@@ -47,6 +50,7 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -564,6 +568,85 @@ public class WolfCryptECKeyFactoryTest {
             systemKP.getPrivate().getEncoded(), translatedPriv.getEncoded());
         assertArrayEquals("Public key encoded forms should match",
             systemKP.getPublic().getEncoded(), translatedPub.getEncoded());
+    }
+
+    @Test
+    public void testForeignPrivateKeyTranslation() throws Exception {
+
+        if (!FeatureDetect.EccEnabled()) {
+            return;
+        }
+
+        KeyFactory wolfKF = KeyFactory.getInstance("EC", "wolfJCE");
+        byte[] msg = "foreign EC key translation".getBytes();
+
+        /* Encodings differ after wolfCrypt re-encodes, compare S and interop */
+        if (Security.getProvider("SunEC") != null) {
+            for (String curve : new String[] {"secp256r1", "secp384r1",
+                    "secp521r1"}) {
+                KeyPairGenerator kpg =
+                    KeyPairGenerator.getInstance("EC", "SunEC");
+                kpg.initialize(new ECGenParameterSpec(curve));
+                KeyPair kp = kpg.generateKeyPair();
+
+                ECPrivateKey priv =
+                    (ECPrivateKey)wolfKF.translateKey(kp.getPrivate());
+                assertEquals(curve, ((ECPrivateKey)kp.getPrivate()).getS(),
+                    priv.getS());
+
+                Signature signer =
+                    Signature.getInstance("SHA256withECDSA", "wolfJCE");
+                signer.initSign(priv);
+                signer.update(msg);
+                Signature verifier =
+                    Signature.getInstance("SHA256withECDSA", "SunEC");
+                verifier.initVerify(kp.getPublic());
+                verifier.update(msg);
+                assertTrue(curve, verifier.verify(signer.sign()));
+            }
+        }
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", "wolfJCE");
+        kpg.initialize(new ECGenParameterSpec("secp256r1"));
+        ECPrivateKey src = (ECPrivateKey)kpg.generateKeyPair().getPrivate();
+
+        String[] names = {"null key", "AES key", "null encoding",
+            "invalid encoding"};
+        Key[] bad = {null, new SecretKeySpec(new byte[16], "AES"),
+            foreignECPrivateKey(src, null),
+            foreignECPrivateKey(src, new byte[] {1, 2, 3})};
+
+        for (int i = 0; i < bad.length; i++) {
+            try {
+                wolfKF.translateKey(bad[i]);
+                fail("translateKey accepted " + names[i]);
+            } catch (InvalidKeyException e) {
+                /* expected */
+            }
+        }
+    }
+
+    private static ECPrivateKey foreignECPrivateKey(final ECPrivateKey src,
+        final byte[] encoded) {
+
+        return new ECPrivateKey() {
+            private static final long serialVersionUID = 1L;
+            public BigInteger getS() {
+                return src.getS();
+            }
+            public ECParameterSpec getParams() {
+                return src.getParams();
+            }
+            public String getAlgorithm() {
+                return "EC";
+            }
+            public String getFormat() {
+                return "PKCS#8";
+            }
+            public byte[] getEncoded() {
+                return encoded;
+            }
+        };
     }
 
     @Test
