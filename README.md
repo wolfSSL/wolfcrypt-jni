@@ -108,6 +108,13 @@ $ make check
 $ sudo make install
 ```
 
+wolfCrypt FIPS v7 places DH outside the FIPS module boundary. Starting with
+wolfSSL 5.9.4, FIPS v7 and FIPS Ready builds leave DH out by default. Add
+`--enable-dh=conditional` to compile DH in but keep it disabled at runtime
+until the application calls `Dh.enable()`. Or use `--enable-dh` to enable it by
+default at compile time. When DH is disabled, `FeatureDetect.DhEnabled()`
+returns false and wolfJCE does not register DH services.
+
 ### Compiling wolfSSL JNI/JCE with ant
 ---------
 

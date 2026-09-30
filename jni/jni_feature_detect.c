@@ -27,6 +27,7 @@
 #include <jni.h>
 #include <wolfssl/version.h>
 #include <wolfssl/wolfcrypt/types.h>
+#include <wolfssl/wolfcrypt/dh.h>
 #include <wolfcrypt_jni_debug.h>
 
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_Md5Enabled
@@ -616,7 +617,9 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_DhEnabled
 {
     (void)env;
     (void)jcl;
-#ifndef NO_DH
+#if !defined(NO_DH) && defined(WC_DH_HAVE_RUNTIME_ENABLEMENT)
+    return (wc_dh_is_enabled() != 0) ? JNI_TRUE : JNI_FALSE;
+#elif !defined(NO_DH)
     return JNI_TRUE;
 #else
     return JNI_FALSE;
@@ -628,7 +631,10 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_DhExtraEnabl
 {
     (void)env;
     (void)jcl;
-#if !defined(NO_DH) && defined(WOLFSSL_DH_EXTRA)
+#if !defined(NO_DH) && defined(WOLFSSL_DH_EXTRA) && \
+    defined(WC_DH_HAVE_RUNTIME_ENABLEMENT)
+    return (wc_dh_is_enabled() != 0) ? JNI_TRUE : JNI_FALSE;
+#elif !defined(NO_DH) && defined(WOLFSSL_DH_EXTRA)
     return JNI_TRUE;
 #else
     return JNI_FALSE;

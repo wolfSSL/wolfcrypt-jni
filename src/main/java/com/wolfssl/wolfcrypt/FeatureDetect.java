@@ -378,16 +378,20 @@ public class FeatureDetect {
     public static native boolean RsaNoPaddingEnabled();
 
     /**
-     * Tests if DH is compiled into the native wolfSSL library.
+     * Tests if DH is compiled into the native wolfSSL library and enabled
+     * at runtime.
      *
-     * @return true if enabled, otherwise false if not compiled in.
+     * @return true if enabled, otherwise false if not compiled in or
+     *         disabled at runtime.
      */
     public static native boolean DhEnabled();
 
     /**
-     * Tests if WOLFSSL_DH_EXTRA is compiled into the native wolfSSL library.
+     * Tests if WOLFSSL_DH_EXTRA is compiled into the native wolfSSL library
+     * and DH is enabled at runtime.
      *
-     * @return true if enabled, otherwise false if not compiled in.
+     * @return true if enabled, otherwise false if not compiled in or DH is
+     *         disabled at runtime.
      */
     public static native boolean DhExtraEnabled();
 

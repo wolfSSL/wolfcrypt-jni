@@ -29,6 +29,22 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Dh_dhMinSize
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_dh_enable
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1dh_1enable
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
+ * Method:    wc_dh_disable
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1dh_1disable
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Dh
  * Method:    mallocNativeStruct_internal
  * Signature: ()J
  */
