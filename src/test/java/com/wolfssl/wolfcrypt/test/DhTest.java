@@ -30,6 +30,7 @@ import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
+import org.junit.runners.model.Statement;
 
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -92,8 +93,31 @@ public class DhTest {
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
 
+    /* Skip tests when DH is not compiled in or is disabled at runtime. */
+    @Rule(order = Integer.MIN_VALUE + 1)
+    public TestRule dhAvailable = new TestRule() {
+        @Override
+        public Statement apply(final Statement base,
+            final Description description) {
+            return new Statement() {
+                @Override
+                public void evaluate() throws Throwable {
+                    if (!"runtimeEnableDisable".equals(
+                            description.getMethodName())) {
+                        Assume.assumeTrue(
+                            "DH not compiled in or disabled at runtime",
+                            FeatureDetect.DhEnabled());
+                    }
+                    base.evaluate();
+                }
+            };
+        }
+    };
+
     @BeforeClass
     public static void setUpRng() {
+        System.out.println("JNI Dh Class");
+
         rng.init();
 
         if (Fips.enabled) {
@@ -101,16 +125,67 @@ public class DhTest {
         }
     }
 
-    @BeforeClass
-    public static void checkAvailability() {
+    @Test
+    public void runtimeEnableDisable() {
+        boolean wasEnabled = FeatureDetect.DhEnabled();
+        int ret = Dh.enable();
+
+        Assume.assumeTrue("DH not compiled in native wolfSSL",
+            ret != WolfCryptError.NOT_COMPILED_IN.getCode());
+
         try {
-            new Dh();
-            System.out.println("JNI Dh Class");
-        } catch (WolfCryptException e) {
-            if (e.getError() == WolfCryptError.NOT_COMPILED_IN)
-                System.out.println("Dh test skipped: " + e.getError());
-            Assume.assumeNoException(e);
+            assertEquals(0, ret);
+            assertTrue(FeatureDetect.DhEnabled());
+
+            /* Enabling again is not an error */
+            assertEquals(0, Dh.enable());
+
+            /* DH operations work while enabled */
+            Dh alice = new Dh();
+            Dh bob = new Dh();
+            try {
+                alice.setParams(Util.h2b(DH_P_2048_HEX), Util.h2b("02"));
+                bob.setParams(Util.h2b(DH_P_2048_HEX), Util.h2b("02"));
+                synchronized (rngLock) {
+                    alice.makeKey(rng);
+                    bob.makeKey(rng);
+                }
+                assertArrayEquals(alice.makeSharedSecret(bob),
+                    bob.makeSharedSecret(alice));
+            } finally {
+                alice.releaseNativeStruct();
+                bob.releaseNativeStruct();
+            }
+
+            ret = Dh.disable();
+            if (ret == WolfCryptError.NOT_COMPILED_IN.getCode()) {
+                /* Native wolfCrypt can not switch DH off at runtime */
+                assertTrue(FeatureDetect.DhEnabled());
+                return;
+            }
+            assertEquals(0, ret);
+            assertFalse(FeatureDetect.DhEnabled());
+            assertFalse(FeatureDetect.DhExtraEnabled());
+
+            /* Disabling again is not an error */
+            assertEquals(0, Dh.disable());
+
+            try {
+                new Dh();
+                fail("Dh() should fail while DH is disabled at runtime");
+            } catch (WolfCryptException e) {
+                assertEquals(WolfCryptError.NOT_COMPILED_IN, e.getError());
+            }
+
+        } finally {
+            if (wasEnabled) {
+                Dh.enable();
+            }
+            else {
+                Dh.disable();
+            }
         }
+        assertEquals(wasEnabled, FeatureDetect.DhEnabled());
     }
 
     @Test

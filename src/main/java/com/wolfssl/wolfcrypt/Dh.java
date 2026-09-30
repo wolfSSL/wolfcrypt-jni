@@ -58,10 +58,48 @@ public class Dh extends NativeStruct {
     public static final int WC_FFDHE_8192 = 260;
 
     /**
+     * Enable DH at runtime in the native wolfCrypt library.
+     * <p>
+     * Some native wolfCrypt builds compile DH in but leave it disabled at
+     * runtime until the application enables it. This includes wolfCrypt
+     * FIPS v7 and later, where DH is outside the FIPS module boundary.
+     * While DH is disabled, {@link FeatureDetect#DhEnabled()} returns false,
+     * Dh objects can not be created, and the wolfJCE provider does not
+     * register DH services.
+     * <p>
+     * Native wolfCrypt does not synchronize this setting between threads.
+     * Call this during application initialization, before DH is used.
+     *
+     * @return 0 if DH is enabled on return, including when it was already
+     *         enabled, or WolfCryptError.NOT_COMPILED_IN if DH is not
+     *         compiled into native wolfCrypt.
+     */
+    public static int enable() {
+        return wc_dh_enable();
+    }
+
+    /**
+     * Disable DH at runtime in the native wolfCrypt library.
+     * <p>
+     * Only native wolfCrypt builds that support enabling DH at runtime can
+     * disable it again, see {@link #enable()}. Native wolfCrypt does not
+     * synchronize this setting between threads, so only call this when no
+     * other thread is using DH.
+     *
+     * @return 0 if DH is disabled on return, including when it was already
+     *         disabled or is not compiled in, or
+     *         WolfCryptError.NOT_COMPILED_IN if native wolfCrypt does not
+     *         support disabling DH at runtime.
+     */
+    public static int disable() {
+        return wc_dh_disable();
+    }
+
+    /**
      * Create new Dh object.
      *
      * @throws WolfCryptException if DH has not been compiled into native
-     *         wolfCrypt library.
+     *         wolfCrypt library or is disabled at runtime, see enable().
      */
     public Dh() {
         if (!FeatureDetect.DhEnabled()) {
@@ -78,7 +116,7 @@ public class Dh extends NativeStruct {
      * @param g DH g parameter
      *
      * @throws WolfCryptException if DH has not been compiled into native
-     *         wolfCrypt library.
+     *         wolfCrypt library or is disabled at runtime, see enable().
      */
     public Dh(byte[] p, byte[] g) {
         if (!FeatureDetect.DhEnabled()) {
@@ -111,6 +149,8 @@ public class Dh extends NativeStruct {
     }
 
     private static native int dhMinSize();
+    private static native int wc_dh_enable();
+    private static native int wc_dh_disable();
     private native long mallocNativeStruct_internal() throws OutOfMemoryError;
     private native void wc_InitDhKey();
     private native void wc_FreeDhKey();

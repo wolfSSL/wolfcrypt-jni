@@ -86,6 +86,53 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Dh_dhMinSize
 #endif
 }
 
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1dh_1enable
+  (JNIEnv* env, jclass jcl)
+{
+    int ret;
+    (void)env;
+    (void)jcl;
+
+#if !defined(NO_DH) && defined(WC_DH_HAVE_RUNTIME_ENABLEMENT)
+    ret = wc_dh_enable();
+    if (ret == ALREADY_E) {
+        /* DH already enabled */
+        ret = 0;
+    }
+#elif !defined(NO_DH)
+    /* DH is always enabled when runtime enablement is not compiled in */
+    ret = 0;
+#else
+    ret = NOT_COMPILED_IN;
+#endif
+
+    return (jint)ret;
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Dh_wc_1dh_1disable
+  (JNIEnv* env, jclass jcl)
+{
+    int ret;
+    (void)env;
+    (void)jcl;
+
+#if !defined(NO_DH) && defined(WC_DH_HAVE_RUNTIME_ENABLEMENT)
+    ret = wc_dh_disable();
+    if (ret == ALREADY_E) {
+        /* DH already disabled */
+        ret = 0;
+    }
+#elif !defined(NO_DH)
+    /* DH can not be disabled when runtime enablement is not compiled in */
+    ret = NOT_COMPILED_IN;
+#else
+    /* DH is not compiled in, so it is already disabled */
+    ret = 0;
+#endif
+
+    return (jint)ret;
+}
+
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Dh_mallocNativeStruct_1internal(
     JNIEnv* env, jobject this)
 {
