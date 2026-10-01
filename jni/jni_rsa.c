@@ -1757,6 +1757,11 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify(
         }
     }
 
+    /* Throw setup failures (bad arguments, allocation, etc) */
+    if (ret < 0) {
+        throwWolfCryptExceptionFromError(env, ret);
+    }
+
     if (ret == 0) {
         XMEMSET(output, 0, outputSz);
 
@@ -1771,7 +1776,13 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify(
             if (ret == 0) {
                 result = JNI_TRUE;
             }
-        } else if (ret < 0) {
+            /* PSS decode of a bad signature fails with data dependent error
+             * codes, all map to false, only MEMORY_E throws */
+            else if (ret == MEMORY_E) {
+                throwWolfCryptExceptionFromError(env, ret);
+            }
+        }
+        else if (ret == MEMORY_E) {
             throwWolfCryptExceptionFromError(env, ret);
         }
     }
