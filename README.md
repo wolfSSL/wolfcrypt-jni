@@ -73,6 +73,16 @@ recommended configuration for SHA2 parameter-set support (the
 `SLH-DSA-SHA2-128f` default lives in the SHA2 family). Without SLH-DSA, wolfJCE
 compiles and runs normally but the SLH-DSA services are not registered.
 
+**Note on AES Key Wrap (RFC 3394 / NIST SP 800-38F KW):** AES Key Wrap support
+is **not** enabled by `--enable-jni` alone. To use the `AESWrap`
+(`AES/KW/NoPadding`, `AESWrap_128/192/256`, `AES/KW/PKCS5Padding`) `Cipher`
+services, add `--enable-aeskeywrap` to the native wolfSSL `./configure` line,
+or use `--enable-all` (or `--enable-pkcs7`) which include it. wolfSSL FIPS
+v6/v7 and FIPS Ready builds enable it by default. Without it, wolfJCE compiles
+and runs normally but the AES Key Wrap services are not registered. Only
+RFC 3394 KW is provided. AES Key Wrap with Padding (RFC 5649 KWP, `AESWrapPad`)
+is not available in native wolfSSL. See README\_JCE.md for usage notes.
+
 **wolfSSL Standard Build**:
 ```
 $ cd wolfssl-x.x.x
