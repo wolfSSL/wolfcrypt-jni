@@ -1793,5 +1793,35 @@ public class WolfCryptCipherRSAOAEPTest {
         assertArrayEquals("Decrypted SAML assertion must match original",
             samlAssertion, decryptedAssertion);
     }
+
+    /*
+     * getParameters() must report the MGF1 hash actually used. SunJCE
+     * decrypts with the reported parameters, so a mismatch between the
+     * reported and applied MGF1 digest fails the decrypt.
+     */
+    @Test
+    public void testOAEPGetParametersMatchesInterop() throws Exception {
+
+        Assume.assumeTrue(oaepAvailable);
+        Assume.assumeNotNull(rsaPair);
+        Assume.assumeNotNull(interopProvider);
+
+        byte[] plaintext = "OAEP parameters interop".getBytes();
+
+        Cipher encCipher = Cipher.getInstance(OAEP_ALGO, jceProvider);
+        encCipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        byte[] ciphertext = encCipher.doFinal(plaintext);
+
+        OAEPParameterSpec reported = encCipher.getParameters()
+            .getParameterSpec(OAEPParameterSpec.class);
+        assertEquals("SHA-256", reported.getDigestAlgorithm());
+        assertEquals("SHA-1", ((MGF1ParameterSpec)
+            reported.getMGFParameters()).getDigestAlgorithm());
+
+        Cipher interopDecrypt = Cipher.getInstance(OAEP_ALGO, interopProvider);
+        interopDecrypt.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate(),
+            reported);
+        assertArrayEquals(plaintext, interopDecrypt.doFinal(ciphertext));
+    }
 }
 
