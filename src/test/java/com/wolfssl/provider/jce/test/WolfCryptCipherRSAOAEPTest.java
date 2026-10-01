@@ -41,6 +41,7 @@ import javax.crypto.spec.PSource;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import java.security.AlgorithmParameters;
 import java.security.Key;
 import java.security.Security;
 import java.security.spec.MGF1ParameterSpec;
@@ -58,6 +59,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.InvalidParameterSpecException;
 import java.util.Base64;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
@@ -1826,6 +1828,111 @@ public class WolfCryptCipherRSAOAEPTest {
         /* Verify plaintext matches */
         assertArrayEquals("Decrypted SAML assertion must match original",
             samlAssertion, decryptedAssertion);
+    }
+
+    /*
+     * getParameters() must report the MGF1 hash actually used. SunJCE
+     * decrypts with the reported parameters, so a mismatch between the
+     * reported and applied MGF1 digest fails the decrypt.
+     */
+    @Test
+    public void testOAEPGetParametersMatchesInterop() throws Exception {
+
+        Assume.assumeTrue(oaepAvailable);
+        Assume.assumeNotNull(rsaPair);
+        Assume.assumeNotNull(interopProvider);
+
+        byte[] plaintext = "OAEP parameters interop".getBytes();
+
+        Cipher encCipher = Cipher.getInstance(OAEP_ALGO, jceProvider);
+        encCipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+        byte[] ciphertext = encCipher.doFinal(plaintext);
+
+        OAEPParameterSpec reported = encCipher.getParameters()
+            .getParameterSpec(OAEPParameterSpec.class);
+        assertEquals("SHA-256", reported.getDigestAlgorithm());
+        assertEquals("SHA-1", ((MGF1ParameterSpec)
+            reported.getMGFParameters()).getDigestAlgorithm());
+
+        Cipher interopDecrypt = Cipher.getInstance(OAEP_ALGO, interopProvider);
+        interopDecrypt.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate(),
+            reported);
+        assertArrayEquals(plaintext, interopDecrypt.doFinal(ciphertext));
+    }
+
+    /*
+     * The cipher accepts digest names without a dash, so the OAEP
+     * parameters must too. SunJCE encrypts with the dashed names as the
+     * reference.
+     */
+    @Test
+    public void testOAEPParametersNoDashNamesInterop() throws Exception {
+
+        Assume.assumeTrue(oaepAvailable);
+        Assume.assumeNotNull(rsaPair);
+        Assume.assumeNotNull(interopProvider);
+
+        byte[] plaintext = "OAEP no-dash digest names".getBytes();
+        OAEPParameterSpec dashed = new OAEPParameterSpec("SHA-256", "MGF1",
+            MGF1ParameterSpec.SHA1, PSource.PSpecified.DEFAULT);
+        OAEPParameterSpec noDash = new OAEPParameterSpec("SHA256", "MGF1",
+            new MGF1ParameterSpec("SHA1"), PSource.PSpecified.DEFAULT);
+
+        AlgorithmParameters params =
+            AlgorithmParameters.getInstance("OAEP", jceProvider);
+        params.init(noDash);
+
+        Cipher interopEncrypt = Cipher.getInstance(OAEP_ALGO, interopProvider);
+        interopEncrypt.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic(), dashed);
+        byte[] ciphertext = interopEncrypt.doFinal(plaintext);
+
+        Cipher wolfDecrypt = Cipher.getInstance(OAEP_ALGO, jceProvider);
+        wolfDecrypt.init(Cipher.DECRYPT_MODE, rsaPair.getPrivate(),
+            params.getParameterSpec(OAEPParameterSpec.class));
+        assertArrayEquals(plaintext, wolfDecrypt.doFinal(ciphertext));
+    }
+
+    /*
+     * A digest the cipher rejects, as the OAEP or the MGF1 digest, must be
+     * rejected by the OAEP parameters too instead of failing later at init.
+     */
+    @Test
+    public void testOAEPParametersRejectWhatCipherRejects() throws Exception {
+
+        Assume.assumeTrue(oaepAvailable);
+        Assume.assumeNotNull(rsaPair);
+
+        String[] unsupported = { "SHA-512/224", "SHA-512/256", "MD5",
+            "SHA3-256" };
+
+        for (String name : unsupported) {
+            OAEPParameterSpec[] specs = {
+                new OAEPParameterSpec(name, "MGF1",
+                    MGF1ParameterSpec.SHA1, PSource.PSpecified.DEFAULT),
+                new OAEPParameterSpec("SHA-256", "MGF1",
+                    new MGF1ParameterSpec(name), PSource.PSpecified.DEFAULT)
+            };
+
+            for (OAEPParameterSpec spec : specs) {
+                AlgorithmParameters params =
+                    AlgorithmParameters.getInstance("OAEP", jceProvider);
+                try {
+                    params.init(spec);
+                    fail("OAEP parameters accepted " + name);
+                } catch (InvalidParameterSpecException e) {
+                    /* expected */
+                }
+
+                Cipher cipher = Cipher.getInstance(OAEP_ALGO, jceProvider);
+                try {
+                    cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic(),
+                        spec);
+                    fail("Cipher.init accepted " + name);
+                } catch (InvalidAlgorithmParameterException e) {
+                    /* expected */
+                }
+            }
+        }
     }
 }
 
