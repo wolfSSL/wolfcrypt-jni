@@ -100,6 +100,7 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key_1internal(
     byte* iv  = NULL;
     word32 keySz = 0;
     word32 ivSz = 0;
+    jboolean keyIsCopy = JNI_FALSE;
 
     aes = (Aes*) getNativeStruct(env, this);
     if ((*env)->ExceptionOccurred(env)) {
@@ -107,7 +108,7 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key_1internal(
         return;
     }
 
-    key = getByteArray(env, key_object);
+    key = getByteArrayIsCopy(env, key_object, &keyIsCopy);
     iv  = getByteArray(env, iv_object);
     keySz = getByteArrayLength(env, key_object);
     ivSz = getByteArrayLength(env, iv_object);
@@ -126,7 +127,7 @@ Java_com_wolfssl_wolfcrypt_Aes_native_1set_1key_1internal(
     LogStr("wc_AesSetKey(aes=%p, key=%p, iv=%p, opmode) = %d\n",
         aes, key, iv, ret);
 
-    releaseByteArray(env, key_object, key, JNI_ABORT);
+    releaseByteArrayZeroize(env, key_object, key, keySz, keyIsCopy, JNI_ABORT);
     releaseByteArray(env, iv_object, iv, JNI_ABORT);
 #else
     throwNotCompiledInException(env);
