@@ -23,6 +23,7 @@ package com.wolfssl.wolfcrypt.test;
 
 import static org.junit.Assert.*;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.Iterator;
@@ -552,6 +553,72 @@ public class AesGcmTest {
         /* release native structs */
         enc.releaseNativeStruct();
         dec.releaseNativeStruct();
+    }
+
+    /* A failed streaming update must end the stream, while updates that
+     * succeed keep it open. Output is checked against the AES-256 vector. */
+    @Test
+    public void testAesGcmStreamingUpdateFailureEndsStream() throws Exception {
+
+        Assume.assumeTrue(FeatureDetect.AesGcmStreamEnabled() &&
+            FeatureDetect.Aes256Enabled());
+
+        AesGcm enc = new AesGcm();
+        AesGcm noKey = new AesGcm();
+        byte[] p1 = Arrays.copyOfRange(p, 0, 16);
+        byte[] p2 = Arrays.copyOfRange(p, 16, p.length);
+        byte[] c1a = Arrays.copyOfRange(c1, 0, 16);
+        byte[] c1b = Arrays.copyOfRange(c1, 16, c1.length);
+
+        enc.setKey(k1);
+
+        /* Allocates the native struct of noKey, then fails on the key check */
+        try {
+            noKey.encryptInitStreaming(iv1);
+            fail("encryptInitStreaming() without a key should fail");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        enc.encryptInitStreaming(iv1);
+        assertArrayEquals(c1a, enc.encryptUpdateStreaming(p1, a));
+
+        /* Native wolfCrypt fails the update when given a struct with no key */
+        Field pointer = NativeStruct.class.getDeclaredField("pointer");
+        pointer.setAccessible(true);
+        long encPointer = pointer.getLong(enc);
+        pointer.setLong(enc, pointer.getLong(noKey));
+        try {
+            enc.encryptUpdateStreaming(p2, null);
+            fail("encryptUpdateStreaming() with no key should fail");
+        } catch (WolfCryptException e) {
+            assertEquals(WolfCryptError.MISSING_KEY, e.getError());
+        } finally {
+            pointer.setLong(enc, encPointer);
+        }
+
+        try {
+            enc.encryptUpdateStreaming(p2, null);
+            fail("encryptUpdateStreaming() after failure should fail");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        try {
+            enc.encryptFinalStreaming(t1.length);
+            fail("encryptFinalStreaming() after failure should fail");
+        } catch (IllegalStateException e) {
+            /* expected */
+        }
+
+        /* Re-init starts a new stream, split across two updates */
+        enc.encryptInitStreaming(iv1);
+        assertArrayEquals(c1a, enc.encryptUpdateStreaming(p1, a));
+        assertArrayEquals(c1b, enc.encryptUpdateStreaming(p2, null));
+        assertArrayEquals(t1, enc.encryptFinalStreaming(t1.length));
+
+        enc.releaseNativeStruct();
+        noKey.releaseNativeStruct();
     }
 
     @Test
