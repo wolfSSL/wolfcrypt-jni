@@ -9137,24 +9137,123 @@ public class WolfCryptCipherTest {
     }
 
     /*
-     * Test that getParameters() returns null when cipher is not initialized
+     * Test getParameters() before init(). IV modes return a random IV like
+     * SunJCE, AES-GCM returns null.
      */
     @Test
     public void testGetParametersUninitializedCipher()
         throws NoSuchAlgorithmException, NoSuchProviderException,
-               NoSuchPaddingException {
+               NoSuchPaddingException, InvalidKeyException,
+               InvalidAlgorithmParameterException,
+               InvalidParameterSpecException, IllegalBlockSizeException,
+               BadPaddingException {
 
-        if (!enabledJCEAlgos.contains("AES/CBC/NoPadding")) {
-            /* skip if AES is not enabled */
+        String[] ivAlgos = {
+            "AES/CBC/NoPadding",
+            "AES/CBC/PKCS5Padding",
+            "AES/CTR/NoPadding",
+            "AES/OFB/NoPadding",
+            "AES/CTS/NoPadding",
+            "AES/CFB/NoPadding",
+            "AES/CFB8/NoPadding",
+            "AES/CFB1/NoPadding"
+        };
+        SecretKeySpec key = new SecretKeySpec(new byte[16], "AES");
+        Cipher cipher;
+        AlgorithmParameters params;
+        byte[] iv;
+
+        if (!FeatureDetect.AesEnabled() || !FeatureDetect.Aes128Enabled()) {
             return;
         }
 
-        Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding", jceProvider);
-        /* Don't initialize the cipher */
+        for (String algo : ivAlgos) {
+            if (!enabledJCEAlgos.contains(algo)) {
+                continue;
+            }
 
-        java.security.AlgorithmParameters params = cipher.getParameters();
-        assertNull("Uninitialized cipher should return null parameters",
-            params);
+            cipher = Cipher.getInstance(algo, jceProvider);
+            params = cipher.getParameters();
+            assertNotNull(algo + " getParameters() before init() should " +
+                "return default parameters", params);
+            iv = params.getParameterSpec(IvParameterSpec.class).getIV();
+            assertEquals(algo + " default IV length", 16, iv.length);
+
+            /* Default IV is random and not stored */
+            assertFalse(algo + " default IV should change between calls",
+                Arrays.equals(iv, cipher.getParameters()
+                    .getParameterSpec(IvParameterSpec.class).getIV()));
+            assertNull(algo + " getIV() before init()", cipher.getIV());
+
+            cipher.init(Cipher.DECRYPT_MODE, key, params);
+            assertArrayEquals(algo + " init(getParameters()) IV", iv,
+                cipher.getIV());
+        }
+
+        if (enabledJCEAlgos.contains("AES/GCM/NoPadding")) {
+            byte[] pt = "getParameters() before init".getBytes();
+            Cipher enc = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+            Cipher dec = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+
+            /* null keeps encrypt init on the internal IV path */
+            assertNull("AES-GCM getParameters() before init() should be null",
+                enc.getParameters());
+
+            /* OpenJDK TestCipherMode pattern */
+            enc.init(Cipher.ENCRYPT_MODE, key, enc.getParameters());
+            assertEquals(12, enc.getIV().length);
+            dec.init(Cipher.DECRYPT_MODE, key, dec.getParameters());
+            assertEquals(12, dec.getIV().length);
+
+            byte[] ct = enc.doFinal(pt);
+            dec.init(Cipher.DECRYPT_MODE, key, enc.getParameters());
+            assertArrayEquals(pt, dec.doFinal(ct));
+        }
+
+        if (enabledJCEAlgos.contains("AES/ECB/NoPadding")) {
+            cipher = Cipher.getInstance("AES/ECB/NoPadding", jceProvider);
+            assertNull("AES-ECB getParameters() should be null",
+                cipher.getParameters());
+        }
+
+        /* No SunJCE equivalent, stay null */
+        for (String algo : new String[] {
+            "AES/XTS/NoPadding", "AES/CCM/NoPadding" }) {
+            if (enabledJCEAlgos.contains(algo)) {
+                cipher = Cipher.getInstance(algo, jceProvider);
+                assertNull(algo + " getParameters() before init() should " +
+                    "be null", cipher.getParameters());
+            }
+        }
+    }
+
+    /*
+     * Test DESede/CBC getParameters() before init(). Needs DESede
+     * AlgorithmParameters from another provider.
+     */
+    @Test
+    public void testGetParametersUninitializedDesEde()
+        throws NoSuchAlgorithmException, NoSuchProviderException,
+               NoSuchPaddingException, InvalidParameterSpecException {
+
+        if (!enabledJCEAlgos.contains("DESede/CBC/NoPadding")) {
+            return;
+        }
+
+        try {
+            AlgorithmParameters.getInstance("DESede");
+        } catch (NoSuchAlgorithmException e) {
+            return;
+        }
+
+        Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding",
+            jceProvider);
+        AlgorithmParameters params = cipher.getParameters();
+        assertNotNull("DESede/CBC getParameters() before init() should " +
+            "return default parameters", params);
+        assertEquals("DESede/CBC default IV length", 8,
+            params.getParameterSpec(IvParameterSpec.class).getIV().length);
+        assertNull(cipher.getIV());
     }
 
     /*
@@ -10060,17 +10159,59 @@ public class WolfCryptCipherTest {
         assertArrayEquals(keyBytes,
             dec.unwrap(wrapped, "AES", Cipher.SECRET_KEY).getEncoded());
 
-        /* decrypt init requires parameters */
+        /* init() without parameters throws, Cipher left uninitialized */
+        enc.init(Cipher.ENCRYPT_MODE, key);
+        ct = enc.doFinal(pt);
+        for (int mode : new int[] {Cipher.DECRYPT_MODE, Cipher.UNWRAP_MODE}) {
+            dec.init(Cipher.DECRYPT_MODE, key,
+                new GCMParameterSpec(128, enc.getIV()));
+            try {
+                dec.init(mode, key);
+                fail("GCM init without parameters should throw in mode " +
+                    mode);
+            } catch (InvalidKeyException e) {
+                /* expected */
+            }
+            try {
+                dec.doFinal(ct);
+                fail("Cipher should be uninitialized after failed init");
+            } catch (IllegalStateException e) {
+                /* expected */
+            }
+        }
+
+        /* null spec or params use a random IV, tag check fails */
+        dec.init(Cipher.DECRYPT_MODE, key, (AlgorithmParameterSpec)null);
+        assertEquals(12, dec.getIV().length);
+        assertFalse(Arrays.equals(enc.getIV(), dec.getIV()));
+        spec = dec.getParameters().getParameterSpec(GCMParameterSpec.class);
+        assertArrayEquals(dec.getIV(), spec.getIV());
+        assertEquals(128, spec.getTLen());
         try {
-            dec.init(Cipher.DECRYPT_MODE, key);
-            fail("GCM decrypt init without parameters should throw");
-        } catch (InvalidKeyException e) {
+            dec.doFinal(ct);
+            fail("GCM decrypt with random IV should fail tag verification");
+        } catch (AEADBadTagException e) {
             /* expected */
         }
+
+        dec.init(Cipher.DECRYPT_MODE, key, (AlgorithmParameters)null);
+        assertEquals(12, dec.getIV().length);
         try {
-            dec.init(Cipher.DECRYPT_MODE, key, (AlgorithmParameterSpec)null);
-            fail("GCM decrypt init with null spec should throw");
-        } catch (InvalidAlgorithmParameterException e) {
+            dec.doFinal(ct);
+            fail("GCM decrypt with random IV should fail tag verification");
+        } catch (AEADBadTagException e) {
+            /* expected */
+        }
+
+        /* same for unwrap */
+        enc.init(Cipher.WRAP_MODE, key);
+        wrapped = enc.wrap(new SecretKeySpec(keyBytes, "AES"));
+        dec.init(Cipher.UNWRAP_MODE, key, (AlgorithmParameterSpec)null);
+        assertEquals(12, dec.getIV().length);
+        try {
+            dec.unwrap(wrapped, "AES", Cipher.SECRET_KEY);
+            fail("GCM unwrap with random IV should fail tag verification");
+        } catch (InvalidKeyException e) {
             /* expected */
         }
     }

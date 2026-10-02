@@ -430,15 +430,20 @@ The JCE provider currently supports the following algorithms:
 the wolfCrypt DRBG. A `SecureRandom` passed to `init()` is not used for this
 IV. `Cipher.getIV()` and `Cipher.getParameters()` return the generated IV,
 which the decrypting side must be given as a `GCMParameterSpec`. Decrypt
-`init()` without a `GCMParameterSpec` throws `InvalidKeyException` from the
-key-only `init()` forms and `InvalidAlgorithmParameterException` from the
-forms that take parameters.
+`init()` without parameters throws `InvalidKeyException`. Decrypt `init()` with
+`null` `AlgorithmParameterSpec` or `AlgorithmParameters` uses a random IV, so
+`doFinal()` fails with `AEADBadTagException`. This matches SunJCE, which we
+match on purpose to align with SunJCE behavior even though the
+`CipherSpi.engineInit()` Javadoc says decryption with `null` parameters should
+throw `InvalidAlgorithmParameterException`.
 
 With wolfCrypt FIPS, this internal IV generation is the approved AES-GCM
 encryption path (FIPS 140-3 IG C.H). An IV supplied through `GCMParameterSpec`
 is an external IV, which the wolfCrypt FIPS security policy only allows in the
 protocol cases IG C.H describes (such as TLS 1.2). Applications that need FIPS
 approved AES-GCM encryption should let the Cipher generate the IV.
+`getParameters()` returns `null` before `init()`, so
+`init(ENCRYPT_MODE, key, cipher.getParameters())` also uses the internal IV.
 
 ### ML-KEM (FIPS 203) Notes
 
@@ -1031,6 +1036,16 @@ encoding (even its own), while wolfJCE accepts both 8 and 16 byte IVs.
 when the wrapped key algorithm name is null or empty, before any unwrap is
 attempted. SunJCE lets the name reach `SecretKeySpec` or `KeyFactory` and
 throws `IllegalArgumentException` or `NullPointerException` instead.
+
+#### Cipher `getParameters()` Before `init()`
+
+Like SunJCE, `getParameters()` before `init()` returns a random IV for AES
+CBC, CTR, OFB, CTS, and CFB modes, and for DESede CBC when another provider
+registers DESede `AlgorithmParameters` (wolfJCE does not). The IV is not
+stored by the Cipher. For AES-GCM, wolfJCE returns `null` where SunJCE returns
+a random IV, so `init(ENCRYPT_MODE, key, cipher.getParameters())` keeps the
+internal (FIPS approved) IV path. See AES-GCM Notes. AES Key Wrap is described
+in AES Key Wrap (RFC 3394) Notes.
 
 #### PKIXRevocationChecker `PREFER_CRLS` Check Order
 
