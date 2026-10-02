@@ -25,6 +25,7 @@
     <!-- set properties for this build -->
     <property name="src.dir" value="src/main/java/" />
     <property name="src.java9.dir" value="src/java9/" />
+    <property name="src.java15.dir" value="src/java15/" />
     <property name="jni.dir" value="jni/include/" />
     <property name="lib.dir" value="lib/" />
     <property name="build.dir" value="build" />
@@ -55,6 +56,11 @@
     <property file="codeSigning.properties" />
 
     <property environment="env" />
+
+    <!-- Detect Java 15+ for the EdDSA multi-release overlay -->
+    <condition property="isJava15Plus">
+        <javaversion atleast="15"/>
+    </condition>
 
     <!-- Detect Java 9+ for module-info.java compilation -->
     <condition property="isJava9Plus">
@@ -232,6 +238,30 @@
         <echo message="Compiled module-info.java for Java 9+ module support"/>
     </target>
 
+    <!-- Compile JDK 15+ EdDSA overlay classes into the multi-release layer
+         META-INF/versions/15 of the JAR. Overlay classes have the same names
+         as the Java 8 base variants and only add JDK 15 EdEC key interfaces.
+         JDK 15+ picks them up while JDK 8-14 keep using base classes. -->
+    <target name="compile-java15-overlay" if="isJava15Plus"
+            depends="compile-nativeheaderdir, compile-javah"
+            description="Compile JDK 15+ EdDSA overlay (JDK &lt; 15 skips)">
+        <mkdir dir="${build.dir}/META-INF/versions/15"/>
+        <javac srcdir="${src.java15.dir}"
+               destdir="${build.dir}/META-INF/versions/15"
+               release="15"
+               debug="${java.debug}"
+               debuglevel="${java.debuglevel}"
+               deprecation="${java.deprecation}"
+               optimize="${java.optimize}"
+               includeantruntime="false">
+            <classpath>
+                <pathelement location="${build.dir}"/>
+            </classpath>
+            <compilerarg value="-Xlint:-options"/>
+        </javac>
+        <echo message="Compiled JDK 15+ EdDSA multi-release overlay"/>
+    </target>
+
     <!-- create JAR with ONLY JNI classes, not to be used with JCE -->
     <target name="jar-jni" depends="compile-nativeheaderdir, compile-javah, compile-module-info">
         <jar jarfile="${lib.dir}/wolfcrypt-jni.jar">
@@ -251,9 +281,14 @@
     </target>
 
     <!-- create JAR with JNI and JCE classes, use this when wanting JCE -->
-    <target name="jar-jce" depends="compile-nativeheaderdir, compile-javah, compile-module-info">
+    <target name="jar-jce" depends="compile-nativeheaderdir, compile-javah, compile-module-info, compile-java15-overlay">
+        <echo unless:set="isJava15Plus">NOTICE: JDK below 15, EdDSA JDK 15 overlay not built</echo>
         <jar jarfile="${lib.dir}/wolfcrypt-jni.jar" basedir="${build.dir}">
             <manifest>
+                <!-- JDK 15+ builds carry the EdDSA key classes under
+                     META-INF/versions/15 (see compile-java15-overlay) -->
+                <attribute name="Multi-Release" value="true"
+                           if:set="isJava15Plus" />
                 <attribute name="Implementation-Title"
                            value="${implementation.title}" />
                 <attribute name="Implementation-Version"
@@ -322,6 +357,7 @@
             <class name="com.wolfssl.wolfcrypt.Dh" />
             <class name="com.wolfssl.wolfcrypt.Ecc" />
             <class name="com.wolfssl.wolfcrypt.Ed25519" />
+            <class name="com.wolfssl.wolfcrypt.Ed448" />
             <class name="com.wolfssl.wolfcrypt.Curve25519" />
             <class name="com.wolfssl.wolfcrypt.Chacha" />
             <class name="com.wolfssl.wolfcrypt.WolfCryptError" />
@@ -759,6 +795,7 @@ To install SpotBugs:
                   excludeFilter="spotbugs-exclude.xml"
                   failOnError="false">
             <sourcePath path="${src.dir}"/>
+            <sourcePath path="${src.java15.dir}"/>
             <class location="${lib.dir}/wolfcrypt-jni.jar"/>
         </spotbugs>
         <echo message="SpotBugs report: ${reports.dir}/spotbugs.html"/>

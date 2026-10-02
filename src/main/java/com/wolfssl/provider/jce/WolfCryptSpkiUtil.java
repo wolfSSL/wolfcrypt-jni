@@ -64,12 +64,15 @@ import java.util.Arrays;
  */
 final class WolfCryptSpkiUtil {
 
-    /* DER tags used here. */
-    private static final int TAG_BIT_STRING   = 0x03;
-    private static final int TAG_OCTET_STRING = 0x04;
-    private static final int TAG_NULL         = 0x05;
-    private static final int TAG_OID          = 0x06;
-    private static final int TAG_SEQUENCE     = 0x30;
+    /* DER tags used here and by the EdDSA PKCS#8 v2 fallback. */
+    static final int TAG_BIT_STRING   = 0x03;
+    static final int TAG_OCTET_STRING = 0x04;
+    static final int TAG_NULL         = 0x05;
+    static final int TAG_OID          = 0x06;
+    static final int TAG_SEQUENCE     = 0x30;
+    /* RFC 5958 OneAsymmetricKey context-specific tags */
+    static final int TAG_ATTRIBUTES   = 0xa0; /* attributes [0], constructed */
+    static final int TAG_PUBLIC_KEY   = 0x81; /* publicKey [1] IMPLICIT */
 
     /* OID content bytes (no tag/length) for
      * 1.2.840.113549.1.9.16.3.17 (id-alg-hss-lms-hashsig). */
@@ -372,13 +375,24 @@ final class WolfCryptSpkiUtil {
             Arrays.copyOfRange(x509, contentStart, bsEnd), oidIndex);
     }
 
-    /*
+    /**
      * Parse a definite-form DER TLV at offset 'off' within [off, limit),
-     * requiring the given tag. Returns {contentStart, contentEnd}. Rejects
-     * indefinite/non-minimal lengths and overruns.
+     * requiring the given tag. Rejects indefinite/non-minimal lengths and
+     * overruns. Also used by the EdDSA PKCS#8 v2 fallback.
+     *
+     * @param in DER bytes
+     * @param off offset of the tag
+     * @param limit end of the region the TLV must fit in
+     * @param tag expected tag
+     * @param algLabel algorithm name for the exception message
+     *
+     * @return {@code [0]} content start, {@code [1]} content end
+     *
+     * @throws IllegalArgumentException on a tag mismatch, a bad length or
+     *         an overrun
      */
-    private static int[] readTLV(byte[] in, int off, int limit, int tag,
-        String algLabel) {
+    static int[] readTLV(byte[] in, int off, int limit, int tag,
+        String algLabel) throws IllegalArgumentException {
 
         int lenByte, contentStart, length, numLenBytes;
 

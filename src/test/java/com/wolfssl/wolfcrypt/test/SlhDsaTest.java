@@ -915,11 +915,11 @@ public class SlhDsaTest {
             String expectedPk) {
             this.param = param;
             this.name = name;
-            this.skSeed = hexToBytes(skSeed);
-            this.skPrf = hexToBytes(skPrf);
-            this.pkSeed = hexToBytes(pkSeed);
-            this.expectedSk = hexToBytes(expectedSk);
-            this.expectedPk = hexToBytes(expectedPk);
+            this.skSeed = Util.h2b(skSeed);
+            this.skPrf = Util.h2b(skPrf);
+            this.pkSeed = Util.h2b(pkSeed);
+            this.expectedSk = Util.h2b(expectedSk);
+            this.expectedPk = Util.h2b(expectedPk);
         }
     }
 
@@ -1119,16 +1119,6 @@ public class SlhDsaTest {
             "39a35df6"),
     };
 
-    private static byte[] hexToBytes(String s) {
-        int len = s.length();
-        byte[] out = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            out[i / 2] = (byte) Integer.parseInt(
-                s.substring(i, i + 2), 16);
-        }
-        return out;
-    }
-
     @Test
     public void keyGenKat() {
         assumeEnabled();
@@ -1170,11 +1160,11 @@ public class SlhDsaTest {
             String ctx, String msg, String expectedSig) {
             this.param = param;
             this.name = name;
-            this.sk = hexToBytes(sk);
-            this.pk = hexToBytes(pk);
-            this.ctx = hexToBytes(ctx);
-            this.msg = hexToBytes(msg);
-            this.expectedSig = hexToBytes(expectedSig);
+            this.sk = Util.h2b(sk);
+            this.pk = Util.h2b(pk);
+            this.ctx = Util.h2b(ctx);
+            this.msg = Util.h2b(msg);
+            this.expectedSig = Util.h2b(expectedSig);
         }
     }
 
