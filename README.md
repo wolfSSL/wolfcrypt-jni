@@ -41,6 +41,18 @@ and `KeyFactory` services (and ML-DSA keys in the WKS KeyStore), add
 includes it. Without it, wolfJCE compiles and runs normally but the
 ML-DSA services are not registered.
 
+**Note on Ed25519 / Ed448 (RFC 8032):** neither curve is enabled by
+`--enable-jni` alone. To use the `Ed25519`, `Ed448` and `EdDSA` `Signature`,
+`KeyPairGenerator` and `KeyFactory` services (and EdDSA keys in the WKS
+KeyStore), add `--enable-ed25519` and/or `--enable-ed448` to the native
+wolfSSL `./configure` line, or use `--enable-all` which includes both. Ed448
+pulls in SHAKE256 (SHA-3) automatically. Without them, wolfJCE compiles and
+runs normally but the corresponding services are not registered. On JDK 15
+and later the JAR carries a multi-release overlay so wolfJCE EdDSA keys also
+implement `java.security.interfaces.EdECPublicKey` / `EdECPrivateKey` (see
+README\_JCE.md). Public keys are validated on import by native wolfSSL, which
+rejects off-curve and small-order points from wolfSSL 5.9.2 on.
+
 **Note on XMSS/XMSS^MT (RFC 8391):** XMSS support requires **wolfSSL 5.9.2 or
 later** and is **not** enabled by `--enable-jni` alone. To use the XMSS and
 XMSSMT `Signature` and `KeyFactory` services, add `--enable-xmss` to the native

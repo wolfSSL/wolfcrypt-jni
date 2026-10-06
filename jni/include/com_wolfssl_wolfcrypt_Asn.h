@@ -51,6 +51,22 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getECDSAk
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getED25519k
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getED25519k
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
+ * Method:    getED448k
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Asn_getED448k
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Asn
  * Method:    getML_DSA_LEVEL2k
  * Signature: ()I
  */
