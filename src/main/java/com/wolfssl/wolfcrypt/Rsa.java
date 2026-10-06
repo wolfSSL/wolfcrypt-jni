@@ -46,6 +46,9 @@ public class Rsa extends NativeStruct {
     /** direct() operation, decrypt with private key */
     public static final int RSA_PRIVATE_DECRYPT = 3;
 
+    /** PKCS#1 v1.5 padding overhead in bytes */
+    public static final int RSA_MIN_PAD_SZ = 11;
+
     /**
      * Used to indicate that salt length is the same as hash length
      */

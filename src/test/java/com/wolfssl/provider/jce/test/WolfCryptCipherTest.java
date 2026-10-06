@@ -6789,9 +6789,9 @@ public class WolfCryptCipherTest {
 
         try {
             ciph.doFinal();
-            fail("Cipher.doFinal should throw exception when data " +
-                 "is larger than RSA key size");
-        } catch (WolfCryptException | IllegalBlockSizeException e) {
+            fail("Cipher.doFinal should throw IllegalBlockSizeException " +
+                 "when data is larger than RSA key size");
+        } catch (IllegalBlockSizeException e) {
             /* expected */
         }
 
@@ -6828,9 +6828,9 @@ public class WolfCryptCipherTest {
 
         try {
             ciph.doFinal();
-            fail("Cipher.doFinal should throw exception when data " +
-                 "is larger than RSA key size");
-        } catch (WolfCryptException | IllegalBlockSizeException e) {
+            fail("Cipher.doFinal should throw IllegalBlockSizeException " +
+                 "when data is larger than RSA key size");
+        } catch (IllegalBlockSizeException e) {
             /* expected */
         }
 
@@ -6851,6 +6851,30 @@ public class WolfCryptCipherTest {
             fail("Cipher.doFinal should throw IllegalBlockSizeException " +
                  "when data is larger than RSA key size");
         } catch (IllegalBlockSizeException e) {
+            /* expected */
+        }
+
+        /* Encrypt limit is k - 11 bytes, failure clears buffered data */
+        for (Key key : new Key[] {pub, priv}) {
+            ciph.init(Cipher.ENCRYPT_MODE, key);
+            ciph.update(new byte[246]);
+            try {
+                ciph.doFinal();
+                fail("Encrypt over 245 bytes should throw " +
+                     "IllegalBlockSizeException");
+            } catch (IllegalBlockSizeException e) {
+                /* expected */
+            }
+            assertEquals(256, ciph.doFinal(new byte[245]).length);
+        }
+
+        /* Wrapping a key over the limit throws InvalidKeyException */
+        ciph.init(Cipher.WRAP_MODE, pub);
+        try {
+            ciph.wrap(new SecretKeySpec(new byte[246], "AES"));
+            fail("Wrapping key over 245 bytes should throw " +
+                 "InvalidKeyException");
+        } catch (InvalidKeyException e) {
             /* expected */
         }
     }

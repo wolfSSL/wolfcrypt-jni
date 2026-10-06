@@ -153,6 +153,7 @@ public class WolfCrypt extends WolfObject {
     private static native byte[] wcCertPemToDer(byte[] pem);
     private static native byte[] wcPubKeyPemToDer(byte[] pem);
     private static native void nativeSetIOTimeout(int timeoutSec);
+    private static native int wcHashGetDigestSize(int hashType);
 
     /* Public mappings of some SSL/TLS level enums/defines */
     /** wolfSSL file type: PEM */
@@ -254,6 +255,27 @@ public class WolfCrypt extends WolfObject {
         }
 
         nativeSetIOTimeout(timeoutSec);
+    }
+
+    /**
+     * Get digest size of a hash type, wraps native wc_HashGetDigestSize().
+     *
+     * @param hashType hash type, one of the WC_HASH_TYPE_* values
+     *
+     * @return digest size in bytes
+     *
+     * @throws WolfCryptException if hash type is not supported or not
+     *         compiled into native wolfSSL
+     */
+    public static int getDigestSize(int hashType) {
+
+        int ret = wcHashGetDigestSize(hashType);
+
+        if (ret <= 0) {
+            throw new WolfCryptException(ret);
+        }
+
+        return ret;
     }
 
     /**
