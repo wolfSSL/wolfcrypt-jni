@@ -158,6 +158,13 @@ public class WolfCryptTest {
     }
 
     @Test
+    public void testFipsNotApprovedError() {
+        WolfCryptException e = new WolfCryptException(1);
+        assertEquals(WolfCryptError.WC_FIPS_NOT_APPROVED, e.getError());
+        assertEquals("Operation is not FIPS approved", e.getMessage());
+    }
+
+    @Test
     public void testToHexStringBasic() throws Exception {
 
         if (!WolfCrypt.Base16Enabled()) {

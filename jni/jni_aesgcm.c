@@ -45,6 +45,24 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmShortIvAllowed
+  (JNIEnv* env, jclass jcl)
+{
+    jboolean allowed = JNI_TRUE;
+    (void)env;
+    (void)jcl;
+
+#if defined(HAVE_FIPS) && !defined(FIPS_NO_WRAPPERS) && \
+    defined(FIPS_VERSION3_EQ) && defined(FIPS_VERSION3_GE)
+    /* FIPS returns WC_FIPS_NOT_APPROVED for GCM/GMAC IVs under 96 bits */
+    #if FIPS_VERSION3_EQ(5,2,4) || FIPS_VERSION3_GE(7,0,0)
+    allowed = JNI_FALSE;
+    #endif
+#endif
+
+    return allowed;
+}
+
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_mallocNativeStruct_1internal
   (JNIEnv* env, jobject this)
 {

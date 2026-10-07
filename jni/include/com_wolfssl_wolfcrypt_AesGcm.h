@@ -9,6 +9,8 @@ extern "C" {
 #endif
 #undef com_wolfssl_wolfcrypt_AesGcm_NULL
 #define com_wolfssl_wolfcrypt_AesGcm_NULL 0LL
+#undef com_wolfssl_wolfcrypt_AesGcm_GCM_NONCE_MID_SZ
+#define com_wolfssl_wolfcrypt_AesGcm_GCM_NONCE_MID_SZ 12L
 /*
  * Class:     com_wolfssl_wolfcrypt_AesGcm
  * Method:    mallocNativeStruct_internal
@@ -72,6 +74,14 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmSetIV
  */
 JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmEncrypt_1ex
   (JNIEnv *, jobject, jbyteArray, jbyteArray, jbyteArray, jbyteArray);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_AesGcm
+ * Method:    wc_AesGcmShortIvAllowed
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_AesGcm_wc_1AesGcmShortIvAllowed
+  (JNIEnv *, jclass);
 
 #ifdef __cplusplus
 }

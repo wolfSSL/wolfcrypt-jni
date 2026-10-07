@@ -1267,6 +1267,12 @@ public class WolfCryptCipher extends CipherSpi {
                         "AES-GCM IV is null or 0 length");
                 }
 
+                if (!AesGcm.shortIvAllowed() &&
+                    gcmSpec.getIV().length < AesGcm.GCM_NONCE_MID_SZ) {
+                    throw new InvalidAlgorithmParameterException(
+                        "AES-GCM IV shorter than 96 bits is not FIPS approved");
+                }
+
                 this.iv = gcmSpec.getIV().clone();
                 this.gcmTagLen = tagLenToBytes("AES-GCM", gcmSpec.getTLen());
             }
