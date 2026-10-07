@@ -42,6 +42,7 @@ import com.wolfssl.wolfcrypt.Sha3;
 import com.wolfssl.wolfcrypt.Hmac;
 import com.wolfssl.wolfcrypt.AesCmac;
 import com.wolfssl.wolfcrypt.AesGmac;
+import com.wolfssl.wolfcrypt.AesGcm;
 import com.wolfssl.wolfcrypt.Aes;
 
 /**
@@ -254,6 +255,12 @@ public class WolfCryptMac extends MacSpi {
                         "AES-GMAC tag length must be a positive multiple of " +
                         "8 bits, up to " + (Aes.BLOCK_SIZE * 8) +
                         " bits, got " + gmacTagBits);
+                }
+
+                if (!AesGcm.shortIvAllowed() &&
+                    gcmSpec.getIV().length < AesGcm.GCM_NONCE_MID_SZ) {
+                    throw new InvalidAlgorithmParameterException(
+                        "AES-GMAC IV shorter than 96 bits not FIPS approved");
                 }
 
                 this.aesGmac.setKey(encodedKey);
