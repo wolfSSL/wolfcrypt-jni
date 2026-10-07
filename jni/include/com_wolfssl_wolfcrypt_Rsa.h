@@ -17,6 +17,8 @@ extern "C" {
 #define com_wolfssl_wolfcrypt_Rsa_RSA_PRIVATE_ENCRYPT 2L
 #undef com_wolfssl_wolfcrypt_Rsa_RSA_PRIVATE_DECRYPT
 #define com_wolfssl_wolfcrypt_Rsa_RSA_PRIVATE_DECRYPT 3L
+#undef com_wolfssl_wolfcrypt_Rsa_RSA_MIN_PAD_SZ
+#define com_wolfssl_wolfcrypt_Rsa_RSA_MIN_PAD_SZ 11L
 #undef com_wolfssl_wolfcrypt_Rsa_RSA_PSS_SALT_LEN_DEFAULT
 #define com_wolfssl_wolfcrypt_Rsa_RSA_PSS_SALT_LEN_DEFAULT -1L
 #undef com_wolfssl_wolfcrypt_Rsa_RSA_PSS_SALT_LEN_DISCOVER

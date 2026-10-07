@@ -41,6 +41,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.Sha;
+import com.wolfssl.wolfcrypt.Sha224;
+import com.wolfssl.wolfcrypt.Sha256;
+import com.wolfssl.wolfcrypt.Sha384;
+import com.wolfssl.wolfcrypt.Sha512;
+import com.wolfssl.wolfcrypt.Sha3;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.WolfCryptException;
@@ -109,6 +116,45 @@ public class WolfCryptTest {
         /* Just verify the method doesn't throw, result depends on build */
         boolean enabled = WolfCrypt.Base16Enabled();
         System.out.println("Base16 enabled: " + enabled);
+    }
+
+    @Test
+    public void testGetDigestSize() {
+
+        /* NO_HASH_WRAPPER builds return NOT_COMPILED_IN for all types */
+        try {
+            WolfCrypt.getDigestSize(WolfCrypt.WC_HASH_TYPE_NONE);
+            fail("getDigestSize(WC_HASH_TYPE_NONE) should throw");
+        } catch (WolfCryptException e) {
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                return;
+            }
+        }
+
+        if (FeatureDetect.ShaEnabled()) {
+            assertEquals(Sha.DIGEST_SIZE,
+                WolfCrypt.getDigestSize(WolfCrypt.WC_HASH_TYPE_SHA));
+        }
+        if (FeatureDetect.Sha224Enabled()) {
+            assertEquals(Sha224.DIGEST_SIZE,
+                WolfCrypt.getDigestSize(WolfCrypt.WC_HASH_TYPE_SHA224));
+        }
+        if (FeatureDetect.Sha256Enabled()) {
+            assertEquals(Sha256.DIGEST_SIZE,
+                WolfCrypt.getDigestSize(WolfCrypt.WC_HASH_TYPE_SHA256));
+        }
+        if (FeatureDetect.Sha384Enabled()) {
+            assertEquals(Sha384.DIGEST_SIZE,
+                WolfCrypt.getDigestSize(WolfCrypt.WC_HASH_TYPE_SHA384));
+        }
+        if (FeatureDetect.Sha512Enabled()) {
+            assertEquals(Sha512.DIGEST_SIZE,
+                WolfCrypt.getDigestSize(WolfCrypt.WC_HASH_TYPE_SHA512));
+        }
+        if (FeatureDetect.Sha3Enabled()) {
+            assertEquals(Sha3.DIGEST_SIZE_256,
+                WolfCrypt.getDigestSize(WolfCrypt.WC_HASH_TYPE_SHA3_256));
+        }
     }
 
     @Test

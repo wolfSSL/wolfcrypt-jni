@@ -2125,6 +2125,18 @@ public class WolfCryptCipher extends CipherSpi {
         return padded;
     }
 
+    /* Max RSA encrypt input length for PKCS#1 v1.5 and OAEP padding */
+    private int rsaMaxEncryptLen() {
+
+        int k = this.rsa.getEncryptSize();
+
+        if (this.paddingType == PaddingType.WC_PKCS1) {
+            return k - Rsa.RSA_MIN_PAD_SZ;
+        }
+
+        return k - (2 * WolfCrypt.getDigestSize(this.oaepHashType)) - 2;
+    }
+
     /* True if len more bytes would take an AES-XTS data unit past its limit */
     private boolean xtsDataUnitExceeded(int len) {
         return (cipherMode == CipherMode.WC_XTS &&
@@ -2557,6 +2569,17 @@ public class WolfCryptCipher extends CipherSpi {
 
                 case WC_RSA:
 
+                    /* Check padded RSA encrypt input limit */
+                    if (this.direction == OpMode.WC_ENCRYPT &&
+                        this.paddingType != PaddingType.WC_NONE) {
+                        int maxLen = rsaMaxEncryptLen();
+                        if (tmpIn.length > maxLen) {
+                            throw new IllegalBlockSizeException(
+                                "Data must not be longer than " + maxLen +
+                                " bytes");
+                        }
+                    }
+
                     if (this.paddingType == PaddingType.WC_NONE) {
                         tmpOut = rsaNoPaddingFinal(tmpIn);
                     }
@@ -2947,6 +2970,12 @@ public class WolfCryptCipher extends CipherSpi {
         } catch (BadPaddingException | WolfCryptException e) {
             throw new InvalidKeyException("Failed to wrap key: " +
                 e.getMessage(), e);
+        } catch (IllegalBlockSizeException e) {
+            if (this.cipherType == CipherType.WC_RSA) {
+                throw new InvalidKeyException(
+                    "Key is too long for padding/wrapping", e);
+            }
+            throw e;
         } finally {
             zeroArray(encodedKey);
         }

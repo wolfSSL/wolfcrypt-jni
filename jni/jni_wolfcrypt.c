@@ -33,6 +33,7 @@
 #include <wolfssl/wolfcrypt/coding.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/hash.h>
 #include <wolfssl/wolfcrypt/memory.h>
 #include <wolfssl/ssl.h>
 #include <wolfssl/wolfio.h>
@@ -160,6 +161,20 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_getWC_1HASH_1TYPE_1S
     return WC_HASH_TYPE_SHAKE256;
 #else
     return -1;
+#endif
+}
+
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcHashGetDigestSize
+  (JNIEnv* env, jclass jcl, jint hashType)
+{
+    (void)env;
+    (void)jcl;
+
+#ifndef NO_HASH_WRAPPER
+    return (jint)wc_HashGetDigestSize((enum wc_HashType)hashType);
+#else
+    (void)hashType;
+    return NOT_COMPILED_IN;
 #endif
 }
 

@@ -225,6 +225,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_nativeSetIOTimeout
 
 /*
  * Class:     com_wolfssl_wolfcrypt_WolfCrypt
+ * Method:    wcHashGetDigestSize
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_WolfCrypt_wcHashGetDigestSize
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_WolfCrypt
  * Method:    CrlEnabled
  * Signature: ()Z
  */

@@ -303,7 +303,7 @@ public class WolfCryptCipherRSAOAEPTest {
     public void testOAEPTooBigData()
         throws NoSuchProviderException, NoSuchAlgorithmException,
                NoSuchPaddingException, InvalidKeyException,
-               BadPaddingException {
+               IllegalBlockSizeException, BadPaddingException {
 
         Assume.assumeTrue(oaepAvailable);
         Assume.assumeNotNull(rsaPair);
@@ -317,13 +317,27 @@ public class WolfCryptCipherRSAOAEPTest {
 
         try {
             cipher.doFinal(tooBigPlaintext);
-            fail("Should throw exception for data too big for OAEP");
+            fail("Should throw IllegalBlockSizeException for data too " +
+                "big for OAEP");
         } catch (IllegalBlockSizeException e) {
             /* Expected */
-        } catch (BadPaddingException e) {
-            /* Also acceptable from native layer */
-        } catch (RuntimeException e) {
-            /* WolfCryptException wrapped in RuntimeException is also valid */
+        }
+
+        /* Cipher stays usable after failure */
+        assertEquals(256, cipher.doFinal(new byte[190]).length);
+
+        /* SHA-1 OAEP max is 256 - 2*20 - 2 = 214 bytes */
+        if (oaepSha1Available) {
+            cipher = Cipher.getInstance(OAEP_SHA1_ALGO, jceProvider);
+            cipher.init(Cipher.ENCRYPT_MODE, rsaPair.getPublic());
+            try {
+                cipher.doFinal(new byte[215]);
+                fail("Should throw IllegalBlockSizeException for data too " +
+                    "big for SHA-1 OAEP");
+            } catch (IllegalBlockSizeException e) {
+                /* Expected */
+            }
+            assertEquals(256, cipher.doFinal(new byte[214]).length);
         }
     }
 
@@ -817,6 +831,16 @@ public class WolfCryptCipherRSAOAEPTest {
         byte[] decrypted = decCipher.doFinal(ciphertext);
 
         assertArrayEquals(plaintext, decrypted);
+
+        /* Max input is 256 - 2*48 - 2 = 158 bytes */
+        assertEquals(256, encCipher.doFinal(new byte[158]).length);
+        try {
+            encCipher.doFinal(new byte[159]);
+            fail("SHA-384 OAEP input over 158 bytes should throw " +
+                "IllegalBlockSizeException");
+        } catch (IllegalBlockSizeException e) {
+            /* Expected */
+        }
     }
 
     /**
@@ -853,6 +877,16 @@ public class WolfCryptCipherRSAOAEPTest {
         byte[] decrypted = decCipher.doFinal(ciphertext);
 
         assertArrayEquals(plaintext, decrypted);
+
+        /* Max input is 256 - 2*64 - 2 = 126 bytes */
+        assertEquals(256, encCipher.doFinal(new byte[126]).length);
+        try {
+            encCipher.doFinal(new byte[127]);
+            fail("SHA-512 OAEP input over 126 bytes should throw " +
+                "IllegalBlockSizeException");
+        } catch (IllegalBlockSizeException e) {
+            /* Expected */
+        }
     }
 
     /**
