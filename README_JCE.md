@@ -559,8 +559,8 @@ the services below are not registered.
 Usage details:
 
 - All four opmodes are supported: `WRAP_MODE`/`UNWRAP_MODE` for `wrap()`/
-  `unwrap()`, and `ENCRYPT_MODE`/`DECRYPT_MODE` for `doFinal()` over raw
-  data (`update()` buffers, all output comes from `doFinal()`).
+  `unwrap()`, and `ENCRYPT_MODE`/`DECRYPT_MODE` for `doFinal()` over raw data
+  (`update()` buffers and returns `null`, all output comes from `doFinal()`).
 - Input to wrap must be at least 16 bytes and a multiple of 8 bytes, and
   wrapped input to unwrap at least 24 bytes and a multiple of 8
   (`IllegalBlockSizeException` otherwise). Wrapped output is 8 bytes longer
@@ -569,10 +569,12 @@ Usage details:
   no parameters the default `A6A6A6A6A6A6A6A6` is used and wolfJCE never
   generates a random IV. An alternative value may be given as an 8-byte
   `IvParameterSpec` (or an `AlgorithmParameters("AES")` holding one) and
-  must then be supplied to the unwrapping side as well. `getIV()` and
-  `getParameters()` return `null` unless an IV was set explicitly, in which
-  case `getParameters()` is an `AlgorithmParameters("AES")` holding the
-  8-byte IV, as with SunJCE 17+. That object can be passed to another
+  must then be supplied to the unwrapping side as well. Like SunJCE, on
+  Java 17+ `getIV()` returns the default IV after `init()`, and
+  `getParameters()` returns it even before `init()`. On older Java versions,
+  where SunJCE accepts no AES Key Wrap parameters, both return `null` unless
+  an IV was set. `getParameters()` is an `AlgorithmParameters("AES")`
+  holding the 8-byte IV. That object can be passed to another
   provider's `Cipher.init()` (which uses `getParameterSpec()`). Its DER
   encoding, `04 08 <iv>`, is the same one SunJCE produces, but SunJCE's own
   DER decoder only accepts 16-byte AES IVs, where wolfJCE decodes both.
@@ -1123,15 +1125,6 @@ failed")`, consistent with its other authenticated modes and with Bouncy
 Castle. SunJCE (JDK 17+) throws `IllegalBlockSizeException` with the same
 message in this case. `UNWRAP_MODE` is unaffected: both providers throw
 `InvalidKeyException` for every `unwrap()` failure.
-
-`getParameters()` on an AES Key Wrap Cipher returns `null` unless an IV was
-set explicitly (JDK 8 and Bouncy Castle behavior), whereas SunJCE 17+ returns
-`AlgorithmParameters` holding the default IV. This keeps
-`otherCipher.init(mode, key, wolfCipher.getParameters())` working against
-providers that accept no AES Key Wrap parameters at all. With an explicit IV
-both providers return `AlgorithmParameters("AES")` with the same `04 08 <iv>`
-DER encoding; `AlgorithmParameters.getInstance("AES", "SunJCE")` rejects that
-encoding (even its own), while wolfJCE accepts both 8 and 16 byte IVs.
 
 #### Cipher `unwrap()` With a Null or Empty Algorithm Name
 

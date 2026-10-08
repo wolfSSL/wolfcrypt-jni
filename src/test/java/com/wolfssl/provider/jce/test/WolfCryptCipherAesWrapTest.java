@@ -70,6 +70,7 @@ import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 
 import com.wolfssl.provider.jce.WolfCryptProvider;
+import com.wolfssl.provider.jce.WolfCryptUtil;
 import com.wolfssl.wolfcrypt.AesKeyWrap;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
@@ -143,6 +144,10 @@ public class WolfCryptCipherAesWrapTest {
 
     /* Alternative 8-byte IV */
     private static final byte[] ALT_IV = Util.h2b("0011223344556677");
+
+    /* IV reported when none set: the default on Java 17+, null on older Java */
+    private static final byte[] REPORTED_DEFAULT_IV =
+        (WolfCryptUtil.getJavaVersion() >= 17) ? DEFAULT_IV : null;
 
     @Rule(order = Integer.MIN_VALUE)
     public TestRule testWatcher = TimedTestWatcher.create();
@@ -235,6 +240,16 @@ public class WolfCryptCipherAesWrapTest {
         byte[] b = new byte[len];
         secureRandom.nextBytes(b);
         return b;
+    }
+
+    /* IV held by AlgorithmParameters, or null */
+    private static byte[] paramsIv(AlgorithmParameters params)
+        throws Exception {
+
+        if (params == null) {
+            return null;
+        }
+        return params.getParameterSpec(IvParameterSpec.class).getIV();
     }
 
     /**
@@ -354,17 +369,14 @@ public class WolfCryptCipherAesWrapTest {
         assertArrayEquals("doFinal() decrypt does not match vector",
             data, dec.doFinal(expected));
 
-        /* ENCRYPT_MODE / DECRYPT_MODE, update() then doFinal() */
-        byte[] part = enc.update(data, 0, 8);
-        assertTrue("update() must buffer, not emit output",
-            part == null || part.length == 0);
-        part = enc.update(data, 8, data.length - 8);
-        assertTrue(part == null || part.length == 0);
+        /* ENCRYPT_MODE / DECRYPT_MODE, update() then doFinal(). update()
+         * buffers and returns null. */
+        assertNull(enc.update(data, 0, 8));
+        assertNull(enc.update(data, 8, data.length - 8));
         assertArrayEquals("update()+doFinal() encrypt does not match",
             expected, enc.doFinal());
 
-        part = dec.update(expected, 0, 8);
-        assertTrue(part == null || part.length == 0);
+        assertNull(dec.update(expected, 0, 8));
         assertArrayEquals("update()+doFinal() decrypt does not match",
             data, dec.doFinal(expected, 8, expected.length - 8));
     }
@@ -777,8 +789,7 @@ public class WolfCryptCipherAesWrapTest {
 
             /* chunked update() */
             int half = (sz / 2) & ~7;
-            byte[] u = enc.update(data, 0, half);
-            assertTrue(u == null || u.length == 0);
+            assertNull(enc.update(data, 0, half));
             assertArrayEquals(ct, enc.doFinal(data, half, sz - half));
         }
     }
@@ -911,11 +922,12 @@ public class WolfCryptCipherAesWrapTest {
         assumeAes128();
 
         Cipher c = Cipher.getInstance("AESWrap", jceProvider);
+        assertNull("getIV() must be null before init()", c.getIV());
+        assertArrayEquals(REPORTED_DEFAULT_IV, paramsIv(c.getParameters()));
 
         c.init(Cipher.WRAP_MODE, aesKey(KEK_128));
-        assertNull("getIV() must be null when no IV was set", c.getIV());
-        assertNull("getParameters() must be null when no IV was set",
-            c.getParameters());
+        assertArrayEquals(REPORTED_DEFAULT_IV, c.getIV());
+        assertArrayEquals(REPORTED_DEFAULT_IV, paramsIv(c.getParameters()));
         byte[] a = c.wrap(aesKey(DATA_128));
 
         c.init(Cipher.WRAP_MODE, aesKey(KEK_128),
@@ -925,7 +937,7 @@ public class WolfCryptCipherAesWrapTest {
 
         c.init(Cipher.WRAP_MODE, aesKey(KEK_128),
             (AlgorithmParameterSpec)null);
-        assertNull(c.getIV());
+        assertArrayEquals(REPORTED_DEFAULT_IV, c.getIV());
         byte[] d = c.wrap(aesKey(DATA_128));
 
         assertArrayEquals(WRAP_128_KEK128, a);
@@ -934,11 +946,11 @@ public class WolfCryptCipherAesWrapTest {
 
         /* A SecureRandom must never be used to invent an IV */
         c.init(Cipher.WRAP_MODE, aesKey(KEK_128), secureRandom);
-        assertNull(c.getIV());
+        assertArrayEquals(REPORTED_DEFAULT_IV, c.getIV());
         assertArrayEquals(WRAP_128_KEK128, c.wrap(aesKey(DATA_128)));
 
         c.init(Cipher.ENCRYPT_MODE, aesKey(KEK_128), secureRandom);
-        assertNull(c.getIV());
+        assertArrayEquals(REPORTED_DEFAULT_IV, c.getIV());
         assertArrayEquals(WRAP_128_KEK128, c.doFinal(DATA_128));
     }
 
@@ -1738,9 +1750,12 @@ public class WolfCryptCipherAesWrapTest {
                 wolfWrap.init(Cipher.WRAP_MODE, kek);
                 byte[] wrapped = wolfWrap.wrap(key);
 
+                /* Our getParameters() must init the interop provider on
+                 * any Java version */
                 Cipher otherUnwrap = Cipher.getInstance("AESWrap",
                     interopProvider);
-                otherUnwrap.init(Cipher.UNWRAP_MODE, kek);
+                otherUnwrap.init(Cipher.UNWRAP_MODE, kek,
+                    wolfWrap.getParameters());
                 Key out = otherUnwrap.unwrap(wrapped, "AES",
                     Cipher.SECRET_KEY);
                 assertArrayEquals("wolfJCE wrap -> " + interopProvider +
@@ -1751,6 +1766,10 @@ public class WolfCryptCipherAesWrapTest {
                 Cipher otherWrap = Cipher.getInstance("AESWrap",
                     interopProvider);
                 otherWrap.init(Cipher.WRAP_MODE, kek);
+                if (interopProvider.equals("SunJCE")) {
+                    assertArrayEquals("getIV() must match SunJCE",
+                        otherWrap.getIV(), wolfWrap.getIV());
+                }
                 byte[] wrapped2 = otherWrap.wrap(key);
                 assertArrayEquals("both providers must produce identical " +
                     "wrapped output", wrapped, wrapped2);
@@ -2123,9 +2142,10 @@ public class WolfCryptCipherAesWrapTest {
             assertArrayEquals(DATA_128, u.unwrap(wrapped, "AES",
                 Cipher.SECRET_KEY).getEncoded());
 
-            /* no IV set, no parameters regardless of provider lookup */
+            /* no IV set, default IV reported per Java version */
             c.init(Cipher.WRAP_MODE, aesKey(KEK_128));
-            assertNull(c.getParameters());
+            assertArrayEquals(REPORTED_DEFAULT_IV,
+                paramsIv(c.getParameters()));
 
         } finally {
             Security.insertProviderAt(saved, savedPos);
