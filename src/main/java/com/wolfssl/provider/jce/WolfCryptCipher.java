@@ -207,6 +207,17 @@ public class WolfCryptCipher extends CipherSpi {
     /* Size of generated AES-GCM IV, 96 bits */
     private static final int GCM_INTERNAL_IV_SIZE = 12;
 
+    /* RFC 3394 default AES Key Wrap IV */
+    private static final byte[] KW_DEFAULT_IV = {
+        (byte)0xA6, (byte)0xA6, (byte)0xA6, (byte)0xA6,
+        (byte)0xA6, (byte)0xA6, (byte)0xA6, (byte)0xA6
+    };
+
+    /* Report default AES Key Wrap IV on Java 17+, matching JDK behavior.
+     * Older JDKs return null and reject all AES Key Wrap parameters. */
+    private static final boolean KW_REPORT_DEFAULT_IV =
+        WolfCryptUtil.getJavaVersion() >= 17;
+
     /* Set when the AES-GCM IV is generated natively, cleared whenever the
      * native structs are recreated */
     private boolean gcmInternalIv = false;
@@ -1072,16 +1083,20 @@ public class WolfCryptCipher extends CipherSpi {
                     break;
 
                 case WC_KW:
-                    /* Only return an explicitly-set IV. null is the RFC 3394
-                     * default. Always use wolfJCE AES parameters, JDK 8/11
-                     * SunJCE rejects 8-byte IVs. */
-                    if (this.iv != null) {
+                    /* Set IV, or the default before init() on Java 17+.
+                     * Always use wolfJCE AES parameters, JDK 8/11 AES
+                     * parameters reject 8-byte IVs. */
+                    paramIv = this.iv;
+                    if (paramIv == null && KW_REPORT_DEFAULT_IV) {
+                        paramIv = KW_DEFAULT_IV;
+                    }
+                    if (paramIv != null) {
                         Provider wolf = Security.getProvider("wolfJCE");
                         if (wolf == null) {
                             wolf = FallbackProvider.INSTANCE;
                         }
                         params = AlgorithmParameters.getInstance("AES", wolf);
-                        params.init(new IvParameterSpec(this.iv));
+                        params.init(new IvParameterSpec(paramIv));
                     }
                     break;
 
@@ -1192,7 +1207,7 @@ public class WolfCryptCipher extends CipherSpi {
             this.cipherMode == CipherMode.WC_KW) {
 
             if (spec == null) {
-                this.iv = null;
+                this.iv = KW_REPORT_DEFAULT_IV ? KW_DEFAULT_IV.clone() : null;
             }
             else if (spec instanceof IvParameterSpec) {
                 byte[] kwIv = ((IvParameterSpec)spec).getIV();
@@ -1875,9 +1890,13 @@ public class WolfCryptCipher extends CipherSpi {
         }
 
         /* Some algos/modes keep data buffered until the doFinal() call, like
-         * RSA or AES-GCM/CCM without stream mode compiled natively. Just
-         * return an empty byte array in those cases here. */
+         * RSA or AES-GCM/CCM without stream mode compiled natively. Return
+         * an empty byte array, or null for AES Key Wrap matching JDK
+         * behavior. */
         if (isNoOpUpdate(bufferedLen)) {
+            if (this.cipherMode == CipherMode.WC_KW) {
+                return null;
+            }
             return new byte[0];
         }
 

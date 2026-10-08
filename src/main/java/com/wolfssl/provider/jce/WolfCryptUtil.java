@@ -1378,4 +1378,29 @@ public class WolfCryptUtil {
 
         return (diff == 0);
     }
+
+    /**
+     * Get the Java major version from java.specification.version - "1.8" on
+     * Java 8, "17" on Java 17, "0.9" on Android.
+     *
+     * @return Java major version, or 0 on Android or if unknown
+     */
+    public static int getJavaVersion() {
+        try {
+            String[] ver = System.getProperty(
+                "java.specification.version", "0").split("\\.");
+
+            int major = Integer.parseInt(ver[0]);
+            if (major == 1 && ver.length > 1) {
+                major = Integer.parseInt(ver[1]);
+            }
+
+            return major;
+
+        } catch (RuntimeException e) {
+            /* SecurityException or malformed version, never throw since
+             * WolfCryptCipher calls this from its static initializer */
+            return 0;
+        }
+    }
 }
