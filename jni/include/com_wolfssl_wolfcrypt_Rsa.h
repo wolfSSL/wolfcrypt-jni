@@ -225,6 +225,14 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_rsaMinSize
 
 /*
  * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    rsaMinExponent
+ * Signature: ()J
+ */
+JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rsa_rsaMinExponent
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
  * Method:    wc_RsaPSS_Sign
  * Signature: ([BJIILcom/wolfssl/wolfcrypt/Rng;)[B
  */
@@ -286,6 +294,14 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaDirect
  */
 JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rsa_getDefaultRsaExponent
   (JNIEnv *, jclass);
+
+/*
+ * Class:     com_wolfssl_wolfcrypt_Rsa
+ * Method:    keyGenSizeAllowed
+ * Signature: (I)Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Rsa_keyGenSizeAllowed
+  (JNIEnv *, jclass, jint);
 
 #ifdef __cplusplus
 }

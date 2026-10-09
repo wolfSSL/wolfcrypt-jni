@@ -37,6 +37,13 @@ public class Rsa extends NativeStruct {
      */
     public static final int RSA_MIN_SIZE = Rsa.rsaMinSize();
 
+    /**
+     * Minimum RSA public exponent for key generation, as supported by
+     * native wolfSSL. WC_RSA_EXPONENT (65537) on wolfCrypt FIPS builds per
+     * FIPS 186-4/186-5, otherwise 3.
+     */
+    public static final long RSA_MIN_EXPONENT = Rsa.rsaMinExponent();
+
     /** direct() operation, encrypt with public key */
     public static final int RSA_PUBLIC_ENCRYPT = 0;
     /** direct() operation, decrypt with public key */
@@ -167,6 +174,7 @@ public class Rsa extends NativeStruct {
     private native byte[] wc_RsaSSL_Verify(byte[] data)
             throws WolfCryptException;
     private static native int rsaMinSize();
+    private static native long rsaMinExponent();
 
     /* RSA-PSS functions */
     private native byte[] wc_RsaPSS_Sign(byte[] data, long hashType, int mgf,
@@ -257,6 +265,17 @@ public class Rsa extends NativeStruct {
      * @return value of native WC_RSA_EXPONENT, default RSA expoonent size
      */
     public static native long getDefaultRsaExponent();
+
+    /**
+     * Checks if native wolfCrypt RSA key generation supports a key size,
+     * from native RSA_MIN_SIZE, RSA_MAX_SIZE, and the wolfCrypt FIPS v6+
+     * WC_RSA_FIPS_GEN_MIN.
+     *
+     * @param size RSA key size in bits
+     *
+     * @return true if key generation supports this size
+     */
+    public static native boolean keyGenSizeAllowed(int size);
 
     @Override
     public synchronized void releaseNativeStruct() {
