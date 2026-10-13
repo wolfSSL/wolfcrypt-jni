@@ -1660,4 +1660,37 @@ public class WolfCryptUtilTest {
         assertFalse(WolfCryptUtil.constantTimeEquals(a,
             "passwordpasswordX".toCharArray()));
     }
+
+    @Test
+    public void testGetJavaVersion() {
+        final String prop = "java.specification.version";
+        String[] specs = { "1.8", "11", "17", "0.9", "", "abc", "." };
+        int[] expected = { 8, 11, 17, 0, 0, 0, 0 };
+
+        int ver = WolfCryptUtil.getJavaVersion();
+
+        /* 0 on Android, otherwise Java 8+ */
+        assertTrue("unexpected Java version " + ver, ver == 0 || ver >= 8);
+
+        /* Mutates a global System property, restored in finally */
+        String orig = System.getProperty(prop);
+        try {
+            for (int i = 0; i < specs.length; i++) {
+                System.setProperty(prop, specs[i]);
+                /* Android ignores changes to this property */
+                Assume.assumeTrue(prop + " is read-only",
+                    specs[i].equals(System.getProperty(prop)));
+                assertEquals("\"" + specs[i] + "\"", expected[i],
+                    WolfCryptUtil.getJavaVersion());
+            }
+
+            System.clearProperty(prop);
+            assertEquals(0, WolfCryptUtil.getJavaVersion());
+
+        } finally {
+            if (orig != null) {
+                System.setProperty(prop, orig);
+            }
+        }
+    }
 }
