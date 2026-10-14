@@ -69,6 +69,7 @@ public class Sha3 extends MessageDigest implements Cloneable {
     private native void native_final_internal(ByteBuffer hash, int offset,
         int hashType);
     private native void native_final_internal(byte[] hash, int hashType);
+    private native void native_free_internal(int hashType);
 
     /**
      * Get the hash type of this Sha3 object
@@ -147,6 +148,16 @@ public class Sha3 extends MessageDigest implements Cloneable {
                 update(this.initialData);
                 this.initialData = null;
             }
+        }
+    }
+
+    /**
+     * Free native wc_Sha3 struct resources using wc_Sha3_XXX_Free()
+     */
+    protected void native_free() {
+
+        synchronized (pointerLock) {
+            native_free_internal(this.hashType);
         }
     }
 

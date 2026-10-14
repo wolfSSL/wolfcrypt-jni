@@ -40,6 +40,13 @@ public abstract class MessageDigest extends NativeStruct {
     protected abstract void native_init();
 
     /**
+     * Free resources held by an initialized native structure.
+     * Does nothing by default, subclasses holding native resources override.
+     */
+    protected void native_free() {
+    }
+
+    /**
      * Native update
      *
      * @param data input data
@@ -92,6 +99,13 @@ public abstract class MessageDigest extends NativeStruct {
      * Initialize object
      */
     public synchronized void init() {
+        state = WolfCryptState.UNINITIALIZED;
+
+        /* Free resources from a previous init, e.g. after digest() */
+        if (getNativeStruct() != NativeStruct.NULL) {
+            native_free();
+        }
+
         /* Allocate native struct pointer from NativeStruct */
         initNativeStruct();
 
@@ -288,7 +302,13 @@ public abstract class MessageDigest extends NativeStruct {
 
         /* reset state first, then free */
         state = WolfCryptState.UNINITIALIZED;
-        super.releaseNativeStruct();
+
+        synchronized (pointerLock) {
+            if (getNativeStruct() != NativeStruct.NULL) {
+                native_free();
+            }
+            super.releaseNativeStruct();
+        }
     }
 }
 
