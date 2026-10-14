@@ -144,6 +144,16 @@ public class Shake extends MessageDigest implements Cloneable {
     }
 
     /**
+     * Free native wc_Shake struct resources using wc_Shake128/256_Free()
+     */
+    protected void native_free() {
+
+        synchronized (pointerLock) {
+            native_free_internal(this.hashType);
+        }
+    }
+
+    /**
      * Copy existing native wc_Shake struct (Shake object) into this one.
      * Copies structure state using wc_Shake128/256_Copy().
      *
@@ -284,19 +294,6 @@ public class Shake extends MessageDigest implements Cloneable {
      */
     public int digestSize() {
         return this.digestSize;
-    }
-
-    @Override
-    public synchronized void releaseNativeStruct() {
-
-        synchronized (pointerLock) {
-            /* Zeroize native state, may hold sensitive absorbed data */
-            if (getNativeStruct() != NativeStruct.NULL) {
-                native_free_internal(this.hashType);
-            }
-
-            super.releaseNativeStruct();
-        }
     }
 
     /* synchronized so a concurrent releaseNativeStruct() cannot free

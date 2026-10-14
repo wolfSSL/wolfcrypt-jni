@@ -238,6 +238,42 @@ public class Sha384Test {
     }
 
     @Test
+    public void initResetsObjectMidStream() {
+
+        Sha384 sha = new Sha384();
+        byte[] data  = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] data2 = new byte[] { 0x05, 0x06, 0x07, 0x08, 0x09 };
+        byte[] expected = Util.h2b("561C16404A1B592406301780C0C2DF6A" +
+                                   "A0555F504F35BFBEAC810AE36A343B77" +
+                                   "6858C5E0DE56BB79607A34D2F67108F2");
+
+        sha.update(data2);
+        sha.init();
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+
+        sha.releaseNativeStruct();
+    }
+
+    @Test
+    public void reuseObjectAfterRelease() {
+
+        Sha384 sha = new Sha384();
+        byte[] data = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] expected = Util.h2b("561C16404A1B592406301780C0C2DF6A" +
+                                   "A0555F504F35BFBEAC810AE36A343B77" +
+                                   "6858C5E0DE56BB79607A34D2F67108F2");
+
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+        sha.releaseNativeStruct();
+
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+        sha.releaseNativeStruct();
+    }
+
+    @Test
     public void copyObject() {
 
         Sha384 sha = null;
