@@ -31,6 +31,9 @@ public enum WolfCryptError {
     /** No error found */
     NO_ERROR_FOUND      (-1),
 
+    /** FIPS 140-3 service indicator, operation is not FIPS approved */
+    WC_FIPS_NOT_APPROVED (1),
+
     /* error codes match <wolfssl>/wolfssl/wolfcrypt/error-crypt.h */
 
     /** errors -97 - -1008 */
@@ -834,8 +837,12 @@ public enum WolfCryptError {
      * @return String description of current error
      */
     public String getDescription() {
-        if (this == WolfCryptError.NO_ERROR_FOUND)
+        if (this == WolfCryptError.NO_ERROR_FOUND) {
             return "No error code found in JNI WolfCryptError enum";
+        }
+        if (this == WolfCryptError.WC_FIPS_NOT_APPROVED) {
+            return "Operation is not FIPS approved";
+        }
         return wc_GetErrorString(this.code);
     }
 

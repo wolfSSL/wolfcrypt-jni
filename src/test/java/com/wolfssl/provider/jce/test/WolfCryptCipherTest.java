@@ -85,6 +85,7 @@ import java.security.AlgorithmParameters;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.test.Util;
 import com.wolfssl.wolfcrypt.Aes;
+import com.wolfssl.wolfcrypt.AesGcm;
 import com.wolfssl.wolfcrypt.AesXts;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.test.Util;
@@ -10237,6 +10238,42 @@ public class WolfCryptCipherTest {
             fail("GCM unwrap with random IV should fail tag verification");
         } catch (InvalidKeyException e) {
             /* expected */
+        }
+    }
+
+    /**
+     * AES-GCM IV shorter than 96 bits is rejected at init() where FIPS
+     * v5.2.4 and v7+ mark it not approved, and works otherwise.
+     */
+    @Test
+    public void testAesGcmShortIv() throws Exception {
+
+        if (!enabledJCEAlgos.contains("AES/GCM/NoPadding") ||
+            !FeatureDetect.Aes128Enabled()) {
+            return;
+        }
+
+        byte[] pt = "AES-GCM short IV".getBytes();
+        SecretKeySpec key = new SecretKeySpec(new byte[16], "AES");
+        GCMParameterSpec spec = new GCMParameterSpec(128, new byte[8]);
+        Cipher c = Cipher.getInstance("AES/GCM/NoPadding", jceProvider);
+
+        if (AesGcm.shortIvAllowed()) {
+            c.init(Cipher.ENCRYPT_MODE, key, spec);
+            byte[] ct = c.doFinal(pt);
+            c.init(Cipher.DECRYPT_MODE, key, spec);
+            assertArrayEquals(pt, c.doFinal(ct));
+        }
+        else {
+            for (int mode : new int[] {Cipher.ENCRYPT_MODE,
+                                       Cipher.DECRYPT_MODE}) {
+                try {
+                    c.init(mode, key, spec);
+                    fail("AES-GCM init with 8-byte IV should throw");
+                } catch (InvalidAlgorithmParameterException e) {
+                    /* expected */
+                }
+            }
         }
     }
 

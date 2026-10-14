@@ -51,6 +51,7 @@ import java.security.InvalidKeyException;
 import java.security.InvalidAlgorithmParameterException;
 
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.AesGcm;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.test.Util;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
@@ -2192,6 +2193,33 @@ public class WolfCryptMacTest {
         /* A valid 128 bit tag must still initialize */
         mac.init(keyspec, new GCMParameterSpec(128, iv));
         assertEquals(16, mac.getMacLength());
+    }
+
+    @Test
+    public void testAesGmacShortIv()
+        throws InvalidKeyException, NoSuchAlgorithmException,
+               NoSuchProviderException, InvalidAlgorithmParameterException {
+
+        if (!enabledAlgos.contains("AESGMAC")) {
+            return;
+        }
+
+        Mac mac = Mac.getInstance("AESGMAC", "wolfJCE");
+        SecretKeySpec keyspec = new SecretKeySpec(new byte[16], "AES");
+        GCMParameterSpec spec = new GCMParameterSpec(128, new byte[8]);
+
+        if (AesGcm.shortIvAllowed()) {
+            mac.init(keyspec, spec);
+            assertEquals(16, mac.doFinal().length);
+        }
+        else {
+            try {
+                mac.init(keyspec, spec);
+                fail("AES-GMAC init with 8-byte IV should throw");
+            } catch (InvalidAlgorithmParameterException e) {
+                /* expected */
+            }
+        }
     }
 
     @Test
