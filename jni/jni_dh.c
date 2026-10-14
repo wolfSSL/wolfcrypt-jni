@@ -446,6 +446,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
     byte* pub  = NULL;
     byte* secret = NULL;
     word32 privSz = 0, pubSz = 0, secretSz = 0;
+    word32 pSz = 0, qSz = 0, gSz = 0;
     jboolean privIsCopy = JNI_FALSE;
 
     key = (DhKey*) getNativeStruct(env, this);
@@ -462,6 +463,13 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhAgree(
     /* Use safe maximum buffer size that covers all common DH group sizes.
      * DH_MAX_SIZE is in bits, so convert to bytes and round up if needed. */
     secretSz = (DH_MAX_SIZE + 7) / 8;
+
+    /* wc_DhAgree() does not bound its output by secretSz, and heap math
+     * allows p larger than DH_MAX_SIZE, so grow the buffer to fit p */
+    if ((key != NULL) && (wc_DhExportParamsRaw(key, NULL, &pSz, NULL, &qSz,
+        NULL, &gSz) == LENGTH_ONLY_E) && (pSz > secretSz)) {
+        secretSz = pSz;
+    }
 
     secret = XMALLOC(secretSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (secret == NULL) {

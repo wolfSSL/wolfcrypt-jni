@@ -234,6 +234,37 @@ public class DhTest {
         assertArrayEquals(sharedSecretA, sharedSecretB);
     }
 
+    /** ffdhe8192 exceeds the 4096-bit DH_MAX_SIZE of heap math builds */
+    @Test
+    public void sharedSecretShouldMatchFfdhe8192() {
+        Dh alice = new Dh();
+        Dh bob = new Dh();
+
+        try {
+            try {
+                byte[][] params = Dh.getNamedDhParams(Dh.WC_FFDHE_8192);
+                alice.setParams(params[0], params[1]);
+                bob.setParams(params[0], params[1]);
+                synchronized (rngLock) {
+                    alice.makeKey(rng);
+                    bob.makeKey(rng);
+                }
+            } catch (WolfCryptException e) {
+                Assume.assumeTrue("8192-bit DH not supported: " +
+                    e.getMessage(), false);
+            }
+
+            byte[] sharedSecretA = alice.makeSharedSecret(bob);
+            byte[] sharedSecretB = bob.makeSharedSecret(alice);
+
+            assertNotNull(sharedSecretA);
+            assertArrayEquals(sharedSecretA, sharedSecretB);
+        } finally {
+            alice.releaseNativeStruct();
+            bob.releaseNativeStruct();
+        }
+    }
+
     /**
      * checkPublicKey() must reject an out of range public key value. This
      * is the same validation wc_DhAgree applies to a peer public key, so a
