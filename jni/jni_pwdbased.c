@@ -195,16 +195,24 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
 
     if ((passBuf != NULL) && (passBufLen > 0)) {
         pass = (byte*)(*env)->GetByteArrayElements(env, passBuf, &passIsCopy);
+        if ((*env)->ExceptionOccurred(env)) {
+            ret = MEMORY_E;
+        }
     }
 
-    if (saltBuf != NULL) {
+    if ((ret == 0) && (saltBuf != NULL)) {
         salt = (byte*)(*env)->GetByteArrayElements(env, saltBuf, NULL);
+        if ((*env)->ExceptionOccurred(env)) {
+            ret = MEMORY_E;
+        }
     }
 
-    PRIVATE_KEY_UNLOCK();
-    ret = wc_PBKDF2(outKey, pass, passBufLen, salt, sBufLen,
-                    iterations, kLen, hashType);
-    PRIVATE_KEY_LOCK();
+    if (ret == 0) {
+        PRIVATE_KEY_UNLOCK();
+        ret = wc_PBKDF2(outKey, pass, passBufLen, salt, sBufLen,
+                        iterations, kLen, hashType);
+        PRIVATE_KEY_LOCK();
+    }
     if (ret == 0) {
         result = (*env)->NewByteArray(env, kLen);
         if (result != NULL) {
@@ -240,6 +248,11 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Pwdbased_wc_1PBKDF2
     }
     if (salt != NULL) {
         (*env)->ReleaseByteArrayElements(env, saltBuf, (jbyte*)salt, JNI_ABORT);
+    }
+
+    if ((*env)->ExceptionOccurred(env)) {
+        /* Leave the pending OutOfMemoryError in place */
+        return NULL;
     }
 
     if (ret != 0) {
