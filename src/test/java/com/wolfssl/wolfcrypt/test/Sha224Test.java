@@ -213,6 +213,37 @@ public class Sha224Test {
     }
 
     @Test
+    public void initResetsObjectMidStream() {
+
+        Sha224 sha = new Sha224();
+        byte[] data = dataVector[1].getBytes();
+        byte[] expected = Util.h2b(hashVector[1]);
+
+        sha.update(dataVector[2].getBytes());
+        sha.init();
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+
+        sha.releaseNativeStruct();
+    }
+
+    @Test
+    public void reuseObjectAfterRelease() {
+
+        Sha224 sha = new Sha224();
+        byte[] data = dataVector[1].getBytes();
+        byte[] expected = Util.h2b(hashVector[1]);
+
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+        sha.releaseNativeStruct();
+
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+        sha.releaseNativeStruct();
+    }
+
+    @Test
     public void copyObject() {
 
         Sha224 sha = null;

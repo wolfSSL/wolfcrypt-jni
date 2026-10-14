@@ -293,3 +293,25 @@ Java_com_wolfssl_wolfcrypt_Md5_native_1final_1internal___3B(
 #endif
 }
 
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Md5_native_1free_1internal(
+    JNIEnv* env, jobject this)
+{
+#ifndef NO_MD5
+    Md5* md5 = (Md5*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    if (md5 != NULL) {
+        wc_Md5Free(md5);
+        XMEMSET(md5, 0, sizeof(Md5));
+    }
+
+    LogStr("wc_Md5Free(md5=%p)\n", md5);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+

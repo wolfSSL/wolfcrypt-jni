@@ -1765,24 +1765,31 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1Verify(
     if (ret == 0) {
         XMEMSET(output, 0, outputSz);
 
-        ret = wc_RsaPSS_Verify_ex(signature, signatureSz, output, outputSz,
-                                  (enum wc_HashType)hashType, mgf,
-                                  saltLen, key);
-        if (ret > 0) {
-            /* Now verify the PSS padding with the provided data */
-            ret = wc_RsaPSS_CheckPadding_ex(data, dataSz, output, ret,
-                                            (enum wc_HashType)hashType,
-                                            saltLen, 0);
-            if (ret == 0) {
+        if (saltLen == RSA_PSS_SALT_LEN_DEFAULT) {
+            /* VerifyCheck() sizes the default salt from the modulus bits */
+            ret = wc_RsaPSS_VerifyCheck(signature, signatureSz, output,
+                outputSz, data, dataSz, (enum wc_HashType)hashType, mgf, key);
+            if (ret > 0) {
                 result = JNI_TRUE;
-            }
-            /* PSS decode of a bad signature fails with data dependent error
-             * codes, all map to false, only MEMORY_E throws */
-            else if (ret == MEMORY_E) {
-                throwWolfCryptExceptionFromError(env, ret);
+                ret = 0;
             }
         }
-        else if (ret == MEMORY_E) {
+        else {
+            ret = wc_RsaPSS_Verify_ex(signature, signatureSz, output,
+                outputSz, (enum wc_HashType)hashType, mgf, saltLen, key);
+            if (ret > 0) {
+                /* Now verify the PSS padding with the provided data */
+                ret = wc_RsaPSS_CheckPadding_ex(data, dataSz, output, ret,
+                    (enum wc_HashType)hashType, saltLen, 0);
+                if (ret == 0) {
+                    result = JNI_TRUE;
+                }
+            }
+        }
+
+        /* PSS decode of a bad signature fails with data dependent error codes,
+         * all map to false, only MEMORY_E throws */
+        if (ret == MEMORY_E) {
             throwWolfCryptExceptionFromError(env, ret);
         }
     }
@@ -1998,17 +2005,29 @@ Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPSS_1CheckPadding(
     if (ret == 0) {
         XMEMSET(pssData, 0, pssDataSz);
 
-        /* First decrypt the signature to get PSS padded data */
-        ret = wc_RsaPSS_Verify_ex(signature, signatureSz, pssData, pssDataSz,
-            (enum wc_HashType)hashType, mgf, saltLen, key);
-
-        if (ret > 0) {
-            pssDataSz = ret;
-            /* Now check the PSS padding against the digest */
-            ret = wc_RsaPSS_CheckPadding_ex(digest, digestSz, pssData,
-                pssDataSz, (enum wc_HashType)hashType, saltLen, 0);
-            if (ret == 0) {
+        if (saltLen == RSA_PSS_SALT_LEN_DEFAULT) {
+            /* VerifyCheck() sizes the default salt from the modulus bits */
+            ret = wc_RsaPSS_VerifyCheck(signature, signatureSz, pssData,
+                pssDataSz, digest, digestSz, (enum wc_HashType)hashType, mgf,
+                key);
+            if (ret > 0) {
                 result = JNI_TRUE;
+                ret = 0;
+            }
+        }
+        else {
+            /* First decrypt the signature to get PSS padded data */
+            ret = wc_RsaPSS_Verify_ex(signature, signatureSz, pssData,
+                pssDataSz, (enum wc_HashType)hashType, mgf, saltLen, key);
+
+            if (ret > 0) {
+                pssDataSz = ret;
+                /* Now check the PSS padding against the digest */
+                ret = wc_RsaPSS_CheckPadding_ex(digest, digestSz, pssData,
+                    pssDataSz, (enum wc_HashType)hashType, saltLen, 0);
+                if (ret == 0) {
+                    result = JNI_TRUE;
+                }
             }
         }
 
