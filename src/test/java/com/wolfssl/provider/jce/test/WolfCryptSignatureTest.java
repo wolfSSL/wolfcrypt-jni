@@ -66,6 +66,7 @@ import java.security.InvalidAlgorithmParameterException;
 import com.wolfssl.wolfcrypt.Rsa;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.provider.jce.WolfCryptProvider;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 
@@ -2202,6 +2203,41 @@ public class WolfCryptSignatureTest {
 
         } catch (InvalidAlgorithmParameterException e) {
             /* expected */
+        }
+    }
+
+    @Test
+    public void testRsaPssSignNativeErrorThrowsSignatureException()
+        throws Exception {
+
+        if (!enabledAlgos.contains("RSASSA-PSS") ||
+            !com.wolfssl.wolfcrypt.FeatureDetect.RsaPssEnabled()) {
+            /* Skip if RSA-PSS not enabled at JCE or native level */
+            return;
+        }
+
+        byte[] toSignBuf = "Everyone gets Friday off.".getBytes();
+
+        KeyPair pair = rsaPair;
+        assertNotNull(pair);
+
+        /* Salt as long as the modulus, native sign rejects on all builds */
+        int saltLen =
+            ((RSAKey)pair.getPrivate()).getModulus().bitLength() / 8;
+
+        Signature signer = Signature.getInstance("RSASSA-PSS", "wolfJCE");
+        signer.setParameter(new PSSParameterSpec("SHA-256", "MGF1",
+            MGF1ParameterSpec.SHA256, saltLen, 1));
+        signer.initSign(pair.getPrivate());
+        signer.update(toSignBuf, 0, toSignBuf.length);
+
+        try {
+            signer.sign();
+            fail("Should throw SignatureException on native sign error");
+
+        } catch (SignatureException e) {
+            assertTrue("Native error should be preserved as cause",
+                e.getCause() instanceof WolfCryptException);
         }
     }
 
