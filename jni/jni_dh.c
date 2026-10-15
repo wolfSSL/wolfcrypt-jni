@@ -1060,6 +1060,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhExportParams(
     byte* p = NULL;
     byte* g = NULL;
     byte* q = NULL;
+    byte qDummy = 0;
     word32 pSz = 0, gSz = 0, qSz = 0;
     jbyteArray pArray = NULL;
     jbyteArray gArray = NULL;
@@ -1077,20 +1078,13 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhExportParams(
         return NULL;
     }
 
-    /* Get sizes - try with q first */
+    /* Get sizes for p, q and g */
     ret = wc_DhExportParamsRaw(key, NULL, &pSz, NULL, &qSz, NULL, &gSz);
-    if (ret != LENGTH_ONLY_E && ret != 0) {
-        /* Try without q */
-        ret = wc_DhExportParamsRaw(key, NULL, &pSz, NULL, NULL, NULL, &gSz);
-        if (ret != LENGTH_ONLY_E && ret != 0) {
-            throwWolfCryptExceptionFromError(env, ret);
-            return NULL;
-        }
-        hasQ = 0;
+    if (ret != LENGTH_ONLY_E) {
+        throwWolfCryptExceptionFromError(env, ret);
+        return NULL;
     }
-    else {
-        hasQ = (qSz > 0);
-    }
+    hasQ = (qSz > 0);
 
     /* Allocate buffers */
     p = (byte*)XMALLOC(pSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
@@ -1119,8 +1113,9 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhExportParams(
         XMEMSET(q, 0, qSz);
     }
 
-    /* Export parameters */
-    ret = wc_DhExportParamsRaw(key, p, &pSz, q, hasQ ? &qSz : NULL, g, &gSz);
+    /* Native requires a q buffer even when the key has no q */
+    ret = wc_DhExportParamsRaw(key, p, &pSz, hasQ ? q : &qDummy, &qSz,
+        g, &gSz);
 
     if (ret == 0) {
         /* Create byte arrays */

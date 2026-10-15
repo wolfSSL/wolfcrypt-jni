@@ -269,6 +269,22 @@ public class DhTest {
         }
     }
 
+    @Test
+    public void exportParamsShouldReturnPAndGWhenKeyHasNoQ() {
+        byte[] p = Util.h2b(DH_P_2048_HEX);
+        byte[] g = Util.h2b("02");
+
+        Dh dh = new Dh(p, g);
+        try {
+            byte[][] params = dh.exportParams();
+            assertEquals(2, params.length);
+            assertArrayEquals(p, params[0]);
+            assertArrayEquals(g, params[1]);
+        } finally {
+            dh.releaseNativeStruct();
+        }
+    }
+
     /**
      * checkPublicKey() must reject an out of range public key value. This
      * is the same validation wc_DhAgree applies to a peer public key, so a
