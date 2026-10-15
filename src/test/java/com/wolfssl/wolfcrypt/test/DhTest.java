@@ -32,6 +32,7 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
@@ -232,6 +233,40 @@ public class DhTest {
         assertNotNull(sharedSecretA);
         assertNotNull(sharedSecretB);
         assertArrayEquals(sharedSecretA, sharedSecretB);
+    }
+
+    @Test
+    public void generateDhParamsShouldReturnUsableParams() {
+        byte[][] params = null;
+
+        try {
+            synchronized (rngLock) {
+                params = Dh.generateDhParams(rng, 2048);
+            }
+        } catch (WolfCryptException e) {
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                Assume.assumeTrue("WOLFSSL_KEY_GEN not compiled in", false);
+            }
+            throw e;
+        }
+
+        assertNotNull(params);
+        assertEquals(2, params.length);
+        assertEquals(2048, new BigInteger(1, params[0]).bitLength());
+
+        Dh alice = new Dh(params[0], params[1]);
+        Dh bob = new Dh(params[0], params[1]);
+        try {
+            synchronized (rngLock) {
+                alice.makeKey(rng);
+                bob.makeKey(rng);
+            }
+            assertArrayEquals(alice.makeSharedSecret(bob),
+                bob.makeSharedSecret(alice));
+        } finally {
+            alice.releaseNativeStruct();
+            bob.releaseNativeStruct();
+        }
     }
 
     /**

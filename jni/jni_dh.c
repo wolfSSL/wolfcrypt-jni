@@ -697,8 +697,10 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateParams(
     DhKey* dh = NULL;
     RNG* rng = NULL;
     byte* p = NULL;
+    byte* q = NULL;
     byte* g = NULL;
     word32 pSz = 0;
+    word32 qSz = 0;
     word32 gSz = 0;
 
     /* Get RNG object */
@@ -739,11 +741,16 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateParams(
         return NULL;
     }
 
-    /* Get sizes for p and g - use modSz in bytes as buffer size */
-    pSz = (modSz + 7) / 8;  /* modSz is in bits, convert to bytes */
-    gSz = (modSz + 7) / 8;
+    /* Get sizes for p, q and g */
+    ret = wc_DhExportParamsRaw(dh, NULL, &pSz, NULL, &qSz, NULL, &gSz);
+    if (ret != LENGTH_ONLY_E) {
+        wc_FreeDhKey(dh);
+        XFREE(dh, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        throwWolfCryptExceptionFromError(env, ret);
+        return NULL;
+    }
 
-    /* Allocate buffers for p and g */
+    /* Allocate buffers for p, q and g */
     p = (byte*)XMALLOC(pSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (p == NULL) {
         wc_FreeDhKey(dh);
@@ -763,8 +770,20 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhGenerateParams(
     }
     XMEMSET(g, 0, gSz);
 
-    /* Export parameters from DhKey */
-    ret = wc_DhExportParamsRaw(dh, p, &pSz, NULL, NULL, g, &gSz);
+    q = (byte*)XMALLOC(qSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (q == NULL) {
+        XFREE(p, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        XFREE(g, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        wc_FreeDhKey(dh);
+        XFREE(dh, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        throwOutOfMemoryException(env, "Failed to allocate q buffer");
+        return NULL;
+    }
+    XMEMSET(q, 0, qSz);
+
+    /* Native requires a q buffer, q is not returned */
+    ret = wc_DhExportParamsRaw(dh, p, &pSz, q, &qSz, g, &gSz);
+    XFREE(q, NULL, DYNAMIC_TYPE_TMP_BUFFER);
     if (ret != 0) {
         XFREE(p, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         XFREE(g, NULL, DYNAMIC_TYPE_TMP_BUFFER);
