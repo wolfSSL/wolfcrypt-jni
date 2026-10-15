@@ -20,6 +20,7 @@
  */
 
 #include <stdint.h>
+#include <limits.h>
 
 #ifdef WOLFSSL_USER_SETTINGS
     #include <wolfssl/wolfcrypt/settings.h>
@@ -98,6 +99,47 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Rsa_rsaMinSize
     return (jint)RSA_MIN_SIZE;
 }
 
+JNIEXPORT jlong JNICALL Java_com_wolfssl_wolfcrypt_Rsa_rsaMinExponent
+  (JNIEnv *env, jclass jcl)
+{
+    /* wc_MakeRsaKey() minimum public exponent, smallest odd e > 1 */
+    jlong minExp = 3;
+    (void)env;
+    (void)jcl;
+
+#if !defined(NO_RSA) && defined(HAVE_FIPS)
+    /* FIPS 186-4/186-5 key generation requires e > 2^16 */
+    minExp = WC_RSA_EXPONENT;
+#endif
+
+    return minExp;
+}
+
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Rsa_keyGenSizeAllowed
+  (JNIEnv *env, jclass jcl, jint size)
+{
+    (void)env;
+    (void)jcl;
+
+#ifdef NO_RSA
+    (void)size;
+    return JNI_FALSE;
+#else
+    if (size < RSA_MIN_SIZE || size > RSA_MAX_SIZE) {
+        return JNI_FALSE;
+    }
+
+    #ifdef WC_RSA_FIPS_GEN_MIN
+        /* wc_MakeRsaKey_fips() minimum, defined on FIPS v6+ */
+        if (size < WC_RSA_FIPS_GEN_MIN) {
+            return JNI_FALSE;
+        }
+    #endif
+
+    return JNI_TRUE;
+#endif
+}
+
 JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Rsa_MakeRsaKey(
     JNIEnv *env, jobject this, jint size, jlong e, jobject rng_object)
@@ -119,7 +161,8 @@ Java_com_wolfssl_wolfcrypt_Rsa_MakeRsaKey(
         return;
     }
 
-    if (key == NULL || rng == NULL) {
+    /* e is passed as a C long, reject values that would be truncated */
+    if (key == NULL || rng == NULL || e < LONG_MIN || e > LONG_MAX) {
         ret = BAD_FUNC_ARG;
     }
     else {

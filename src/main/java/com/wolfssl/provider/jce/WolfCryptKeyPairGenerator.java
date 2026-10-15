@@ -426,11 +426,9 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
 
         if (type == KeyType.WC_RSA || type == KeyType.WC_RSA_PSS) {
 
-            /* Sanity check on key size */
-            if (keysize < Rsa.RSA_MIN_SIZE) {
-                throw new InvalidParameterException(
-                    "RSA key size too small, min is " +
-                    Rsa.RSA_MIN_SIZE);
+            if (!Rsa.keyGenSizeAllowed(keysize)) {
+                throw new InvalidParameterException("RSA key size " + keysize +
+                    " not supported for key generation");
             }
 
             /* Set default RSA exponent for wolfSSL */
@@ -474,13 +472,19 @@ public class WolfCryptKeyPairGenerator extends KeyPairGeneratorSpi {
                 }
 
                 RSAKeyGenParameterSpec rsaSpec = (RSAKeyGenParameterSpec)params;
+                if (!Rsa.keyGenSizeAllowed(rsaSpec.getKeysize())) {
+                    throw new InvalidAlgorithmParameterException(
+                        "RSA key size " + rsaSpec.getKeysize() +
+                        " not supported for key generation");
+                }
                 this.keysize = rsaSpec.getKeysize();
 
-                /* Exponent should be larger than 1 and odd */
+                /* Exponent must be odd and at least the native minimum */
                 long exp = rsaSpec.getPublicExponent().longValue();
-                if ((exp <= 1) || (exp % 2 == 0)) {
+                if ((exp < Rsa.RSA_MIN_EXPONENT) || (exp % 2 == 0)) {
                     throw new InvalidAlgorithmParameterException(
-                        "RSA public exponent must be positive and odd" );
+                        "RSA public exponent must be odd and at least " +
+                        Rsa.RSA_MIN_EXPONENT);
                 }
                 this.publicExponent = exp;
 
