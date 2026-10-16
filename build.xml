@@ -640,13 +640,20 @@
 
         <echo unless:set="jar.includes.jce">NOTE: JCE classes not detected, only running JUnit tests for JNI</echo>
 
+        <!-- Windows DLL directories are only set by the setup-win* targets -->
+        <condition property="test.library.path"
+            value="${lib.dir}${path.separator}${lib.win.dir}${path.separator}${lib.wolfssl.win.dir}"
+            else="${lib.dir}">
+            <isset property="lib.win.dir"/>
+        </condition>
+
         <!-- run JUnit tests -->
         <junit printsummary="yes"
             showoutput="yes"
             haltonfailure="yes"
             fork="true">
 
-            <jvmarg value="-Djava.library.path=$JAVA_HOME/bin${path.separator}${lib.dir}${path.separator}${lib.win.dir}${path.separator}${lib.wolfssl.win.dir}"/>
+            <jvmarg value="-Djava.library.path=${test.library.path}"/>
 
             <classpath>
                 <pathelement location="${lib.dir}/wolfcrypt-jni.jar" />
@@ -661,7 +668,7 @@
             <formatter type="plain" />
             <formatter type="xml" />
 
-            <sysproperty key="sun.boot.library.path" value="$JAVA_HOME/bin:${lib.dir}" />
+            <sysproperty key="sun.boot.library.path" value="${lib.dir}" />
             <sysproperty key="wolfjce.debug" value="${jce.debug}" />
             <env key="LD_LIBRARY_PATH" path="${env.LD_LIBRARY_PATH}:{lib.dir}:/usr/local/lib" />
             <env key="CLASSPATH" path="${env.LD_LIBRARY_PATH}:${env.JUNIT_HOME}/${junit4}" />
