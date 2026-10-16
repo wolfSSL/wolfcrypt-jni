@@ -26,9 +26,12 @@ package com.wolfssl.wolfcrypt;
  *
  * <p>Mirrors the native wolfCrypt {@code wc_SlhDsaKey_*} API. SLH-DSA is a
  * stateless hash-based signature scheme (formerly SPHINCS+). The parameter
- * set is fixed at construction and maps directly to the native
- * {@code enum SlhDsaParam} integer value. An empty FIPS 205 context is used
- * by default.</p>
+ * set maps directly to the native {@code enum SlhDsaParam} integer value. It
+ * is given to {@link #SlhDsa(int)}, or left unset by {@link #SlhDsa()} until
+ * {@link #importPublicKeyDer(byte[])} or {@link #importPrivateKeyDer(byte[])}
+ * detects it from the key's AlgorithmIdentifier OID. DER import always uses
+ * the OID's parameter set, replacing one given at construction. An empty
+ * FIPS 205 context is used by default.</p>
  *
  * <p>Parameter set constants match the native {@code enum SlhDsaParam}: the
  * six SHAKE sets are 0-5, the six SHA2 sets are 6-11. Note this ordering is
