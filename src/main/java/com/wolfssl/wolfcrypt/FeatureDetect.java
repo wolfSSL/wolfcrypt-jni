@@ -523,8 +523,8 @@ public class FeatureDetect {
      * Tests if ML-DSA (FIPS 204, formerly Dilithium) is compiled into the
      * native wolfSSL library.
      *
-     * @return true if enabled (HAVE_DILITHIUM), otherwise false if not
-     *         compiled in.
+     * @return true if enabled (HAVE_DILITHIUM or WOLFSSL_HAVE_MLDSA),
+     *         otherwise false if not compiled in.
      */
     public static native boolean MlDsaEnabled();
 
