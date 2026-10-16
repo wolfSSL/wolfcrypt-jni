@@ -9,6 +9,8 @@ extern "C" {
 #endif
 #undef com_wolfssl_wolfcrypt_Des3_NULL
 #define com_wolfssl_wolfcrypt_Des3_NULL 0LL
+#undef com_wolfssl_wolfcrypt_Des3_PKCS7_MAX_BLOCK_SIZE
+#define com_wolfssl_wolfcrypt_Des3_PKCS7_MAX_BLOCK_SIZE 255L
 #undef com_wolfssl_wolfcrypt_Des3_KEY_SIZE
 #define com_wolfssl_wolfcrypt_Des3_KEY_SIZE 24L
 #undef com_wolfssl_wolfcrypt_Des3_BLOCK_SIZE

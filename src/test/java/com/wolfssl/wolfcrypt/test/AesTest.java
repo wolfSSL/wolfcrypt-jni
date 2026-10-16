@@ -587,6 +587,29 @@ public class AesTest {
             /* expected */
         }
 
+        /* Test padPKCS7() with negative block size */
+        for (int len : new int[] { 5, 32 }) {
+            try {
+                padded = Aes.padPKCS7(new byte[len], -16);
+                fail("negative block size should throw WolfCryptException");
+            } catch (WolfCryptException e) {
+                /* expected */
+            }
+        }
+
+        /* Test padPKCS7() with block size above PKCS#7 limit of 255 */
+        try {
+            padded = Aes.padPKCS7(new byte[10], 256);
+            fail("block size above 255 should throw WolfCryptException");
+        } catch (WolfCryptException e) {
+            /* expected */
+        }
+
+        /* Test padPKCS7() with largest valid block size */
+        padded = Aes.padPKCS7(new byte[10], 255);
+        assertEquals(255, padded.length);
+        assertEquals(245, padded[254] & 0xff);
+
         /* Test unPadPKCS7() with null input */
         try {
             unpadded = Aes.unPadPKCS7(null, Aes.BLOCK_SIZE);
