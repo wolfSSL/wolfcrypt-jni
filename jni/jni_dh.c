@@ -938,6 +938,7 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhExportKeyPair(
     byte* priv = NULL;
     byte* pub = NULL;
     word32 privSz = 0, pubSz = 0;
+    word32 pSz = 0, qSz = 0, gSz = 0;
     jbyteArray privArray = NULL;
     jbyteArray pubArray = NULL;
 
@@ -952,12 +953,14 @@ Java_com_wolfssl_wolfcrypt_Dh_wc_1DhExportKeyPair(
         return NULL;
     }
 
-    /* Get sizes for private and public keys */
-    ret = wc_DhExportKeyPair(key, NULL, &privSz, NULL, &pubSz);
-    if (ret != LENGTH_ONLY_E && ret != 0) {
+    /* wc_DhExportKeyPair() has no size query, p bounds both priv and pub */
+    ret = wc_DhExportParamsRaw(key, NULL, &pSz, NULL, &qSz, NULL, &gSz);
+    if (ret != LENGTH_ONLY_E) {
         throwWolfCryptExceptionFromError(env, ret);
         return NULL;
     }
+    privSz = pSz;
+    pubSz = pSz;
 
     /* Allocate buffers */
     priv = (byte*)XMALLOC(privSz, NULL, DYNAMIC_TYPE_TMP_BUFFER);

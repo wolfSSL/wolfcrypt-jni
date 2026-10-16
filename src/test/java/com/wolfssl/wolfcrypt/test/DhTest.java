@@ -285,6 +285,31 @@ public class DhTest {
         }
     }
 
+    @Test
+    public void exportKeyPairShouldReturnImportedKeyPair() {
+        Assume.assumeTrue("WOLFSSL_DH_EXTRA required",
+            FeatureDetect.DhExtraEnabled());
+
+        BigInteger p = new BigInteger(DH_P_2048_HEX, 16);
+        BigInteger priv = new BigInteger(
+            "5A1C3E7F92B4D6A80C2E4F6183A5C7E91B3D5F7092B4D6F8193B5D7F91A3C5E7",
+            16);
+        BigInteger pub = BigInteger.valueOf(2).modPow(priv, p);
+
+        Dh dh = new Dh();
+        try {
+            dh.importKeyPair(priv.toByteArray(), pub.toByteArray(),
+                Util.h2b(DH_P_2048_HEX), Util.h2b("02"));
+
+            byte[][] keyPair = dh.exportKeyPair();
+            assertEquals(2, keyPair.length);
+            assertEquals(priv, new BigInteger(1, keyPair[0]));
+            assertEquals(pub, new BigInteger(1, keyPair[1]));
+        } finally {
+            dh.releaseNativeStruct();
+        }
+    }
+
     /**
      * checkPublicKey() must reject an out of range public key value. This
      * is the same validation wc_DhAgree applies to a peer public key, so a
