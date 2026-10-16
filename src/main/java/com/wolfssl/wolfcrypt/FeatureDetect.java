@@ -587,8 +587,8 @@ public class FeatureDetect {
      * Tests if XMSS/XMSS^MT (RFC 8391) is compiled into the native wolfSSL
      * library.
      *
-     * @return true if enabled (WOLFSSL_HAVE_XMSS), otherwise false if not
-     *         compiled in.
+     * @return true if enabled (WOLFSSL_HAVE_XMSS with native wolfSSL 5.9.2
+     *         or later), otherwise false.
      */
     public static native boolean XmssEnabled();
 
