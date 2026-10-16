@@ -26,6 +26,16 @@ import java.nio.ByteBuffer;
 /**
  * Wrapper for the native WolfCrypt AES implementation.
  *
+ * <p>Operates in AES-CBC mode. As with native wc_AesCbcEncrypt() and
+ * wc_AesCbcDecrypt(), the length passed to update() must be a multiple of
+ * {@link #BLOCK_SIZE}. Native wolfCrypt always rejects other lengths when
+ * decrypting. When encrypting it rejects them only when built with
+ * WOLFSSL_AES_CBC_LENGTH_CHECKS, otherwise it processes whole blocks only,
+ * and output bytes past the last whole block are not written, although
+ * update() still returns the full length. Pad input with
+ * {@link BlockCipher#padPKCS7(byte[], int)} or buffer partial blocks before
+ * calling update().</p>
+ *
  * @author wolfSSL Inc.
  */
 public class Aes extends BlockCipher {
