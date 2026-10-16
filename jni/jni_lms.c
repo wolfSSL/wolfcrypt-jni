@@ -230,7 +230,8 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_Lms_wc_1LmsKey_1verify
         result = JNI_TRUE;
     }
     else if (ret != SIG_VERIFY_E && ret != SIG_TYPE_E && ret != BUFFER_E) {
-        /* Treat these returns as failed verification */
+        /* Verify error, type does not match, and wrong sig length leave result
+         * false. Other returns are an error. */
         throwWolfCryptExceptionFromError(env, ret);
     }
 
