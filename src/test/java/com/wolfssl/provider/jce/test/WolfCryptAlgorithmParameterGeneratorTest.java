@@ -300,13 +300,13 @@ public class WolfCryptAlgorithmParameterGeneratorTest {
                     spec.getP().bitLength() <= size + 8);
             }
             catch (RuntimeException e) {
-                /* Dynamic parameter generation may not be supported for all
-                 * sizes, especially when wolfSSL enforces minimum parameter
-                 * sizes. Prime generation for non-standard sizes may also
-                 * fail on resource-constrained devices like Android. Skip
-                 * if generation fails. */
+                /* Native only accepts sizes other than 1024, 2048 and 3072
+                 * when built with WOLFSSL_NO_DH186. Prime generation for
+                 * non-standard sizes may also fail on resource-constrained
+                 * devices like Android. Skip if generation fails. */
                 if (e.getMessage() != null &&
-                    (e.getMessage().contains("Bad function argument") ||
+                    ((size != 1024 &&
+                      e.getMessage().contains("Bad function argument")) ||
                      e.getMessage().contains("prime generation failure"))) {
                     continue;
                 }

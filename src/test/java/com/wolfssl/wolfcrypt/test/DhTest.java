@@ -32,6 +32,7 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
@@ -232,6 +233,81 @@ public class DhTest {
         assertNotNull(sharedSecretA);
         assertNotNull(sharedSecretB);
         assertArrayEquals(sharedSecretA, sharedSecretB);
+    }
+
+    @Test
+    public void generateDhParamsShouldReturnUsableParams() {
+        byte[][] params = null;
+
+        try {
+            synchronized (rngLock) {
+                params = Dh.generateDhParams(rng, 2048);
+            }
+        } catch (WolfCryptException e) {
+            if (e.getError() == WolfCryptError.NOT_COMPILED_IN) {
+                Assume.assumeTrue("WOLFSSL_KEY_GEN not compiled in", false);
+            }
+            throw e;
+        }
+
+        assertNotNull(params);
+        assertEquals(2, params.length);
+        assertEquals(2048, new BigInteger(1, params[0]).bitLength());
+
+        Dh alice = new Dh(params[0], params[1]);
+        Dh bob = new Dh(params[0], params[1]);
+        try {
+            synchronized (rngLock) {
+                alice.makeKey(rng);
+                bob.makeKey(rng);
+            }
+            assertArrayEquals(alice.makeSharedSecret(bob),
+                bob.makeSharedSecret(alice));
+        } finally {
+            alice.releaseNativeStruct();
+            bob.releaseNativeStruct();
+        }
+    }
+
+    @Test
+    public void exportParamsShouldReturnPAndGWhenKeyHasNoQ() {
+        byte[] p = Util.h2b(DH_P_2048_HEX);
+        byte[] g = Util.h2b("02");
+
+        Dh dh = new Dh(p, g);
+        try {
+            byte[][] params = dh.exportParams();
+            assertEquals(2, params.length);
+            assertArrayEquals(p, params[0]);
+            assertArrayEquals(g, params[1]);
+        } finally {
+            dh.releaseNativeStruct();
+        }
+    }
+
+    @Test
+    public void exportKeyPairShouldReturnImportedKeyPair() {
+        Assume.assumeTrue("WOLFSSL_DH_EXTRA required",
+            FeatureDetect.DhExtraEnabled());
+
+        BigInteger p = new BigInteger(DH_P_2048_HEX, 16);
+        BigInteger priv = new BigInteger(
+            "5A1C3E7F92B4D6A80C2E4F6183A5C7E91B3D5F7092B4D6F8193B5D7F91A3C5E7",
+            16);
+        BigInteger pub = BigInteger.valueOf(2).modPow(priv, p);
+
+        Dh dh = new Dh();
+        try {
+            dh.importKeyPair(priv.toByteArray(), pub.toByteArray(),
+                Util.h2b(DH_P_2048_HEX), Util.h2b("02"));
+
+            byte[][] keyPair = dh.exportKeyPair();
+            assertEquals(2, keyPair.length);
+            assertEquals(priv, new BigInteger(1, keyPair[0]));
+            assertEquals(pub, new BigInteger(1, keyPair[1]));
+        } finally {
+            dh.releaseNativeStruct();
+        }
     }
 
     /**

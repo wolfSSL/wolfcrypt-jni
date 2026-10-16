@@ -31,6 +31,9 @@ import javax.crypto.ShortBufferException;
  */
 public abstract class BlockCipher extends NativeStruct {
 
+    /* PKCS#7 stores the pad length in one byte (RFC 5652) */
+    private static final int PKCS7_MAX_BLOCK_SIZE = 255;
+
     private WolfCryptState state = WolfCryptState.UNINITIALIZED;
 
     private int opmode;
@@ -328,13 +331,16 @@ public abstract class BlockCipher extends NativeStruct {
     /**
      * Pad input data with PKCS#7 padding.
      *
+     * A zero-length input is accepted and results in one full block of
+     * padding.
+     *
      * @param in Input data to be padded
      * @param blockSize Block size of algorithm being used
      *
      * @return Byte array which includes PKCS#7 padding on end
      *
-     * @throws WolfCryptException if input is null, zero length,
-     *         or blockSize is invalid
+     * @throws WolfCryptException if input is null or blockSize is not
+     *         between 1 and 255
      */
     public static synchronized byte[] padPKCS7(byte[] in, int blockSize)
         throws WolfCryptException {
@@ -347,8 +353,9 @@ public abstract class BlockCipher extends NativeStruct {
                 "Input array is null");
         }
 
-        if (blockSize == 0) {
-            throw new WolfCryptException("Block size is 0");
+        if (blockSize <= 0 || blockSize > PKCS7_MAX_BLOCK_SIZE) {
+            throw new WolfCryptException("Block size must be between 1 and " +
+                PKCS7_MAX_BLOCK_SIZE);
         }
 
         padSz = blockSize - (in.length % blockSize);
