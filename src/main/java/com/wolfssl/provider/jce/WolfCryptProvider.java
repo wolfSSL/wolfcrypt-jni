@@ -1391,9 +1391,10 @@ public final class WolfCryptProvider extends Provider {
 
         /* Fake mapping of PKCS12 to WKS type. Use with caution! This is
          * usually used when FIPS compliance is needed but code cannot be
-         * changed that creates a JKS KeyStore object type. Any files loaded
-         * into this fake JKS KeyStore MUST be of actual type WKS or failures
-         * will happen. Remove service first here in case of refresh. */
+         * changed that creates a PKCS12 KeyStore object type. Any files
+         * loaded into this fake PKCS12 KeyStore MUST be of actual type WKS
+         * or failures will happen. Remove service first here in case of
+         * refresh. */
         remove("KeyStore.PKCS12");
         mapPkcs12ToWks = Security.getProperty("wolfjce.mapPKCS12toWKS");
         if (mapPkcs12ToWks != null && !mapPkcs12ToWks.isEmpty() &&
