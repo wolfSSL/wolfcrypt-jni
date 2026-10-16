@@ -578,8 +578,8 @@ public class FeatureDetect {
      * Tests if LMS/HSS (RFC 8554) is compiled into the native wolfSSL
      * library.
      *
-     * @return true if enabled (WOLFSSL_HAVE_LMS), otherwise false if not
-     *         compiled in.
+     * @return true if enabled (WOLFSSL_HAVE_LMS with native wolfSSL 5.9.2
+     *         or later), otherwise false.
      */
     public static native boolean LmsEnabled();
 
