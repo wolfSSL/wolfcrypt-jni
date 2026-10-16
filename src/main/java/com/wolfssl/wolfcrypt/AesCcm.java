@@ -80,8 +80,8 @@ public class AesCcm extends NativeStruct {
     }
 
     /**
-     * Malloc native Aes structure via JNI. Called by NativeStruct
-     * constructor when this object is created.
+     * Malloc native Aes structure via JNI. Called by initNativeStruct()
+     * on first use of this object.
      *
      * @return native allocated pointer
      *
