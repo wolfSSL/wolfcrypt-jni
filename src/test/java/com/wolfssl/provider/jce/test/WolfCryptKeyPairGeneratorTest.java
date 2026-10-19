@@ -158,19 +158,10 @@ public class WolfCryptKeyPairGeneratorTest {
         Provider p = Security.getProvider("wolfJCE");
         assertNotNull(p);
 
-        /* FIPS after 2425 doesn't allow 1024-bit RSA key gen */
-        if ((!Fips.enabled || Fips.fipsVersion < 5) &&
-            (Rsa.RSA_MIN_SIZE <= 1024)) {
-            testedRSAKeySizes.add(Integer.valueOf(1024));
-        }
-        if (Rsa.RSA_MIN_SIZE <= 2048) {
-            testedRSAKeySizes.add(Integer.valueOf(2048));
-        }
-        if (Rsa.RSA_MIN_SIZE <= 3072) {
-            testedRSAKeySizes.add(Integer.valueOf(3072));
-        }
-        if (Rsa.RSA_MIN_SIZE <= 4096) {
-            testedRSAKeySizes.add(Integer.valueOf(4096));
+        for (int size : new int[] { 1024, 2048, 3072, 4096 }) {
+            if (Rsa.keyGenSizeAllowed(size)) {
+                testedRSAKeySizes.add(Integer.valueOf(size));
+            }
         }
 
         /* build list of enabled curves and key sizes,
@@ -267,8 +258,66 @@ public class WolfCryptKeyPairGeneratorTest {
                 rsaSpec = new RSAKeyGenParameterSpec(10,
                         BigInteger.valueOf(Rsa.getDefaultRsaExponent()));
                 kpg.initialize(rsaSpec);
+                fail("RSA key size 10 should be rejected");
             } catch (InvalidAlgorithmParameterException e) {}
         }
+    }
+
+    @Test
+    public void testKeyPairGeneratorRsaInitializeWithBadKeySize()
+        throws NoSuchProviderException, NoSuchAlgorithmException {
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", "wolfJCE");
+        BigInteger e = BigInteger.valueOf(Rsa.getDefaultRsaExponent());
+
+        /* Rejected sizes depend on native limits, MAX_VALUE never allowed */
+        assertFalse(Rsa.keyGenSizeAllowed(Integer.MAX_VALUE));
+        for (int size : new int[] { 10, 1024, 5000, Integer.MAX_VALUE }) {
+            if (Rsa.keyGenSizeAllowed(size)) {
+                continue;
+            }
+            try {
+                kpg.initialize(size);
+                fail("RSA key size " + size + " should be rejected");
+            } catch (InvalidParameterException ex) {
+                /* expected */
+            }
+            try {
+                kpg.initialize(new RSAKeyGenParameterSpec(size, e));
+                fail("RSA key size " + size + " should be rejected");
+            } catch (InvalidAlgorithmParameterException ex) {
+                /* expected */
+            }
+        }
+    }
+
+    @Test
+    public void testKeyPairGeneratorRsaInitializeWithBadExponent()
+        throws NoSuchProviderException, NoSuchAlgorithmException,
+               InvalidAlgorithmParameterException {
+
+        Assume.assumeTrue(testedRSAKeySizes.size() > 0);
+        int size = testedRSAKeySizes.get(0);
+        long[] badExps = {
+            -1, 0, 1, 4, Rsa.RSA_MIN_EXPONENT - 2, Rsa.RSA_MIN_EXPONENT + 1
+        };
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", "wolfJCE");
+
+        for (long e : badExps) {
+            try {
+                kpg.initialize(new RSAKeyGenParameterSpec(size,
+                    BigInteger.valueOf(e)));
+                fail("RSA public exponent " + e + " should be rejected");
+            } catch (InvalidAlgorithmParameterException ex) {
+                /* expected */
+            }
+        }
+
+        /* Minimum exponent must be accepted by native key generation */
+        kpg.initialize(new RSAKeyGenParameterSpec(size,
+            BigInteger.valueOf(Rsa.RSA_MIN_EXPONENT)));
+        assertNotNull(kpg.generateKeyPair());
     }
 
     @Test
