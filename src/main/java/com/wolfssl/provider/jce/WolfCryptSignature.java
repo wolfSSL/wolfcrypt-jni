@@ -816,6 +816,10 @@ public class WolfCryptSignature extends SignatureSpi {
                         "Invalid signature algorithm type");
             }
 
+        } catch (WolfCryptException e) {
+            throw new SignatureException(keyTypeToString(this.keyType) +
+                " sign failed: " + e.getMessage(), e);
+
         } finally {
             /* Zeroize message digest and DER encoding before refs drop */
             zeroArray(digest);
