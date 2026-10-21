@@ -31,6 +31,7 @@ import org.junit.BeforeClass;
 import org.junit.Assume;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
@@ -2369,6 +2370,55 @@ public class WolfCryptSignatureTest {
 
             assertFalse("Bad signature should not verify for " + digestAlg,
                 shouldNotVerify);
+        }
+    }
+
+    @Test
+    public void testRsaVerifyRejectsWrongLengthSignature()
+        throws Exception {
+
+        byte[] data = "Everyone gets Friday off.".getBytes();
+        String[] algs = { "SHA256withRSA", "RSASSA-PSS" };
+
+        for (String alg : algs) {
+            if (!enabledAlgos.contains(alg) || (alg.equals("RSASSA-PSS") &&
+                !FeatureDetect.RsaPssEnabled())) {
+                continue;
+            }
+
+            KeyPair pair = rsaPair;
+            assertNotNull(pair);
+
+            Signature sig = Signature.getInstance(alg, "wolfJCE");
+            if (alg.equals("RSASSA-PSS")) {
+                sig.setParameter(new PSSParameterSpec("SHA-256", "MGF1",
+                    MGF1ParameterSpec.SHA256, 32, 1));
+            }
+            sig.initSign(pair.getPrivate());
+            sig.update(data);
+            byte[] good = sig.sign();
+
+            /* Extra leading zero, and first byte dropped */
+            byte[] longer = new byte[good.length + 1];
+            System.arraycopy(good, 0, longer, 1, good.length);
+            byte[] shorter = Arrays.copyOfRange(good, 1, good.length);
+
+            sig.initVerify(pair.getPublic());
+            for (byte[] bad : new byte[][] { longer, shorter }) {
+                sig.update(data);
+                try {
+                    sig.verify(bad);
+                    fail(alg + " should reject sig length " + bad.length);
+
+                } catch (SignatureException e) {
+                    /* expected */
+                }
+            }
+
+            /* Failed verify resets state, correct sig still verifies */
+            sig.update(data);
+            assertTrue(alg + " verify after bad length failed",
+                sig.verify(good));
         }
     }
 

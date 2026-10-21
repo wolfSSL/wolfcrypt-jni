@@ -956,6 +956,16 @@ public class WolfCryptSignature extends SignatureSpi {
                 throw new SignatureException(e.getMessage());
             }
 
+            /* RSA signature must be modulus length, check after digest so
+             * hash state is reset */
+            if (this.keyType == KeyType.WC_RSA) {
+                int modLen = this.rsa.getEncryptSize();
+                if (sigBytes == null || sigBytes.length != modLen) {
+                    throw new SignatureException(
+                        "Bad RSA signature length, expected " + modLen);
+                }
+            }
+
             /* verify digest */
             switch (this.keyType) {
                 case WC_RSA:
