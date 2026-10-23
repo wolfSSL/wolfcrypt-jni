@@ -338,6 +338,7 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Ecc_wc_1ecc_1import_1private
             name = (*env)->GetStringUTFChars(env, curveName, 0);
             if (name == NULL) {
                 /* OutOfMemoryError pending, release arrays and return */
+                zeroizeByteArrayCopy(priv, privSz, privIsCopy);
                 releaseByteArray(env, priv_object, priv, JNI_ABORT);
                 releaseByteArray(env, pub_object, pub, JNI_ABORT);
                 return;
