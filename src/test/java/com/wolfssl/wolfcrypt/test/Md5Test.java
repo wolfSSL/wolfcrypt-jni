@@ -244,6 +244,38 @@ public class Md5Test {
     }
 
     @Test
+    public void initResetsObjectMidStream() {
+
+        Md5 md5 = new Md5();
+        byte[] data  = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] data2 = new byte[] { 0x05, 0x06, 0x07, 0x08, 0x09 };
+        byte[] expected = Util.h2b("D05374DC381D9B52806446A71C8E79B1");
+
+        md5.update(data2);
+        md5.init();
+        md5.update(data);
+        assertArrayEquals(expected, md5.digest());
+
+        md5.releaseNativeStruct();
+    }
+
+    @Test
+    public void reuseObjectAfterRelease() {
+
+        Md5 md5 = new Md5();
+        byte[] data = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] expected = Util.h2b("D05374DC381D9B52806446A71C8E79B1");
+
+        md5.update(data);
+        assertArrayEquals(expected, md5.digest());
+        md5.releaseNativeStruct();
+
+        md5.update(data);
+        assertArrayEquals(expected, md5.digest());
+        md5.releaseNativeStruct();
+    }
+
+    @Test
     public void copyObject() {
 
         Md5 md5 = null;

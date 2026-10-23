@@ -227,6 +227,40 @@ public class Sha256Test {
     }
 
     @Test
+    public void initResetsObjectMidStream() {
+
+        Sha256 sha = new Sha256();
+        byte[] data  = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] data2 = new byte[] { 0x05, 0x06, 0x07, 0x08, 0x09 };
+        byte[] expected = Util.h2b("08BB5E5D6EAAC1049EDE0893D30ED022" +
+                                   "B1A4D9B5B48DB414871F51C9CB35283D");
+
+        sha.update(data2);
+        sha.init();
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+
+        sha.releaseNativeStruct();
+    }
+
+    @Test
+    public void reuseObjectAfterRelease() {
+
+        Sha256 sha = new Sha256();
+        byte[] data = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] expected = Util.h2b("08BB5E5D6EAAC1049EDE0893D30ED022" +
+                                   "B1A4D9B5B48DB414871F51C9CB35283D");
+
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+        sha.releaseNativeStruct();
+
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+        sha.releaseNativeStruct();
+    }
+
+    @Test
     public void copyObject() {
 
         Sha256 sha = null;

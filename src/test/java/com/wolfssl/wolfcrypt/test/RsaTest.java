@@ -1287,6 +1287,72 @@ public class RsaTest {
     }
 
     @Test
+    public void testRsaPssDefaultSaltSha512With1024BitKey() {
+
+        Assume.assumeTrue(FeatureDetect.RsaPssEnabled() &&
+            FeatureDetect.Sha512Enabled());
+
+        int hash = WolfCrypt.WC_HASH_TYPE_SHA512;
+        int mgf = Rsa.WC_MGF1SHA512;
+        int saltLen = Rsa.RSA_PSS_SALT_LEN_DEFAULT;
+        byte[] signature = null;
+
+        Rsa key = new Rsa();
+        Rng rng = new Rng();
+        rng.init();
+
+        Sha512 sha512 = new Sha512();
+        sha512.update("Everyone gets Friday off.".getBytes());
+        byte[] digest = sha512.digest();
+
+        try {
+            /* 1024-bit key, wolfSSL certs/1024/client-key.der */
+            key.decodePrivateKey(Util
+            .h2b("3082025c02010002818100bc730ea849f374a2a9ef18a5da559921f9"
+                + "c8ecb36d48e53535757737ecd161905f3ed9e4d5df94cac1a9d719da"
+                + "86c9e84dc4613682feabad7e7725bb8d11a5bc623aa838cc39a20466"
+                + "b4f7f7f3aada4d020ebb5e8d6948dc77c9280e22e96ba426ba4ce8c1"
+                + "fd4a6f2b1fef8aaef69062e5641eeb2b3c67c8dc2700f6916865a902"
+                + "030100010281801397eae8387825a25c04ce0d407c31e5c470cd9b82"
+                + "3b5809863b665fdc3190f14fd5db15ddded73b95933118310e5ea3d6"
+                + "a21a716e81481c4bcfdb8e7a866132dcfb55c1166d279224458bf1b8"
+                + "48b14b1dacdedadd8e2fc291fba5a96ef83a6af1fd5018ef9fe7c3ca"
+                + "78ea56d3d3725b96dd4e064e3ac3d9be72b66507074c01024100fa47"
+                + "d47a7c923c55ef81f041302da3cf8f1ce6872705700ddf9835d6f18b"
+                + "382f24b5d084b6794f7129945af0646aace772c6ed4d59983e673af3"
+                + "742cf9611769024100c0c1820d0cebc62fdc92f99d821a31e9e9f74b"
+                + "f282871cee166ad11d188270f3c0b62ff6f3f71df18623c84eeb8f56"
+                + "8e8ff5bff1f72bb5cc3dc657390c1b54410241009d7e05deedf4b7b2"
+                + "fbfc304b551de32f0147966905cd0e2e2cbd8363b6ab7cb76dca5b64"
+                + "a7cebe86df3b53de61d21eeba5f637edacab78d94ce755fbd71199c1"
+                + "024018981829e61e2739702168ac0a2fa172c121869538c65890a057"
+                + "9cbae3a7b115c8def61bc2612376efb09d1c44be1343396717c89dca"
+                + "fbf545648b38822cf28102403989e59c195530bab7488c48140ef49f"
+                + "7e779743e1b419353123759c3b44ad691256ee0061641666d37c742b"
+                + "15b4a2febf086b1a5d3f9012b105863129dbd9e2"));
+            key.setRng(rng);
+            signature = key.rsaPssSign(digest, hash, mgf, saltLen, rng);
+        } catch (WolfCryptException e) {
+            Assume.assumeTrue("1024-bit RSA-PSS signing not supported: " +
+                e.getMessage(), false);
+        }
+
+        assertTrue(key.rsaPssVerify(signature, digest, hash, mgf, saltLen));
+        assertTrue(key.rsaPssCheckPadding(signature, digest, hash, mgf,
+            saltLen));
+        assertTrue(key.rsaPssVerifyWithDigest(signature, digest, digest,
+            hash, mgf, saltLen));
+
+        digest[0] ^= 0x01;
+        assertFalse(key.rsaPssVerify(signature, digest, hash, mgf, saltLen));
+        assertFalse(key.rsaPssCheckPadding(signature, digest, hash, mgf,
+            saltLen));
+
+        rng.free();
+        key.releaseNativeStruct();
+    }
+
+    @Test
     public void testRsaPssSaltLengthDiscovery() throws WolfCryptException {
 
         if (!FeatureDetect.RsaPssEnabled()) {

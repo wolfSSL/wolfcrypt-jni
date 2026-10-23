@@ -271,6 +271,33 @@ public class AesCmacTest {
     }
 
     @Test
+    public void aesCmacShouldBeReusableAfterDoFinal() {
+        byte[] keyBytes = Util.h2b("2b7e151628aed2a6abf7158809cf4f3c");
+        byte[] dataBytes = Util.h2b(
+            "6bc1bee22e409f96e93d7e117393172a" +
+            "ae2d8a571e03ac9c9eb76fac45af8e51" +
+            "30c81c46a35ce411");
+        byte[] expectedBytes = Util.h2b("dfa66747de9ae63030ca32611497c827");
+        byte[] expectedEmpty = Util.h2b("bb1d6929e95937287fa37d129b756746");
+
+        AesCmac cmac = new AesCmac();
+        cmac.setKey(keyBytes);
+        cmac.update(dataBytes);
+        assertArrayEquals(expectedBytes, cmac.doFinal());
+
+        cmac.update(dataBytes);
+        assertArrayEquals(expectedBytes, cmac.doFinal());
+
+        assertArrayEquals(expectedBytes, cmac.doFinal(dataBytes));
+        assertArrayEquals(expectedEmpty, cmac.doFinal());
+
+        cmac.reset();
+        assertArrayEquals(expectedBytes, cmac.doFinal(dataBytes));
+
+        cmac.releaseNativeStruct();
+    }
+
+    @Test
     public void aesCmacAlgorithmInfoShouldWork() {
         try {
             String key = "2b7e151628aed2a6abf7158809cf4f3c";

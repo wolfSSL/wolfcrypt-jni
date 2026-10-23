@@ -418,6 +418,33 @@ Java_com_wolfssl_wolfcrypt_Sha_native_1final_1internal___3B(
 #endif
 }
 
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Sha_native_1free_1internal(
+    JNIEnv* env, jobject this)
+{
+#ifndef NO_SHA
+    Sha* sha = (Sha*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    if (sha != NULL) {
+        wc_ShaFree(sha);
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(sha, sizeof(Sha));
+    #else
+        XMEMSET(sha, 0, sizeof(Sha));
+    #endif
+    }
+
+    LogStr("wc_ShaFree(sha=%p)\n", sha);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1init_1internal
   (JNIEnv* env, jobject this)
 {
@@ -664,6 +691,33 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha224_native_1final_1internal
 #endif
 }
 
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Sha224_native_1free_1internal(
+    JNIEnv* env, jobject this)
+{
+#ifdef WOLFSSL_SHA224
+    Sha224* sha = (Sha224*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    if (sha != NULL) {
+        wc_Sha224Free(sha);
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(sha, sizeof(Sha224));
+    #else
+        XMEMSET(sha, 0, sizeof(Sha224));
+    #endif
+    }
+
+    LogStr("wc_Sha224Free(sha=%p)\n", sha);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
 
 JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Sha256_native_1init_1internal(
@@ -879,6 +933,33 @@ Java_com_wolfssl_wolfcrypt_Sha256_native_1final_1internal___3B(
     }
 
     releaseByteArray(env, hash_buffer, hash, ret);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Sha256_native_1free_1internal(
+    JNIEnv* env, jobject this)
+{
+#ifndef NO_SHA256
+    Sha256* sha = (Sha256*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    if (sha != NULL) {
+        wc_Sha256Free(sha);
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(sha, sizeof(Sha256));
+    #else
+        XMEMSET(sha, 0, sizeof(Sha256));
+    #endif
+    }
+
+    LogStr("wc_Sha256Free(sha=%p)\n", sha);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -1103,6 +1184,33 @@ Java_com_wolfssl_wolfcrypt_Sha384_native_1final_1internal___3B(
 }
 
 JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Sha384_native_1free_1internal(
+    JNIEnv* env, jobject this)
+{
+#ifdef WOLFSSL_SHA384
+    Sha384* sha = (Sha384*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    if (sha != NULL) {
+        wc_Sha384Free(sha);
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(sha, sizeof(Sha384));
+    #else
+        XMEMSET(sha, 0, sizeof(Sha384));
+    #endif
+    }
+
+    LogStr("wc_Sha384Free(sha=%p)\n", sha);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL
 Java_com_wolfssl_wolfcrypt_Sha512_native_1init_1internal(
     JNIEnv* env, jobject this)
 {
@@ -1316,6 +1424,33 @@ Java_com_wolfssl_wolfcrypt_Sha512_native_1final_1internal___3B(
     }
 
     releaseByteArray(env, hash_buffer, hash, ret);
+#else
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL
+Java_com_wolfssl_wolfcrypt_Sha512_native_1free_1internal(
+    JNIEnv* env, jobject this)
+{
+#ifdef WOLFSSL_SHA512
+    Sha512* sha = (Sha512*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    if (sha != NULL) {
+        wc_Sha512Free(sha);
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(sha, sizeof(Sha512));
+    #else
+        XMEMSET(sha, 0, sizeof(Sha512));
+    #endif
+    }
+
+    LogStr("wc_Sha512Free(sha=%p)\n", sha);
 #else
     throwNotCompiledInException(env);
 #endif
@@ -1736,6 +1871,53 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1final_1internal__
     (void)hash_buffer;
     (void)hashType;
 
+    throwNotCompiledInException(env);
+#endif
+}
+
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha3_native_1free_1internal
+  (JNIEnv* env, jobject this, jint hashType)
+{
+#ifdef WOLFSSL_SHA3
+    wc_Sha3* sha = NULL;
+
+    sha = (wc_Sha3*) getNativeStruct(env, this);
+    if ((*env)->ExceptionOccurred(env)) {
+        /* getNativeStruct may throw exception, prevent throwing another */
+        return;
+    }
+
+    if (sha != NULL) {
+        switch (hashType) {
+            case WC_HASH_TYPE_SHA3_224:
+                wc_Sha3_224_Free(sha);
+                break;
+            case WC_HASH_TYPE_SHA3_256:
+                wc_Sha3_256_Free(sha);
+                break;
+            case WC_HASH_TYPE_SHA3_384:
+                wc_Sha3_384_Free(sha);
+                break;
+            case WC_HASH_TYPE_SHA3_512:
+                wc_Sha3_512_Free(sha);
+                break;
+            default:
+                break;
+        }
+
+    #if (LIBWOLFSSL_VERSION_HEX >= 0x05008004) && \
+        !defined(WOLFSSL_NO_FORCE_ZERO)
+        wc_ForceZero(sha, sizeof(wc_Sha3));
+    #else
+        XMEMSET(sha, 0, sizeof(wc_Sha3));
+    #endif
+    }
+
+    LogStr("wc_Sha3_Free(sha=%p)\n", sha);
+#else
+    (void)env;
+    (void)this;
+    (void)hashType;
     throwNotCompiledInException(env);
 #endif
 }

@@ -69,6 +69,14 @@ JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_native_1final_1internal
 JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_native_1final_1internal___3B
   (JNIEnv *, jobject, jbyteArray);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_Sha384
+ * Method:    native_free_internal
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_wolfssl_wolfcrypt_Sha384_native_1free_1internal
+  (JNIEnv *, jobject);
+
 #ifdef __cplusplus
 }
 #endif

@@ -53,6 +53,20 @@ public class Sha3Test {
     private ByteBuffer result = ByteBuffer.allocateDirect(Sha3.DIGEST_SIZE_512);
     private ByteBuffer expected = ByteBuffer.allocateDirect(Sha3.DIGEST_SIZE_512);
 
+    /* NIST FIPS 202 A.1 "abc" digests, indexed like sha3Types */
+    private static final int[] sha3Types = new int[] {
+        Sha3.TYPE_SHA3_224, Sha3.TYPE_SHA3_256,
+        Sha3.TYPE_SHA3_384, Sha3.TYPE_SHA3_512
+    };
+    private static final String[] sha3AbcVector = new String[] {
+        "e642824c3f8cf24ad09234ee7d3c766fc9a3a5168d0c94ad73b46fdf",
+        "3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532",
+        "ec01498288516fc926459f58e2c6ad8df9b473cb0fc08c2596da7cf0e49be4b2" +
+        "98d88cea927ac7f539f1edf228376d25",
+        "b751850b1a57168a5693cd924b6b096e08f621827444f70d884f5d0240d2712e" +
+        "10e116e9192af3c91a7ec57647e3934057340b4cf408d5a56592f8274eec53f0"
+    };
+
     @Rule(order = Integer.MIN_VALUE)
     public TestRule watcher = TimedTestWatcher.create();
 
@@ -278,6 +292,36 @@ public class Sha3Test {
         assertFalse(Arrays.equals(result, result2));
 
         sha.releaseNativeStruct();
+    }
+
+    @Test
+    public void initResetsObjectMidStream() {
+        byte[] data = Util.h2b("616263");
+
+        for (int i = 0; i < sha3Types.length; i++) {
+            Sha3 sha = new Sha3(sha3Types[i]);
+            sha.update(new byte[] { 0x05, 0x06, 0x07, 0x08, 0x09 });
+            sha.init();
+            sha.update(data);
+            assertArrayEquals(Util.h2b(sha3AbcVector[i]), sha.digest());
+            sha.releaseNativeStruct();
+        }
+    }
+
+    @Test
+    public void reuseObjectAfterRelease() {
+        byte[] data = Util.h2b("616263");
+
+        for (int i = 0; i < sha3Types.length; i++) {
+            Sha3 sha = new Sha3(sha3Types[i]);
+            sha.update(data);
+            assertArrayEquals(Util.h2b(sha3AbcVector[i]), sha.digest());
+            sha.releaseNativeStruct();
+
+            sha.update(data);
+            assertArrayEquals(Util.h2b(sha3AbcVector[i]), sha.digest());
+            sha.releaseNativeStruct();
+        }
     }
 
     @Test

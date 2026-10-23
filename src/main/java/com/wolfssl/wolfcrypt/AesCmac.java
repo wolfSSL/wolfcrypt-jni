@@ -37,6 +37,9 @@ public class AesCmac extends NativeStruct {
     /** Stored key for reset functionality */
     private byte[] key = null;
 
+    /** True once doFinal() has freed the native context, until re-keyed */
+    private boolean finalized = false;
+
     /** Lock around object state */
     protected final Object stateLock = new Object();
 
@@ -109,6 +112,7 @@ public class AesCmac extends NativeStruct {
             synchronized (pointerLock) {
                 wc_CmacSetKey(key);
             }
+            this.finalized = false;
 
             /* Store key for reset, zeroize any prior key clone */
             zeroizeKey();
@@ -130,7 +134,7 @@ public class AesCmac extends NativeStruct {
     public synchronized void update(byte data)
         throws WolfCryptException, IllegalStateException {
 
-        throwIfKeyNotLoaded();
+        checkKeyAndRekeyIfFinalized();
 
         synchronized (pointerLock) {
             wc_CmacUpdate(data);
@@ -148,7 +152,7 @@ public class AesCmac extends NativeStruct {
     public synchronized void update(byte[] data)
         throws WolfCryptException, IllegalStateException {
 
-        throwIfKeyNotLoaded();
+        checkKeyAndRekeyIfFinalized();
 
         synchronized (pointerLock) {
             wc_CmacUpdate(data, 0, data.length);
@@ -168,7 +172,7 @@ public class AesCmac extends NativeStruct {
     public synchronized void update(byte[] data, int offset, int length)
         throws WolfCryptException, IllegalStateException {
 
-        throwIfKeyNotLoaded();
+        checkKeyAndRekeyIfFinalized();
 
         synchronized (pointerLock) {
             wc_CmacUpdate(data, offset, length);
@@ -189,7 +193,7 @@ public class AesCmac extends NativeStruct {
         int offset = data.position();
         int length = data.remaining();
 
-        throwIfKeyNotLoaded();
+        checkKeyAndRekeyIfFinalized();
 
         synchronized (pointerLock) {
             wc_CmacUpdate(data, offset, length);
@@ -201,6 +205,9 @@ public class AesCmac extends NativeStruct {
     /**
      * Calculate final AES-CMAC
      *
+     * The object can then be reused, it is re-keyed with the stored key on
+     * the next update() or doFinal().
+     *
      * @return AES-CMAC result as byte array
      *
      * @throws WolfCryptException if native operation fails
@@ -209,15 +216,20 @@ public class AesCmac extends NativeStruct {
     public synchronized byte[] doFinal()
         throws WolfCryptException, IllegalStateException {
 
-        throwIfKeyNotLoaded();
+        checkKeyAndRekeyIfFinalized();
 
         synchronized (pointerLock) {
+            /* wc_CmacFinal() frees the native context, even on error */
+            this.finalized = true;
             return wc_CmacFinal();
         }
     }
 
     /**
      * Calculate final AES-CMAC after processing additional supplied data
+     *
+     * The object can then be reused, it is re-keyed with the stored key on
+     * the next update() or doFinal().
      *
      * @param data input data to update AES-CMAC with
      *
@@ -233,9 +245,7 @@ public class AesCmac extends NativeStruct {
 
         update(data);
 
-        synchronized (pointerLock) {
-            return wc_CmacFinal();
-        }
+        return doFinal();
     }
 
     /**
@@ -258,6 +268,7 @@ public class AesCmac extends NativeStruct {
                 /* Re-set the key using the existing stored key */
                 wc_CmacSetKey(key);
             }
+            this.finalized = false;
         }
     }
 
@@ -359,6 +370,25 @@ public class AesCmac extends NativeStruct {
     private void throwIfKeyNotLoaded() throws IllegalStateException {
         if (state != WolfCryptState.READY) {
             throw new IllegalStateException("No key available");
+        }
+    }
+
+    /**
+     * Throw if no key is loaded, then re-key the native context with the
+     * stored key if doFinal() freed it.
+     */
+    private void checkKeyAndRekeyIfFinalized()
+        throws WolfCryptException, IllegalStateException {
+
+        synchronized (stateLock) {
+            throwIfKeyNotLoaded();
+
+            if (this.finalized) {
+                synchronized (pointerLock) {
+                    wc_CmacSetKey(this.key);
+                }
+                this.finalized = false;
+            }
         }
     }
 
