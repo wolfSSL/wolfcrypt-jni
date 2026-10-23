@@ -523,8 +523,8 @@ public class FeatureDetect {
      * Tests if ML-DSA (FIPS 204, formerly Dilithium) is compiled into the
      * native wolfSSL library.
      *
-     * @return true if enabled (HAVE_DILITHIUM), otherwise false if not
-     *         compiled in.
+     * @return true if enabled (HAVE_DILITHIUM or WOLFSSL_HAVE_MLDSA),
+     *         otherwise false if not compiled in.
      */
     public static native boolean MlDsaEnabled();
 
@@ -578,8 +578,8 @@ public class FeatureDetect {
      * Tests if LMS/HSS (RFC 8554) is compiled into the native wolfSSL
      * library.
      *
-     * @return true if enabled (WOLFSSL_HAVE_LMS), otherwise false if not
-     *         compiled in.
+     * @return true if enabled (WOLFSSL_HAVE_LMS with native wolfSSL 5.9.2
+     *         or later), otherwise false.
      */
     public static native boolean LmsEnabled();
 
@@ -587,8 +587,8 @@ public class FeatureDetect {
      * Tests if XMSS/XMSS^MT (RFC 8391) is compiled into the native wolfSSL
      * library.
      *
-     * @return true if enabled (WOLFSSL_HAVE_XMSS), otherwise false if not
-     *         compiled in.
+     * @return true if enabled (WOLFSSL_HAVE_XMSS with native wolfSSL 5.9.2
+     *         or later), otherwise false.
      */
     public static native boolean XmssEnabled();
 
