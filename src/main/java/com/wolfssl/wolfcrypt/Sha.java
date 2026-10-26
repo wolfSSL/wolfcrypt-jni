@@ -48,6 +48,7 @@ public class Sha extends MessageDigest implements Cloneable {
         int len);
     private native void native_final_internal(ByteBuffer hash, int offset);
     private native void native_final_internal(byte[] hash);
+    private native void native_free_internal();
 
     /**
      * Malloc native JNI Sha structure
@@ -80,6 +81,16 @@ public class Sha extends MessageDigest implements Cloneable {
                 update(this.initialData);
                 this.initialData = null;
             }
+        }
+    }
+
+    /**
+     * Free native WC_SHA struct resources using wc_ShaFree()
+     */
+    protected void native_free() {
+
+        synchronized (pointerLock) {
+            native_free_internal();
         }
     }
 

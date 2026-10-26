@@ -241,6 +241,44 @@ public class Sha512Test {
     }
 
     @Test
+    public void initResetsObjectMidStream() {
+
+        Sha512 sha = new Sha512();
+        byte[] data  = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] data2 = new byte[] { 0x05, 0x06, 0x07, 0x08, 0x09 };
+        byte[] expected = Util.h2b("B7B70A0B14D7FA213C6CCD3CBFFC8BB8" +
+                                   "F8E11A85F1113B0EB26A00208F2B9B3A" +
+                                   "1DD4AAF39962861E16AB062274342A1C" +
+                                   "E1F9DBA3654F36FC338245589F296C28");
+
+        sha.update(data2);
+        sha.init();
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+
+        sha.releaseNativeStruct();
+    }
+
+    @Test
+    public void reuseObjectAfterRelease() {
+
+        Sha512 sha = new Sha512();
+        byte[] data = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] expected = Util.h2b("B7B70A0B14D7FA213C6CCD3CBFFC8BB8" +
+                                   "F8E11A85F1113B0EB26A00208F2B9B3A" +
+                                   "1DD4AAF39962861E16AB062274342A1C" +
+                                   "E1F9DBA3654F36FC338245589F296C28");
+
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+        sha.releaseNativeStruct();
+
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+        sha.releaseNativeStruct();
+    }
+
+    @Test
     public void copyObject() {
 
         Sha512 sha = null;

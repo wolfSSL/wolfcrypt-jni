@@ -226,6 +226,40 @@ public class ShaTest {
     }
 
     @Test
+    public void initResetsObjectMidStream() {
+
+        Sha sha = new Sha();
+        byte[] data  = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] data2 = new byte[] { 0x05, 0x06, 0x07, 0x08, 0x09 };
+        byte[] expected = Util.h2b("1CF251472D59F8FADEB3AB258E90999D" +
+                                   "8491BE19");
+
+        sha.update(data2);
+        sha.init();
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+
+        sha.releaseNativeStruct();
+    }
+
+    @Test
+    public void reuseObjectAfterRelease() {
+
+        Sha sha = new Sha();
+        byte[] data = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
+        byte[] expected = Util.h2b("1CF251472D59F8FADEB3AB258E90999D" +
+                                   "8491BE19");
+
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+        sha.releaseNativeStruct();
+
+        sha.update(data);
+        assertArrayEquals(expected, sha.digest());
+        sha.releaseNativeStruct();
+    }
+
+    @Test
     public void copyObject() {
 
         Sha sha = null;
