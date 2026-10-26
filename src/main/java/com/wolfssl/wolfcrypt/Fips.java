@@ -1823,9 +1823,14 @@ public class Fips extends WolfObject {
      * Creates the agreement agree of size agreeSz using Dh key private priv of
      * size privSz and peer's public key otherPub of size pubSz.
      *
+     * As with native wc_DhAgree(), agree must hold the full shared secret,
+     * which can be as long as the DH prime p. Native does not check agreeSz
+     * against the secret length.
+     *
      * @param key the Dh object.
      * @param agree the agree buffer.
-     * @param agreeSz the agree length.
+     * @param agreeSz on input the size of agree, on output the length of the
+     *        shared secret.
      * @param priv the private part buffer.
      * @param privSz the private part length.
      * @param otherPub the peer's public part buffer.
@@ -1845,9 +1850,14 @@ public class Fips extends WolfObject {
      * Creates the agreement agree of size agreeSz using Dh key private priv of
      * size privSz and peer's public key otherPub of size pubSz.
      *
+     * As with native wc_DhAgree(), agree must hold the full shared secret,
+     * which can be as long as the DH prime p. Native does not check agreeSz
+     * against the secret length.
+     *
      * @param key the Dh object.
      * @param agree the agree buffer.
-     * @param agreeSz the agree length.
+     * @param agreeSz on input the size of agree, on output the length of the
+     *        shared secret.
      * @param priv the private part buffer.
      * @param privSz the private part length.
      * @param otherPub the peer's public part buffer.
