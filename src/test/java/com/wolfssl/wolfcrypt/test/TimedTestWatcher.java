@@ -21,12 +21,14 @@
 
 package com.wolfssl.wolfcrypt.test;
 
+import org.junit.AssumptionViolatedException;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
 /**
  * Reusable JUnit TestWatcher that prints timing information for each test
- * method. Displays elapsed time in milliseconds aligned in a column format.
+ * method. Displays elapsed time in milliseconds aligned in a column format,
+ * or "skipped" for a test skipped by an assumption.
  *
  * Usage in test classes:
  * <pre>
@@ -36,6 +38,7 @@ import org.junit.runner.Description;
  */
 public class TimedTestWatcher extends TestWatcher {
     private volatile long startTime;
+    private volatile boolean skipped;
 
     /**
      * Factory method to create a new TimedTestWatcher instance.
@@ -50,10 +53,22 @@ public class TimedTestWatcher extends TestWatcher {
     @Override
     protected void starting(Description description) {
         startTime = System.nanoTime();
+        skipped = false;
+    }
+
+    @Override
+    protected void skipped(AssumptionViolatedException e,
+        Description description) {
+        skipped = true;
     }
 
     @Override
     protected void finished(Description description) {
+        if (skipped) {
+            System.out.printf("\t%11s  %s%n",
+                "skipped", description.getMethodName());
+            return;
+        }
         long elapsed = System.nanoTime() - startTime;
         double elapsedMs = elapsed / 1_000_000.0;
         System.out.printf("\t%8.2f ms  %s%n",

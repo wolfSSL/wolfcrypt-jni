@@ -33,6 +33,7 @@ import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.InvalidKeyException;
+import java.security.InvalidParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Provider;
@@ -99,6 +100,8 @@ public class WolfCryptDHKeyFactoryTest {
                     enabledKeySizes.add(keySizes[i]);
                 }
 
+            } catch (InvalidParameterException e) {
+                /* Key size not supported by wolfJCE, leave it out */
             } catch (Exception e) {
                 System.out.println("Skipping DH key size: " + keySizes[i] +
                     " bits - " + e.getMessage());
