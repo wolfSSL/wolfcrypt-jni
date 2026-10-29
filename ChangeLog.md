@@ -1,3 +1,127 @@
+### wolfCrypt JNI Release 1.12.0 (10/29/2026)
+
+Release 1.12.0 of wolfCrypt JNI and JCE has bug fixes and new features
+including Ed25519 and Ed448 signature and key support, new cipher modes for
+AES-CFB, AES-XTS, and AES Key Wrap, and SHAKE128 and SHAKE256 digest support.
+Bug fixes correct exception and parameter handling in RSA, AES, and DH
+operations, certificate path validation and revocation checking, and WKS
+KeyStore loading. Other changes add stricter input and buffer validation,
+zeroize more key and secret material, fix FIPS wrapper issues, and refresh the
+examples and tests.
+
+**New JCE Functionality:**
+- Add Ed25519 and Ed448 Signature, KeyPairGenerator, and KeyFactory support (PR 279)
+- Add EdDSA key and cert storage to WKS KeyStore (PR 279)
+- Implement `EdECPublicKey` and `EdECPrivateKey` on JDK 15+ for SunEC key interop (PR 279)
+- Add `RSA/ECB/NoPadding` Cipher for raw RSA operations (PR 280)
+- Add AES-XTS Cipher support as `AES/XTS/NoPadding` (PR 268)
+- Add AES Key Wrap (RFC 3394) Cipher support as `AESWrap` and `AES/KW/NoPadding` (PR 269)
+- Add AES-CFB Cipher support for CFB128, CFB8, and CFB1 (PR 272)
+- Add SHAKE128 and SHAKE256 MessageDigest support (PR 274)
+
+**New JNI Functionality:**
+- Add Ed448 support via new `Ed448` class (PR 279)
+- Add DER key import/export plus context and pre-hash sign/verify to `Ed25519` (PR 279)
+- Add AES-XTS support via new `AesXts` class (PR 268)
+- Add AES Key Wrap support via new `AesKeyWrap` class (PR 269)
+- Add AES-CFB support via new `AesCfb` class (PR 272)
+- Add SHAKE128 and SHAKE256 support via new `Shake` class (PR 274)
+- Add raw RSA support via new `Rsa.direct()` method (PR 280)
+- Add `AesGcm.setIV()` and `AesGcm.encryptEx()` for native AES-GCM IV generation (PR 281)
+- Add `WolfCrypt.getDigestSize()` wrapping native `wc_HashGetDigestSize()` (PR 292)
+- Add `WolfCrypt.encryptedKeyPemToDer()` overload taking a wipeable `char[]` password (PR 277)
+
+**New Property Support:**
+- Add `wolfjce.wks.maxIterations` property to bound PBKDF2 iterations when loading WKS KeyStores (PR 275)
+
+**JNI and JCE Changes:**
+- Throw `SignatureException` for wrong-length RSA and RSA-PSS signatures in `Signature.verify()` (PR 297)
+- Throw `SignatureException` instead of `WolfCryptException` on native `Signature.sign()` errors (PR 296)
+- Reject invalid RSA key sizes and exponents at `KeyPairGenerator.initialize()` (PR 295)
+- Throw `IllegalBlockSizeException` for oversized RSA PKCS#1 v1.5 and OAEP encrypt input (PR 292)
+- Reject AES-GCM and AES-GMAC IVs under 96 bits at `init()` on FIPS v5.2.4 and v7 or later (PR 293)
+- Allow AES-GCM decrypt `Cipher.init()` with `null` parameters (PR 291)
+- Return a random IV from AES and DESede `Cipher.getParameters()` before `init()` (PR 291)
+- Return IV-carrying `AlgorithmParameters` from AES/CTS `Cipher.getParameters()` (PR 284)
+- Throw `ShortBufferException` from `Cipher.update()` before input is consumed (PR 282)
+- Include the AES-CCM auth tag in `Cipher.getOutputSize()` (PR 271)
+- Enforce 7 to 13 byte AES-CCM nonces and generate a valid one for parameterless `init()` (PR 271)
+- Throw `AEADBadTagException` on AES-CCM tag mismatch, matching AES-GCM (PR 264)
+- Return the configured AES-GMAC tag length from `Mac.getMacLength()` (PR 261)
+- Reject a mismatched PRF in PBKDF2 `SecretKeyFactory.translateKey()` (PR 271)
+- Encode DH `privateValueLength` and reject trailing data in DH `AlgorithmParameters` (PR 271)
+- Enforce the `Dh.DH_MIN_SIZE` minimum prime size on all DH `KeyFactory` imports (PR 264)
+- Fix DH `KeyAgreement.init()` ignoring the private key when given a `DHParameterSpec` (PR 258)
+- Reject a `DHParameterSpec` conflicting with the key in DH `KeyAgreement.init()` (PR 258)
+- Treat runtime-disabled native DH as unavailable in `FeatureDetect` and wolfJCE (PR 289)
+- Fix `CertPathValidator` passing certs to `PKIXCertPathChecker`s in the wrong order (PR 260)
+- Fail revocation checks with `PREFER_CRLS` and `NO_FALLBACK` when no CRL source exists (PR 265)
+- Report revoked stapled OCSP responses as `BasicReason.REVOKED` in `PKIXRevocationChecker` (PR 258)
+- Evaluate all `keySize` operators in `jdk.certpath.disabledAlgorithms` (PR 265)
+- Require native wolfSSL 5.9.2 or later for the native `CertPathBuilder` verifier (PR 271)
+- Fix `WolfSSLX509StoreCtx` treating native certificate add failures as success (PR 257)
+- Fix `WolfSSLCertManager` leaking verify callbacks on `free()` or when replaced (PR 255)
+- Fix WKS KeyStore `load()` failing on streams that return partial reads (PR 276)
+- Fix WKS KeyStore ML-DSA key and cert matching with NULL SPKI algorithm parameters (PR 276)
+- Reject a negative certificate chain count when loading a WKS KeyStore (PR 275)
+- Compare `WolfCryptPBEKey` passwords in constant time (PR 286)
+- Fix undersized DH shared secret buffer for primes over 4096 bits, such as ffdhe8192 (PR 298)
+- Fix `Dh.generateDhParams()` failing to return the generated p and g (PR 299)
+- Fix `Dh.exportKeyPair()` failures and `Dh.exportParams()` for keys without q (PR 299)
+- Fix default-salt RSA-PSS verify failing for small keys, such as RSA 1024 with SHA-512 (PR 298)
+- Throw `WolfCryptException` on operational errors in `AesGmac.verify()` and `AesCmac.verify()` (PR 256, 258)
+- Return `false` from LMS `Signature.verify()` for wrong-length signatures (PR 257)
+- Fix `AesCmac` reuse after `doFinal()` freed the native CMAC context (PR 298)
+- Fix `AesOfb` decryption when the key is set with `DECRYPT_MODE` (PR 265)
+- Fix `Aes` and `Des3` `update()` returning output sized to the full input array (PR 259)
+- Return an empty array instead of throwing from `Chacha.process()` on empty input (PR 261)
+- Fix `Ecc.getAllSupportedCurves()` returning no curves on single-curve native builds (PR 261)
+- Fix FIPS RSA, DH, and ECC JNI wrappers passing wrong sizes on big-endian platforms (PR 254)
+- Fix the FIPS error callback leaving native threads attached to the JVM (PR 259, 276)
+- Fix `Ed25519` verify availability on native sign-only and verify-only builds (PR 254)
+- Fix race between `Hmac` release and concurrent operations (PR 261)
+- Fix native context leaks when `Sha256` and other digests are re-initialized or released (PR 298)
+- Validate IV, key, and input lengths in native AES, 3DES, and ChaCha wrappers (PR 256, 264, 267)
+- Validate PBKDF password, salt, and key lengths in `Pwdbased` (PR 262, 276)
+- Reject undersized output buffers in MD5 and SHA native final wrappers (PR 257, 270, 276)
+- Use overflow-safe bounds checks in `MessageDigest.update()` and Base16 encoding (PR 255, 286)
+- Validate buffer sizes before native use in `Fips`, `Rsa`, and `Ecc` JNI wrappers (PR 257, 259, 270, 275)
+
+**Debugging Changes:**
+- Log JNI debug hex dumps only after inputs are validated (PR 256, 267, 270, 283)
+- Log the processed buffer region and size in JNI debug output (PR 259, 267)
+- Escape CR and LF characters in wolfJCE debug log messages (PR 261)
+
+**Example Changes:**
+- Add `EdDSAExample` Ed25519 and Ed448 sign and verify example (PR 279)
+- Add `AesXtsExample` AES-XTS encrypt and decrypt example (PR 268)
+- Add `AesKeyWrapExample` AES Key Wrap example (PR 269)
+- Add `AesCfbExample` AES-CFB encrypt and decrypt example (PR 272)
+- Add `ShakeExample` SHAKE128 and SHAKE256 example (PR 274)
+- Add Ed25519 and Ed448 certs and WKS KeyStores to `examples/certs` (PR 279)
+- Update expired example certs, keys, and KeyStores in `examples/certs` (PR 278)
+- Add SHAKE and EdDSA benchmarks to `CryptoBenchmark` (PR 274, 279)
+- Run example scripts from any directory and handle paths containing spaces (PR 260, 266, 287)
+- Link Android example native libraries with 16 KB page alignment for Android 15+ (PR 289)
+- Regenerate the Android example Gradle wrapper JAR with Gradle 8.4 (PR 276)
+
+**Testing Changes:**
+- Add GitHub Actions EdDSA build matrix on Linux and macOS (PR 279)
+- Add multi-release JAR layout checks to the Java module GitHub Actions workflow (PR 279)
+- Test AES-XTS non-streaming fallback with `--disable-aesxts-stream` in GitHub Actions (PR 268)
+- Enable AES Key Wrap and raw RSA in Windows Visual Studio GitHub Actions build (PR 269, 280)
+- Capture 128-character FIPS v7 core hashes in the Android FIPS Ready workflow (PR 289)
+- Add known-answer and interop tests for the new AES modes, SHAKE, and EdDSA (PR 268, 269, 272, 274, 279)
+- Add `DhFipsTest` and `EccFipsTest` round-trip tests for the FIPS JNI wrappers (PR 254)
+
+**Misc Changes:**
+- Quote `makefile.linux` install paths so `DESTDIR` and `PREFIX` can contain spaces (PR 260)
+- Fix the `rpm` target cleanup pattern and remove its environment dump (PR 282, 286)
+
+The wolfCrypt JNI/JCE Manual is available at:
+https://www.wolfssl.com/documentation/manuals/wolfcryptjni/. For build
+instructions and more details, please check the manual.
+
 ### wolfCrypt JNI Release 1.11.0 (08/10/2026)
 
 Release 1.11.0 of wolfCrypt JNI and JCE changes the open source license from
