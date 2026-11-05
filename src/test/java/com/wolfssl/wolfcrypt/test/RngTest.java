@@ -23,6 +23,7 @@ package com.wolfssl.wolfcrypt.test;
 
 import static org.junit.Assert.*;
 
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.Rule;
@@ -39,6 +40,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import com.wolfssl.wolfcrypt.Rng;
+import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.FeatureDetect;
+import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.NativeStruct;
 import com.wolfssl.wolfcrypt.WolfCryptException;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
@@ -56,6 +60,23 @@ public class RngTest {
     @Test
     public void constructorShouldNotInitializeNativeStruct() {
         assertEquals(NativeStruct.NULL, new Rng().getNativeStruct());
+    }
+
+    /**
+     * Test that in non-FIPS builds FeatureDetect.RngHealthTestEnabled()
+     * returns false and Fips.RNG_HealthTest_fips() returns NOT_COMPILED_IN.
+     * Runs only in non-FIPS builds, skipped in FIPS builds.
+     */
+    @Test
+    public void rngHealthTestNotDetectedInNonFipsBuild() {
+        /* Fips.RNG_HealthTest_fips() only exists in FIPS builds, so
+         * FeatureDetect must not report it as available otherwise */
+        Assume.assumeFalse("FIPS enabled", Fips.enabled);
+
+        assertFalse(FeatureDetect.RngHealthTestEnabled());
+        assertEquals(WolfCryptError.NOT_COMPILED_IN.getCode(),
+            Fips.RNG_HealthTest_fips(0, new byte[48], 48, null, 0,
+                new byte[128], 128));
     }
 
     @Test

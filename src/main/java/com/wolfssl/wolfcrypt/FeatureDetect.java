@@ -593,6 +593,18 @@ public class FeatureDetect {
     public static native boolean XmssEnabled();
 
     /**
+     * Tests if the wolfCrypt FIPS Hash_DRBG health test is available through
+     * Fips.RNG_HealthTest_fips().
+     *
+     * Always false in non-FIPS builds. Newer wolfSSL FIPS builds make the
+     * DRBG health test internal unless compiled with
+     * WOLFSSL_FIPS_EXPORT_LOCAL_APIS.
+     *
+     * @return true if Fips.RNG_HealthTest_fips() is available, otherwise false.
+     */
+    public static native boolean RngHealthTestEnabled();
+
+    /**
      * Loads JNI library.
      *
      * The native library is expected to be called "wolfcryptjni", and must be
