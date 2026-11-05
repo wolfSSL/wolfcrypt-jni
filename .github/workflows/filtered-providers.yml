@@ -70,7 +70,8 @@ jobs:
             "com/wolfssl/security/providers/FilteredSunEC.class" \
             "com/wolfssl/security/providers/FilteredSunRsaSign.class" \
             "com/wolfssl/security/providers/ProviderServiceCopier.class" \
-            "META-INF/services/java.security.Provider"; do
+            "META-INF/services/java.security.Provider" \
+            "module-info.class"; do
             if jar tf "$JAR" | grep -qx "$entry"; then
               echo "OK : present -> $entry"
             else
@@ -79,6 +80,16 @@ jobs:
           done
           if jar tf "$JAR" | grep -qE '^com/wolfssl/wolfcrypt/.*\.class$'; then
             echo "ERR: wolfCrypt classes leaked into ant jar"; fail=1
+          fi
+          # Explicit module com.wolfssl.security.providers
+          DESC=$(jar --describe-module --file="$JAR")
+          echo "$DESC"
+          if echo "$DESC" | grep -qE '^com\.wolfssl\.security\.providers jar:' && \
+             ! echo "$DESC" | grep -q 'automatic'; then
+            echo "OK : explicit module com.wolfssl.security.providers"
+          else
+            echo "ERR: ant jar is not module com.wolfssl.security.providers"
+            fail=1
           fi
           [ "$fail" -eq 0 ] || { echo "FAILURE: ant jar verification"; exit 1; }
           echo "SUCCESS: ant jar verification passed"
@@ -98,7 +109,8 @@ jobs:
             "com/wolfssl/security/providers/FilteredSunEC.class" \
             "com/wolfssl/security/providers/FilteredSunRsaSign.class" \
             "com/wolfssl/security/providers/ProviderServiceCopier.class" \
-            "META-INF/services/java.security.Provider"; do
+            "META-INF/services/java.security.Provider" \
+            "module-info.class"; do
             if jar tf "$JAR" | grep -qx "$entry"; then
               echo "OK : present -> $entry"
             else
@@ -107,6 +119,17 @@ jobs:
           done
           if jar tf "$JAR" | grep -qE '^com/wolfssl/wolfcrypt/.*\.class$'; then
             echo "ERR: wolfCrypt classes leaked into Maven classified jar"; fail=1
+          fi
+          # Explicit module com.wolfssl.security.providers (Maven adds @version)
+          DESC=$(jar --describe-module --file="$JAR")
+          echo "$DESC"
+          if echo "$DESC" | \
+              grep -qE '^com\.wolfssl\.security\.providers(@[^ ]*)? jar:' && \
+             ! echo "$DESC" | grep -q 'automatic'; then
+            echo "OK : explicit module com.wolfssl.security.providers"
+          else
+            echo "ERR: Maven jar is not module com.wolfssl.security.providers"
+            fail=1
           fi
           [ "$fail" -eq 0 ] || { echo "FAILURE: Maven jar verification"; exit 1; }
           echo "SUCCESS: Maven jar verification passed"
