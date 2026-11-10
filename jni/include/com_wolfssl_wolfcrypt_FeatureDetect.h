@@ -591,6 +591,14 @@ JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_LmsEnabled
 JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_XmssEnabled
   (JNIEnv *, jclass);
 
+/*
+ * Class:     com_wolfssl_wolfcrypt_FeatureDetect
+ * Method:    RngHealthTestEnabled
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_wolfssl_wolfcrypt_FeatureDetect_RngHealthTestEnabled
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif

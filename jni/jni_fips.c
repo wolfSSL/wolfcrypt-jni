@@ -72,6 +72,18 @@
 /* #define WOLFCRYPT_JNI_DEBUG_ON */
 #include <wolfcrypt_jni_debug.h>
 
+/* Native wolfSSL marks the wc_RNG_HealthTest*() family WOLFSSL_LOCAL in FIPS
+ * builds so applications cannot run the DRBG health test with arbitrary seeds
+ * (FIPS 140-3 IG 9.3.A). They are only exported from FIPS builds that define
+ * WOLFSSL_FIPS_EXPORT_LOCAL_APIS. wolfSSL versions with this behavior define
+ * WC_FIPS_LOCAL_API in random.h, older versions always export the health
+ * test. wolfCrypt JNI follows this even on platforms that still export
+ * wc_RNG_HealthTest_fips(). */
+#if defined(HAVE_FIPS) && \
+    (!defined(WC_FIPS_LOCAL_API) || defined(WOLFSSL_FIPS_EXPORT_LOCAL_APIS))
+    #define WOLFCRYPT_JNI_FIPS_RNG_HEALTHTEST
+#endif
+
 #ifdef HAVE_FIPS
 extern JavaVM* g_vm;
 static jobject g_errCb;
@@ -2211,7 +2223,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1HealthTest_1fips
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS)
+#if defined(WOLFCRYPT_JNI_FIPS_RNG_HEALTHTEST)
 
     const byte* entropyA = getDirectBufferAddress(env, entropyA_object);
     const byte* entropyB = getDirectBufferAddress(env, entropyB_object);
@@ -2251,7 +2263,7 @@ JNIEXPORT jint JNICALL Java_com_wolfssl_wolfcrypt_Fips_wc_1RNG_1HealthTest_1fips
 {
     jint ret = NOT_COMPILED_IN;
 
-#if defined(HAVE_FIPS)
+#if defined(WOLFCRYPT_JNI_FIPS_RNG_HEALTHTEST)
 
     jboolean entropyAIsCopy = JNI_FALSE;
     jboolean entropyBIsCopy = JNI_FALSE;

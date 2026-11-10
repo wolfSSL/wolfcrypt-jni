@@ -26,6 +26,7 @@ import static org.junit.Assert.*;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.Rule;
@@ -37,6 +38,7 @@ import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.WolfCrypt;
 import com.wolfssl.wolfcrypt.WolfCryptError;
 import com.wolfssl.wolfcrypt.Fips;
+import com.wolfssl.wolfcrypt.FeatureDetect;
 
 import com.wolfssl.wolfcrypt.test.Util;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
@@ -52,6 +54,11 @@ public class RngFipsTest extends FipsTest {
     @BeforeClass
     public static void setupClass() {
         System.out.println("JNI FIPS RNG Tests");
+    }
+
+    private static void assumeRngHealthTestEnabled() {
+        Assume.assumeTrue("RNG health test not available in native wolfSSL",
+            FeatureDetect.RngHealthTestEnabled());
     }
 
     @Test
@@ -123,6 +130,8 @@ public class RngFipsTest extends FipsTest {
 
     @Test
     public void HeathTestShouldReturnZeroUsingByteBuffer() {
+        assumeRngHealthTestEnabled();
+
         String[] inputA = new String[] {
                 "1734476fa80d0c74ee6c77c760223ccbbbebaac8d4f59fe3a1aba7be35a7d8ef5acd22db2cbbac88009c04776f99da06",
                 "5eb3049f0b85b3a3a2bfd775ee10b68c4ff232e9695601f7f1b175643960f93f86418d771c91ca3b718aad20160c6bc2",
@@ -155,6 +164,8 @@ public class RngFipsTest extends FipsTest {
 
     @Test
     public void HeathTestShouldReturnZeroUsingByteArray() {
+        assumeRngHealthTestEnabled();
+
         String[] inputA = new String[] {
                 "1734476fa80d0c74ee6c77c760223ccbbbebaac8d4f59fe3a1aba7be35a7d8ef5acd22db2cbbac88009c04776f99da06",
                 "5eb3049f0b85b3a3a2bfd775ee10b68c4ff232e9695601f7f1b175643960f93f86418d771c91ca3b718aad20160c6bc2",
@@ -187,6 +198,8 @@ public class RngFipsTest extends FipsTest {
 
     @Test
     public void healthTestShouldRejectUndersizedOutputUsingByteArray() {
+        assumeRngHealthTestEnabled();
+
         /* outputSz claims 256 bytes but the array is only 1 byte */
         assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
             Fips.RNG_HealthTest_fips(0, new byte[48], 48, null, 0,
@@ -195,6 +208,8 @@ public class RngFipsTest extends FipsTest {
 
     @Test
     public void healthTestShouldRejectUndersizedEntropyBUsingByteArray() {
+        assumeRngHealthTestEnabled();
+
         /* with reseed set, entropyB must hold entropyBSz bytes */
         assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
             Fips.RNG_HealthTest_fips(1, new byte[48], 48, new byte[1], 32,
@@ -203,11 +218,34 @@ public class RngFipsTest extends FipsTest {
 
     @Test
     public void healthTestShouldRejectUndersizedOutputUsingByteBuffer() {
+        assumeRngHealthTestEnabled();
+
         ByteBuffer entropyA = ByteBuffer.allocateDirect(48);
         ByteBuffer output = ByteBuffer.allocateDirect(1);
 
         assertEquals(WolfCryptError.BAD_FUNC_ARG.getCode(),
             Fips.RNG_HealthTest_fips(0, entropyA, 48, null, 0, output, 256));
+    }
+
+    /**
+     * Test that Fips.RNG_HealthTest_fips() returns NOT_COMPILED_IN for both
+     * the byte[] and ByteBuffer variants when native wolfSSL does not export
+     * the DRBG health test. Runs only in FIPS builds where
+     * FeatureDetect.RngHealthTestEnabled() is false (newer wolfSSL FIPS
+     * builds without WOLFSSL_FIPS_EXPORT_LOCAL_APIS), skipped otherwise.
+     */
+    @Test
+    public void healthTestShouldReturnNotCompiledInWhenUnavailable() {
+        Assume.assumeFalse("RNG health test available in native wolfSSL",
+            FeatureDetect.RngHealthTestEnabled());
+
+        /* must return NOT_COMPILED_IN without calling native wolfSSL */
+        assertEquals(WolfCryptError.NOT_COMPILED_IN.getCode(),
+            Fips.RNG_HealthTest_fips(0, new byte[48], 48, null, 0,
+                new byte[128], 128));
+        assertEquals(WolfCryptError.NOT_COMPILED_IN.getCode(),
+            Fips.RNG_HealthTest_fips(0, ByteBuffer.allocateDirect(48), 48,
+                null, 0, ByteBuffer.allocateDirect(128), 128));
     }
 
     @Test

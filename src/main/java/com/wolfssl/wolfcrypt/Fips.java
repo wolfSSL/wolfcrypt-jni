@@ -1021,6 +1021,10 @@ public class Fips extends WolfObject {
      * bytes entropyBSz and then tests the RNG against the expected output of
      * size in bytes outputSz.
      *
+     * Newer wolfSSL FIPS builds make the DRBG health test internal unless
+     * compiled with WOLFSSL_FIPS_EXPORT_LOCAL_APIS (FIPS 140-3 IG 9.3.A). Use
+     * FeatureDetect.RngHealthTestEnabled() to check availability.
+     *
      * @param reseed the reseed flag.
      * @param entropyA the entropyA buffer.
      * @param entropyASz the entropyA length.
@@ -1029,7 +1033,8 @@ public class Fips extends WolfObject {
      * @param output the output buffer.
      * @param outputSz the output length.
      *
-     * @return 0 on success, {@literal <} 0 on error.
+     * @return 0 on success, {@literal <} 0 on error, NOT_COMPILED_IN if the
+     *         native DRBG health test is not available.
      */
     public static int RNG_HealthTest_fips(int reseed, ByteBuffer entropyA,
         long entropyASz, ByteBuffer entropyB, long entropyBSz,
@@ -1050,6 +1055,10 @@ public class Fips extends WolfObject {
      * bytes entropyBSz and then tests the RNG against the expected output of
      * size in bytes outputSz.
      *
+     * Newer wolfSSL FIPS builds make the DRBG health test internal unless
+     * compiled with WOLFSSL_FIPS_EXPORT_LOCAL_APIS (FIPS 140-3 IG 9.3.A). Use
+     * FeatureDetect.RngHealthTestEnabled() to check availability.
+     *
      * @param reseed the reseed flag.
      * @param entropyA the entropyA buffer.
      * @param entropyASz the entropyA length.
@@ -1058,7 +1067,8 @@ public class Fips extends WolfObject {
      * @param output the output buffer.
      * @param outputSz the output length.
      *
-     * @return 0 on success, {@literal <} 0 on error.
+     * @return 0 on success, {@literal <} 0 on error, NOT_COMPILED_IN if the
+     *         native DRBG health test is not available.
      */
     public static int RNG_HealthTest_fips(int reseed, byte[] entropyA,
         long entropyASz, byte[] entropyB, long entropyBSz, byte[] output,
