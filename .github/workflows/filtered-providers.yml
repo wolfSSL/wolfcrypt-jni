@@ -70,6 +70,7 @@ jobs:
             "com/wolfssl/security/providers/FilteredSunEC.class" \
             "com/wolfssl/security/providers/FilteredSunRsaSign.class" \
             "com/wolfssl/security/providers/ProviderServiceCopier.class" \
+            "com/wolfssl/security/providers/ReadOnlyProvider.class" \
             "META-INF/services/java.security.Provider" \
             "module-info.class"; do
             if jar tf "$JAR" | grep -qx "$entry"; then
@@ -109,6 +110,7 @@ jobs:
             "com/wolfssl/security/providers/FilteredSunEC.class" \
             "com/wolfssl/security/providers/FilteredSunRsaSign.class" \
             "com/wolfssl/security/providers/ProviderServiceCopier.class" \
+            "com/wolfssl/security/providers/ReadOnlyProvider.class" \
             "META-INF/services/java.security.Provider" \
             "module-info.class"; do
             if jar tf "$JAR" | grep -qx "$entry"; then

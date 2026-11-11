@@ -47,7 +47,7 @@ import java.util.Set;
  * load/copy logging to stderr. Requires Java 9+ and the JVM module flags
  * documented in docs/add-opens.md.
  */
-public class FilteredSunRsaSign extends Provider {
+public class FilteredSunRsaSign extends ReadOnlyProvider {
 
     private static final boolean DEBUG =
         Boolean.getBoolean("wolfssl.filtered.debug");
@@ -96,6 +96,9 @@ public class FilteredSunRsaSign extends Provider {
 
             ProviderServiceCopier.warnIgnoredEntries("sunrsasign",
                 "FilteredSunRsaSign", addProp, original);
+
+            /* No services can be added or removed after this point */
+            setReadOnly();
 
             if (DEBUG) {
                 System.err.println("FilteredSunRsaSign initialized " +

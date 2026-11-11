@@ -266,6 +266,17 @@ Cons (why the default grants nothing):
 - Wildcards are deliberately not supported, so the granted surface stays
   explicitly enumerable.
 
+## Read-only services
+
+After construction, `FilteredSun`, `FilteredSunEC` and `FilteredSunRsaSign`
+reject runtime service changes: `put()`, `remove()`, `putService()`, `load()`
+and the other `Provider` / `Properties` methods that would add, change or
+remove a service throw `SecurityException`. Services can only be granted
+through the `additionalServices` Security properties, which are read when the
+provider is constructed. The collection views returned by `keySet()`,
+`values()` and `entrySet()` are read-only and throw
+`UnsupportedOperationException` if modified.
+
 ## Common configuration mistakes
 
 The properties above fail closed: a value that does not parse leaves the
