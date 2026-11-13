@@ -49,6 +49,11 @@ Both jars are self-contained and include a
 `META-INF/services/java.security.Provider` entry so the providers can also be
 discovered via `ServiceLoader`.
 
+Both jars are also the JPMS module `com.wolfssl.security.providers`, with a
+module descriptor compiled from
+[java9/module-info.java](java9/module-info.java). On the class path the module
+descriptor is ignored.
+
 ## Pulling into your own Linux host, VM, or container
 
 The build produces a single self-contained jar. Copy it out and drop it onto
@@ -101,6 +106,29 @@ your system:
 
    For Docker/Kubernetes, set these via `JAVA_TOOL_OPTIONS`. See
    [docs/add-opens.md](docs/add-opens.md) for the per-flag rationale.
+
+   **Module path alternative:** the jar can be placed on the module path
+   instead of the class path. By doing this, applications don't need to add it
+   to their own class path, and JDK tools like `keytool`, which ignore the
+   `CLASSPATH` environment variable, still load the providers. In the module
+   path case, resolve the module explicitly and target the flags at the module
+   name instead of `ALL-UNNAMED`. For JDK 22+:
+
+   ```
+   --module-path=/usr/share/java/filtered-providers.jar
+   --add-modules=com.wolfssl.security.providers
+   --add-exports=java.base/sun.security.ec=com.wolfssl.security.providers
+   --add-opens=java.base/sun.security.ec=com.wolfssl.security.providers
+   --add-opens=java.base/java.security=com.wolfssl.security.providers
+   --add-opens=java.base/sun.security.provider=com.wolfssl.security.providers
+   --add-opens=java.base/sun.security.util=com.wolfssl.security.providers
+   --add-opens=java.base/sun.security.rsa=com.wolfssl.security.providers
+   ```
+
+   For JDK 9-21, make the same substitution in the JDK 9-21 EC flags
+   (`jdk.crypto.ec/sun.security.ec=com.wolfssl.security.providers`). Flags
+   that still target `ALL-UNNAMED` do not reach a named module, and the
+   providers fail to initialize with `IllegalAccessException`.
 
 4. Optional debug logging:
 

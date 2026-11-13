@@ -16,6 +16,7 @@
              without a compiled wolfSSL/wolfCrypt library:
              mvn test -Dmain.tests.skip=true -->
         <main.tests.skip>false</main.tests.skip>
+        <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
     </properties>
 
 	<dependencies>
@@ -49,7 +50,7 @@
 			<plugin>
                 <groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>${maven-compiler-plugin.version}</version>
 				<configuration>
 					<source>1.8</source>
 					<target>1.8</target>
@@ -112,7 +113,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <version>3.11.0</version>
+                        <version>${maven-compiler-plugin.version}</version>
                         <configuration>
                             <excludes>
                                 <exclude>com/wolfssl/provider/jce/WolfCryptMlKemKem.java</exclude>
@@ -132,7 +133,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <version>3.11.0</version>
+                        <version>${maven-compiler-plugin.version}</version>
                         <executions>
                             <!-- Compile module-info.java with Java 9 release -->
                             <execution>
@@ -172,7 +173,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <version>3.11.0</version>
+                        <version>${maven-compiler-plugin.version}</version>
                         <executions>
                             <execution>
                                 <id>compile-java15-eddsa-overlay</id>
@@ -255,7 +256,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <version>3.11.0</version>
+                        <version>${maven-compiler-plugin.version}</version>
                         <configuration>
                             <testExcludes combine.self="override"/>
                         </configuration>
@@ -271,6 +272,28 @@
                                     <compileSourceRoots>
                                         <compileSourceRoot>${project.basedir}/examples/filtered-providers/src</compileSourceRoot>
                                     </compileSourceRoots>
+                                    <multiReleaseOutput>false</multiReleaseOutput>
+                                </configuration>
+                            </execution>
+                            <!-- Compile the filtered-providers module-info
+                                 into the classified jar directory, after the
+                                 provider classes are copied there
+                                 (process-classes). The compiler plugin warns
+                                 "Overwriting artifact's file" here. This is
+                                 expected: default-jar sets the main artifact
+                                 back to the main jar at package. -->
+                            <execution>
+                                <id>compile-filtered-providers-module-info</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <release>9</release>
+                                    <compileSourceRoots>
+                                        <compileSourceRoot>${project.basedir}/examples/filtered-providers/java9</compileSourceRoot>
+                                    </compileSourceRoots>
+                                    <outputDirectory>${project.build.directory}/filtered-providers-classes</outputDirectory>
                                     <multiReleaseOutput>false</multiReleaseOutput>
                                 </configuration>
                             </execution>
@@ -299,11 +322,17 @@
                                          providers in module
                                          com.wolfssl.wolfcrypt, where the
                                          ALL-UNNAMED add-opens below would not
-                                         reach them. The providers ship as a
-                                         plain classpath jar in real
-                                         deployments, which this matches. -->
+                                         reach them. Module path use is tested
+                                         by ant test-filtered-providers. -->
                                     <useModulePath>false</useModulePath>
                                     <argLine>${filtered.ec.flags} --add-opens=java.base/java.security=ALL-UNNAMED --add-opens=java.base/sun.security.provider=ALL-UNNAMED --add-opens=java.base/sun.security.util=ALL-UNNAMED --add-opens=java.base/sun.security.rsa=ALL-UNNAMED</argLine>
+                                    <!-- The assembled jar directory
+                                         (process-classes) holds the
+                                         providers' META-INF/services file,
+                                         for the ServiceLoader test -->
+                                    <additionalClasspathElements>
+                                        <additionalClasspathElement>${project.build.directory}/filtered-providers-classes</additionalClasspathElement>
+                                    </additionalClasspathElements>
                                     <excludes combine.self="override"/>
                                     <includes>
                                         <include>com/wolfssl/security/providers/test/**</include>
@@ -327,7 +356,7 @@
                         <executions>
                             <execution>
                                 <id>assemble-filtered-providers-jar-dir</id>
-                                <phase>prepare-package</phase>
+                                <phase>process-classes</phase>
                                 <goals>
                                     <goal>copy-resources</goal>
                                 </goals>
@@ -355,8 +384,8 @@
                     <!-- Keep the default wolfcrypt-jni.jar free of the
                          providers (in target/classes under this profile)
                          and output a separate classified jar from the
-                         assembled directory above (provider classes plus
-                         ServiceLoader registration). -->
+                         assembled directory above (provider classes,
+                         ServiceLoader registration and module-info). -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-jar-plugin</artifactId>

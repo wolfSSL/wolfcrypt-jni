@@ -61,3 +61,21 @@ The `ant test-filtered-providers` target and the Maven `filtered-providers`
 profile select the correct EC flag set automatically based on the running
 JDK.
 
+## Flag target: class path vs module path
+
+The flags above use `ALL-UNNAMED`, which covers the jar when it is on the
+class path, where the providers run in the unnamed module.
+
+When `filtered-providers.jar` is on the module path, the providers run in the
+named module `com.wolfssl.security.providers`. `ALL-UNNAMED` does not include
+named modules, so every flag above must target the module name instead, for
+example:
+
+```
+--add-opens=java.base/java.security=com.wolfssl.security.providers
+```
+
+The module must also be resolved with
+`--add-modules=com.wolfssl.security.providers`. `ant test-filtered-providers`
+runs the tests in both modes.
+

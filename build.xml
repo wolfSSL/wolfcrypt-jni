@@ -37,6 +37,8 @@
     <property name="examples.provider.dir" value="examples/provider" />
     <property name="examples.provider.build.dir" value="examples/build/provider" />
     <property name="examples.filtered.dir" value="examples/filtered-providers/src" />
+    <property name="examples.filtered.java9.dir" value="examples/filtered-providers/java9" />
+    <property name="filtered.module.name" value="com.wolfssl.security.providers" />
     <property name="examples.filtered.build.dir" value="examples/build/filtered-providers" />
     <property name="filtered.test.build.dir" value="build/test-filtered-providers" />
     <!-- final filtered-providers.jar location; subdirectory of lib/ so the
@@ -393,13 +395,13 @@
     </target>
 
     <!-- Build filtered Sun/SunEC/SunRsaSign provider examples, package them
-        (plus their ServiceLoader registration) into filtered-providers.jar.
-        Java 9+ only, no-op on Java 8. -->
+        (plus their ServiceLoader registration and module-info.class) into
+        filtered-providers.jar. Java 9+ only, no-op on Java 8. -->
     <target name="examples-filtered-providers" if="isJava9Plus"
         description="Build filtered-providers examples + jar (Java 9+ only)">
         <mkdir dir="${examples.filtered.build.dir}/classes" />
         <javac
-            srcdir="${examples.filtered.dir}"
+            srcdir="${examples.filtered.dir}:${examples.filtered.java9.dir}"
             destdir="${examples.filtered.build.dir}/classes"
             source="9"
             target="9"
@@ -428,6 +430,11 @@
             value="--add-modules=jdk.crypto.ec --add-exports=jdk.crypto.ec/sun.security.ec=ALL-UNNAMED --add-opens=jdk.crypto.ec/sun.security.ec=ALL-UNNAMED" />
         <property name="filtered.ec.flags" if:set="isJava22Plus"
             value="--add-exports=java.base/sun.security.ec=ALL-UNNAMED --add-opens=java.base/sun.security.ec=ALL-UNNAMED" />
+        <!-- Same flags for the module path run, targeting the module name -->
+        <property name="filtered.ec.flags.module" unless:set="isJava22Plus"
+            value="--add-modules=jdk.crypto.ec --add-exports=jdk.crypto.ec/sun.security.ec=${filtered.module.name} --add-opens=jdk.crypto.ec/sun.security.ec=${filtered.module.name}" />
+        <property name="filtered.ec.flags.module" if:set="isJava22Plus"
+            value="--add-exports=java.base/sun.security.ec=${filtered.module.name} --add-opens=java.base/sun.security.ec=${filtered.module.name}" />
 
         <delete dir="${filtered.test.build.dir}" />
         <mkdir dir="${filtered.test.build.dir}" />
@@ -481,6 +488,46 @@
             <formatter type="xml" />
 
             <batchtest fork="yes" todir="${reports.dir}">
+                <fileset dir="${test.dir}">
+                    <include name="com/wolfssl/security/providers/test/*Test.java" />
+                </fileset>
+            </batchtest>
+
+        </junit>
+
+        <!-- Rerun the tests with filtered-providers.jar on the module path.
+             Adding the module by name also checks that the jar has its
+             module-info (otherwise the JVM fails to start). -->
+        <mkdir dir="${reports.dir}/filtered-providers-modulepath" />
+        <junit printsummary="yes"
+            showoutput="yes"
+            haltonfailure="yes"
+            fork="true">
+
+            <jvmarg value="--module-path=${filtered.lib.dir}/filtered-providers.jar"/>
+            <jvmarg value="--add-modules=${filtered.module.name}"/>
+            <!-- SunEC module flags (JDK-version specific) -->
+            <jvmarg line="${filtered.ec.flags.module}"/>
+            <!-- Stable java.base flags (all JDK majors) -->
+            <jvmarg value="--add-opens=java.base/java.security=${filtered.module.name}"/>
+            <jvmarg value="--add-opens=java.base/sun.security.provider=${filtered.module.name}"/>
+            <jvmarg value="--add-opens=java.base/sun.security.util=${filtered.module.name}"/>
+            <jvmarg value="--add-opens=java.base/sun.security.rsa=${filtered.module.name}"/>
+
+            <classpath>
+                <pathelement location="${filtered.test.build.dir}" />
+                <fileset dir="${env.JUNIT_HOME}">
+                    <include name="${junit4}"/>
+                    <include name="${hamcrest-core}"/>
+                    <include name="${ant-junit4}"/>
+                </fileset>
+            </classpath>
+
+            <formatter type="plain" />
+            <formatter type="xml" />
+
+            <batchtest fork="yes"
+                todir="${reports.dir}/filtered-providers-modulepath">
                 <fileset dir="${test.dir}">
                     <include name="com/wolfssl/security/providers/test/*Test.java" />
                 </fileset>
