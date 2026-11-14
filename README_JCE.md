@@ -21,6 +21,19 @@ and Android platforms.
 Pre-compiled and signed wolfCrypt JNI/JCE JAR's are included with the stable
 releases of the JCE provider. See below for more details.
 
+### Provider Services Are Read-Only
+
+After the wolfJCE provider is constructed, its services cannot be changed at
+runtime. `put()`, `remove()`, `putService()`, `load()` and the other
+`Provider` / `Properties` methods that would add, change or remove a service
+throw `SecurityException`. This stops application code from potentially
+registering a non-wolfCrypt implementation under the wolfJCE name, for example
+with `put("MessageDigest.MD5", ...)`. To apply a changed `wolfjce.mapJKStoWKS`
+or `wolfjce.mapPKCS12toWKS` Security property, call `refreshServices()` (see
+below). The collection views returned by `keySet()`, `values()` and
+`entrySet()` are read-only and throw `UnsupportedOperationException` if
+modified.
+
 ### System and Security Property Support
 ---------
 

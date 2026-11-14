@@ -169,7 +169,8 @@ infer --fail-on-issue run -- javac \
     examples/filtered-providers/src/com/wolfssl/security/providers/FilteredSun.java \
     examples/filtered-providers/src/com/wolfssl/security/providers/FilteredSunEC.java \
     examples/filtered-providers/src/com/wolfssl/security/providers/FilteredSunRsaSign.java \
-    examples/filtered-providers/src/com/wolfssl/security/providers/ProviderServiceCopier.java
+    examples/filtered-providers/src/com/wolfssl/security/providers/ProviderServiceCopier.java \
+    examples/filtered-providers/src/com/wolfssl/security/providers/ReadOnlyProvider.java
 
 RETVAL=$?
 

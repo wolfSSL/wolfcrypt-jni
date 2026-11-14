@@ -80,7 +80,8 @@ import org.junit.runners.Suite.SuiteClasses;
     WolfSSLKeyStoreTest.class,
     WolfCryptUtilTest.class,
     WolfCryptServiceLoaderTest.class,
-    WolfCryptProviderIOTimeoutTest.class
+    WolfCryptProviderIOTimeoutTest.class,
+    WolfCryptProviderTest.class
 })
 
 public class WolfJCETestSuite { }

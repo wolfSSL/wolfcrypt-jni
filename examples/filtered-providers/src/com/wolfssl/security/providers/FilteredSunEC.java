@@ -48,7 +48,7 @@ import java.util.Set;
  * load/copy logging to stderr. Requires Java 9+ and the JVM module flags
  * documented in docs/add-opens.md.
  */
-public class FilteredSunEC extends Provider {
+public class FilteredSunEC extends ReadOnlyProvider {
 
     private static final boolean DEBUG =
         Boolean.getBoolean("wolfssl.filtered.debug");
@@ -100,6 +100,9 @@ public class FilteredSunEC extends Provider {
 
             ProviderServiceCopier.warnIgnoredEntries("sunec", "FilteredSunEC",
                 addProp, original);
+
+            /* No services can be added or removed after this point */
+            setReadOnly();
 
             if (DEBUG) {
                 System.err.println("FilteredSunEC initialized successfully " +

@@ -21,12 +21,18 @@
 
 package com.wolfssl.provider.jce;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.Reader;
 import java.security.Provider;
 import java.security.Security;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import com.wolfssl.wolfcrypt.FeatureDetect;
 import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.MlDsa;
@@ -36,10 +42,25 @@ import com.wolfssl.wolfcrypt.WolfSSLX509StoreCtx;
 
 /**
  * wolfCrypt JCE Provider implementation
+ *
+ * Services are registered by the constructor and are read-only afterwards.
+ * Provider and Properties methods that would add, change or remove a
+ * service throw SecurityException. Call refreshServices() to apply a
+ * changed wolfjce.mapJKStoWKS or wolfjce.mapPKCS12toWKS Security property.
  */
 public final class WolfCryptProvider extends Provider {
 
     private static final long serialVersionUID = 1L;
+
+    /* Set once services are registered. Services can be added, changed or
+     * removed only while this is false (during construction).
+     * refreshServices() changes the KeyStore mappings with
+     * super.put()/super.remove(), so code that runs during a refresh (for
+     * example a SecurityManager callback) cannot add services. */
+    private transient volatile boolean servicesLocked = false;
+
+    /* False for deserialized objects, which can never be changed */
+    private final transient boolean constructed;
 
     /**
      * Default FIPS error callback for wolfJCE provider.
@@ -92,6 +113,7 @@ public final class WolfCryptProvider extends Provider {
     @SuppressWarnings("deprecation")
     public WolfCryptProvider() {
         super("wolfJCE", 1.12, "wolfCrypt JCE Provider");
+        constructed = true;
 
         /* Refresh debug flags in case system properties were set after
          * WolfCryptDebug class was first loaded (e.g., via JAVA_OPTS) */
@@ -106,26 +128,202 @@ public final class WolfCryptProvider extends Provider {
         }
 
         registerServices();
+        servicesLocked = true;
     }
 
     /**
-     * Refresh the services provided by this JCE provider.
+     * Refresh the KeyStore type mappings of this JCE provider.
      *
-     * This is required when one of the Security properties has been changed
-     * that affect the services offered by this provider. For example:
+     * Adds or removes the KeyStore.JKS and KeyStore.PKCS12 types mapped to
+     * WKS, according to the current values of these Security properties:
      *     wolfjce.mapJKStoWKS
      *     wolfjce.mapPKCS12toWKS
+     *
+     * Call this after changing either property at runtime. All other
+     * services are fixed when the provider is constructed.
      */
-    public void refreshServices() {
-        registerServices();
+    public synchronized void refreshServices() {
+        if (!constructed) {
+            throw new SecurityException(
+                "wolfJCE provider services cannot be modified");
+        }
+        registerKeyStoreMappings();
+    }
+
+    /**
+     * Lock the deserialized object. Replaced by readResolve().
+     *
+     * @param in stream to read the object from
+     * @throws IOException if reading the stream fails
+     * @throws ClassNotFoundException if a serialized class is not found
+     */
+    private void readObject(ObjectInputStream in)
+        throws IOException, ClassNotFoundException {
+
+        servicesLocked = true;
+        in.defaultReadObject();
+    }
+
+    /**
+     * Replace a deserialized provider with the registered wolfJCE provider,
+     * or a new one, so services always come from registerServices() and
+     * never from serialized data.
+     *
+     * @return the registered wolfJCE provider, or a new WolfCryptProvider
+     */
+    private Object readResolve() {
+
+        Provider p = Security.getProvider("wolfJCE");
+        if (p instanceof WolfCryptProvider) {
+            return p;
+        }
+        return new WolfCryptProvider();
+    }
+
+    /**
+     * Reject service changes once services are registered. Prevents code
+     * from adding a non-wolfCrypt implementation under the wolfJCE name.
+     *
+     * @throws SecurityException if services are locked or this object was
+     *         deserialized
+     */
+    private void checkServicesUnlocked() {
+
+        if (servicesLocked || !constructed) {
+            throw new SecurityException(
+                "wolfJCE provider services cannot be modified");
+        }
+    }
+
+    @Override
+    public synchronized Object put(Object key, Object value) {
+        checkServicesUnlocked();
+        return super.put(key, value);
+    }
+
+    @Override
+    public synchronized void putAll(Map<?, ?> t) {
+        /* Drop entries restored by Provider.readObject() */
+        if (!constructed && !servicesLocked) {
+            return;
+        }
+        checkServicesUnlocked();
+        super.putAll(t);
+    }
+
+    @Override
+    public synchronized Object putIfAbsent(Object key, Object value) {
+        checkServicesUnlocked();
+        return super.putIfAbsent(key, value);
+    }
+
+    @Override
+    public synchronized Object remove(Object key) {
+        checkServicesUnlocked();
+        return super.remove(key);
+    }
+
+    @Override
+    public synchronized boolean remove(Object key, Object value) {
+        checkServicesUnlocked();
+        return super.remove(key, value);
+    }
+
+    @Override
+    public synchronized boolean replace(Object key, Object oldValue,
+        Object newValue) {
+        checkServicesUnlocked();
+        return super.replace(key, oldValue, newValue);
+    }
+
+    @Override
+    public synchronized Object replace(Object key, Object value) {
+        checkServicesUnlocked();
+        return super.replace(key, value);
+    }
+
+    @Override
+    public synchronized void replaceAll(BiFunction<? super Object,
+        ? super Object, ? extends Object> function) {
+        checkServicesUnlocked();
+        super.replaceAll(function);
+    }
+
+    @Override
+    public synchronized Object compute(Object key, BiFunction<? super Object,
+        ? super Object, ? extends Object> remappingFunction) {
+        checkServicesUnlocked();
+        return super.compute(key, remappingFunction);
+    }
+
+    @Override
+    public synchronized Object computeIfAbsent(Object key, Function<? super
+        Object, ? extends Object> mappingFunction) {
+        checkServicesUnlocked();
+        return super.computeIfAbsent(key, mappingFunction);
+    }
+
+    @Override
+    public synchronized Object computeIfPresent(Object key, BiFunction<?
+        super Object, ? super Object, ? extends Object> remappingFunction) {
+        checkServicesUnlocked();
+        return super.computeIfPresent(key, remappingFunction);
+    }
+
+    @Override
+    public synchronized Object merge(Object key, Object value,
+        BiFunction<? super Object, ? super Object, ? extends Object>
+        remappingFunction) {
+        checkServicesUnlocked();
+        return super.merge(key, value, remappingFunction);
+    }
+
+    @Override
+    public synchronized void clear() {
+        checkServicesUnlocked();
+        super.clear();
+    }
+
+    @Override
+    public synchronized Object setProperty(String key, String value) {
+        checkServicesUnlocked();
+        return super.setProperty(key, value);
+    }
+
+    @Override
+    public synchronized void load(InputStream inStream) throws IOException {
+        checkServicesUnlocked();
+        super.load(inStream);
+    }
+
+    @Override
+    public synchronized void load(Reader reader) throws IOException {
+        checkServicesUnlocked();
+        super.load(reader);
+    }
+
+    @Override
+    public synchronized void loadFromXML(InputStream in) throws IOException {
+        checkServicesUnlocked();
+        super.loadFromXML(in);
+    }
+
+    @Override
+    protected synchronized void putService(Provider.Service s) {
+        checkServicesUnlocked();
+        super.putService(s);
+    }
+
+    @Override
+    protected synchronized void removeService(Provider.Service s) {
+        checkServicesUnlocked();
+        super.removeService(s);
     }
 
     /**
      * Register services provided by wolfJCE, called by class constructor.
      */
     private void registerServices() {
-        String mapJksToWks = null;
-        String mapPkcs12ToWks = null;
 
         /* Run FIPS algorithm self tests (CASTs) if needed */
         if (Fips.enabled) {
@@ -1376,40 +1574,59 @@ public final class WolfCryptProvider extends Provider {
         put("KeyStore.WKS",
                 "com.wolfssl.provider.jce.WolfSSLKeyStore");
 
+        /* KeyStore JKS / PKCS12 mapped to WKS, if enabled */
+        registerKeyStoreMappings();
+
+        /* Unregister PQC parameter sets not compiled into native wolfSSL */
+        removeUnsupportedPQCParamSets();
+
+        /* If using wolfCrypt FIPS 140-3, allow private key export */
+        if (Fips.enabled) {
+            Fips.setPrivateKeyReadEnable(1, Fips.WC_KEYTYPE_ALL);
+        }
+    }
+
+    /**
+     * Register or unregister the KeyStore JKS and PKCS12 types mapped to
+     * WKS, according to the wolfjce.mapJKStoWKS and wolfjce.mapPKCS12toWKS
+     * Security properties. Called by registerServices() and refreshServices().
+     *
+     * Uses super.put() and super.remove(), which the service lock does not
+     * apply to, so services stay locked during refreshServices().
+     */
+    private void registerKeyStoreMappings() {
+
         /* Fake mapping of JKS to WKS type. Use with caution! This is
          * usually used when FIPS compliance is needed but code cannot be
          * changed that creates a JKS KeyStore object type. Any files loaded
          * into this fake JKS KeyStore MUST be of actual type WKS or failures
-         * will happen. Remove service first here in case of refresh. */
-        remove("KeyStore.JKS");
-        mapJksToWks = Security.getProperty("wolfjce.mapJKStoWKS");
-        if (mapJksToWks != null && !mapJksToWks.isEmpty() &&
-            mapJksToWks.equalsIgnoreCase("true")) {
-            put("KeyStore.JKS",
-                "com.wolfssl.provider.jce.WolfSSLKeyStore");
-        }
+         * will happen. */
+        setKeyStoreMapping("KeyStore.JKS",
+            Security.getProperty("wolfjce.mapJKStoWKS"));
 
         /* Fake mapping of PKCS12 to WKS type. Use with caution! This is
          * usually used when FIPS compliance is needed but code cannot be
          * changed that creates a PKCS12 KeyStore object type. Any files
          * loaded into this fake PKCS12 KeyStore MUST be of actual type WKS
-         * or failures will happen. Remove service first here in case of
-         * refresh. */
-        remove("KeyStore.PKCS12");
-        mapPkcs12ToWks = Security.getProperty("wolfjce.mapPKCS12toWKS");
-        if (mapPkcs12ToWks != null && !mapPkcs12ToWks.isEmpty() &&
-            mapPkcs12ToWks.equalsIgnoreCase("true")) {
-            put("KeyStore.PKCS12",
-                "com.wolfssl.provider.jce.WolfSSLKeyStore");
+         * or failures will happen. */
+        setKeyStoreMapping("KeyStore.PKCS12",
+            Security.getProperty("wolfjce.mapPKCS12toWKS"));
+    }
+
+    /**
+     * Map a KeyStore type to WolfSSLKeyStore if the property value is
+     * "true" (ignoring case), otherwise remove the mapping.
+     *
+     * @param key KeyStore service key, for example "KeyStore.JKS"
+     * @param prop Security property value, may be null
+     */
+    private void setKeyStoreMapping(String key, String prop) {
+
+        if (prop != null && prop.equalsIgnoreCase("true")) {
+            super.put(key, "com.wolfssl.provider.jce.WolfSSLKeyStore");
         }
-
-        /* Unregister PQC parameter sets not compiled into native wolfSSL */
-        removeUnsupportedPQCParamSets();
-
-        /* If using a FIPS version of wolfCrypt, allow private key to be
-         * exported for use. Only applicable to FIPS 140-3 */
-        if (Fips.enabled) {
-            Fips.setPrivateKeyReadEnable(1, Fips.WC_KEYTYPE_ALL);
+        else {
+            super.remove(key);
         }
     }
 
