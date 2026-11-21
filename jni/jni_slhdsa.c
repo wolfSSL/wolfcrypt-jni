@@ -1436,7 +1436,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_SlhDsa_wc_1SlhDsaKey_1Ke
     }
 
     /* Call with NULL output to get required size. */
+    PRIVATE_KEY_UNLOCK();
     ret = wc_SlhDsaKey_KeyToDer(key, NULL, 0);
+    PRIVATE_KEY_LOCK();
     if (ret <= 0) {
         throwWolfCryptExceptionFromError(env, ret);
         return NULL;
@@ -1451,7 +1453,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_SlhDsa_wc_1SlhDsaKey_1Ke
     }
     XMEMSET(output, 0, outputSz);
 
+    PRIVATE_KEY_UNLOCK();
     ret = wc_SlhDsaKey_KeyToDer(key, output, outputSz);
+    PRIVATE_KEY_LOCK();
     if (ret > 0) {
         result = (*env)->NewByteArray(env, ret);
         if (result != NULL) {
