@@ -643,7 +643,9 @@ Java_com_wolfssl_wolfcrypt_Ecc_wc_1EccKeyToDer(
     if (ret == 0) {
         outputBufSz = outputSz;
 
+        PRIVATE_KEY_UNLOCK();
         ret = wc_EccKeyToDer(ecc, output, outputSz);
+        PRIVATE_KEY_LOCK();
         if (ret >= 0) {
             outputSz = ret;
             ret = 0;

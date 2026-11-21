@@ -30,6 +30,7 @@ import org.junit.Rule;
 import org.junit.rules.TestRule;
 
 import com.wolfssl.wolfcrypt.Curve25519;
+import com.wolfssl.wolfcrypt.Fips;
 import com.wolfssl.wolfcrypt.Rng;
 import com.wolfssl.wolfcrypt.test.TimedTestWatcher;
 import com.wolfssl.wolfcrypt.NativeStruct;
@@ -70,6 +71,12 @@ public class Curve25519Test {
         Assume.assumeTrue("Curve25519 not compiled in", curve25519Enabled);
     }
 
+    /* FIPS v7 allows X25519 only inside X25519MLKEM768, standalone gives
+     * FIPS_WRONG_API_E */
+    private static boolean standaloneX25519Refused() {
+        return Fips.enabled && Fips.fipsVersion >= 7;
+    }
+
     /**
      * Skip test if WolfCryptException is NOT_COMPILED_IN, otherwise rethrow.
      */
@@ -92,6 +99,8 @@ public class Curve25519Test {
     public void sharedSecretShouldMatch() {
 
         assumeEnabled();
+        Assume.assumeFalse("FIPS v7 refuses standalone X25519",
+            standaloneX25519Refused());
 
         Curve25519 alice = new Curve25519();
         Curve25519 bob = new Curve25519();
@@ -126,6 +135,8 @@ public class Curve25519Test {
     public void exportImportPublicAndSharedSecret() {
 
         assumeEnabled();
+        Assume.assumeFalse("FIPS v7 refuses standalone X25519",
+            standaloneX25519Refused());
 
         Curve25519 alice = new Curve25519();
         Curve25519 bob = new Curve25519();
@@ -169,6 +180,32 @@ public class Curve25519Test {
         alice.releaseNativeStruct();
         bob.releaseNativeStruct();
         alicePubOnly.releaseNativeStruct();
+    }
+
+    @Test
+    public void sharedSecretRefusedUnderFipsV7() {
+
+        assumeEnabled();
+        Assume.assumeTrue("Only FIPS v7 refuses standalone X25519",
+            standaloneX25519Refused());
+
+        Curve25519 alice = new Curve25519();
+        Curve25519 bob = new Curve25519();
+
+        try {
+            synchronized (rngLock) {
+                alice.makeKey(rng, Curve25519.CURVE25519_KEY_SIZE);
+                bob.makeKey(rng, Curve25519.CURVE25519_KEY_SIZE);
+            }
+            alice.makeSharedSecret(bob);
+            fail("Standalone X25519 shared secret allowed under FIPS v7");
+        } catch (WolfCryptException e) {
+            /* FIPS_WRONG_API_E */
+            assertEquals(-1025, e.getCode());
+        } finally {
+            alice.releaseNativeStruct();
+            bob.releaseNativeStruct();
+        }
     }
 
     @Test

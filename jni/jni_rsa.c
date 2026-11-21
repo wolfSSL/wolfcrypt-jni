@@ -452,7 +452,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaKeyToDer
     if (ret == 0) {
         XMEMSET(output, 0, outputSz);
 
+        PRIVATE_KEY_UNLOCK();
         ret = wc_RsaKeyToDer(key, output, outputSz);
+        PRIVATE_KEY_LOCK();
         if (ret > 0) {
             outputSz = ret;
             ret = 0;
@@ -620,7 +622,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_wolfssl_wolfcrypt_Rsa_wc_1RsaPrivateKeyToP
 
     /* Get DER encoded RSA private key */
     if (ret == 0) {
+        PRIVATE_KEY_UNLOCK();
         ret = wc_RsaKeyToDer(key, derKey, derKeySz);
+        PRIVATE_KEY_LOCK();
         if (ret > 0) {
             derKeySz = ret;
             ret = 0;
